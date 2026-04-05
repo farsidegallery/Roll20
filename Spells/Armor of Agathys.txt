@@ -1,0 +1,138 @@
+!script {{
+  +++5Elib;Farsidelib+++
+  
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+  
+  --/|Script Name : Armor of Agathys
+  --/|Version     : 1.0
+  --/|Modified By : Farsidegallery
+  --/|  
+  --/|  Script checks for spell level used and makes sure the slot is available. Script will check for existence of global mod and create if necessary.
+  --/|  Script turns on Global Mod specified and plays visual effect. It will deduct 1 spell slot from the appropriate level.
+  --/|
+  
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+  
+  --&SpellName|Armor of Agathys
+  --&MinimumSpellLevel|1
+  --&damageType|cold
+  
+  --&HexBladebladeMarker|Hexed2::7409912
+  --&DeathMarker|dead
+   
+  --/|Enter name for Armor of Agathys Character.
+  --&CharName|Armor of Agathys
+    
+  --/|Use ScriptCards (1) or SpawnDefaultToken (2) to place the Charm Person Character on the VTT?
+  --&SpawnScript|1
+  
+  --&URLlink|https://files.d20.io/images/468737177/00wFOzzxW5WmnBGPoUmS-g/med.webm?1766433063
+    
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --#title|[&SpellName]
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  
+  
+  --+|[c][b]Choose Function:[/b][/c]
+  --+|[c][rbutton]New Cast::New[/rbutton][rbutton]Return Attack::Attack[/rbutton][rbutton]Dismiss::Remove[/rbutton][/c]
+  --X|
+  
+  --:New|
+   -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+   --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+   --+|[c][b]Cast At What Level?[/b][/c]
+    --&splvlMsg|
+    --%splvl|foreach;SpellCastLevel
+     --&splvlMsg|+ [rbutton][&splvl]::ChooseType;[&splvl][/rbutton]
+    --%|
+   --+|[c][&splvlMsg][/c]
+  --X|
+  
+  --:ChooseType|
+   --=SpellLevel|[&reentryval]
+   --&SpellLevel|[&reentryval]
+   --#leftsub|[*R:spellcastingtime]
+   --#rightsub|Level: [&SpellLevel]
+   --#emotetext|[*S:t-name] casts [&SpellName]!
+   --&spelldesc|[*R:spelldescription]
+   --&TokenName|[*S:t-name] [&SpellName]
+   -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
+   -->GetCharID|[&CharName];ShieldID
+   -->CreateMod|
+  
+  --:CreateMod| 
+   --=TotalPoints|[&SpellLevel]*5
+   --!a:[*S:character_id]|!hp_temp:[$TotalPoints]
+   --!a:[*S:character_id]|!TotalPoints:[$TotalPoints]
+   -->Finish|
+   
+  --:Attack|
+   --+Target|[rbutton]Click here to select your target.::TargetInfo;&#64;{target|token_id}[/rbutton]
+  --X|
+  
+  --:TargetInfo|
+   --#whisper|
+   --#targettoken|[&reentryval]
+   --#emoteText|[*S:t-name] attacks [*T:t-name]!
+   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;1;0;0
+   --=Damage|[*S:TotalPoints][&damageMod]
+   --+Retaliation: |Armor of Agathys hits [*T:t-name] in response for [$Damage] points of [&damageType] damage.
+   --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$Damage];0;0;1
+   -->far_DamageTokenmod|[*T:t-id];1;4;-[$Damage];0;0;1
+   --=FinalHP|[*T:t-bar[&hpBar]_value]+[*T:t-bar[&tempHPbar]_value]-[$Damage]
+   --?[$FinalHP] -le 0|>Died
+   --X|
+  
+  --:Remove|
+   --!a:[*S:character_id]|!TotalPoints:**
+   --&TokenName|[*S:t-name] [&SpellName]
+   --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&TokenName]
+   --~|object;token;delete;[@tokens(0)]
+   --#whisper|
+   --#emotetext|[*S:t-name] no longer has [&SpellName]!
+   --+|The inivisible barrier armor vanishes!
+   --X|
+  
+  --:Finish|
+   --?[&SpawnScript] -eq 2|[
+	--@forselected+|Spawn _name|[&CharName] _qty|1 _offset|0,0 _force|yes _size|3 _tokenProps|name:[&TokenName],showname:true,showplayers_name:true _order|toBack _bar1|KeepLink _fx|nova-magic _expand|15,30 {^&select @{selected|token_id}}
+	--]|
+
+   --?[&SpawnScript] -eq 1|[
+	--!ot:ShieldTID|name:"[&TokenName]"|left:[*S:t-left]|top:[*S:t-top]|width:[=[*S:t-width]*3]|height:[=[*S:t-height]*3]|imgsrc:"[&URLlink]"|bar1_value:1|represents:[&ShieldID]|showname:1
+	--z:graphic:[&ShieldTID]|toback
+	--@CARRY_TOKENS_CARRY_BELOW|[*S:t-id] [&ShieldTID]
+	--]|
+   
+   --#whisper|
+   --+|[br]
+   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+   --+Duration: |[&duration]
+   --+Desc: |[*R:spelldescription]
+   --+At Higher Levels: |[*R:spellathigherlevels]
+   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+   --X|
+   --X|
+
+ --/| ____________________ Procedures_______________________________________________________________________________________
+  
+  --:GetCharID|CharacterName;StringVariableForCharID
+   --~|array;objects:character;SpiritCharArr;[%1%]
+   --?[@SpiritCharArr(length)] -ne 1|>far_LogFatalError;Could not find character named [%1%]
+   --&[%2%]|[@SpiritCharArr(0)]
+   --<|
+  
+  --:Died|
+   -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DeathMarker]
+   --?[$HexBladeFlag] -eq 1 -and [&HexBladeMarkerFlag] -eq 1|>HexHeal
+   --<|
+  
+  --:HexHeal|
+   -->far_HexHeal|[*S:character_id];[*S:t-id]
+   -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexBladebladeMarker]
+   --<|
+}}
