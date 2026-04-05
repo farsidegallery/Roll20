@@ -1,0 +1,77 @@
+!script{{
+ +++snlib;Farsidelib+++
+ 
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+ 
+  --/|Script Name : Aid
+  --/|Version     : 1.5
+  --/|Requires SC : TokenMod, Chatsetattr
+  --/|Author      : Nick O. (YouTube)
+  --/|Modified By : Farsidegallery
+  
+ --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+   
+   --&SpellName|Aid
+   --&MinimumSpellLevel|2
+  
+ --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+ 
+ --#title|[&SpellName]
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+  --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+  --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+  --&spelldesc|[*R:spelldescription]
+  --&spellhigherdesc|[*R:spellathigherlevels]
+  
+  --+|[c][b]Cast At What Level?[/b][/c]
+    --&splvlMsg|
+    --%splvl|foreach;SpellCastLevel
+     --&splvlMsg|+ [rbutton][&splvl]::ChooseType;[&splvl][/rbutton]
+    --%|
+  --+|[c][&splvlMsg][/c]
+  --X|
+  
+ --:ChooseType|
+  --=SpellLevel|[&reentryval]
+  --&SpellLevel|[&reentryval]
+  -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
+  --#leftsub|[*R:spellcastingtime]
+  --#rightsub|[*R:spellrange]
+  --#emotetext|[*S:character_name] casts [&SpellName] at [&SpellLevel]!
+  --=Targets|3
+  -->far_BuildTargetList|[$Targets.Raw]
+  -->far_BuildTargetArray|PCs;3;[&TargetString]
+  --=multiplier|[$SpellLevel]-1
+  --=hpIncrease|5*[$multiplier] 
+  -->DisplayOutput|
+  -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+ --X|
+ 
+ --:DisplayOutput|
+  --#whisper|
+  --+|[c]The following heroes had their HP & Max HP increased by [$hpIncrease][/c]
+  --%loop|foreach;PCs
+   --+|[c][*[&loop]:t-name][/c]
+   --!a:[&loop]|!origMaxHP:[*[&loop]:hp^]|hp:+=[$hpIncrease]|hp^:+=[$hpIncrease]
+   --!t:[&loop]|status_strong:true
+   --%|
+  --+|[br]
+  --+Duration: |[&duration]
+  --+Desc: |[&spelldesc]
+  --+At Higher Levels: |[&spellhigherdesc]
+  --<|
+}}
