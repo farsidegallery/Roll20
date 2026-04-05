@@ -1,0 +1,108 @@
+!script {{
+  +++5Elib;snlib;Farsidelib+++
+  
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+  
+  --/|Script Name : Blade Barrier Attack
+  --/|Version     : 1.0
+  --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
+  --/|Author	  : Farsidegallery
+  --/|  
+  --/|  Script prompts user for spell level used and makes sure the slot is available.  and spawn the designated token to the VTT. Script calculates
+  --/|  It will deduct 1 spell slot from the appropriate level
+  --/|
+  
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+  
+  --&SpellName|Blade Barrier
+  --&MinimumSpellLevel|6
+  --&damagetype|slashing
+  
+  --&attrib|charisma
+  
+  --/|Enter the Token Markers you use for each condition
+  --&BaneMarker|Hexed3::7409911
+  --&BlessedMarker|angel-outfit
+  --&DeathMarker|dead
+  
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+  
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  
+  --~shortattrib|string;left;3;[&attrib]
+  --~Displayattrib|string;touppercase;[&shortattrib]
+  
+  --#title|[&SpellName]
+  
+  --=SaveDC|[*S:SaveDC]
+  
+  --+Target|[rbutton]Click this button to select your target.::TargetInfo;[&TB]target|token_id}[/rbutton]
+  --X|
+  
+  --:TargetInfo|
+   --#targettoken|[&reentryval]
+   --#emoteText|Blade Barrier attacks [*T:t-name]!
+   -->far_CheckDamageModifiers|[*T:character_id];[&damagetype];damageMod;0;0;0
+   --&DamageDice|6d10
+   --#whisper|
+   -->CheckSave|
+   
+   --X|
+
+  --/| ____________________ Procedures_______________________________________________________________________________________
+  
+  --:CheckSave|
+   --&BlessFlag|
+   --&BaneMarkerFlag|
+   --&GlobalSave|
+   --&GlobalSkill|
+   
+   --&saveDice|1d20
+   
+   --?"X[*T:race]" -ne "X"|[
+    -->far_Check_GLOBAL_MOD_EXISTS|[*T:character_id]; save; [&damageType]; damageSave
+    -->far_Check_GLOBAL_MOD_EXISTS|[*T:character_id]; save; [&Displayattrib]; attribSaveRoll
+    --?[&damageSave] -eq 1 -or [&attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "1d20"|&saveDice;2d20kh1
+    --?[&damageSave] -eq 1 -or [&attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "2d20kl1"|&saveDice;1d20
+    
+    -->far_FIND_ACTIVE_GLOBAL_SAVE_MODS|[*T:character_id];GlobalSave
+    -->far_FIND_ACTIVE_GLOBAL_SKILL_MODS|[*T:character_id];GlobalSkill
+	--]|
+   
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BlessedMarker];BlessFlag;BlessCount
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
+
+   --?[&BaneMarkerFlag] -eq 1|&Baneroll;+ - 1d4 [Bane] |&Baneroll;
+   
+   --=Save|[&saveDice] + [*T:[&attrib]_save_bonus] [&obrac][&Displayattrib][&cbrac] [&GlobalSave] [&GlobalSkill] [&Baneroll]
+   
+   --?[$Save] -ge [$SaveDC]|[
+	--=damage|[&DamageDice] \2 [Saved] [&damageMod]
+	--+Result: |[*T:t-name] rolled a [$Save] vs a DC [$SaveDC] and passed the saving throw.
+	--+|[br]
+	--+Damage: |[*T:t-name] takes [$damage] damage.
+	--]|[
+	--=damage|[&DamageDice] [&damageMod]
+	--+Result: |[*T:t-name] rolled a [$Save] vs a DC [$SaveDC] and failed the saving throw.
+	--+|[br]
+	--+Damage: |[*T:t-name] takes [$damage] damage.
+	--]|
+	--/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$damage];0;0;1
+	-->far_DamageTokenmod|[*T:t-id];1;4;-[$damage];0;0;1
+	--?"[&damageMod]" -inc "Immune"|[
+	 --+Immune! |[*T:t-name] is [b]IMMUNE[/b] to [&damagetype] damage!
+	 --]|
+	--]|
+	--=FinalHP|[*T:t-bar[&hpBar]_value]+[*T:t-bar[&tempHPbar]_value]-[$Damage]
+    --?[$FinalHP] -le 0|>Died
+	--<|
+	
+  --:Died|
+   -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DeathMarker]
+   --?[$HexBladeFlag] -eq 1 -and [&HexBladeMarkerFlag] -eq 1|>HexHeal
+   --<|
+}}

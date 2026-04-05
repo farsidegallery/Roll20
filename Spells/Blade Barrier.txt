@@ -1,0 +1,120 @@
+!script {{
+  +++5Elib;snlib;Farsidelib+++
+  
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+  
+  --/|Script Name : Blade Barrier
+  --/|Version     : 1.0
+  --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
+  --/|Author	  : Farsidegallery
+  --/|  
+  --/|  Script prompts user for spell level used and makes sure the slot is available.  and spawn the designated token to the VTT. Script calculates
+  --/|  It will deduct 1 spell slot from the appropriate level
+  --/|
+  
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+  
+  --&SpellName|Blade Barrier
+  --&MinimumSpellLevel|6
+	
+  --/|Enter marker used for Concentration.
+  --&ConcentrationMarker|Concentrating::7409928
+  
+  --/|Use ScriptCards (1) or SpawnDefaultToken (2) to place the Charm Person Character on the VTT?
+  --&SpawnScript|1
+  
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+  
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  
+  --#title|[&SpellName]
+  
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+  --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+  
+  --#leftsub|[*R:spellcastingtime]
+  --#rightsub|[*R:spellrange]
+  --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+  
+  --+Choose Function: |[rbutton]New Cast::NewCast[/rbutton][rbutton]Dismiss::Remove[/rbutton]
+  --X|
+  
+  --:NewCast|
+   --+|[b][c]What Shape is the Barrier?[/c][/b]
+   --+|[c][rbutton]Wall::ChooseType;Wall[/rbutton][rbutton]Circle::ChooseType;Circle[/rbutton][/c]
+   --X|
+  
+  --:ChooseType|
+   --&Shape|[&reentryval]
+   --?"[&Shape]" -eq "Circle"|[
+    --=size1|15
+	--=size2|15
+	--&URLlink|https://files.d20.io/images/466433790/srPN_FGthxfT1hnlhT0BPg/med.webm?1764788816
+	--]|
+	--?"[&Shape]" -eq "Wall"|[
+	--=size1|3
+	--=size2|22
+	--&URLlink|https://files.d20.io/images/466433791/QujYB2H3cDLYFJmtW0ucDg/med.webm?1764788816
+	--]|
+   --&BarrierShape|Blade Barrier [&Shape]
+   --&TokenName|[*S:t-name] [&SpellName]
+   --#emotetext|[*S:t-name] casts [&SpellName]!
+   -->GetCharID|[&BarrierShape];ShapeID
+   --!a:[&ShapeID]|!SaveDC:[*S:spell_save_dc]
+   --!a:[*S:character_id]|!ConcentrationSpell:[&TokenName]
+   -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];10
+
+   --/|Give Player ability to move and control token
+   --&Player|[*O:[*S:t-represents]:character:controlledby]
+   --&controllers|[*O:[*[&ShapeID]:t-represents]:character:controlledby]
+   --?"[&controllers]" -ninc "-"|&controllers;None
+   --?[&controllers] -eq None|&newcontrollers;[&Player] |&newcontrollers;[&controllers],[&Player]
+   --!c:[*[&ShapeID]:character_id]|controlledby:[&newcontrollers]
+
+   
+   --/|SPAWN Blade Barrier Token
+   --?[&SpawnScript] -eq 1|[
+	 --!ot:SpiritTID|name:"[&TokenName]"|left:[*S:t-left]|top:[*S:t-top]|width:[=[*S:t-width]*[$size2]]|height:[=[*S:t-height]*[$size1]]|imgsrc:"[&URLlink]"|bar1_value:1|represents:[&ShapeID]|showname:false|tooltip:DC [*S:spell_save_dc]|show_tooltip:true
+	 --z:graphic:[&SpiritTID]|toback
+	 --]|
+	--?[&SpawnScript] -eq 2|[
+	 --@forselected+|Spawn _name|[&BarrierShape] _qty|1 _offset|0,0 _size|[$size1],[$size2] _force|yes _tokenProps|name:[&TokenName],showname:false,showplayers_name:false,tooltip:DC [*S:spell_save_dc],show_tooltip:true  _order|toBack _bar1|KeepLink _fx|nova-magic _expand|15,30 {^&select @{selected|token_id}}
+	 --]|
+	
+   -->Output|
+   
+  --:Output|
+   --#whisper|
+   -->far_PlayEffects|[*S:t-id];;burn-magic;;;
+   --+|[*S:t-name] summons a [&SpellName] in the shape of a [&Shape]!
+   --+|[br]
+   --+Duration: |[&duration]
+   --+Desc: |[*R:spelldescription]
+   -->far_DeductSpellSlot|[*S:t-id];[&MinimumSpellLevel]
+   --X|
+   
+  --/| ____________________ Procedures_______________________________________________________________________________________
+  
+  --:GetCharID|CharacterName;StringVariableForCharID
+   --~|array;objects:character;SpiritCharArr;[%1%]
+   --?[@SpiritCharArr(length)] -ne 1|>far_far_LogFatalError;Could not find character named [%1%]
+   --&[%2%]|[@SpiritCharArr(0)]
+   --<|
+
+  --:Remove|
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker]
+   --&TokenName|[*S:ConcentrationSpell]
+   --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&TokenName]
+   --~|object;token;delete;[@tokens(0)]
+   --!a:[*S:character_id]|!ConcentrationSpell:**
+   --#whisper|
+   --#emotetext|[*S:character_name] is no longer concentrating on [&SpellName]!
+   --+|[*S:character_name]'s [&SpellName] vanishes.
+   --X| 
+}}
