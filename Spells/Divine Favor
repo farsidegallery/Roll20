@@ -1,0 +1,104 @@
+!script{{
+  +++5Elib;snlib;Farsidelib+++	
+ 
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+
+  --/|Script Name : Divine Favor
+  --/|Version     : 1.0
+  --/|Requires SC : ScriptCards Library snlib/Farsidelib
+  --/|Author      : Farsidegallery
+  --/|  
+  --/|  Script prompts user for spell level used and then queries for shape of the weapon. It will deduct 1 spell slot from the appropriate level and spawn the designated token to the VTT. Script calculates
+  --/|  attack roll, enemy AC, and damage. Script outputs results to chat and deducts damage from the enemy.
+  --/|
+  
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+    
+  --/|Enter marker used for Concentration.
+  --&ConcentrationMarker|Concentrating::7409928
+  
+  --/|Enter name used for Divine Favor Damage Mod.
+  --&ModName|Divine Favor
+  
+  --&SpellName|Divine Favor
+  --&MinimumSpellLevel|1 
+  
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+ 
+  --#title|[&SpellName]
+  --=SpellLevel|[&MinimumSpellLevel]
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
+  
+  --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+  --&desc|[*R:spelldescription]
+  --#leftsub|[*R:spellcastingtime]
+  --#rightsub|[*R:spellrange]
+  -->ChooseFunction|
+  
+  --:ChooseFunction|
+   --+Choose Function: |[rbutton]New Cast::NewCast[/rbutton][rbutton]Dismiss::Remove[/rbutton]
+   --X|
+  
+  --:NewCast|
+   --#whisper|
+   --!a:[*S:character_id]|!ConcentrationSpell:[&SpellName]
+   -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];10
+   -->CheckForMod|
+   --&finishtext|[*S:character_name] casts Divine Favor!
+   --+|[*S:character_name] now deals extra radiant damage!
+   --+|[br]
+   --+Duration: |[&duration]
+   --+Desc: |[&desc]
+   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+   -->Finish|[&finishtext]
+   --X|
+  
+  --:Remove|
+   --#targettoken|[&reentryval]
+   --#whisper|
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];0
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*S:character_id];damage;[&ModName];0
+   --!a:[*S:character_id]|!ConcentrationSpell:**
+   --&finishtext|[*S:character_name] dismisses Divine Favor!
+   --+|[*S:character_name] no longer has Divine Favor!
+   -->Finish|[&finishtext]
+   --X|
+  
+  --:CheckForMod|
+   -->far_Check_GLOBAL_MOD_EXISTS|[*S:t-id]; damage; [&ModName]; Exists
+   --?[&Exists] -eq 1|>SetMod |>CreateMod|
+   --<|
+  
+  --:CreateMod|
+    --!a:[*S:character_id]|global_damage_mod_flag:1
+	--!or:[*S:character_id]:damagemod|
+	  global_damage_name:[&ModName]|
+	  global_damage_damage:1d4|
+	  global_damage_type:Radiant|
+	  global_damage_active_flag:1|
+	  options-flag:0
+	--<|
+  
+  --:SetMod|  
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*S:character_id];damage;[&ModName];1
+   -->far_PlayEffects|[*S:t-id];;;burn-holy
+   --<|
+  
+  --:Finish|
+   --#emotetext|[%1%]
+   --X|
+}}

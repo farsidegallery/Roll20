@@ -1,0 +1,165 @@
+!script{{
+  +++5Elib;snlib;Farsidelib+++	
+ 
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+
+  --/|Script Name : Holy Weapon
+  --/|Version     : 1.0
+  --/|Requires SC : SmartAOE, SelectManager, ScriptCards Library snlib/Farsidelib
+  --/|Author      : Farsidegallery
+  --/|  
+  --/|  Script prompts user for spell level used and then queries for shape of the weapon. It will deduct 1 spell slot from the appropriate level and spawn the designated token to the VTT. Script calculates
+  --/|  attack roll, enemy AC, and damage. Script outputs results to chat and deducts damage from the enemy.
+  --/|
+  
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+    
+  --/|Enter marker used for Concentration.
+  --&ConcentrationMarker|Concentrating::7409928
+  
+  --/|Enter marker used for Blinded.
+  --&BlindMarker|Blinded::7409948
+  
+  --/|Enter name used for Holy Weapon Damage Mod.
+  --&ModName|Holy Weapon
+  
+  --&SpellName|Holy Weapon
+  --&MinimumSpellLevel|5 
+  
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+ 
+  --#title|Holy Weapon
+  --=SpellLevel|5
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+  --&desc|[*R:spelldescription]
+  --&spellathigherlevels|[*R:spellathigherlevels]
+  -->ChooseFunction|
+  
+  --:ChooseFunction|
+   --+Choose Function: |[rbutton]New Cast::NewCast;&#64;{target|token_id}[/rbutton][rbutton]Bonus Action::Bonus;&#64;{target|token_id}[/rbutton][rbutton]Dismiss::Remove;&#64;{target|token_id}[/rbutton]
+   --X|
+  
+  --:NewCast|
+   -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+   --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+   --#targettoken|[&reentryval]
+   --#whisper|
+   --!a:[*S:character_id]|!ConcentrationSpell:[&SpellName]
+   --!a:[*S:character_id]|!ConcentrationSpellTargetToken:[*T:t-id]
+   -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];10
+   -->CheckForMod|
+   -->CreateBright|
+   -->CreateLow|
+   --&finishtext|[*S:character_name] casts Holy Weapon on [*T:character_name]!
+   --+|[br]
+   --+Duration: |[&duration]
+   --+Desc: |[&desc]
+   --+At Higher Levels: |[&spellathigherlevels]
+   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+   -->Finish|[&finishtext]
+   --X|
+  
+  --:Bonus|
+   --#targettoken|[&reentryval]
+   --#whisper|
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*T:character_id];damage;[&ModName];0
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];0
+   --!t:[*T:t-id]|emits_bright_light:[*T:EmitsBright]
+   --!t:[*T:t-id]|bright_light_distance:[*T:BrightLight]
+   --!t:[*T:t-id]|low_light_distance:[*T:LowLight]
+   --!t:[*T:t-id]|emits_low_light:[*T:EmitsLow]
+   --!a:[*T:character_id]|!EmitsBright:** |!BrightLight:** |!EmitsLow:**|!LowLight:**
+   --&finishtext|[*S:character_name] causes the holy weapon of [*T:character_name]to give off a burst of light! [*T:character_name] no longer has a holy weapon!
+   --+|[&finishtext]
+   --@forselected+|smartaoe [&brace][&brace]  {& select [*T:t-id]}
+     _title|Holy Weapon
+     _leftsub|Slot level [$SpellLevel]
+     _rightsub|DC [*S:spell_save_dc] CON
+	 _chatAvatarsEnabled|false
+	 _aoeType|circle
+     _radius|30ft
+     _fx|burst-holy
+     _dc|[*S:spell_save_dc]
+     _saveFormula|5eCon
+     _damageFormula1|[[4d8]]
+     _damageType1|radiant
+	 _conditionfail|[&BlindMarker]
+     _instant|1
+     _ignore|SmartAoE_Ignore,1
+     _autoApply|1
+     _bar|1
+     _zeroHPmarker|dead
+     _desc|As a bonus action on your turn, you can dismiss this spell and cause the weapon to emit a burst of radiance. Each creature of your choice that you can see within 30 feet of the weapon must make a Constitution saving throw. On a failed save, a creature takes 4d8 radiant damage, and it is blinded for 1 minute. On a successful save, a creature takes half as much damage and isn’t blinded. At the end of each of its turns, a blinded creature can make a Constitution saving throw, ending the effect on itself on a success.
+	 [&cbrace][&cbrace]
+   --X|
+  
+  --:Remove|
+   --#targettoken|[&reentryval]
+   --#whisper|
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];0
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*T:character_id];damage;[&ModName];0
+   --!t:[*T:t-id]|emits_bright_light:[*T:EmitsBright]
+   --!t:[*T:t-id]|bright_light_distance:[*T:BrightLight]
+   --!t:[*T:t-id]|low_light_distance:[*T:LowLight]
+   --!t:[*T:t-id]|emits_low_light:[*T:EmitsLow]
+   --!a:[*T:character_id]|!EmitsBright:** |!BrightLight:** |!EmitsLow:**|!LowLight:**
+   --!a:[*S:character_id]|!ConcentrationSpell:**
+   --&finishtext|[*T:character_name] no longer has a holy weapon!
+   -->Finish|[&finishtext]
+   --X|
+  
+  --:CheckForMod|
+   -->far_Check_GLOBAL_MOD_EXISTS|[*T:t-id]; damage; [&ModName]; Exists
+   --?[&Exists] -eq 1|>SetMod |>CreateMod|
+   --<|
+  
+  --:CreateMod|
+    --!a:[*T:character_id]|global_damage_mod_flag:1
+	--!or:[*T:character_id]:damagemod|
+	  global_damage_name:[&ModName]|
+	  global_damage_damage:2d8|
+	  global_damage_active_flag:1|
+	  options-flag:0
+	--<|
+  
+  --:SetMod|  
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*T:character_id];damage;[&ModName];1
+   -->far_PlayEffects|[*S:t-id];[*T:t-id];;burn-magic
+   --<|
+
+  --:CreateBright|
+   --?[*T:t-emits_low_light] -eqi true|&EmitsBright;true |&EmitsBright;false
+   --?"[*T:t-bright_light_distance]" -eqi ""|=BrightLight;"" |=BrightLight;[*T:t-bright_light_distance]
+   --!a:[*T:character_id]|!EmitsBright:[&EmitsBright] 
+   --!a:[*T:character_id]|!BrightLight:[$BrightLight]
+   --?[*T:t-bright_light_distance] -ge 30|=brightdist;0|=brightdist;30-[*T:t-bright_light_distance]
+   --!t:[*T:t-id]|emits_bright_light:true 
+   --!t:[*T:t-id]|bright_light_distance:+=[$brightdist]
+   --<|   
+  
+  --:CreateLow|
+   --?[*T:t-emits_low_light] -eqi true|&EmitsLow;true |&EmitsLow;false
+   --?"[*T:t-low_light_distance]" -eqi ""|=LowLight;"" |=LowLight;[*T:t-low_light_distance]
+   --!a:[*T:character_id]|!EmitsLow:[&EmitsLow] 
+   --!a:[*T:character_id]|!LowLight:[$LowLight]
+   --?[*T:t-low_light_distance] -ge 60|=lowdist;0|=lowdist;60-[*T:t-low_light_distance]
+   --!t:[*T:t-id]|emits_low_light:true   
+   --!t:[*T:t-id]|low_light_distance:+=[$lowdist]
+   --<|   
+  
+  --:Finish|
+   --#emotetext|[%1%]
+   --X|
+}}

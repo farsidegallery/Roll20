@@ -1,0 +1,76 @@
+!script{{
+  +++5Elib;snlib;Farsidelib+++	
+ 
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+
+  --/|Script Name : Misty Step
+  --/|Version     : 1.0
+  --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
+  --/|Author      : Arak Stoneboulder
+  --/|Modified By : Farsidegallery
+  --/|  
+  --/|  Script checks spell slot availability, summons teleport token, and deducts a spell slot. 
+  --/|
+  --/|
+  --/|
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+      
+   --&SpellName|Misty Step
+   --&MinimumSpellLevel|2
+   
+   --/|Name of Misty Step TokenID
+   --&MistyToken|Spell Token
+   
+   --/|Use ScriptCards (1) or SpawnDefaultToken (2) to place the Charm Person Character on the VTT?
+   --&SpawnScript|1
+   
+   --&URLlink|https://files.d20.io/images/469753332/ew1SU1DcQK4eborJlOqNQw/original.png
+   
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --#title|[&SpellName]
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+  --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+    
+  --#leftsub|1 Bonus Action
+  --#rightsub|Range: 30 ft
+  --#emoteText|[*S:character_name] Casts Misty Step.
+  -->GetCharID|[&MistyToken];MistyID
+  -->SetAbility|
+  
+  --:SPAWN MISTY STEP TOKEN USING SMARTAOE API|
+  --?[&SpawnScript] -eq 2|[
+   ---@forselected+|Spawn _name|[&MistyToken] _qty|1 _offset|0,0 _force|yes _tokenProps|name:Misty Step,showname:true,showplayers_name:true _order|toFront _fx|nova-magic _expand|15,30 {^&select @{selected|token_id}}
+   --]|
+   
+  --?[&SpawnScript] -eq 1|[
+   --!ot:NewTID|name:"[&SpellName]"|_pageid:[*S:t-_pageid]|left:[=[*S:t-left]+70]|top:[*S:t-top]|width:[*S:t-width]|height:[*S:t-height]|imgsrc:"[&URLlink]"|bar1_value:1|represents:"[&MistyID]"|showname:0|t-aura1_radius:30|t-aura1_color:#d0e0e3
+   --z:graphic:[&NewTID]|tofront
+   --]|
+	
+  --:GET AND STORE CASTER TOKEN ID ONTO MISTY STEP TOKEN FOR LATER USE|
+   --&TokenID|[*S:t-id]
+   --!a:[*[&MistyID]:character_id]|!caster_ID:[&TokenID]
+  
+  -->far_DeductSpellSlot|[*S:t-id];[&MinimumSpellLevel]
+  --X|
+
+  --/| ____________________ Procedures_______________________________________________________________________________________
+  
+  --:GetCharID|CharacterName;StringVariableForCharID
+   --~|array;objects:character;SpiritCharArr;[%1%]
+   --?[@SpiritCharArr(length)] -ne 1|>far_LogFatalError;Could not find character named [%1%]
+   --&[%2%]|[@SpiritCharArr(0)]
+   --<|
+  
+  --:SetAbility|
+   --~|array;objects:ability;AbilityArr;;[&MistyID]
+    --!ability:[@AbilityArr(0)]|istokenaction:False
+	--!ability:[@AbilityArr(1)]|istokenaction:True
+	--!ability:[@AbilityArr(2)]|istokenaction:False
+	--!ability:[@AbilityArr(3)]|istokenaction:False
+   --<|
+}}

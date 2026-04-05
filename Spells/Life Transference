@@ -1,0 +1,78 @@
+!script{{
+ +++5Elib;snlib;Farsidelib+++	
+ 
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+ 
+  --/|Script Name : Life Transference
+  --/|Version     : 2.0
+  --/|Requires SC : TokenMod, Chatsetattr, SuperNotes (for template override only), ScriptCards Library snlib
+  --/|Author      : Farsidegallery
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+      
+   --&SpellName|Life Transference
+   --&MinimumSpellLevel|3
+  
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+
+  --#title|[&SpellName]
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+  --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+  
+  --+|[c][b]Cast At What Level and What Target?[/b][/c]
+    --&splvlMsg|
+    --%splvl|foreach;SpellCastLevel
+     --&splvlMsg|+ [rbutton][&splvl]::ChooseType;[&TB]target|token_id}%[&splvl][/rbutton]
+    --%|
+  --+|[c][&splvlMsg][/c]
+  --X|
+    
+  --:ChooseType|
+   --#targetToken|[&reentryval(split,%,0)]
+   --=SpellLevel|[&reentryval(split,%,1)]
+   --&SpellLevel|[&reentryval(split,%,1)]
+   -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
+   
+   --#leftsub|[*R:spellcastingtime]
+   --#rightsub|[*R:spellrange]
+   --&damageType|[*R:spelldamagetype]
+   --#emotetext|[*S:character_name] casts [&SpellName] at [&SpellLevel]!
+
+   -->HealerDamage|
+   -->TargetHeal|
+   --+|[br]
+   --+Desc: |[*R:spelldescription]
+   --+At Higher Levels: |[*R:spellathigherlevels]
+   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+   --X|
+ 
+ --/|Calculate 4d8 + 1d8/level over 3rd
+ --:HealerDamage|
+  --=Dice|[$SpellLevel]+1
+  --=Damage|[$Dice]d8
+  --+|[*S:character_name] loses [$Damage] hp.
+  --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*S:t-id];1;-[$Damage];0
+  -->far_DamageTokenmod|[*S:t-id];1;4;-[$Damage];0;0;1
+  --<|
+ 
+ --:TargetHeal|
+  --=Heal|[$Damage] * 2
+  --=Missing|[*T:hp^] - [*T:hp]
+  --?[$Heal] -gt [$Missing]|=HealAmount;[$Missing]|=HealAmount;[$Heal]
+  --+|[*T:character_name] gains [$HealAmount] hp.
+  -->LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;[$HealAmount];0
+  --<|
+}}

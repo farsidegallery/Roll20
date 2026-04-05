@@ -1,0 +1,66 @@
+!script {{
+  +++5Elib;snlib;Farsidelib+++
+
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+
+  --/|Script Name : False Life
+  --/|Version     : 1.0
+  --/|Author      : Arak Stoneboulder
+  --/|Modified By : Farsidegallery
+  --/|
+  --/|  Script checks for spell level used and makes sure the slot is available. Script will check for existence of global mod and create if necessary.
+  --/|  Script turns on Global Mod specified and plays visual effect. It will deduct 1 spell slot from the appropriate level.
+  --/|
+
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+
+  --&SpellName|False Life
+  --&MinimumSpellLevel|1
+
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --#sourceText|[*S:t-name] casts
+  --#title|[*S:t-name] you call upon the grave to give your self a little boost of life!
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+  --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+
+  --:New|
+   --+|[c][b]Cast At What Level?[/b][/c]
+    --&splvlMsg|
+    --%splvl|foreach;SpellCastLevel
+     --&splvlMsg|+ [rbutton][&splvl]::ChooseType;[&splvl][/rbutton]
+    --%|
+   --+|[c][&splvlMsg][/c]
+  --X|
+
+  --:ChooseType|
+   --=SpellLevel|[&reentryval]
+   --&SpellLevel|[&reentryval]
+   --#leftsub|[*R:spellcastingtime]
+   --#rightsub|Level: [&SpellLevel]
+   --#emotetext|[*S:character_name] casts [&SpellName]!
+   --&spelldesc|[*R:spelldescription]
+   --&TokenName|[*S:character_name] [&SpellName]
+   -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
+   -->AddHP|
+
+  --:AddHP| 
+   --=multiplier|[$SpellLevel]-1*5
+   --?[$SpellLevel] -ge 2|=TotalPoints;1d4+4+[$multiplier] |=TotalPoints;1d4+4
+   --!a:[*S:character_id]|!hp_temp:[$TotalPoints]
+   --+|[$TotalPoints] Temporary HP Gained
+   -->Finish|
+   
+  --:Finish|  
+   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+   --+|[br]
+   --+Duration: |[&duration]
+   --+Desc: |[*R:spelldescription]
+   --+At Higher Levels: |[*R:spellathigherlevels]
+   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+   --X|
+}}

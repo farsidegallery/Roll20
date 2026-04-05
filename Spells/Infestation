@@ -1,0 +1,31 @@
+!smartaoe {{
+  --title|@{selected|token_name} Casts Infestation
+  --leftsub|caster level ?{Cast at what level?|1,1|5,2|11,3|17,4}
+  --rightsub|DC @{selected|spell_save_dc} CON
+  --titlecardbackground|linear-gradient(blue, cyan)
+  --oddrowbackground|#00ccff
+  --evenrowbackground|#edfcfc
+  --oddrowfontcolor|#000000
+  --tablebgcolor|#edfcfc
+  --chatAvatarsEnabled|false
+ 
+  --aoeColor|#00ccff50
+  --aoeOutlineColor|#0099ff
+  --gridColor|#99999900
+  --aoeType|square, float
+  --radius|2.5ft
+  --minGridArea|0.25
+  --minTokArea|0.25
+  --fx|bubble-poison
+  --dc|@{selected|spell_save_dc}
+  --saveFormula|5eCON
+  --damageFormula1|[[(?{Cast at what level?}+0)d6]]
+  --damageType|poison
+  --damagesaverule|*0
+  --instant|1
+
+  --autoApply|1
+  --bar|1
+  --zeroHPmarker|dead
+  --desc|You cause a cloud of mites, fleas, and other parasites to appear momentarily on one creature you can see within range. The target must succeed on a Constitution saving throw, or it takes 1d6 poison damage and moves 5 feet in a random direction if it can move and its speed is at least 5 feet. Roll a d4 for the direction: 1, north; 2, south; 3, east; or 4, west. This movement doesn’t provoke opportunity attacks, and if the direction rolled is blocked, the target doesn't move. The spell’s damage increases by 1d6 when you reach 5th level (2d6), 11th level (3d6), and 17th level (4d6).
+}}

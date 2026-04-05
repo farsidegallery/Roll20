@@ -1,0 +1,211 @@
+!scriptcards{{
+  +++5Elib;snlib;Farsidelib+++
+  
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|@{selected|character_id}
+  --#emoteBackground|#transparent
+  --#titleCardBackground|#ff8000
+  --#titlefontsize|1.75em
+  --#titlefontlineheight|1.75em
+  --#titleFontColor|white
+  --#titlefontface|Shadows Into Light
+  --#subtitleFontSize|12px
+  --#subtitleFontFace|Verdana
+  --#evenRowBackground|#B6AB91
+  --#evenRowFontColor|#000000
+  --#oddRowBackground|#CEC7B6
+  --#oddRowFontColor|#000000
+  --#whisper|self,gm
+  
+  --/|Script Name : Hunter's Mark
+  --/|Version     : 1.5
+  --/|Requires SC : TokenMod, Chatsetattr, ScriptCards Library 5Elib/snlib
+  --/|Author      : Gunther
+  --/|Modified By : Farsidegallery
+  --/|
+  --/|  Script checks to see the type of cast (new/change target/dismiss) and routes to correct procedure. Script will turn off affects from Zephyr Strike 
+  --/|  or Ensnaring Strike and then apply Hunter's Mark affects using the global variables. On a new cast, it will check for and deduct correct spell slot.
+  --/|
+ 
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+    
+  --/| Token Markers
+  --/|Concentration
+  --&ConcentrationMarker|Concentrating::7409928
+  
+  --/|Hunter's Mark
+  --&Marked|Marked::7409918
+  
+  --/|Zephyr Strike
+  --&zephyr|108-Range-Long::5818054
+  
+  --/| Global Mods
+  --/|Hunter's Mark Damage
+  --&Hunter|Hunter's Mark
+  
+  --/|Zephyr's Strike
+  --&zephyrstrike|Zephyr-Strike
+      
+  --/|Enter name for Hunter's Mark Character.
+  --&CharName|Hunter's Mark
+    
+  --&SpellName|Hunter's Mark
+  --&MinimumSpellLevel|1
+  
+  --/|Use ScriptCards (1) or SpawnDefaultToken (2) to place the Charm Person Character on the VTT?
+  --&SpawnScript|1
+  
+  --&URLlink|https://files.d20.io/images/466444598/ObgYisF0Y4faAeSIif5iOQ/med.webm?1764795255
+  
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+ 
+  --#title|[&SpellName]
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  
+  --#leftsub|[*R:spellcastingtime]
+  --#rightsub|[*R:spellrange]
+  --&spelldesc|[*R:spelldescription]
+  --&spellhigherdesc|[*R:spellathigherlevels]
+  --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+  --&HunterName|[*S:character_name] Hunter's Mark
+  -->GetSpiritID|"[&CharName]";CharNameID
+  -->CheckCastInformation|
+  -->HuntMark|  
+  --X|
+  
+  --:HuntMark|
+   --?[*S:Zephyr] -ne 0|>TurnOffZeph
+   --?[*S:MagicWeapLVL] -ne 0|>TurnOffMagicWeapon
+   --?[*S:EnsStr] -ne 0|>TurnOffEnsStrk
+   --#whisper|
+   --#emoteText| [*S:t-name] extends a hand at [*T:t-name].  A bullseye appears on [*T:t-name]'s forehead that only [*S:t-name] can see.
+   --!a:[*S:character_id]|!HunterMark:1
+   -->LibSN_ADD_STATUS_MARKER|[*T:t-id];Marked::7409918;0
+   --!a:[*S:character_id]|!marked:[*T:t-id]
+   --!a:[*S:character_id]|!ConcentrationSpell:[&SpellName]
+   --!a:[*S:character_id]|!ConcentrationSpellTargetToken:[&HunterName]
+   -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];10
+   -->CheckForMod|
+   --?[&SpawnScript] -eq 2|[
+    --@forselected+|Spawn _name|[&CharName] _qty|1 _targets|1, Select the Hunter's Mark target for FX. _offset|0,0 _force|yes _size|3 _tokenProps|name:[&HunterName],showname:true,showplayers_name:true _order|toBack _bar1|KeepLink _fx|nova-magic _expand|15,30 {^&select @{selected|token_id}}
+    --]|
+   --?[&SpawnScript] -eq 1|[
+    --!ot:MarkTID|name:"[&HunterName]"|left:[*T:t-left]|top:[*T:t-top]|width:[=[*T:t-width]*3]|height:[=[*T:t-height]*3]|imgsrc:"[&URLlink]"|bar1_value:1|represents:[&CharNameID]|showname:1
+    --z:graphic:[&MarkTID]|toback
+    --@CARRY_TOKENS_CARRY_BELOW|[*T:t-id] [&MarkTID]
+	--]|
+   --+|[br]
+   --+Duration: |[&duration]
+   --+Desc: |[&spelldesc]
+   --+At Higher Levels: |[&spellhigherdesc]    
+   --?[$SpellLevel] -eq 0|NoSlot
+   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+   --<|
+
+  --:CheckCastInformation|
+   --+Is this a new cast or changing target?|[rbutton]New Cast::GetSpellSlot[/rbutton][rbutton]Change Target::ChangeTarget;[&TB]target|token_id}%0[/rbutton][rbutton]Turn Off::TurnOff[/rbutton]
+   --X|
+  
+  --:GetSpellSlot|
+   -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+   --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+  
+   --+|[c][b]Cast At What Level and What Target?[/b][/c]
+    --&splvlMsg|
+    --%splvl|foreach;SpellCastLevel
+     --&splvlMsg|+ [rbutton][&splvl]::ChooseType;[&TB]target|token_id}%[&splvl][/rbutton]
+    --%|
+   --+|[c][&splvlMsg][/c]
+   --X|
+  
+  --:ChooseType|
+   --#targetToken|[&reentryval(split,%,0)]
+   --=SpellLevel|[&reentryval(split,%,1)]
+   --&SpellLevel|[&reentryval(split,%,1)]
+   -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
+   --<|
+  
+  --:ChangeTarget|  
+   --#targetToken|[&reentryval(split,%,0)]
+   --=SpellLevel|[&reentryval(split,%,1)]
+   --&PreviousMark|[*S:marked]
+   -->LibSN_REMOVE_STATUS_MARKER|[&PreviousMark];[&Marked];0
+   --!a:[*S:character_id]|!marked:0
+   --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&HunterName]
+   --~|object;token;delete;[@tokens(0)]
+   --<|
+
+  --:TurnOffEnsStrk|
+   --+Ensnaring Srike|[*S:character_name] loses focus ensnaring strike.
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker]
+   --!a:[*S:character_id]|EnsStr:0
+   --*|Get rid of the turn tracker for ensnaring strike.
+   --<|
+
+  --:TurnOffZeph|
+   --+Concentration:|You are no longer concentrating on Zephyr Strike.
+   --+Speed:|Your speed returns to normal.
+   --!a:[*S:character_id]| Zephyr:0
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&zephyr]
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker]
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*S:t-id]; damage; [&zephyrstrike]; 0
+   --<|
+   
+  --:TurnOffMagicWeapon|
+   --+Magic Weapon|[*S:character_name]'s [*S:MagicWeapon] is no longer magical.
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker]
+   --!a:[*S:character_id]|MagicWeapLVL:0 
+   --!a:[*S:character_id]|MagicWeapon:0
+   --<|
+   
+  --:TurnOff|
+   --#whisper|
+   --+Concentration:|You are no longer concentrating on Hunter's Mark.
+   --&OffMark|[*S:marked]
+   --!a:[*S:character_id]| HunterMark:0
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];0
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*S:t-id]; damage; "[&Hunter]"; 0
+   -->LibSN_REMOVE_STATUS_MARKER|[&OffMark];[&Marked];0
+   --!a:[*S:character_id]|!ConcentrationSpell:**
+   --!a:[*S:character_id]|!marked:0
+   --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&HunterName]
+   --~|object;token;delete;[@tokens(0)]
+   --X|
+  
+  --:CheckForMod|
+   -->far_Check_GLOBAL_MOD_EXISTS|[*S:t-id]; damage; "[&Hunter]"; Exists
+   --?[&Exists] -eq 1|>SetMod 
+   --?[&Exists] -eq 0|[
+    --!a:[*S:character_id]|global_damage_mod_flag:1
+	--!or:[*S:character_id]:damagemod|
+	  global_damage_name:[&Hunter]|
+	  global_damage_damage:1d6|
+	  options-flag:0
+    -->SetMod|
+	--]|
+   --<|
+  
+  --:SetMod|  
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*S:t-id]; damage; "[&Hunter]"; 1
+   --<|
+   
+  --:GetSpiritID|CharacterName;StringVariableForCharID
+   --~|array;objects:character;SpiritCharArr;[%1%]
+   --?[@SpiritCharArr(length)] -ne 1|>far_LogFatalError;Could not find character named [%1%]
+   --&[%2%]|[@SpiritCharArr(0)]
+   --<|
+   
+  --:NoSlot|
+   --X|
+}}

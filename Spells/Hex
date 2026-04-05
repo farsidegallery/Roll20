@@ -1,0 +1,169 @@
+!scriptcards{{
+  +++5Elib;snlib;Farsidelib+++
+  
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|@{selected|character_id}
+  --#whisper|self,gm
+  
+  --/|Script Name : Hex
+  --/|Version     : 1.5
+  --/|Requires SC : TokenMod, Chatsetattr, ScriptCards Library 5Elib/snlib
+  --/|Author      : Arak Stoneboulder
+  --/|Modified By : Farsidegallery
+  --/|
+  --/|  Script checks to see the type of cast (new/dismiss) and routes to correct procedure.
+ 
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+    
+  --&SpellName|Hex
+  --&MinimumSpellLevel|1
+  
+  --/| Token Markers
+  --&ConcentrationMarker|Concentrating::7409928
+  --&Hex|Hexed::7409913
+  
+  --/|Enter name for Hex Character.
+   --&CharName|Hex
+  
+   --/|Use ScriptCards (1) or SpawnDefaultToken (2) to place the Charm Person Character on the VTT?
+   --&SpawnScript|1
+  
+   --&URLlink|https://files.d20.io/images/466487142/LFih0-BYMb8YKB5Vc8YGdw/med.webm?1764822315
+
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+ --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+ 
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName] 
+
+  --#leftsub|[*R:spellcastingtime]
+  --#rightsub|[*R:spellrange]
+  --&spelldesc|[*R:spelldescription]
+  --&spellhigherdesc|[*R:spellathigherlevels]
+  --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+  --&TokenName|[*S:t-name] Hex Mark
+  --=NewCastFlag|0
+  -->GetSpiritID|"[&CharName]";CharNameID
+  -->CheckCastInformation|
+  -->SelectAbility|
+  -->HexMark|
+  --X|
+  
+  --:CheckCastInformation|
+   --+|[c][b]Is this a new cast or target change?[/b][/c]
+   --+|[c][rbutton]New Cast::GetSpellSlot[/rbutton][rbutton]Change Target::ChangeTarget;[&TB]target|token_id}[/rbutton][rbutton]Dismiss::TurnOff[/rbutton][/c]
+   --X|
+  
+  --:GetSpellSlot|
+   -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+   --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+  
+   --+|[c][b]Cast At What Level and What Target?[/b][/c]
+    --&splvlMsg|
+    --%splvl|foreach;SpellCastLevel
+     --&splvlMsg|+ [rbutton][&splvl]::ChooseType;[&TB]target|token_id}%[&splvl][/rbutton]
+    --%|
+   --+|[c][&splvlMsg][/c]
+   --X|
+  
+  --:ChooseType|
+   --#targetToken|[&reentryval(split,%,0)]
+   --=SpellLevel|[&reentryval(split,%,1)]
+   --&SpellLevel|[&reentryval(split,%,1)]
+   -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
+   --#title|[*S:t-name] Hexes [*T:t-name]!
+   --=NewCastFlag|1
+   --!a:[*S:character_id]|!HexSpellLevel:[$SpellLevel]
+   --?[$SpellLevel] -eq 0|NoSlot
+   --<|
+  
+  --:ChangeTarget|  
+   --#targetToken|[&reentryval(split,%,0)]
+   --=SpellLevel|[*S:HexSpellLevel]
+   --&PreviousMark|[*S:ConcentrationSpellTargetToken]
+   -->LibSN_REMOVE_STATUS_MARKER|[&PreviousMark];[&Hex]
+   --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&TokenName]
+   --~|object;token;delete;[@tokens(0)]
+   --<|
+   
+  --:SelectAbility|
+   --~|array;define;Abilities;Strength;Dexterity;Constitution;Intelligence;Wisdom;Charisma
+   --&ResMsg|
+   --+|[c][b]On what ability checks are you imposing disadvantage?[/b][/c]
+   --%loop|foreach;Abilities
+    --&CheckMsg|+ [rbutton][&loop]::ChosenAbility;[&loop][/rbutton]
+    --%|
+   --+|[c][&CheckMsg][/c]
+   --X|
+   --<|
+  
+  --:ChosenAbility|
+   --&ability|[&reentryval]
+   --<|
+  
+  --:HexMark|
+   --#whisper|
+   --#emoteText| [*S:t-name] curses [*T:t-name].
+   -->LibSN_ADD_STATUS_MARKER|[*T:t-id];Hexed::7409913
+   -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];10
+   --!a:[*S:character_id]|!ConcentrationSpell:[&TokenName]
+   --!a:[*S:character_id]|!ConcentrationSpellTargetToken:[*T:t-id]
+   
+   --?[&SpawnScript] -eq 2|[
+    --@forselected+|Spawn _name|[&CharName] _qty|1 _targets|1,Select the target of your curse for an FX. _offset|0,0 _force|yes _size|3 _tokenProps|name:[&TokenName],showname:false,showplayers_name:false _order|toBack _bar1|KeepLink _fx|nova-magic _expand|15,30 {^&select @{selected|token_id}}
+    --]|
+  
+  --?[&SpawnScript] -eq 1|[
+   --!ot:CurseTID|name:"[&TokenName]"|left:[*T:t-left]|top:[*T:t-top]|width:[=[*T:t-width]*3]|height:[=[*T:t-height]*3]|imgsrc:"[&URLlink]"|bar1_value:1|represents:[&CurseID]|showname:0
+   --z:graphic:[&CurseTID]|toback
+   --@CARRY_TOKENS_CARRY_BELOW|[*T:t-id] [&CurseTID]
+   --]|
+
+   --?[$SpellLevel] -eq 3 -or [$SpellLevel] -eq 4|&duration;Up to 8 hours [b](Concentration)[/b]
+   --?[$SpellLevel] -ge 5|&duration;Up to 24 hours [b](Concentration)[/b]
+   
+   --+[*T:t-name]: |You now have disadvantage on ability checks made with [&ability]!
+   --+|[br]
+   --+Duration: |[&duration]
+   --+Desc: |[&spelldesc]
+   --+At Higher Levels: |[&spellhigherdesc]
+   --?[$NewCastFlag] -eq 1|[
+    -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+    --]|
+   --X|
+  
+  --:TurnOff|
+   --#whisper|
+   --&OffMark|[*S:ConcentrationSpellTargetToken]
+   --#title|[*S:t-name] is no longer concentrating on Hex!
+   --+[*S:t-name]: |You are no longer concentrating on Hex.
+   --+|[br]
+   --+[*[&OffMark]:t-name]: |You no longer have disadvantage on ability saving throws.
+   --+|[br]
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker]
+   -->LibSN_REMOVE_STATUS_MARKER|[&OffMark];[&Hex]
+   --!a:[*S:character_id]|!ConcentrationSpell:**
+   --!a:[*S:character_id]|!ConcentrationSpellTargetToken:**
+   --!a:[*S:character_id]|!HexSpellLevel:**
+   --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&TokenName]
+   --~|object;token;delete;[@tokens(0)]
+   --X|
+  
+  --:GetSpiritID|CharacterName;StringVariableForCharID
+   --~|array;objects:character;SpiritCharArr;[%1%]
+   --?[@SpiritCharArr(length)] -ne 1|>LogFatalError;Could not find character named [%1%]
+   --&[%2%]|[@SpiritCharArr(0)]
+   --<|
+   
+  --:NoSlot|
+   --X|
+}}

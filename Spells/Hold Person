@@ -1,0 +1,209 @@
+!script {{
+  +++5Elib;snlib;Farsidelib+++
+  
+  --/|Script Name : Hold Person
+  --/|Version     : 2.0
+  --/|Modified By : Farsidegallery
+  --/|  
+  --/|  Script prompts user for spell level used and makes sure the slot is available.  and spawn the designated token to the VTT. Script calculates
+  --/|  It will deduct 1 spell slot from the appropriate level
+  --/|
+  
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+  
+  --&SpellName|Hold Person
+  --&MinimumSpellLevel|2
+  
+  --&attrib|wisdom
+  
+  --/|Enter the Token Markers you use for each condition
+  --&BlessedMarker|angel-outfit
+  --&BaneMarker|Hexed3::7409911
+  --&ConcentrationMarker|Concentrating::7409928
+  --&HoldMarker|Paralyzed::7409941
+     
+  --/|Enter name for Hold Person Character.
+  --&HoldName|Hold Person
+  
+  --/|Use ScriptCards (1) or SpawnDefaultToken (2) to place the Hold Person Character on the VTT?
+  --&SpawnScript|1
+  
+  --&URLlink|https://files.d20.io/images/466854566/nKYG4ZHQRrXpOym7t_lidg/med.webm?1765082260
+      
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+  
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+  
+  --~shortattrib|string;left;3;[&attrib]
+  --~Displayattrib|string;touppercase;[&shortattrib]
+  
+  --#title|[&SpellName]
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+  --#emotetext|[*S:character_name] casts Hold Person!
+  --&HoldTokenName|[*S:character_name] [&SpellName]
+  -->GetSpiritID|[&HoldName];CharNameID
+  
+  -->ChooseLevel|
+  --X|
+  
+  --:ChooseLevel|
+   --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+   --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+   
+   --+Choose Function: |[rbutton]New Cast::New[/rbutton][rbutton]Dismiss::Remove[/rbutton]
+   --X|
+  
+  --:New|
+   -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+   --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+   
+   --+|[c][b]Cast At What Level?[/b][/c]
+    --&splvlMsg|
+    --%splvl|foreach;SpellCastLevel
+     --&splvlMsg|+ [rbutton][&splvl]::SelectDiceRoll;[&splvl][/rbutton]
+    --%|
+   --+|[c][&splvlMsg][/c]
+   --X|
+  
+  --:SelectDiceRoll|
+   --=SpellLevel|[&reentryval]
+   --&SpellLevel|[&reentryval]
+   --#leftsub|[*R:spellrange]
+   --#rightsub|WIS Save DC: [*S:spell_save_dc]
+   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+   --&desc|[*R:spelldescription]
+   --&higherdesc|[*R:spellathigherlevels]
+   --=DC|[*S:spell_save_dc]
+   -->BuildArray|
+   
+  --:BuildArray|
+   --=targets|[$SpellLevel]-1
+   --=NumHeld|0
+   -->far_BuildTargetList|[$targets.Total]
+   -->far_BuildTargetArray|Held;[$targets.Raw];TargetString
+   -->SaveLoop|
+   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+   --+[br]|
+   --+Duration: |[&duration]
+   --+Desc: |[&desc]
+   --+At Higher Levels: |[&higherdesc]
+   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+   --?[$NumHeld] -gt 0 -and [&SpawnScript] -eq 2|[
+    --@forselected+|Spawn _name|[&CharName] _qty|1 _targets|[$NumHeld],Select the [$NumHeld] targets that failed the save. _offset|0,0 _force|yes _size|3 _tokenProps|name:[&HoldTokenName],showname:true,showplayers_name:true _order|toBack _bar1|KeepLink _fx|nova-magic _expand|15,30 {^&select @{selected|token_id}}
+    --]|
+   --X|
+
+ --/| ____________________ Procedures_______________________________________________________________________________________
+  
+  --:SaveLoop|
+   --#whisper|
+   --?[$targets.Raw] -eq 1|[
+	--~|array;removeat;Held;1
+	--]|
+   --+[br]|
+   --+|[c]You targeted [$targets] creature(s).[/c]
+   --+[br]|
+   --+|[t border=3 width=100%][tr][td style="width:100px"][c]Target[/c][/td][td style="width:40px"][c]Save[/c][/td][td style="width:40px"][c]P/F?[/c][/td][td style="width:70px"][c]Held?[/c][/td][/tr]
+   --%loop|foreach;Held
+	-->Save|[&loop]
+	--%|
+   --<|
+	
+	
+   --:Save|
+	--?"[*[&loop]:npc_condition_immunities]" -inc "paralyzed" -or "[*[&loop]:npc_immunities]" -inc "paralyzed"|[
+	 --+|[t border=3 width=100%][tr][td style="width:100px"][c][*[&loop]:character_name][/c][/td][td style="width:40px"][c][/c][/td][td style="width:40px"][c]P[/c][/td][td style="width:70px"][c][b]Immune[/b][/c][/td][/tr]
+	 --<|
+	 --]|
+	
+	--&BlessFlag|
+    --&BaneMarkerFlag|
+    --&GlobalSave|
+    --&GlobalSkill|
+   
+    --&saveDice|1d20
+   
+    --?"X[*T:race]" -ne "X"|[
+     -->far_Check_GLOBAL_MOD_EXISTS|[*[&loop]:character_id]; save; [&damageType]; damageSave
+     -->far_Check_GLOBAL_MOD_EXISTS|[*[&loop]:character_id]; save; [&Displayattrib]; attribSaveRoll
+     --?[&damageSave] -eq 1 -or [&attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "1d20"|&saveDice;2d20kh1
+     --?[&damageSave] -eq 1 -or [&attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "2d20kl1"|&saveDice;1d20
+    
+     -->far_FIND_ACTIVE_GLOBAL_SAVE_MODS|[*[&loop]:character_id];GlobalSave
+     -->far_FIND_ACTIVE_GLOBAL_SKILL_MODS|[*[&loop]:character_id];GlobalSkill
+	 --]|
+   
+    -->LibSN_CHECK_STATUS_MARKER|[*[&loop]:t-id];[&BlessedMarker];BlessFlag;BlessCount
+    -->LibSN_CHECK_STATUS_MARKER|[*[&loop]:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
+
+    --?[&BaneMarkerFlag] -eq 1|&Baneroll;+ - 1d4 [Bane] |&Baneroll;
+   
+    --=TargetSave|[&saveDice] + [*[&loop]:[&attrib]_save_bonus] [&obrac][&Displayattrib][&cbrac] [&GlobalSave] [&GlobalSkill] [&Baneroll]
+	
+	--?[$Save] -ge [$DC]|Pass |Fail
+	
+   --:Pass|
+    --+|[t border=3 width=100%][tr][td style="width:100px"][c][*[&loop]:character_name][/c][/td][td style="width:40px"][c][$TargetSave][/c][/td][td style="width:40px"][c]P[/c][/td][td style="width:70px"][c][/c][/td][/tr]
+    --<|
+   
+   --:Fail|
+    --+|[t border=3 width=100%][tr][td style="width:100px"][c][*[&loop]:character_name][/c][/td][td style="width:40px"][c][$TargetSave][/c][/td][td style="width:40px"][c]F[/c][/td][td style="width:70px"][c]Held[/c][/td][/tr]
+	-->LibSN_ADD_STATUS_MARKER|[*[&loop]:t-id];[&HoldMarker]
+	--?[&SpawnScript] -eq 1|[
+	 --!ot:HoldTID|name:"[&HoldTokenName]"|left:[*[&loop]:t-left]|top:[*[&loop]:t-top]|width:[=[*[&loop]:t-width]*3]|height:[=[*[&loop]:t-height]*3]|imgsrc:"[&URLlink]"|bar1_value:1|represents:[&CharNameID]|showname:false
+	 --z:graphic:[&HoldTID]|toback
+	 --@CARRY_TOKENS_CARRY_BELOW|[*[&loop]:t-id] [&HoldTID]
+	 --]|
+	--=NumHeld|[$NumHeld]+1
+	--!a:[*S:character_id]|!ConcentrationSpell:[&SpellName]
+	--!a:[*S:character_id]|!ConcentrationSpellTargetToken:[&HoldTokenName]
+	--!a:[*[&loop]:character_id]|!MageID:[*S:character_id]
+	-->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];10
+	 --]|
+		
+	--?[$TargetSave] -ge [*S:spell_save_dc]|[
+	 --+|[t border=3 width=100%][tr][td style="width:100px"][c][*[&loop]:character_name][/c][/td][td style="width:40px"][c][$TargetSave][/c][/td][td style="width:40px"][c]P[/c][/td][td style="width:70px"][c][/c][/td][/tr]
+	 --]|
+   --<|	
+  
+  --:GetSpiritID|CharacterName;StringVariableForCharID
+   --~|array;objects:character;SpiritCharArr;[%1%]
+   --?[@SpiritCharArr(length)] -ne 1|>far_LogFatalError;Could not find character named [%1%]
+   --&[%2%]|[@SpiritCharArr(0)]
+   --<|
+  
+  --:Remove|
+   --#emotetext|[*S:character_name] dismisses Hold Person!
+   --#whisper|
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker]
+   --~|array;pagetokens;alltokens;[*S:t-id]
+   --~|array;define;Held
+   --%loop|foreach;alltokens
+    -->LibSN_CHECK_STATUS_MARKER|[*[&loop]:t-id];[&HoldMarker];HoldFlag;HoldCount
+    --?[&HoldFlag] -eq 1 -and "[*[&loop]:MageID]" -inc "[*S:character_id]"|[
+    --&Held([@Held(length)])|[*[&loop]:t-id]
+    --]|
+    --%|
+ 
+   --%loop|foreach;Held
+    -->LibSN_REMOVE_STATUS_MARKER|[*[&loop]:t-id];[&HoldMarker]
+	--!a:[*[&loop]:character_id]|MageID:**
+    --+|[*[&loop]:character_name] is no longer Held.
+    --%|
+   
+   --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&HoldTokenName]
+   --%loop|foreach;tokens
+	--~|object;token;delete;[*[&loop]:t-id]
+	--%| 
+  --X|  
+}}

@@ -1,0 +1,107 @@
+!script {{
+  +++5Elib;snlib;Farsidelib+++
+  
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+  
+  --/|Script Name : Evard's Black Tentacles
+  --/|Version     : 1.0
+  --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
+  --/|Author	  : Farsidegallery
+  --/|  
+  --/|  Script prompts user for spell level used and makes sure the slot is available.  and spawn the designated token to the VTT. Script calculates
+  --/|  It will deduct 1 spell slot from the appropriate level
+  --/|
+  
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+  
+  --&SpellName|Evard's Black Tentacles
+  --&MinimumSpellLevel|4
+
+  --/|Enter name for Evard's Black Tentacles Character.
+  --&TentacleName|[*S:character_name] Evard's Black Tentacles
+  
+  --/|Enter marker used for Concentration.
+  --&ConcentrationMarker|Concentrating::7409928
+  
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+  
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  
+  --#title|[&SpellName]
+  
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+  --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+  
+  --#leftsub|[*R:spellcastingtime]
+  --#rightsub|[*R:spellrange]
+  --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+  -->far_PlayEffects|[*S:t-id];;burn-magic;;;
+  
+  -->ChooseFunction|
+  --X|
+  
+  --:ChooseFunction|
+   --+Choose Function: |[rbutton]New Cast::New[/rbutton][rbutton]Dismiss::Remove[/rbutton]
+   --X|
+  
+  --:New|
+   --#emotetext|[*S:character_name] casts [&SpellName]!
+   -->GetCharID|"[&TentacleName]";SummonID
+   --!a:[&SummonID]|!SaveDC:[*S:spell_save_dc]
+   --!a:[*S:character_id]|!ConcentrationSpell:[&TentacleName]
+   -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];10
+
+   --/|Give Player ability to move and control token
+   --&Player|[*O:[*S:t-represents]:character:controlledby]
+   --&controllers|[*O:[*[&SummonID]:t-represents]:character:controlledby]
+   --?"[&controllers]" -ninc "-"|&controllers;None
+   --?[&controllers] -eq None|&newcontrollers;[&Player] |&newcontrollers;[&controllers],[&Player]
+   --!c:[*[&SummonID]:character_id]|controlledby:[&newcontrollers]
+
+   
+   --/|SPAWN Evard's Black Tentacles Token
+   --:SpawnToken|
+    --@forselected+|Spawn _name|[&TentacleName] _qty|1 _offset|0,1 _size|5 _force|yes _tokenProps|showname:true,showplayers_name:true,show_tooltip|1 _order|toBack _bar1|KeepLink _tooltip|Spell DC: [*S:spell_save_dc] _fx|nova-magic _expand|15,30 {^&select @{selected|token_id}}
+    --+Click Here to Resume Spell: |[rbutton]Click Here.::Modtoken[/rbutton]
+    --X|
+   
+  --/| ____________________ Procedures_______________________________________________________________________________________
+  
+  --:GetCharID|CharacterName;StringVariableForCharID
+   --~|array;objects:character;SpiritCharArr;[%1%]
+   --?[@SpiritCharArr(length)] -ne 1|>far_LogFatalError;Could not find character named [%1%]
+   --&[%2%]|[@SpiritCharArr(0)]
+   --<|
+  
+  --:Modtoken|
+   --?[*S:npc] -eq 1 |[ 
+	--~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&TentacleName]
+    --!graphic:[@tokens(0)]|gm_only_tooltip:1
+	--]|
+   -->Output|
+   
+  --:Output|
+   --#whisper|
+   --+|[*S:character_name] summons [&SpellName]!
+   --+|[br]
+   --+Duration: |[&duration]
+   --+Desc: |[*R:spelldescription]
+   -->far_DeductSpellSlot|[*S:t-id];[&MinimumSpellLevel]
+   --X|
+  
+  --:Remove|
+   --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&TentacleName]
+   --~|object;token;delete;[@tokens(0)]
+   --#whisper|
+   --#emotetext|[&TentacleName] vanishes!
+   --+|[*S:character_name] is no longer concentrating.
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker]
+   --!a:[*S:character_id]|!ConcentrationSpell:**
+   --X|
+}}

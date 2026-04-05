@@ -1,0 +1,76 @@
+!script{{
+  +++5Elib;snlib;Farsidelib+++	
+ 
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+
+  --/|Script Name : Greater Invisibility
+  --/|Version     : 1.0
+  --/|Requires SC : Bump, ScriptCards Library 5Elib/snlib/Farsidelib
+  --/|Author      : Farsidegallery
+  --/|  
+  --/|  Script prompts for spell level, checks availability, and deducts a spell slot. User is prompted to select the targets.
+  --/|  Scripts applies token markers to caster and/or target, and uses bump for Invisibility affect. Recommend the
+  --/|  "No Bars on Slave" setting for bump be turned on if using Aura/Tint Healh API.
+  --/|
+
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+    
+  --/|Concentration
+  --&ConcentrationMarker|Concentrating::7409928
+  
+  --/|Invisibility Marker
+  --&InvisMarker|Invisible::7409942
+  
+  --&SpellName|Greater Invisibility
+  --&MinimumSpellLevel|4
+  
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  
+  --#title|[&SpellName]
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+ 
+  --=SpellLevel|[&MinimumSpellLevel]
+  --&SpellLevel|[&MinimumSpellLevel]
+  --#leftsub|[*R:spellcastingtime]
+  --#rightsub|[*R:spellrange]
+  --#emotetext|[*S:character_name] casts [&SpellName] at [&SpellLevel]!
+  
+  -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
+  -->ChooseTarget|
+  --X|
+  
+  --:ChooseTarget|
+   --+Target|[rbutton]Click here to select your target.::SetTarget;&#64;{target|token_id}[/rbutton]
+   --X|
+  
+  --:SetTarget|
+   --#targettoken|[&reentryval]
+   --#rightsub|Target: [*T:character_name]
+   --!a:[*S:character_id]|!ConcentrationSpell:[&SpellName]
+   --!a:[*S:character_id]|!MageID:[*S:t-id]
+   -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];10
+   -->ActionSpell|
+
+  --:ActionSpell|
+   --#whisper|
+   --@bump| _ids [*T:t-id]
+   -->far_PlayEffects|;[*T:t-id];;burn-magic;;
+   -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&InvisMarker];9
+   --+|[br]
+   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+   --+Duration: |[&duration]
+   --+Desc: |[*R:spelldescription]
+   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+   --X|
+}}

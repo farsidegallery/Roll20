@@ -1,0 +1,137 @@
+!scriptcards {{
+  +++snlib;Farsidelib+++
+
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+  
+  --/|Script Name : Mass Healing Word
+  --/|Version     : 2.0
+  --/|Requires SC : TokenMod, SuperNotes (for template override only), ScriptCards Library snlib/Farsidelib
+  --/|Author      : Michael C.
+  --/|Modified By : Farsidegallery
+  --/|  
+  --/|  Script prompts user for spell level used and then queries targets to be healed (unique targets only). It will deduct 1 spell slot from the appropriate level. 
+  --/|  Script checks for Disciple of Life and Belssed Healer feats. It checks if Beacon of Hope is active, calculates, applies healing to those targeted.
+  --/|
+
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+    
+  --/|Do you use a token marker for Beacon of Hope? (0 for no (default) or 1 for yes)
+  --=BeaconFlag|1
+
+  --/|What token marker is used for Beacon of Hope?
+  --&BeaconMarker|radioactive
+  
+  --&SpellName|Mass Healing Word
+  --&MinimumSpellLevel|3
+  
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+  
+  --#title|[&SpellName]
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+  --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+  
+  --+|[c][b]Cast At What Level?[/b][/c]
+    --&splvlMsg|
+    --%splvl|foreach;SpellCastLevel
+     --&splvlMsg|+ [rbutton][&splvl]::ChooseType;[&splvl][/rbutton]
+    --%|
+  --+|[c][&splvlMsg][/c]
+  --X|
+  
+  --:ChooseType|
+   --=SpellLevel|[&reentryval]
+   --&SpellLevel|[&reentryval]
+   --#leftsub|[*R:spellcastingtime]
+   --#rightsub|[*R:spellrange]
+   --#emotetext|[*S:character_name] casts [&SpellName] at [&SpellLevel]!
+   --=DisplayCount|1
+   -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
+   --=LifeFlag|0
+   --=HealerFlag|0
+   -->far_FindFeat|[*S:t-id];Disciple of Life;LifeFlag
+   -->far_FindFeat|[*S:t-id];Blessed Healer;HealerFlag
+   --=Targets|6
+   -->far_BuildTargetList|[$Targets.Raw]
+   -->far_BuildTargetArray|Healed;6;[&TargetString]
+   -->FindHopeBeacon|[*S:t-id]
+   -->AbilityAssign|[*S:spellcasting_ability]
+   --X|
+
+
+ --/| ____________________ Procedures_______________________________________________________________________________________
+
+  --:FindHopeBeacon|TargetID
+   --/|Check Global Setting if Beacon of Hope has a Token Marker
+   --?[$BeaconFlag] -eq 0|[
+	 --iIs Beacon of Hope active?;Click this button to choose.|q;response;Choose|Yes|No
+     --c[&response]|Yes:=Beacon;1|No:=Beacon;0
+	--]|[
+	 -->LibSN_CHECK_STATUS_MARKER|[%1%];[&BeaconMarker];BeaconStatus
+	 --?[&BeaconStatus] -eq 1|=Beacon;1|=Beacon;0
+	 --%beaconloop|foreach;Healed
+	  -->LibSN_CHECK_STATUS_MARKER|[&beaconloop];[&BeaconMarker];BeaconStatus
+	  --?[&BeaconStatus] -eq 1|[
+	   --=Beacon|1
+	   --!%|
+	   --]|
+	  --%|
+	--]|
+   --<|
+
+  --/|Calculate 1d4 + spellcasting ability modifier +1d4/level over 3rd
+  --:HPCalc|[%1%]
+   --=HPCalc|[$SpellLevel] - 2
+   --c[$LifeFlag]|0:=Disciple;0 |1:=Disciple;2 + [$SpellLevel] 
+   --c[$Beacon]|0:=Dice;[$HPCalc]d4 |1:=Dice;[$HPCalc] * 4
+   --=HPRecovered|[$Dice] + [%1%] [[&Attribute] Mod] + [$Disciple] [Disciple of Life]
+   --+|[t border=3 width=100%][tr][td style="width:150px"][c][b]Total Healing: [$HPRecovered.Total] ([$HPCalc.Raw]d4)[/b][/c][/td][/tr]
+   --+|[t border=3 width=100%][tr][td style="width:150px"][c][b]Target[/b][/c][/td][td style="width:100px"][c][b]HP Healed[/b][/c][/td][/tr]
+   --?[$HealerFlag] -eq 1 | >BlessedHealer
+   --=Count|1
+   --^HealLoop|
+   
+  --:HealLoop|
+   --#whisper|
+   --%loop|foreach;Healed
+    --=Missing|[*[&loop]:hp^] - [*[&loop]:hp]
+    --?[$HPRecovered.Total] -gt [$Missing]|=HealAmount;[$Missing]|=HealAmount;[$HPRecovered.Total]
+    --+|[t border=3 width=100%][tr][td style="width:150px"][c][*[&loop]:character_name][/c][/td][td style="width:100px"][c][$HealAmount][/c][/td][/tr]
+    -->far_PlayEffects|[*S:t-id]; [&loop]; ; burst-holy; ; 
+    -->LibSN_APPLY_DAMAGE_OR_HEALING|[&loop];1;[$HealAmount];0
+	--%|
+   --+|[/t]
+   --+|[br]
+   --+Desc: |[*R:spelldescription]
+   --+At Higher Levels: |[*R:spellathigherlevels]
+   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+   --X|
+   
+  --:BlessedHealer|
+   --=BlessedHeal|2 + [$SpellLevel]
+   --=SelfMissing|[*S:hp^] - [*S:hp]
+   --?[$BlessedHeal.Total] -gt [$SelfMissing]|=BlessedHeal;[$SelfMissing] [Blessed Healer]|=BlessedHeal;[$BlessedHeal.Total] [Blessed Healer]
+   --+|[t border=3 width=100%][tr][td style="width:150px"][c][*S:character_name][/c][/td][td style="width:100px"][c][$BlessedHeal][/c][/td][/tr]
+   -->LibSN_APPLY_DAMAGE_OR_HEALING|[*S:t-id];1;[$BlessedHeal];0
+   --<|
+ 
+  --:AbilityAssign|SpellAbility
+   --&Attribute|[%1%]
+   --~Attribute|string;after;{;[&Attribute]
+   --~Attribute|string;before;_;[&Attribute]
+   --=Mod|[*S:[&Attribute]_mod]
+   -->HPCalc|[$Mod]
+}}

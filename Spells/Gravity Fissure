@@ -1,0 +1,28 @@
+!smartaoe {{
+  --title|Gravity Fissure
+  --leftsub|Slot level ?{Cast at what level?|6,6|7,7|8,8|9,9}
+  --rightsub|DC @{selected|spell_save_dc} DEX
+  --titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/256379607/PTVgGkwvV0OpEWYw6JOcXQ/max.png?1637346097');background-size: contain;
+  --subtitlefontcolor|#ffffff
+  --oddrowbackground|#2c2775
+  --evenrowbackground|#c0bfd6
+  --oddrowfontcolor|#ffffff
+  --tablebgcolor|#c0bfd6
+  --aoeColor|#0044ff50
+  --chatAvatarsEnabled|false
+  --resource|lvl?{Cast at what level?}_slots_expended,1,Level ?{Cast at what level?} Slots 
+
+  --aoeType|line
+  --radius|100ft
+  --width|25ft
+  --fx|burn-smoke
+  --dc|@{selected|spell_save_dc}
+  --saveFormula|5eCON
+  --damageFormula1|[[(2+?{Cast at what level?})d8]]
+  --damageType|Force
+  --zeroHpMarker|dead
+  --instant|1
+  --autoApply|1
+  --bar|1
+  --desc|You manifest a ravine of gravitational energy in a line originating from you that is 100 feet long and 5 feet wide. Each creature in that line must make a Constitution saving throw, taking 8d8 force damage on a failed save, or half as much damage on a successful one. Each creature within 10 feet of the line but not in it must succeed on a Constitution saving throw or take 8d8 force damage and be pulled toward the line until the creature is in its area.
+}}

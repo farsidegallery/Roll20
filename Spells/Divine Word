@@ -1,0 +1,232 @@
+!script {{
+  +++5Elib;snlib;Farsidelib+++
+  
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+
+  --/|Script Name : Divine Word
+  --/|Version     : 2.0
+  --/|Requires SC : TokenMod, SuperNotes (for template override only), ScriptCards Library 5Elib/snlib/Farsidelib
+  --/|Author      : Farsidegallery
+  --/|
+  --/| Script checks for and deducts appropriate spell slot. Script selects targets, rolls saving throws, and applies damage. 
+  --/| Results are output in a table format for all users to see.
+  --/|
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+  
+  --&SpellName|Divine Word
+  --&MinimumSpellLevel|7
+  --&damageType|none
+  
+  --&attrib|charisma
+  
+  --&tokenVFX|burn-magic
+  
+  --/|Are you using the matching Bardic Inspiration Script from FarsideGallery? (Default is No using 0. Change to 1 if using the script.)
+  --=Scriptcheck|1
+  
+  --/|Enter the Token Markers you use for each condition
+  --&BardicMarker|BardicInspiration::7409920
+  --&BlessedMarker|angel-outfit
+  --&InspirationMarker|Inspiration::7409921
+  --&BaneMarker|Hexed3::7409911
+  --&HexMarker|Hexed::7409913
+  --&HexBladeMarker|Hexed2::7409912
+  --&DeathMarker|dead
+  --&BlindedMarker|Blinded::7409948
+  --&StunnedMarker|Stunned::7409936
+  --&DeafenedMarker|Deafened::7409946
+
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________ 
+
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+  
+  --~shortattrib|string;left;3;[&attrib]
+  --~Displayattrib|string;touppercase;[&shortattrib]
+ 
+ --#title|[&SpellName]
+ --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+ --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+ 
+ --=SpellLevel|[&MinimumSpellLevel]
+ --&SpellLevel|[&MinimumSpellLevel]
+ --=DC|[*S:spell_save_dc]
+ --#leftsub|[&Displayattrib] DC: [$DC]
+ --#rightsub|[*R:spellrange]
+ --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+ --&desc|[*R:spelldescription]
+ --#emotetext|[*S:character_name] casts [&SpellName] at [&SpellLevel]!
+
+ -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
+ 
+ --+|Do you want to include Player Characters (PVP)?
+ --+|[c][rbutton]Yes::SetPVP;1[/rbutton][rbutton]No::SetPVP;0[/rbutton][/c]
+ --X|
+ 
+ --:SetPVP|
+  --=PVPCheck|[&reentryval]
+  -->AOE_DivineWord|
+ 
+ --:Finish|
+  --#whisper|
+  --+|[br]
+  --+Duration: |[&duration]
+  --+Desc: |[&desc]
+  -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+  --X|
+
+--/| ____________________ Procedures_______________________________________________________________________________________
+
+ --:AOE_DivineWord|
+  --~|array;pagetokens;alltokens;[*S:t-id];all
+  --~|array;define;inRange;
+  --~tokenid|array;getfirst;alltokens
+  --?[&tokenid] -eq ArrayError|endOutput
+
+ --:Word_loop|
+  --?[*[&tokenid]:t-layer] -ne objects|continue
+  --?"[*[&tokenid]:t-represents]" -ninc "-"|continue
+  --?[$PVPCheck] -eq 0 -and "X[*[&tokenid]:npc]" -ninc "X1"|continue
+  --?[&tokenid] -eqi [*S:t-id] |continue
+  --~dist|euclideanpixel;[*S:t-id];[&tokenid]
+  --?[$dist] -gt 420|continue
+  --~|array;add;inRange;[&tokenid]
+
+ --:continue|
+  --~tokenid|array;getnext;alltokens
+  --?[&tokenid] -ne ArrayError|Word_loop
+  --~|array;removeat;inRange;0
+  --~tokenid|array;getfirst;inRange
+  --?[&tokenid] -eq ArrayError|endOutput
+  --?[$PVPCheck] -eq 1|>AllyCheck |>SaveLoop
+  
+  --:AllyCheck|
+   --+Ally Check |Remove any allies that are in the target list and then hit "Cast Spell"
+   --+|[c][rbutton]Cast Spell::SaveLoop[/rbutton][/c]
+   --+|[br]
+   -->ShowTargetList|Y
+   --X|
+
+  --:ShowTargetList|
+   --?"[@inRange()]" -eq "undefined array"|<
+   --=Index|0
+   --%loop|foreach;inRange
+    --&append|[r][rbutton]X::RemoveTarget;[$Index.Raw][/rbutton][/r]
+    --?"[%1%]" -ne "Y"|&append;
+    --+Target|[*[&loop]:t-name] [&append]
+    --=Index|[$Index] + 1
+   --%|
+   --<|
+  
+  --:RemoveTarget|
+  --~|array;removeat;inRange;[&reentryval]
+  --^AllyCheck|
+  
+  --:SaveLoop|
+   --#whisper|
+   --+|[t border=3 width=100%][tr][td style="width:100px"][c]Target[/c][/td][td style="width:40px"][c]Save[/c][/td][td style="width:40px"][c]P/F?[/c][/td][td style="width:70px"][c]Result[/c][/td][/tr]
+  
+   --%target|foreach;inRange  
+    -->far_PlayEffects|[*S:t-id];[&tokenid];burst-magic;burn-holy;;
+	-->DetermineOutcome|[&target]
+    --%|
+   -->Finish|
+   --X|
+
+ --:DetermineOutcome|  
+  --&tokenid|[%1%]
+  
+  --&BlessFlag|
+  --&BaneMarkerFlag|
+  --&GlobalSave|
+  --&GlobalSkill|
+   
+  --&saveDice|1d20
+   
+  --?"X[*[&tokenid]:race]" -ne "X"|[
+   -->far_Check_GLOBAL_MOD_EXISTS|[*[&tokenid]:character_id]; save; [&damageType]; damageSave
+   -->far_Check_GLOBAL_MOD_EXISTS|[*[&tokenid]:character_id]; save; [&Displayattrib]; attribSaveRoll
+   --?[&damageSave] -eq 1 -or [&attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "1d20"|&saveDice;2d20kh1
+   --?[&damageSave] -eq 1 -or [&attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "2d20kl1"|&saveDice;1d20
+   
+   -->far_FIND_ACTIVE_GLOBAL_SAVE_MODS|[*[&tokenid]:character_id];GlobalSave
+   -->far_FIND_ACTIVE_GLOBAL_SKILL_MODS|[*[&tokenid]:character_id];GlobalSkill
+   --]|
+   
+  -->LibSN_CHECK_STATUS_MARKER|[*[&tokenid]:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
+
+  --?[&BaneMarkerFlag] -eq 1|&Baneroll;+ - 1d4 [Bane] |&Baneroll;
+  
+  --=TargetSave|[&saveDice] + [*[&tokenid]:[&attrib]_save_bonus] [&obrac][&Displayattrib][&cbrac] [&GlobalSave] [&GlobalSkill] [&Baneroll]
+  
+  --?[$TargetSave] -ge [*S:spell_save_dc]|[
+   --&CHASave|P
+   --&FontColor|009900
+   --+|[t border=3 width=100%][tr][td style="width:100px"][c][*[&tokenid]:t-name][/c][/td][/td][td style="width:40px"][c][$TargetSave][/c][/td][td style="width:40px"][#[&FontColor]][b][c][&CHASave][/c][/b][/#][/td][td style="width:70px"][c]Passed[/c][/td][/tr]
+   --<|
+   --]|
+  
+  --?"[*[&tokenid]:npc_type]" -inc "celestial" -or "[*[&tokenid]:npc_type]" -inc "elemental" -or "[*[&tokenid]:npc_type]" -inc "fey" -or "[*[&tokenid]:npc_type]" -inc "fiend"|[
+   --&CHASave|F
+   --&FontColor|990000
+   -->LibSN_ADD_STATUS_MARKER|[&tokenid];purple;
+   --!t:[&tokenid]|layer:gmlayer
+   --+|[t border=3 width=100%][tr][td style="width:100px"][c][*[&tokenid]:t-name][/c][/td][/td][td style="width:40px"][c][$TargetSave][/c][/td][td style="width:40px"][#[&FontColor]][b][c][&CHASave][/c][/b][/#][/td][td style="width:70px"][c]Banished[/c][/td][/tr]
+   --<|
+   --]|
+  
+  --?[$TargetSave] -lt [*S:spell_save_dc] -and [*[&tokenid]:t-bar1_value] -gt 50 |[
+   --&CHASave|F
+   --&FontColor|990000
+   --+|[t border=3 width=100%][tr][td style="width:100px"][c][*[&tokenid]:t-name][/c][/td][/td][td style="width:40px"][c][$TargetSave][/c][/td][td style="width:40px"][#[&FontColor]][b][c][&CHASave][/c][/b][/#][/td][td style="width:70px"][c]Unaffected[/c][/td][/tr]
+   --<|
+   --]|
+  
+  --?[$TargetSave] -lt [*S:spell_save_dc] -and [*[&tokenid]:t-bar1_value] -le 50 -and [*[&tokenid]:t-bar1_value] -gt 40 |[
+   --&CHASave|F
+   --&FontColor|990000
+   -->LibSN_ADD_STATUS_MARKER|[&tokenid];[&DeafenedMarker];9
+   --+|[t border=3 width=100%][tr][td style="width:100px"][c][*[&tokenid]:t-name][/c][/td][/td][td style="width:40px"][c][$TargetSave][/c][/td][td style="width:40px"][#[&FontColor]][b][c][&CHASave][/c][/b][/#][/td][td style="width:70px"][c]Deafened (1 minute)[/c][/td][/tr]
+   --<|
+   --]|
+  
+  --?[$TargetSave] -lt [*S:spell_save_dc] -and [*[&tokenid]:t-bar1_value] -le 40 -and [*[&tokenid]:t-bar1_value] -gt 30 |[
+   --&CHASave|F
+   --&FontColor|990000
+   -->LibSN_ADD_STATUS_MARKER|[&tokenid];[&BlindedMarker]
+   -->LibSN_ADD_STATUS_MARKER|[&tokenid];[&DeafenedMarker]
+   --+|[t border=3 width=100%][tr][td style="width:100px"][c][*[&tokenid]:t-name][/c][/td][/td][td style="width:40px"][c][$TargetSave][/c][/td][td style="width:40px"][#[&FontColor]][b][c][&CHASave][/c][/b][/#][/td][td style="width:70px"][c]Blinded, Deafened (10 minutes)[/c][/td][/tr]
+   --<|
+   --]|
+  
+  --?[$TargetSave] -lt [*S:spell_save_dc] -and [*[&tokenid]:t-bar1_value] -le 30 -and [*[&tokenid]:t-bar1_value] -gt 20 |[
+   --&CHASave|F
+   --&FontColor|990000
+   -->LibSN_ADD_STATUS_MARKER|[&tokenid];[&BlindedMarker]
+   -->LibSN_ADD_STATUS_MARKER|[&tokenid];[&DeafenedMarker]
+   -->LibSN_ADD_STATUS_MARKER|[&tokenid];[&StunnedMarker]
+   --+|[t border=3 width=100%][tr][td style="width:100px"][c][*[&tokenid]:t-name][/c][/td][/td][td style="width:40px"][c][$TargetSave][/c][/td][td style="width:40px"][#[&FontColor]][b][c][&CHASave][/c][/b][/#][/td][td style="width:70px"][c]Blinded, Deafened, Stunned (1 hour)[/c][/td][/tr]
+   --<|
+   --]|
+  
+  --?[$TargetSave] -lt [*S:spell_save_dc] -and [*[&tokenid]:t-bar1_value] -le 20 |[
+   --&CHASave|F
+   --&FontColor|990000
+   --@token-mod|_ignore-selected _ids [&tokenid] _set bar1_value|0
+   -->LibSN_ADD_STATUS_MARKER|[&tokenid];dead
+   --+|[t border=3 width=100%][tr][td style="width:100px"][c][*[&tokenid]:t-name][/c][/td][/td][td style="width:40px"][c][$TargetSave][/c][/td][td style="width:40px"][#[&FontColor]][b][c][&CHASave][/c][/b][/#][/td][td style="width:70px"][c]Dead[/c][/td][/tr]
+   --<|
+   --]|
+ 
+ --:endOutput|
+  --+|No tokens in array.
+  --X|

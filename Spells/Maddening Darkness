@@ -1,0 +1,294 @@
+!script {{
+  +++5Elib;snlib;Farsidelib+++
+  
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+  
+  --/|Script Name : Maddening Darkness
+  --/|Version     : 1.0
+  --/|Modified By : Farsidegallery
+  --/|  
+  --/|  Script prompts user for spell level used and makes sure the slot is available and spawn the designated token to the VTT.
+  --/|  It will deduct 1 spell slot from the appropriate level
+  --/|
+  
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+  
+  --&SpellName|Maddening Darkness
+  --&MinimumSpellLevel|8
+  --&damageType|psychic
+  
+  --&hpBar|1
+  --&tempHPbar|4
+   
+  --&attrib|wisdom
+   
+  --/|Are you using the matching Bardic Inspiration Script from FarsideGallery? (Default is No using 0. Change to 1 if using the script.)
+  --=Scriptcheck|1
+  
+  --/|Enter the Token Markers you use for each condition
+  --&BardicMarker|BardicInspiration::7409920
+  --&BlessedMarker|angel-outfit
+  --&InspirationMarker|Inspiration::7409921
+  --&BaneMarker|Hexed3::7409911
+  --&HexMarker|Hexed::7409913
+  --&HexBladeMarker|Hexed2::7409912
+  --&DeathMarker|dead
+  --&ConcentrationMarker|Concentrating::7409928
+  
+  --/|Enter Character used for Maddening Darkness.
+  --&CharName|Darkness
+  
+  --/|Use ScriptCards (1) or SpawnDefaultToken (2) to place the Charm Person Character on the VTT?
+  --&SpawnScript|1
+  
+  --&MadDarklink|https://files.d20.io/images/473140603/g0Tb_GfpOUB3IARVXKm4lw/med.webm?1769364874
+  
+  --/| Place the name and URL of your spell target token here.
+  --&SpellTargetToken|Spell Token
+  --&URLlink|https://files.d20.io/images/469753332/ew1SU1DcQK4eborJlOqNQw/original.png
+      
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+  
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+
+  --~shortattrib|string;left;3;[&attrib]
+  --~Displayattrib|string;touppercase;[&shortattrib]
+  
+  --#title|[&SpellName]
+  --&TokenName|[*S:t-name] [&SpellName]
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  
+  -->ChooseFunction|
+  --X|
+  
+  --:ChooseFunction|
+   --+Choose Function: |[rbutton]New Cast::New[/rbutton][rbutton]Dismiss::Remove[/rbutton]
+   --X|
+  
+  --:New|
+   -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+   --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+  
+  --:ChooseType|
+   --=SpellLevel|[&MinimumSpellLevel]
+   --&SpellLevel|[&MinimumSpellLevel]
+   --=DC|[*S:spell_save_dc]   
+   
+   --#emoteText|[*S:t-name] Casts [&SpellName] at Spell Level [&MinimumSpellLevel]!
+   --#leftsub|DC: [*S:spell_save_dc]
+   --#rightsub|[*R:spellrange]
+   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+   --&desc|[*R:spelldescription]
+   --&higherdesc|[*R:spellathigherlevels]
+   --=DamageDice|8d8
+   
+   -->GetCharID|"[&SpellTargetToken]";AOETargetID
+   -->CAST_SPELL|
+   
+  --:SummonCloud|
+   -->GetCharID|"[&CharName]";SummonID
+   --!a:[&SummonID]|!SaveDC:[*S:spell_save_dc]
+   --!a:[&SummonID]|!DamageLevel:[$SpellLevel]
+   --!a:[*S:character_id]|!ConcentrationSpell:[&TokenName]
+   -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];10
+
+   --/|SPAWN Darkness Token
+   --:SpawnToken|
+	--?[&SpawnScript] -eq 2|[
+	 --@forselected+|Spawn _name|[&CharName] _qty|1 _targets|1,FX Spawn Selection _offset|0,0 _force|yes _size|12 _tokenProps|name:[&TokenName],showname:false,showplayers_name:false _order|toBack _bar1|KeepLink _fx|nova-magic _expand|15,30 {^&select [&TB]target|token_id[&cbrace]}
+	 --]|
+	 
+	--?[&SpawnScript] -eq 1|[
+	 --!ot:CloudTID|name:"[&TokenName]"|left:[*T:t-left]|top:[*T:t-top]|width:[=[*T:t-width]*12]|height:[=[*T:t-height]*12]|imgsrc:"[&MadDarklink]"|bar1_value:1|represents:[&SummonID]|showname:false|tooltip:DC [*S:spell_save_dc]|show_tooltip:true
+	 --z:graphic:[&CloudTID]|toback
+	 --]|
+	 
+   --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&SpellTargetToken]
+   --~|object;token;delete;[@tokens(0)]
+	
+	-->SetDarkAbility|
+	-->Modtoken|
+    --X|
+   
+  --/| ____________________ Procedures_______________________________________________________________________________________
+  
+  --:GetCharID|CharacterName;StringVariableForCharID
+   --~|array;objects:character;SpiritCharArr;[%1%]
+   --?[@SpiritCharArr(length)] -ne 1|>far_far_LogFatalError;Could not find character named [%1%]
+   --&[%2%]|[@SpiritCharArr(0)]
+   --<|
+  
+  --:CAST_SPELL|
+   --+|Move Spell Token to desired location and then target it by casting the spell.
+   --/| (1) Spawn the effect template and find the ID for it
+   --!ot:NewTID|name:"[&SpellTargetToken]"|_pageid:[*S:t-_pageid]|left:[=[*S:t-left]+70]|top:[*S:t-top]|width:[*S:t-width]|height:[*S:t-height]|imgsrc:"[&URLlink]"|bar1_value:1|represents:"[&SpellTargetToken]"|showname:0|t-aura1_radius:30|t-aura1_color:#d0e0e3
+   --z:graphic:[&NewTID]|tofront
+   -->SetAbility|
+   --+Target: |[rbutton]Target the Spell Token.::SetTarget;[&TB]target|token_id}[/rbutton]
+   --X|
+  
+  --:SetTarget|
+   --#targettoken|[&reentryval]
+   --&SleepTarget|[*T:t-id]
+   --&TargetName|[*T:t-name]
+   --+Rolling 8d8: |[$DamageDice]
+   --+|[br]
+   --?"[&TargetName]" -eq "[&SpellTargetToken]"|SummonCloud
+   --<|
+  
+  --:SetAbility|
+   --~|array;objects:ability;AbilityArr;;[&AOETargetID]
+    --!ability:[@AbilityArr(0)]|istokenaction:False
+	--!ability:[@AbilityArr(1)]|istokenaction:False
+	--!ability:[@AbilityArr(2)]|istokenaction:False
+	--!ability:[@AbilityArr(3)]|istokenaction:False
+   --<|
+  
+  --:SetDarkAbility|
+   --~|array;objects:ability;AbilityArr;;[&SummonID]
+    --!ability:[@AbilityArr(0)]|istokenaction:True
+   --<|
+  
+  --:Modtoken|
+   --?[*S:npc] -eq 1 |[ 
+	--~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&TokenName]
+    --!graphic:[@tokens(0)]|gm_only_tooltip:1
+	--]|
+   -->FindTargets|
+  
+  --:FindTargets|
+   --/|( GET ALL TOKENS INTO THE "allTokens" ARRAY will have blank 1st element to be removed later
+   --~|array;pagetokens;allTokens;[*S:t-id]
+   --/| CREATE THE "inRange" ARRAY TO HOLD TOKENS IN RANGE
+   --~|array;define;inRange;
+   --~|array;define;Failed;
+   
+   --/| PREP ARRAY FOR LOOP if no array elements then end macro
+   --~tokenid|array;getfirst;allTokens
+   --?[&tokenid] -eq ArrayError|End
+   --/|(2) FIND ALL TOKENS IN AoE
+   --:RangeLoop|
+   --:/|TOKEN MUST BE ON OBJECTS OR GMLAYER AND TEMPLATE MUST OVERLAP AoE
+   --?[*[&tokenid]:t-layer] -ne objects -and [*[&tokenid]:t-layer] -ne gmlayer|NextToken
+   --?[&tokenid] -eq [&CloudTID]|NextToken   
+   --?"X[*[&tokenid]:race]" -eq "X" -and "[*[&tokenid]:npc]" -ninc "1"|NextToken
+   -->LibSN_CHECK_TOKEN_OVERLAP|[&CloudTID];[&tokenid];OLap
+   --?[&OLap] -eq 0|NextToken
+   
+   --/|ADD TO THE "inRange" ARRAY
+   --~|array;add;inRange;[&tokenid]
+   
+   --:NextToken|
+   --~tokenid|array;getnext;allTokens
+   --?[&tokenid] -ne ArrayError|RangeLoop
+   
+   --/|(3) REMOVE DUMMY FIRST ITEM IN inRange ARRAY and emote
+   --~|array;removeat;inRange;0
+   --?"X[@inRange(0)]" -eq "Xundefined array"|[
+   --+|[c][b]No Targets in Range![/b][/c]
+   -->Output|
+   --]|
+   -->SaveLoop|
+   
+  --:SaveLoop|
+   --#whisper|
+   --+|[t border=3 width=100%][tr][td style="width:100px"][c]Target[/c][/td][td style="width:50px"][c]Save[/c][/td][td style="width:50px"][c]P/F?[/c][/td][td style="width:50px"][c]DAM[/c][/td][/tr]
+   --%loop|foreach;inRange
+    --&damageMod|
+	--&BlessFlag|
+    --&BaneMarkerFlag|
+    --&GlobalSave|
+    --&GlobalSkill|
+   
+    --&saveDice|1d20
+   
+    --?"X[*[&loop]:race]" -ne "X"|[
+     -->far_Check_GLOBAL_MOD_EXISTS|[*[&loop]:character_id]; save; [&damageType]; damageSave
+     -->far_Check_GLOBAL_MOD_EXISTS|[*[&loop]:character_id]; save; [&Displayattrib]; attribSaveRoll
+     --?[&damageSave] -eq 1 -or [&attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "1d20"|&saveDice;2d20kh1
+     --?[&damageSave] -eq 1 -or [&attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "2d20kl1"|&saveDice;1d20
+    
+     -->far_FIND_ACTIVE_GLOBAL_SAVE_MODS|[*[&loop]:character_id];GlobalSave
+     -->far_FIND_ACTIVE_GLOBAL_SKILL_MODS|[*[&loop]:character_id];GlobalSkill
+	 --]|
+   
+    -->LibSN_CHECK_STATUS_MARKER|[*[&loop]:t-id];[&BlessedMarker];BlessFlag;BlessCount
+    -->LibSN_CHECK_STATUS_MARKER|[*[&loop]:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
+
+    --?[&BaneMarkerFlag] -eq 1|&Baneroll;+ - 1d4 [Bane] |&Baneroll;
+   
+    --=TargetSave|[&saveDice] + [*[&loop]:[&attrib]_save_bonus] [&obrac][&Displayattrib][&cbrac] [&GlobalSave] [&GlobalSkill] [&Baneroll]
+		
+	-->far_CheckDamageModifiers|[*[&loop]:character_id];[&damageType];damageMod;1;0;0
+	-->far_FindFeat|[*[&loop]:character_id];"Thought Shield";ThoughtFlag
+	-->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0
+	
+	--?"[&damageMod]" -inc "Immune"|[
+	 --&FontColor|009900
+	 --+|[t border=3 width=100%][tr][td style="width:100px"][c][*[&loop]:t-name][/c][/td][td style="width:50px"][c][b]Immune[/b][/c][/td][td style="width:50px"][#[&FontColor]][b][c][/c][/b][/#][/td][td style="width:50px"][c][/c][/td][/tr]
+	 --^BottomCloudLoop|
+	 --]|
+
+	--?[$TargetSave] -lt [*S:spell_save_dc]|[
+	 --&DexSave|F
+	 --&FontColor|990000
+	 --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*[&loop]:t-id]"|&Hex;+ + 1d6 [Hex] |&Hex;
+     --?"X[&HexBladeMarkerFlag]" -eq 1 -and "X[*S:CurseTarget]" -eq "X[*[&loop]:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade;
+     --=Damage|[$DamageDice] [&HexBlade] [&GlobalDamage] [&Hex] [&DamageMod]
+	 --+|[t border=3 width=100%][tr][td style="width:100px"][c][*[&loop]:t-name][/c][/td][td style="width:50px"][c][$TargetSave][/c][/td][td style="width:50px"][#[&FontColor]][b][c][&DexSave][/c][/b][/#][/td][td style="width:50px"][c][$Damage][/c][/td][/tr]
+	 -->far_DamageTokenmod|[&loop];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
+	 --?[$ThoughtFlag] -eq 1|>ThoughtShield
+	 --]|
+	 
+	--?[$TargetSave] -ge [*S:spell_save_dc]|[
+	 --&DexSave|P
+	 --&FontColor|009900
+	 --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*[&loop]:t-id]"|&Hex;+ + 1d6 [Hex] |&Hex;
+     --?"X[&HexBladeMarkerFlag]" -eq 1 -and "X[*S:CurseTarget]" -eq "X[*[&loop]:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade;
+     --=Damage|[$DamageDice] [&HexBlade] [&GlobalDamage] [&Hex] [&DamageMod] \2
+	 --+|[t border=3 width=100%][tr][td style="width:100px"][c][*[&loop]:t-name][/c][/td][td style="width:50px"][c][$TargetSave][/c][/td][td style="width:50px"][#[&FontColor]][b][c][&DexSave][/c][/b][/#][/td][td style="width:50px"][c][$Damage][/c][/td][/tr]
+	 -->far_DamageTokenmod|[&loop];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
+	 --?[$ThoughtFlag] -eq 1|>ThoughtShield
+	 --]|
+   
+   --:BottomCloudLoop|
+   -->far_PlayEffects|;[*[&loop]:t-id];;burst-magic;
+   --%|	
+   -->Output|
+  
+   --:ThoughtShield|
+    --+|[br]
+    --+Additonal Result: |[*S:t-name] takes [$Damage] hp of [&damageType] damage due to [*[&loop]:t-name]'s mental defenses.
+    -->far_DamageTokenmod|[*S:t-id];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
+    --<|
+  
+  --:Output|
+   --+|[br]
+   --+Duration: |[&duration]
+   --+Desc: |[&desc]
+   --+At Higher Levels: |[&higherdesc]
+   -->far_DeductSpellSlot|[*S:t-id];[&MinimumSpellLevel]
+   --X|
+  
+  --:Remove|
+   --&TokenName|[*S:t-name] [&SpellName]
+   --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&TokenName]
+   --~|object;token;delete;[@tokens(0)]
+   --#whisper|
+   --#emotetext|[&SpellName] vanishes!
+   --+|[*S:t-name] is no longer concentrating.
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker]
+   --!a:[*S:character_id]|!ConcentrationSpell:**
+   --X|
+}}

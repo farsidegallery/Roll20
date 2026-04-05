@@ -1,0 +1,106 @@
+!scriptcard {{
+  +++5Elib;snlib;Farsidelib+++
+  
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+  
+  --/|Script Name : Guidance
+  --/|Version     : 1.0
+  --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
+  --/|Author      : Farsidegallery
+  --/|  
+  --/|  Script prompts user for spell level used and then calculates the number of targets and prompts user to select the targets. Spell desciption specifies that a target can only be selected one time. Script verifies
+  --/|  target is not already selected before adding to the target list. Duplicate target entries will be ignored (to allow for target availability being less that number of targets allowed). Script then applies bless 
+  --/|  marker, sets global mods on character sheet, and creates visual effects on the VTT.
+  --/|
+  
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+    
+  --/|What token marker is used for Concentration?
+  --&ConcentrationMarker|Concentrating::7409928
+  
+  --/|What is the name of the Global Skill Mod used for Guidance?
+  --&GuideMod|Guidance
+  
+  --&SpellName|Guidance
+  --&MinimumSpellLevel|cantrip
+  
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+	
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+  
+  --#title|[&SpellName]
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+  --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+  
+  --+Choose Function: |[rbutton]New Cast::New[/rbutton] [rbutton]Dismiss::Remove[/rbutton]
+  --X|
+  
+  --:New|
+   --+Target|[rbutton]Click here to select your target.::ChooseType;&#64;{target|token_id}[/rbutton]
+   --X|
+  
+  --:ChooseType|
+   --#targettoken|[&reentryval]
+   --#leftsub|[*R:spellcastingtime]
+   --#rightsub|[*R:spellrange]
+   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+   --&spelldesc|[*R:spelldescription]
+   --#emotetext|[*S:character_name] casts [&SpellName] on [*T:character_name]!
+   --!a:[*S:character_id]|!ConcentrationSpell:[&SpellName]
+   --!a:[*S:character_id]|!ConcentrationSpellTargetToken:[*T:t-id]
+   -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];9
+   -->FireMissile|
+  
+  
+  --:Final|
+   --#whisper|
+   --+|[*T:character_name] now has Guidance for 1 skill check.
+   --+|[br]
+   --+Duration: |[&duration]
+   --+Desc: |[&spelldesc]
+   --X|
+  
+  --:FireMissile|
+   -->far_PlayEffects|[*S:t-id];[*T:t-id];burst-magic;burst-magic;;
+   -->far_Check_GLOBAL_MOD_EXISTS|[*T:character_id]; skill; [&GuideMod]; SaveExists
+   --?[&SaveExists] -eq 1 |>SetMod;[&ThisTarget]
+   --?[&SaveExists] -eq 0|>CreateMod;[*T:t-id];skill;skill;[&GuideMod];1d4
+   -->SetMod|[%1%]
+   --<|
+    
+  --:CreateMod|target-id;GlobalModName;RepeatingName;AbilityName;RollValue
+   --!or:[*T:character_id]:[%3%]mod|
+	 global_[%2%]_name:[%4%]|
+	 global_[%2%]_roll:[%5%]|
+	 options-flag:0
+   --<|
+   
+  --:SetMod| 
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*T:character_id];skill; [&GuideMod];1
+   --!a:[*T:character_id]|global_skill_mod_flag:1
+   -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&GuideMarker];9
+   --<|
+   
+  --:Remove|
+   --#targetToken|[*S:ConcentrationSpellTargetToken]
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker]
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*T:character_id];skill; [&GuideMod];0
+   --!a:[*S:character_id]|!ConcentrationSpell:**
+   --!a:[*S:character_id]|!ConcentrationSpellTargetToken:**
+   --#whisper|
+   --#emotetext|[*S:character_name] is no longer concentrating on [&SpellName]!
+   --+|[*T:character_name] no longer has Guidance for a skill check.
+   --X| 
+}}

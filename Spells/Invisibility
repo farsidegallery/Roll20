@@ -1,0 +1,87 @@
+!script{{
+  +++snlib;Farsidelib+++	
+ 
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+
+  --/|Script Name : Invisibility
+  --/|Version     : 1.0
+  --/|Requires SC : Bump, ScriptCards Library 5Elib/snlib/Farsidelib
+  --/|Author      : Farsidegallery
+  --/|  
+  --/|  Script prompts for spell level, checks availability, and deducts a spell slot. User is prompted to select the targets.
+  --/|  Scripts checks to ensure caster is not targets, builds array, applies token markers to caster and targets, and uses bump
+  --/|  for Invisibility affect. Recommend the "No Bars on Slave" setting for bump be turned on if using Aura/Tint Healh API.
+  --/|
+
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+    
+  --/|Concentration
+  --&ConcentrationMarker|Concentrating::7409928
+  
+  --/|Invisibility Marker
+  --&Invisibility|Invisible::7409942
+  
+  --&SpellName|Invisibility
+  --&MinimumSpellLevel|2
+  
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+ 
+  --#title|[&SpellName]
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+  --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+  
+  --+|[c][b]Cast At What Level?[/b][/c]
+    --&splvlMsg|
+    --%splvl|foreach;SpellCastLevel
+     --&splvlMsg|+ [rbutton][&splvl]::ChooseType;[&splvl][/rbutton]
+    --%|
+  --+|[c][&splvlMsg][/c]
+  --X|
+  
+  --:ChooseType|
+   --=SpellLevel|[&reentryval]
+   --&SpellLevel|[&reentryval]
+   -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
+   
+   --#leftsub|[*R:spellcastingtime]
+   --#rightsub|[*R:spellrange]
+   --#emotetext|[*S:character_name] casts [&SpellName] at [&SpellLevel]!
+   --=Targets|[$SpellLevel]-1
+   -->far_BuildTargetList|[$Targets.Raw]
+   -->far_BuildTargetArray|Invis;[$Targets.Raw];[&TargetString]
+   --!a:[*S:character_id]|!ConcentrationSpell:[&SpellName]
+   -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];10
+   --+|The following characters are now invisible.
+   -->ActionSpell|
+
+  --:ActionSpell|
+   --%loop|foreach;Invis
+    --?[&loop] -eq [*S:t-id]|BottomLoop
+	-->far_PlayEffects|;[&loop];;burn-magic;;
+	-->LibSN_ADD_STATUS_MARKER|[*[&loop]:t-id];[&Invisibility];
+	--+|[c][*[&loop]:character_name][/c]
+	--@bump|_ids [*[&loop]:t-id]
+	--:BottomLoop|
+   --%|
+   --+|[br]
+   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+   --+Duration: |[&duration]
+   --+Desc: |[*R:spelldescription]
+   --+At Higher Levels: |[*R:spellathigherlevels]
+   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+   --X|
+}}

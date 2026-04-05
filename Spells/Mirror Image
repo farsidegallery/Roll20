@@ -1,0 +1,21 @@
+!script  {{
+ +++5Elib;snlib;Farsidelib+++
+  
+  --/|Script Name : Mirror Image
+  --/|Version     : 1.5
+  --/|Requires SC : SelectManager, multiTokenFx, SpawnDefaultToken, ScriptCards Library Farsidelib
+  --/|Author      : Nick O. (YouTube)
+  --/|Modified By : Farsidegallery
+  
+ --#title|Mirror Image
+ --#sourceToken|@{selected|token_id}
+ --#emoteText|[*S:character_name] casts mirror image!
+  
+ -->far_GetAndCheckSlotInformation|[*S:t-id];2
+ --@forselected+|Spawn _name|Mirror Image [*S:character_name] _qty|3 _bar1|5 _placement|surround _force|yes _order|toFront _offset|1,1 _fx|burst-magic _expand|15,30 {^&select @{selected|token_id}}
+ --+|Three illusory duplicates of yourself appear in your space. 
+ --+|Until the spell ends, the duplicates move with you and mimic your actions, shifting position so it’s impossible to track which image is real. You can use your action to dismiss the illusory duplicates. 
+ --+|Each time a creature targets you with an attack during the spell’s duration, roll a d20 to determine whether the attack instead targets one of your duplicates.
+ -->far_DeductSpellSlot|[*S:t-id];2
+ --X|
+}}

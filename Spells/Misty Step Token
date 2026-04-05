@@ -1,0 +1,60 @@
+!scriptcard  {{ 
+ +++5Elib;snlib;Farsidelib+++
+
+  --#sourceToken|@{selected|token_id}
+  --#hideTitleCard|1
+  --#emoteState|1
+  --#whisper|self,gm
+  
+  --/|Script Name : Misty Step Token
+  --/|Version     : 1.0
+  --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
+  --/|Author      : Arak Stoneboulder
+  --/|Modified By : Farsidegallery
+  --/|  
+  --/|  Script checks spell slot availability, summons teleport token, and deducts a spell slot. 
+  --/|
+
+  --:PLAY SOUND|
+   --/|a|Magic missile
+  
+  --:GET CASTER TOKEN ID|
+   --&TokenID|[*S:caster_ID]
+   --!a:[*S:character_id]|!caster_ID:**
+  
+  --:VISUAL EFFECTS|
+   --w2:vtoken|[&TokenID] burst-magic
+   --w2:vtoken|[*S:t-id] burst-magic
+  
+  --:MOVE CASTER TOKEN AND REMOVE AURA|
+   --!t:[&TokenID]|aura1_radius:0
+   --!t:[&TokenID]|layer:gmlayer
+   --w1:!t:[&TokenID]|top:[*S:t-top]|left:[*S:t-left]
+   --w2:!t:[&TokenID]|layer:objects
+  
+  --&DoorToken|Spell Token
+  -->GetCharID|[&DoorToken];DoorID
+  -->AbilityOff|
+  
+  --:DELETE TARGET TOKEN|
+  --~count|array;pagetokens;tokens;[&TokenID];tprop:name=Misty Step
+  --~|object;token;delete;[@tokens(0)]
+   
+   --+|You used your bonus action to Misty Step!
+   
+  --/| ____________________ Procedures_______________________________________________________________________________________
+  
+  --:GetCharID|CharacterName;StringVariableForCharID
+   --~|array;objects:character;SpiritCharArr;[%1%]
+   --?[@SpiritCharArr(length)] -ne 1|>far_LogFatalError;Could not find character named [%1%]
+   --&[%2%]|[@SpiritCharArr(0)]
+   --<|
+  
+  --:AbilityOff|
+   --~|array;objects:ability;AbilityArr;;[&DoorID]
+    --!ability:[@AbilityArr(0)]|istokenaction:False
+	--!ability:[@AbilityArr(1)]|istokenaction:False
+	--!ability:[@AbilityArr(2)]|istokenaction:False
+	--!ability:[@AbilityArr(3)]|istokenaction:False
+   --<|
+}}

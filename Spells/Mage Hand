@@ -1,0 +1,8 @@
+!Spawn {{
+  --name|Mage Hand
+  --offset|1,0
+  --expand|20,50
+  --size|1,1
+  --bar1|Keeplink
+  --fx|nova-magic
+}}

@@ -1,0 +1,159 @@
+!script {{
+  +++5Elib;snlib;Farsidelib+++
+
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+ 
+  --/|=========================================================================================================
+  --/|Script Name : 5E Magic Missile
+  --/|Version     : 2.5
+  --/|Requires SC : TokenMod, Chatsetattr, ScriptCards Library snlib,Farsidelib
+  --/|Author      : Kurt Jaegers
+  --/|Modification: Farsidegallery
+
+  --/|Description : Handles the D&D 5E spell Magic Missile, with the ability to select a dynamic
+  --/|              number of targets. 
+  --/|
+  --/|              You can optionally have damage applied to impacted tokens. The script defaults to using
+  --/|              TokenMod to update Bar 3. These can be changed by altering the settings below.
+  --/|              If you use one die roll for Magic Missile, update the damageMode variable below.
+  --/|=========================================================================================================
+  
+  --&SpellName|Magic Missile
+  --&MinimumSpellLevel|1
+  --&damageType|force
+  
+  --&hpBar|1
+  --&tempHPbar|4
+  
+  --/|Set this variable to the (case sensitive) name of a Jukebox track to play when the spell is cast
+  --&SoundEffectTrack|
+
+  --/|If damageMode is 1, a separate die will be rolled for each missile. Set this variable to 0 to, 
+  --/|only have a single damage die roll applied to each missile.
+  --&damageMode|0  
+  
+  --&ModName|Shield Spell
+   
+  --/|Are you using the matching Bardic Inspiration Script from FarsideGallery? (Default is No using 0. Change to 1 if using the script.)
+  --=Scriptcheck|1
+  
+  --/|Enter the Token Markers you use for each condition
+  --&BardicMarker|BardicInspiration::7409920
+  --&BlessedMarker|angel-outfit
+  --&InspirationMarker|Inspiration::7409921
+  --&BaneMarker|Hexed3::7409911
+  --&HexMarker|Hexed::7409913
+  --&HexBladebladeMarker|Hexed2::7409912
+  --&DeathMarker|dead
+   
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+
+  --#title|[&SpellName]
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+  --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+  
+  --#leftsub|[*R:spellcastingtime]
+  --#rightsub|[*R:spellrange]
+  --&desc|[*R:spelldescription]
+  --&higher|[*R:spellathigherlevels]
+  
+  --+|[c][b]Cast At What Level?[/b][/c]
+    --&splvlMsg|
+    --%splvl|foreach;SpellCastLevel
+     --&splvlMsg|+ [rbutton][&splvl]::ChooseType;[&splvl][/rbutton]
+    --%|
+  --+|[c][&splvlMsg][/c]
+  --X|
+  
+  --:ChooseType|
+   --=SpellLevel|[&reentryval]
+   --&SpellLevel|[&reentryval]
+  
+   --=MissileCount|[$SpellLevel] + 2
+   -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
+   -->far_BuildTargetList|[$MissileCount.Total]
+   -->far_BuildTargetArray|Targets;[$MissileCount];TargetString;1
+   -->BuildUnique|
+   
+   --=OneMissileDamage|1d4+1
+   --?[&damageMode] -eq 0|[
+    --+Damage per dart: |[$OneMissileDamage]
+	--+|[br]
+	--]|
+   
+   --=DisplayCount|1
+   --=TotalDamage|0
+   --#emoteText|[*S:t-name] uses a level [$SpellLevel.Total] spell slot to fire [$MissileCount.Total] missiles of magical force!
+
+   --a|[&SoundEffectTrack]
+
+  --:MissileLoop|
+   --#whisper|
+   --%loop|foreach;Targets
+    -->FireMissile|[&loop]
+	--%|
+   --+|Total damage is [$TotalDamage]
+   
+   --%loopTarget|foreach;Unique
+    -->far_DamageTokenmod|[&loopTarget];[&hpBar];[&tempHPbar];-[$Damage[&loopTarget]];0;0;1
+	--/|>LibSN_APPLY_DAMAGE_OR_HEALING|[&loopTarget];[&hitPointsBar];-[$Damage[&loopTarget]];0;0;1
+	--%|
+   
+   --+|[br]
+   --+Desc: |[&desc]
+   --+At Higher Levels: |[&higher]
+   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+   --X|
+
+  --:FireMissile|
+   --&ThisTarget|[%1%]
+   --?[&damageMode] -eq 1|=ThisMissile;1d4+1|=ThisMissile;[$OneMissileDamage]
+   -->far_PlayEffects|[*S:t-id];[&ThisTarget];none;burst-smoke;beam-magic
+   -->Lib5E_GET_GLOBAL_MOD_STATUS|[*[&ThisTarget]:character_id]; ac; [&ModName]; ShieldFlag
+   
+   --?[&ShieldFlag] -eq 1|[
+    --=ResultantDamage|0
+	--=TotalDamage|[$TotalDamage] + [$ResultantDamage]
+	--+Bolt [$DisplayCount.Raw]: |Hits a Shield surrounding [*[&ThisTarget]:t-name] for [$ResultantDamage] [b][&damageType][/b] damage.
+	--<|
+	--]|
+   
+   -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0
+   -->far_CheckDamageModifiers|[&ThisTarget];[&damageType];damageMod;1;0;0
+   
+   --=ResultantDamage|[$ThisMissile.Raw][&GlobalDamage] [&damageMod]
+   --=TotalDamage|[$TotalDamage] + [$ResultantDamage]   
+   --+Bolt [$DisplayCount.Raw]: |Hits [*[&ThisTarget]:t-name] for [$ResultantDamage] [b][&damageType][/b] damage
+   --=Damage[&ThisTarget]|[$Damage[&ThisTarget]] + [$ResultantDamage]
+   --?[*[&ThisTarget]:t-bar1_value] -lt 0|[
+	 -->LibSN_ADD_STATUS_MARKER|[*[&ThisTarget]:t-id];dead
+	 --]|
+   --<|
+  
+  --:BuildUnique|
+  --~|array;define;Unique;[@Targets(0)]
+  --%loop|foreach;Targets
+   --&ThisTarget|[&loop]
+   --?"X[&ThisTarget]" -eq "X"|BottomUniqueLoop
+   --~testvar|array;indexof;Unique;[&ThisTarget]
+   --?"[&testvar]" -eq "ArrayError" | [
+    --~|array;add;Unique;[&ThisTarget]
+	--]|
+   --:BottomUniqueLoop|
+   --%|
+  --<|
+}}
