@@ -1,0 +1,199 @@
+!script {{
+  +++5Elib;snlib;Farsidelib+++
+  
+  --/|Script Name : Charm Person
+  --/|Version     : 2.0
+  --/|Modified By : Farsidegallery
+  --/|  
+  --/|  Script prompts user for spell level used and makes sure the slot is available.  and spawn the designated token to the VTT. Script calculates
+  --/|  It will deduct 1 spell slot from the appropriate level
+  --/|
+  
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+  
+  --&SpellName|Charm Person
+  --&MinimumSpellLevel|1
+  --&damageType|Charm
+  
+  --&attrib|wisdom
+     
+  --/|Enter name for Charm Person Character.
+  --&CharName|Charmed
+  
+  --/|Use ScriptCards (1) or SpawnDefaultToken (2) to place the Charm Person Character on the VTT?
+  --&SpawnScript|1
+  
+  --&URLlink|https://files.d20.io/images/466443510/qzrqTmiCyCZ6lLrhTuiCdg/med.webm?1764794460
+  
+  --/|Enter the Token Markers you use for each condition
+   --&BardicMarker|BardicInspiration::7409920
+   --&BlessedMarker|angel-outfit
+   --&InspirationMarker|Inspiration::7409921
+   --&BaneMarker|Hexed3::7409911
+   --&HexMarker|Hexed::7409913
+   --&HexBladebladeMarker|Hexed2::7409912
+   --&DeathMarker|dead
+   --&CharmMarker|Charmed::7409947
+      
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+  
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+  
+  --~shortattrib|string;left;3;[&attrib]
+  --~Displayattrib|string;touppercase;[&shortattrib]
+  
+  --#title|[&SpellName]
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+  --#emotetext|[*S:character_name] casts Charm Person!
+  --&CharmTokenName|[*S:character_name] [&SpellName]
+  -->GetSpiritID|[&CharName];CharNameID
+  
+  -->ChooseLevel|
+  --X|
+  
+  --:ChooseLevel|
+   --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+   --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+   -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+   --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+   --+Choose Function: |[rbutton]New Cast::New[/rbutton][rbutton]Dismiss::Remove[/rbutton]
+   --X|
+  
+  --:New|
+   --+|[c][b]Cast At What Level?[/b][/c]
+    --&splvlMsg|
+    --%splvl|foreach;SpellCastLevel
+     --&splvlMsg|+ [rbutton][&splvl]::SelectDiceRoll;[&splvl][/rbutton]
+    --%|
+   --+|[c][&splvlMsg][/c]
+   --X|
+  
+  --:SelectDiceRoll|
+   --=SpellLevel|[&reentryval]
+   --&SpellLevel|[&reentryval]
+   --#leftsub|[*R:spellrange]
+   --#rightsub|WIS Save DC: [*S:spell_save_dc]
+   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+   --&desc|[*R:spelldescription]
+   --&higherdesc|[*R:spellathigherlevels]
+   
+   -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
+   
+   --+|[b][c]Are you fighting the targets?[/c][/b]
+   --+|[c][rbutton]Yes::BuildArray;2d20kh1[/rbutton][rbutton]No::BuildArray;1d20[/rbutton][/c]
+   --X|
+   
+
+  --:BuildArray|
+   --&saveDice|[&reentryval]
+   --=targets|[$SpellLevel]
+   --=NumCharmed|0
+   -->far_BuildTargetList|[$targets.Raw]
+   -->far_BuildTargetArray|Charmed;[$targets];[&TargetString]
+   -->SaveLoop|
+   
+   --+|[br]
+   --+Duration: |[&duration]
+   --+Desc: |[&desc]
+   --+At Higher Levels: |[&higherdesc]
+   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+   --?[$NumCharmed] -gt 0 -and [&SpawnScript] -eq 2|[
+    --@forselected+|Spawn _name|[&CharName] _qty|1 _targets|[$NumCharmed],Select the [$NumCharmed] targets that failed the save. _offset|0,0 _force|yes _size|3 _tokenProps|name:[&CharmTokenName],showname:true,showplayers_name:true _order|toBack _bar1|KeepLink _fx|nova-magic _expand|15,30 {^&select @{selected|token_id}}
+    --]|
+   --X|
+  
+  --:SaveLoop|
+   --#whisper|
+   --+[br]|
+   --+|[j]You targeted [$targets] creature(s).[/j]
+   --+[br]|
+   --+|[t border=3 width=100%][tr][td style="width:100px"][c]Target[/c][/td][td style="width:40px"][c]Save[/c][/td][td style="width:40px"][c]P/F?[/c][/td][td style="width:70px"][c]Charmed?[/c][/td][/tr]
+   --?[$targets] -eq 1|[
+	--~|array;removeat;Charmed;1
+	--]|
+   --%loop|foreach;Charmed
+	--&BlessFlag|
+    --&BaneMarkerFlag|
+    --&GlobalSave|
+    --&GlobalSkill|
+    
+    --&immunities|[*[&loop]:npc_immunities]
+	--&conditionimmunities|[*[&loop]:npc_condition_immunities]
+	--?"[&immunities]" -inc "charmed" -or "[&conditionimmunities]" -inc "charmed"|Immune
+  
+	--?"X[*[&loop]:race]" -ne "X"|[
+     -->far_Check_GLOBAL_MOD_EXISTS|[*[&loop]:character_id]; save; [&damageType]; damageSave
+     -->far_Check_GLOBAL_MOD_EXISTS|[*[&loop]:character_id]; save; [&Displayattrib]; attribSaveRoll
+     --?[&damageSave] -eq 1 -or [&attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "1d20"|&saveDice;2d20kh1
+     --?[&damageSave] -eq 1 -or [&attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "2d20kl1"|&saveDice;1d20
+     
+     -->far_FIND_ACTIVE_GLOBAL_SAVE_MODS|[*[&loop]:character_id];GlobalSave
+     -->far_FIND_ACTIVE_GLOBAL_SKILL_MODS|[*[&loop]:character_id];GlobalSkill
+	 --]|
+   
+    -->LibSN_CHECK_STATUS_MARKER|[*[&loop]:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
+
+    --?[&BaneMarkerFlag] -eq 1|&Baneroll;+ - 1d4 [Bane] |&Baneroll;
+   
+    --=TargetSave|[&saveDice] + [*[&loop]:[&attrib]_save_bonus] [&obrac][&Displayattrib][&cbrac] [&GlobalSave] [&GlobalSkill] [&Baneroll]
+	
+	--?[$TargetSave] -lt [*S:spell_save_dc]|[
+	 --+|[t border=3 width=100%][tr][td style="width:100px"][c][*[&loop]:character_name][/c][/td][td style="width:40px"][c][$TargetSave][/c][/td][td style="width:40px"][c]F[/c][/td][td style="width:70px"][c]Charmed[/c][/td][/tr]
+	 -->LibSN_ADD_STATUS_MARKER|[*[&loop]:t-id];[&CharmMarker]
+	 --!a:[*[&loop]:character_id]|!MageID:[*S:character_id]
+	 --?[&SpawnScript] -eq 1|[
+	  --!ot:CharmTID|name:"[&CharmTokenName]"|left:[*[&loop]:t-left]|top:[*[&loop]:t-top]|width:[=[*[&loop]:t-width]*3]|height:[=[*[&loop]:t-height]*3]|imgsrc:"[&URLlink]"|bar1_value:1|represents:[&CharNameID]|showname:false
+	  --z:graphic:[&CharmTID]|toback
+	  --@CARRY_TOKENS_CARRY_BELOW|[*[&loop]:t-id] [&CharmTID]
+	  --]|
+	 --=NumCharmed|[$NumCharmed]+1
+	 --]|
+	--?[$TargetSave] -ge [*S:spell_save_dc]|[
+	 --+|[t border=3 width=100%][tr][td style="width:100px"][c][*[&loop]:character_name][/c][/td][td style="width:40px"][c][$TargetSave][/c][/td][td style="width:40px"][c]P[/c][/td][td style="width:70px"][c][/c][/td][/tr]
+	 --]|
+	--:NextLoop|
+	--%|
+   --<|
+  
+  --:GetSpiritID|CharacterName;StringVariableForCharID
+   --~|array;objects:character;SpiritCharArr;[%1%]
+   --?[@SpiritCharArr(length)] -ne 1|>far_LogFatalError;Could not find character named [%1%]
+   --&[%2%]|[@SpiritCharArr(0)]
+   --<|
+  
+  --:Immune|
+   --+|[t border=3 width=100%][tr][td style="width:100px"][c][*[&loop]:character_name][/c][/td][td style="width:40px"][c][/c][/td][td style="width:40px"][c][/c][/td][td style="width:70px"][c][b]Immune[/b][/c][/td][/tr]
+   --^NextLoop|
+  
+  --:Remove|
+   --~|array;pagetokens;alltokens;[*S:t-id]
+   --~|array;define;Charmed
+   --%loop|foreach;alltokens
+    -->LibSN_CHECK_STATUS_MARKER|[*[&loop]:t-id];[&CharmMarker];CharmFlag;CharmCount
+    --?[&CharmFlag] -eq 1 -and "[*[&loop]:MageID]" -inc "[*S:character_id]"|[
+    --&Charmed([@Charmed(length)])|[*[&loop]:t-id]
+    --]|
+    --%|
+ 
+   --%loop|foreach;Charmed
+    -->LibSN_REMOVE_STATUS_MARKER|[*[&loop]:t-id];[&CharmMarker]
+	--!a:[*[&loop]:character_id]|MageID:**
+    --+|[*[&loop]:character_name] is no longer Charmed.
+    --%|
+   
+   --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&CharmTokenName]
+   --%loop|foreach;tokens
+	--~|object;token;delete;[*[&loop]:t-id]
+	--%| 
+  --X|  
+}}

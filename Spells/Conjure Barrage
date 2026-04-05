@@ -1,0 +1,24 @@
+!smartaoe {{
+  --title|Conjure Barrage
+  --leftsub|Slot level 3
+  --rightsub|DC @{selected|spell_save_dc} DEX
+  --resource|lvl3_slots_expended,1,Level 3 Slots
+  --chatAvatarsEnabled|false
+ 
+  --aoeType|5econe
+  --radius|60ft
+  --forceIntersection|1
+  --minGridArea|0.25
+  --minTokArea|0.25
+  --fx|missile-slime
+  --dc|@{selected|spell_save_dc}
+  --saveFormula|5eDEX
+  --damageFormula1|[[3d8]]
+  --damageType|Piercing 
+  --instant|1
+
+  --autoApply|1
+  --bar|1
+  --zeroHPmarker|dead
+  --desc|You throw a nonmagical weapon or fire a piece of nonmagical ammunition into the air to create a cone of identical weapons that shoot forward and then disappear. Each creature in a 60-foot cone must succeed on a Dexterity saving throw. A creature takes 3d8 damage on a failed save, or half as much damage on a successful one. The damage type is the same as that of the weapon or ammunition used as a component.
+}}

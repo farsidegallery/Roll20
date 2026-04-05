@@ -1,0 +1,107 @@
+!script{{
+  +++5Elib;snlib;Farsidelib+++	
+ 
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+
+  --/|Script Name : Dimension Door
+  --/|Version     : 1.0
+  --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
+  --/|Author      : Farsidegallery
+  --/|  
+  --/|  Script checks spell slot availability, summons teleport token, and deducts a spell slot. 
+  --/|
+  --/|
+  --/|
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+      
+   --&SpellName|Dimension Door
+   --&MinimumSpellLevel|4
+   
+   --/|Use ScriptCards (1) or SpawnDefaultToken (2) to place the Charm Person Character on the VTT?
+   --&SpawnScript|1
+   
+   --/| Place the name and URL of your spell target token here.
+   --&DoorToken|Spell Token
+   --&URLlink|https://files.d20.io/images/469753332/ew1SU1DcQK4eborJlOqNQw/original.png
+   
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --#title|[&SpellName]
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+  --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+    
+  --#leftsub|[*R:spellcastingtime]
+  --#rightsub|[*R:spellrange]
+  --#emoteText|[*S:character_name] Casts Dimension Door.
+  -->GetCharID|[&DoorToken];DoorID
+  --=CompanionFlag|
+  -->SetAbility|
+  
+  --+|[b][c]Are you taking a companion with you? (You will target the companion after clicking yes.)[/c][/b]
+  --+|[c][rbutton]Yes::CompanionIdentity;&#64;{target|token_id}[/rbutton][rbutton]No::StoreTID[/rbutton][/c]
+  --X|
+  
+  --:CompanionIdentity|
+   --&CompanionTID|[&reentryval]
+   --=CompanionFlag|1
+   --=CompTop|[*[&CompanionTID]:t-top]
+   --=CompLeft|[*[&CompanionTID]:t-left]
+   -->FindOffset|
+  
+  --:StoreTID|
+   --?[$CompanionFlag] -eq 1|&TokenID;[*S:t-id].[&CompanionTID] |&TokenID;[*S:t-id]
+   --!a:[&DoorID]|!caster_ID:[&TokenID]
+  
+  --/|SPAWN Dimension Door TOKEN
+  --:SpawnToken|
+  --?[&SpawnScript] -eq 2|[
+   --@forselected+|Spawn _name|[&DoorToken] _qty|1 _offset|0,0 _force|yes _tokenProps|name:Dimension Door,showname:true,showplayers_name:true _order|toFront _fx|nova-magic _expand|15,30 {^&select @{selected|token_id}}
+   --]|
+  
+  --?[&SpawnScript] -eq 1|[
+   --!ot:NewTID|name:"[&SpellName]"|_pageid:[*S:t-_pageid]|left:[=[*S:t-left]+70]|top:[*S:t-top]|width:[*S:t-width]|height:[*S:t-height]|imgsrc:"[&URLlink]"|bar1_value:1|represents:"[&DoorID]"|showname:0|t-aura1_radius:500|t-aura1_color:#d0e0e3
+   --z:graphic:[&NewTID]|tofront
+   --]|
+  
+  --#whisper|
+  --?[$CompanionFlag] -eq 1|[
+   --+Spell! |[*S:character_name] casts Dimension Door on [*[&CompanionTID]:character_name] and [*S:character_name]!
+   --+[br]|
+   --]|[
+   --+Spell! |[*S:character_name] casts Dimension Door!
+   --+[br]|
+   --]|
+  --+Desc: |[*R:spelldescription]
+  --+[br]|
+  -->far_DeductSpellSlot|[*S:t-id];[&MinimumSpellLevel]
+  --X|	
+  
+  --/| ____________________ Procedures_______________________________________________________________________________________
+  
+  --:GetCharID|CharacterName;StringVariableForCharID
+   --~|array;objects:character;SpiritCharArr;[%1%]
+   --?[@SpiritCharArr(length)] -ne 1|>far_LogFatalError;Could not find character named [%1%]
+   --&[%2%]|[@SpiritCharArr(0)]
+   --<|
+  
+  --:FindOffset|
+   --=CasterTop|[*S:t-top]
+   --=CasterLeft|[*S:t-left]
+   --=OffsetTop|[$CasterTop]-[$CompTop]
+   --=OffsetLeft|[$CasterLeft]-[$CompLeft]
+   --!a:[&DoorID]|!OffsetTop:[$OffsetTop]
+   --!a:[&DoorID]|!OffsetLeft:[$OffsetLeft]
+   --<|
+  
+  --:SetAbility|
+   --~|array;objects:ability;AbilityArr;;[&DoorID]
+    --!ability:[@AbilityArr(0)]|istokenaction:True
+	--!ability:[@AbilityArr(1)]|istokenaction:False
+	--!ability:[@AbilityArr(2)]|istokenaction:False
+	--!ability:[@AbilityArr(3)]|istokenaction:False
+   --<|
+}}

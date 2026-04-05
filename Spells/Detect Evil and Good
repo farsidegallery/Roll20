@@ -1,0 +1,59 @@
+!scriptcards {{
+  +++5Elib;snlib;Farsidelib+++	
+  
+  --/|Script Name : Detect Evil and Good
+  --/|Version     : 2.0
+  --/|Requires SC : SelectManager, Radar, ScriptCards Library 5Elib/snlib/Farsidelib
+  --/|Author      : 
+  --/|Modified By : Farsidegallery
+  --/|  
+  --/|  Script automatically creates radar wave to detect appropriate creatures and deducts spell slot from caster.
+  --/|
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+    
+   --/|Enter marker used for Concentration.
+   --&ConcentrationMarker|Concentrating::7409928
+   
+   --&SpellName|Detect Evil and Good
+   --=SpellLevel|1
+   --&MinimumSpellLevel|1
+   
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+  
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+  
+  --#title|Detect Evil and Good
+  --#sourceToken|@{selected|token_id}
+  --#leftsub|Spell Level [$SpellLevel]
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  
+  -->ChooseFunction|
+  --X|
+  
+  --:ChooseFunction|
+   --+Choose Function: |[rbutton]New Cast::NewCast[/rbutton][rbutton]Refresh::RadarWave[/rbutton]
+   --X|
+  
+  --:NewCast|
+  -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
+  --!a:[*S:character_id]|!ConcentrationSpell:[&TentacleName]
+  -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];10
+  --#emoteText|@{selected|character_name} casts Detect Evil and Good!
+  --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+  --+Duration: |[&duration]
+  --+Desc: |[*R:spelldescription]
+  -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+  
+  --:RadarWave| uses SelectManager to retain selected token
+  --@forselected|radar _range|30ft _pinglife|3000 _wavedelay|50 _wavespacing|35 _wavelife|200 _layers|gm,token,map _charfilter|npc_type: celestial#yellow, fiend#red, undead#blue, -nondetection _title|Detect Evil and Good _silent|no gm _units|ft _graphoptions|grid circle _output|graph table _LOS|false
+  --X|
+}}

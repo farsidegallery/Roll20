@@ -1,0 +1,32 @@
+!smartaoe {{
+  --title|Cone of Cold
+  --leftsub|Slot level ?{Cast at what level?|5,5|6,6|7,7|8,8|9,9}
+  --rightsub|DC @{selected|spell_save_dc} CON
+  --titlecardbackground|linear-gradient(blue, cyan)
+  --oddrowbackground|#00ccff
+  --evenrowbackground|#edfcfc
+  --oddrowfontcolor|#000000
+  --tablebgcolor|#edfcfc
+  --chatAvatarsEnabled|false
+  --resource|lvl?{Cast at what level?}_slots_expended,1,Level ?{Cast at what level?} Slots
+ 
+  --aoeColor|#00ccff50
+  --aoeOutlineColor|#0099ff
+  --gridColor|#99999900
+  --aoeType|5econe
+  --radius|60ft
+  --forceIntersection|1
+  --minGridArea|0.25
+  --minTokArea|0.25
+  --fx|burn-frost
+  --dc|@{selected|spell_save_dc}
+  --saveFormula|5eCON
+  --damageFormula1|[[(?{Cast at what level?}+3)d8]]
+  --damageType|Cold 
+  --instant|1
+
+  --autoApply|1
+  --bar|1
+  --zeroHPmarker|dead
+  --desc|A blast of cold air erupts from your hands. Each creature in a 60-foot cone must make a Constitution saving throw. A creature takes 8d8 cold damage on a failed save, or half as much damage on a successful one. A creature killed by this spell becomes a frozen statue until it thaws.%br%%br%When you cast this spell using a spell slot of 6th level or higher, the damage increases by 1d8 for each slot level above 5th.
+}}

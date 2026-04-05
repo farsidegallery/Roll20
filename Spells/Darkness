@@ -1,0 +1,139 @@
+!script {{
+  +++5Elib;snlib;Farsidelib+++
+  
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+  
+  --/|Script Name : Darkness
+  --/|Version     : 1.0
+  --/|Modified By : Farsidegallery
+  --/|  
+  --/|  Script prompts user for spell level used and makes sure the slot is available and spawn the designated token to the VTT.
+  --/|  It will deduct 1 spell slot from the appropriate level
+  --/|
+  
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+  
+  --&SpellName|Darkness
+  --&MinimumSpellLevel|2
+  --&damageType|poison
+  
+  --/|Enter marker used for Concentration.
+  --&ConcentrationMarker|Concentrating::7409928
+  
+  --/|Enter Character used for Darkness.
+  --&CharName|Darkness
+  --&Darklink|https://files.d20.io/images/473140603/g0Tb_GfpOUB3IARVXKm4lw/med.webm?1769364874
+  
+  --/|Use ScriptCards (1) or SpawnDefaultToken (2) to place the Charm Person Character on the VTT?
+  --&SpawnScript|1
+  
+  --/| Place the name and URL of your spell target token here.
+  --&SpellTargetToken|Spell Token
+  --&URLlink|https://files.d20.io/images/469753332/ew1SU1DcQK4eborJlOqNQw/original.png
+      
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+  
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+
+  --#title|[&SpellName]
+  --&TokenName|[*S:character_name] [&CharName]
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+  --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+  -->GetCharID|"[&SpellTargetToken]";AOETargetID
+  -->ChooseFunction|
+  --X|
+  
+  --:ChooseFunction|
+   --+Choose Function: |[rbutton]New Cast::New[/rbutton][rbutton]Dismiss::Remove[/rbutton]
+   --X|
+  
+  --:New| 
+   -->CAST_SPELL|
+   --#emoteText|[*S:character_name] Casts [&SpellName] at Spell Level [&MinimumSpellLevel]!
+   --#leftsub|Level: [&MinimumSpellLevel]
+   --#rightsub|[*R:spellrange]
+   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+   --&desc|[*R:spelldescription]
+   -->GetCharID|"[&CharName]";SummonID
+   --!a:[*S:character_id]|!ConcentrationSpell:[&TokenName]
+   -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];10   
+
+   --/|SPAWN Darkness Token
+   --:SpawnToken|
+	--?[&SpawnScript] -eq 2|[
+	 --@forselected+|Spawn _name|[&CharName] _qty|1 _targets|1,FX Spawn Selection _offset|0,0 _force|yes _size|10 _tokenProps|name:[&TokenName],showname:false,showplayers_name:false _order|toBack _bar1|KeepLink _fx|nova-magic _expand|15,30 {^&select [&TB]target|token_id[&cbrace]}
+	 --]|
+	 
+	--?[&SpawnScript] -eq 1|[
+	 --!ot:CloudTID|name:"[&TokenName]"|left:[*T:t-left]|top:[*T:t-top]|width:[=[*T:t-width]*7]|height:[=[*T:t-height]*7]|imgsrc:"[&Darklink]"|bar1_value:1|represents:[&SummonID]|showname:false
+	 --@token-mod| _ids [&CloudTID] _off fadeOnOverlap _set layer|foreground
+	 --]|
+    -->Output|
+    --X|
+   
+  --/| ____________________ Procedures_______________________________________________________________________________________
+  
+  --:GetCharID|CharacterName;StringVariableForCharID
+   --~|array;objects:character;SpiritCharArr;[%1%]
+   --?[@SpiritCharArr(length)] -ne 1|>far_LogFatalError;Could not find character named [%1%]
+   --&[%2%]|[@SpiritCharArr(0)]
+   --<|
+  
+  --:CAST_SPELL|
+   --+|Move Spell Token to desired location and then target it by casting the spell.
+   --/| (1) Spawn the effect template and find the ID for it
+   --!ot:NewTID|name:"[&SpellTargetToken]"|_pageid:[*S:t-_pageid]|left:[=[*S:t-left]+70]|top:[*S:t-top]|width:[*S:t-width]|height:[*S:t-height]|imgsrc:"[&URLlink]"|bar1_value:1|represents:"[&SpellTargetToken]"|showname:0|t-aura1_radius:15|t-aura1_color:#d0e0e3
+   --z:graphic:[&NewTID]|foreground
+   -->SetAbility|
+   --+Target: |[rbutton]Target the Spell Token.::SetTarget;[&TB]target|token_id}[/rbutton]
+   --X|
+  
+  --:SetTarget|
+   --#targettoken|[&reentryval]
+   --&SleepTarget|[*T:t-id]
+   --&TargetName|[*T:character_name]
+   --?"[&TargetName]" -eq "[&SpellTargetToken]"|New
+   --<|
+  
+  --:Output|
+   --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&SpellTargetToken]
+   --~|object;token;delete;[@tokens(0)]   
+   --#whisper|
+   --+|[*S:character_name] summons [&SpellName]!
+   --+|[br]
+   --+Duration: |[&duration]
+   --+Desc: |[&desc]
+   -->far_DeductSpellSlot|[*S:t-id];[&MinimumSpellLevel]
+   --X|
+  
+  --:Remove|
+   --&TokenName|[*S:character_name] [&CharName]
+   --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&TokenName]
+   --~|object;token;delete;[@tokens(0)]
+   --#whisper|
+   --#emotetext|[&CharName] vanishes!
+   --+|[*S:character_name] is no longer concentrating.
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker]
+   --!a:[*S:character_id]|!ConcentrationSpell:**
+   --X|
+  
+  --:SetAbility|
+   --~|array;objects:ability;AbilityArr;;[&AOETargetID]
+    --!ability:[@AbilityArr(0)]|istokenaction:False
+	--!ability:[@AbilityArr(1)]|istokenaction:False
+	--!ability:[@AbilityArr(2)]|istokenaction:False
+	--!ability:[@AbilityArr(3)]|istokenaction:False
+   --<|
+}}

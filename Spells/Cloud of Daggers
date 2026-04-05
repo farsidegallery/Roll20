@@ -1,0 +1,30 @@
+!smartaoe {{
+  --title|Cloud of Daggers
+  --leftsub|Slot level ?{Cast at what level?|2,2|3,3|4,4|5,5|6,6|7,7|8,8|9,9}
+  --rightsub|No Save
+  --titlecardbackground|linear-gradient(silver, grey)
+  --oddrowbackground|#c2bdbd
+  --evenrowbackground|#ffffff
+  --oddrowfontcolor|#856e6e
+  --tablebgcolor|#ffffff
+  --resource|lvl?{Cast at what level?}_slots_expended,1,Level ?{Cast at what level?} Slots
+  --casterCondition|Concentrating::7409928
+  --chatAvatarsEnabled|false
+
+  --aoeColor|#ffffoo
+  --aoeOutlineColor|#d9d9d9
+  --aoeType|square, float
+  --radius|5ft
+  --forceIntersection|0
+  --minGridArea|0.5
+  --minTokArea|0.25
+  --fx|burn-blood
+  --noSave|1
+  --damageFormula1|[[([[2*?{Cast at what level?}]])d4]]
+  --damageType|Blood
+
+  --autoApply|1
+  --bar|1
+  --zeroHPmarker|dead
+  --desc|You fill the air with spinning daggers in a cube 5 feet on each side, centered on a point you choose within range. A creature takes 4d4 slashing damage when it enters the spell’s area for the first time on a turn or starts its turn there. %br%%br%At Higher Levels: When you cast this spell using a spell slot of 3rd level or higher, the damage increases by 2d4 for each slot level above 2nd.
+}}

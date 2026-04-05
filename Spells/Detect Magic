@@ -1,0 +1,77 @@
+!scriptcards {{
+  +++5Elib;snlib;Farsidelib+++	
+  
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  
+  --/|Script Name : Detect Magic
+  --/|Version     : 2.0
+  --/|Requires SC : SelectManager, Radar, ScriptCards Library 5Elib/snlib/Farsidelib
+  --/|Author      : Farsidegallery
+  --/|  
+  --/|  Script automatically creates radar wave to detect appropriate creatures and deducts spell slot from caster.
+  --/|
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+    
+   --/|Enter marker used for Concentration.
+   --&ConcentrationMarker|Concentrating::7409928
+   
+   --&SpellName|Detect Magic
+   --&MinimumSpellLevel|1
+  
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  
+  --#title|Detect Magic
+  --#leftsub|Spell Level [&MinimumSpellLevel]
+  --#rightsub| 30 ft
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  
+  -->ChooseFunction|
+  --X|
+  
+  --:ChooseFunction|
+   --?"[*S:class]" -inc "Wizard" -or "[*S:class]" -inc "Cleric" -or "[*S:class]" -inc "Druid" -or "[*S:class]" -inc "Bard" -or "[*S:class]" -inc "Artificer"|&ButtonCoice;[rbutton]New Cast::NewCast[/rbutton][rbutton]Ritual Cast::Ritual[/rbutton][rbutton]Refresh::RadarWave[/rbutton]|&ButtonCoice;[rbutton]New Cast::NewCast[/rbutton][rbutton]Refresh::RadarWave[/rbutton] 
+   -->far_FindFeat|[*S:t-id];Eldritch Invocation: Eldritch Sight;SightFlag
+   --?"[*S:class]" -inc "Warlock" -and [$SightFlag] -eq 1|&ButtonCoice;[rbutton]New Cast::NewCast[/rbutton][rbutton]Eldritch Sight::Ritual[/rbutton][rbutton]Refresh::RadarWave[/rbutton]
+   --+Choose Function: |[&ButtonCoice]
+   --X|
+  
+  --:NewCast|
+   -->far_GetAndCheckSlotInformation|[*S:t-id];[&MinimumSpellLevel];SpellLevelString
+   --=SpellLevel|[&MinimumSpellLevel]
+   --#emoteText|[*S:character_name] casts Detect Magic!
+   --=CastFlag|1
+   -->Output|
+   
+  --:Ritual|
+   --#emoteText|[*S:character_name] casts Detect Magic as a Ritual!
+   --=CastFlag|0
+   -->Output|
+  
+  --:Output|
+   --!a:[*S:character_id]|!ConcentrationSpell:[&TentacleName]
+   -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];10
+   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+   --+Duration: |[&duration]
+   --+|[br]
+   --+Desc: |[*R:spelldescription]
+   --?[$CastFlag] -eq 1|[
+    -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+	--]|
+   -->RadarWave|
+   --x|
+  
+  --/|uses SelectManager to retain selected token
+  --:RadarWave|
+  --@forselected|radar _range|30 ft _pinglife|4000 _wavedelay|50 _wavespacing|35 _wavelife|200 _layers|gm,token,map _tokfilter|    gmnotes: abjuration#800080, conjuration#ffa500, divination#green, enchantment#yellow, evocation#ff0000, illusion#00ffff, necromancy#000000, transmutation#blue, wild#ffffff, dead#808080 _title|Detect Magic _silent|no gm _units|u, 5e _graphoptions|grid circle _output|graph table _LOS|yes
+  --X|
+}}

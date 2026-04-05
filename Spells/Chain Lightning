@@ -1,0 +1,166 @@
+!script{{
+ +++5Elib;snlib;Farsidelib+++	
+ 
+ --/|Script Name : Chain Lightning
+ --/|Version     : 2.0
+ --/|Requires SC : TokenMod, SuperNotes (for template override only), ScriptCards Library 5Elib/snlib/Farsidelib
+ --/|Author      : Farsidegallery
+ --/|  
+ --/|  Script prompts user for spell level used and then calculates the number of targets and prompts user to select the targets. Spell desciption specifies that a target can only be hit one time. Script verifies
+ --/|  target is not already selected before adding to the target list. Duplicate target entries will be ignored (to allow for target availability being less that number of targets allowed). Script calculates damage, 
+ --/|  checks for and applies DEX saving throw and finally checks for modifiers (resistance, immunity, and vulnerability) and applies all modifications to the damage per target. Script then applies damage to targets,
+ --/|  ouput results in a table, and creates visual effects on the VTT. First visual effec is from caster to the target. Secondary visual effects are from the first target to the "chained" targets.
+ --/|
+ --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+      
+  --&SpellName|Chain Lightning
+  --&MinimumSpellLevel|6
+  --&damageType|lightning
+  
+  --&hpBar|1
+  --&tempHPbar|4
+  
+  --&attrib|dexterity
+  
+  --/|Enter the Token Markers you use for each condition
+  --&BardicMarker|BardicInspiration::7409920
+  --&BlessedMarker|angel-outfit
+  --&InspirationMarker|Inspiration::7409921
+  --&DeathMarker|dead
+  --&BaneMarker|Hexed3::7409911
+  --&ConcentrationMarker|Concentrating::7409928
+  
+ --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+ 
+ --#sourceToken|@{selected|token_id}
+ --#whisper|self,gm
+ 
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+
+  --~shortattrib|string;left;3;[&attrib]
+  --~Displayattrib|string;touppercase;[&shortattrib]
+  
+  --#title|[&SpellName]
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+  --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+ 
+  --+|[c][b]Cast At What Level?[/b][/c]
+    --&splvlMsg|
+    --%splvl|foreach;SpellCastLevel
+     --&splvlMsg|+ [rbutton][&splvl]::ChooseType;[&splvl][/rbutton]
+    --%|
+  --+|[c][&splvlMsg][/c]
+  --X|
+  
+  --:ChooseType|
+   --=SpellLevel|[&reentryval]
+   --#emoteText|[*S:character_name] Casts [&SpellName] at Spell Level [$SpellLevel]!
+   --#leftsub|[*R:spellcastingtime]
+   --#rightsub|[*R:spellrange]
+   --&desc|[*R:spelldescription]
+   --&higherdesc|[*R:spellathigherlevels]
+
+  --=ElectricCount|[$SpellLevel]-3
+  --=SpellDamage|10d8
+  -->FirstTarget|
+  -->far_BuildTargetList|[$ElectricCount.Raw]
+  -->BuildTargetArray|
+  -->DetermineOutcome|
+  --X|
+ 
+  --:FirstTarget|
+   --?[$DisplayCount] -gt 1|NextTarget
+   --+Target|[rbutton]Click here to select your target.::StartTargetList;[&TB]target|token_id}[/rbutton]
+   --X|
+ 
+  --:StartTargetList|
+   --&ThisTarget|[&reentryval]
+   --#targettoken|[&reentryval]
+   --~|array;define;Targets;[*[&ThisTarget]:t-id]
+   --<|
+  
+  --:DetermineOutcome|
+   --#whisper|
+   -->far_PlayEffects|[*S:t-id];[@Targets(0)];burn-magic;burst-frost;beam-frost
+   --+|[t border=3 width=100%][tr][td][c]Damage rolled from 10d8 is [$SpellDamage][/c][/td][/tr]
+   --+|[t border=3 width=100%][tr][td style="width:100px"][c]Target[/c][/td][td style="width:50px"][c]Save[/c][/td][td style="width:50px"][c]P/F?[/c][/td][td style="width:50px"][c]DAM[/c][/td][/tr]
+   --%loop|foreach;Targets
+	--&DamageMod|
+	--?[*[&loop]:npc] -eq 1 -and [*[&loop]:npc_dex_save_flag] -gt 0|&Save;npc_dex_save|&Save;dexterity_save_bonus
+    
+	--&BlessFlag|
+    --&BaneMarkerFlag|
+    --&GlobalSave|
+    --&GlobalSkill|
+   
+    --&saveDice|1d20
+   
+    --?"X[*T:race]" -ne "X"|[
+     -->far_Check_GLOBAL_MOD_EXISTS|[*[&loop]:character_id]; save; [&damageType]; damageSave
+     -->far_Check_GLOBAL_MOD_EXISTS|[*[&loop]:character_id]; save; [&Displayattrib]; attribSaveRoll
+     --?[&damageSave] -eq 1 -or [&attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "1d20"|&saveDice;2d20kh1
+     --?[&damageSave] -eq 1 -or [&attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "2d20kl1"|&saveDice;1d20
+     
+     -->far_FIND_ACTIVE_GLOBAL_SAVE_MODS|[*[&loop]:character_id];GlobalSave
+     -->far_FIND_ACTIVE_GLOBAL_SKILL_MODS|[*[&loop]:character_id];GlobalSkill
+	 --]|
+   
+    -->LibSN_CHECK_STATUS_MARKER|[*[&loop]:t-id];[&BlessedMarker];BlessFlag;BlessCount
+    -->LibSN_CHECK_STATUS_MARKER|[*[&loop]:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
+
+    --?[&BaneMarkerFlag] -eq 1|&Baneroll;+ - 1d4 [Bane] |&Baneroll;
+   
+    --=TargetSave|[&saveDice] + [*[&loop]:[&attrib]_save_bonus] [&obrac][&Displayattrib][&cbrac] [&GlobalSave] [&GlobalSkill] [&Baneroll]
+	
+    --?[$TargetSave] -ge [*S:spell_save_dc] | [
+     --&DexSave|P
+	 --&FontColor|009900
+	 --&MidDamage|[$SpellDamage] \ 2
+	 --]|[
+	  --&DexSave|F
+	  --&FontColor|990000
+	  --&MidDamage|[$SpellDamage]
+	 --]|  
+	-->far_CheckDamageModifiers|[&loop];[&damageType];DamageMod;1;0;0
+	-->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0   
+    --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*[&loop]:t-id]"|&Hex;+ + 1d6 [Hex] |&Hex;
+    --?"X[&HexBladeMarkerFlag]" -eq 1 -and "X[*S:CurseTarget]" -eq "X[*[&loop]:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade;
+    
+	--=FinalDamage|[&MidDamage] [&HexBlade] [&GlobalDamage] [&Hex] [&DamageMod]
+    
+	--+|[t border=3 width=100%][tr][td style="width:100px"][c][*[&loop]:t-name][/c][/td][td style="width:50px"][c][$TargetSave][/c][/td][td style="width:50px"][#[&FontColor]][b][c][&DexSave][/c][/b][/#][/td][td style="width:50px"][c][$FinalDamage][/c][/td][/tr]
+    --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[&loop];1;-[$FinalDamage];0;0;1
+    -->far_DamageTokenmod|[&loop];1;4;-[$FinalDamage];0;0;1
+    --=FinalHP|[*[&loop]:t-bar1_value]-[$Finalamage]
+    --?[$FinalHP] -le 0|[
+	 -->LibSN_ADD_STATUS_MARKER|[*[&loop]:t-id];dead
+	 --]|
+    --? [*[&loop]:t-id] -nei [@Targets(0)]| >far_PlayEffects;[@Targets(0)];[*[&loop]:t-id];burn-frost;burst-frost;beam-frost
+    --%|
+  --+|[/t]
+  --+|[br]
+  --+Desc: |[&desc]
+  --+At Higher Levels: |[&higherdesc]
+  -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+ --X|
+ 
+ --:BuildTargetArray|NumTargets
+  --%LoopCounter|1;[$ElectricCount];1
+    --&ThisTarget|[&target[&LoopCounter]]
+    --~testvar|array;indexof;Targets;[&ThisTarget]
+    --?[&testvar] -eq ArrayError | [
+     --~|array;add;Targets;[&ThisTarget]
+	 --]|
+	--%|
+  --<|
+}}
