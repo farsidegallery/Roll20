@@ -1,0 +1,144 @@
+!scriptcards {{
+  +++5Elib;snlib;Farsidelib+++
+  
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+
+  --/|Script Name : Banishment
+  --/|Version     : 2.0
+  --/|Requires SC : ScriptCards Library snlib/Farsidelib
+  --/|Author      : 
+  --/|Modified By : Farsidegallery
+  --/|  
+  --/|  Script prompts user for spell level used and then calculates the number of targets and prompts user to select the targets. Spell desciption specifies that a target can only be selected one time. Script verifies
+  --/|  target is not already selected before adding to the target list. Duplicate target entries will be ignored (to allow for target availability being less that number of targets allowed). Script then rolls 
+  --/|  saving throw for each target, moves those that fail to the gm layer, marks affected tokens with token marker, and creates visual effects on the VTT.
+  --/|
+  
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+      
+  --&SpellName|Banishment
+  --&MinimumSpellLevel|4
+  
+  --&attrib|charisma
+  
+  --/|What token marker is used for Banish?
+  --&BanishMarker|Marked4::7409915
+  
+  --/|Enter the Token Markers you use for each condition
+  --&BaneMarker|Hexed3::7409911
+  --&BlessedMarker|angel-outfit
+  --&DeathMarker|dead
+  --&ConcentrationMarker|Concentrating::7409928
+  
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+	
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+  
+  --~shortattrib|string;left;3;[&attrib]
+  --~Displayattrib|string;touppercase;[&shortattrib]
+  
+  --#title|[&SpellName]
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+  --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+  
+  --+|[c][b]Cast At What Level?[/b][/c]
+    --&splvlMsg|
+    --%splvl|foreach;SpellCastLevel
+     --&splvlMsg|+ [rbutton][&splvl]::ChooseType;[&splvl][/rbutton]
+    --%|
+  --+|[c][&splvlMsg][/c]
+  --X|
+  
+  --:ChooseType|
+   --=SpellLevel|[&reentryval]
+   --&SpellLevel|[&reentryval]
+   -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
+   --#leftsub|[*R:spellcastingtime]
+   --#rightsub|[*R:spellrange]
+   --&desc|[*R:spelldescription]
+   --&higherdesc|[*R:spellathigherlevels]
+   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+   --#emoteState|hide
+   --=DisplayCount|1
+   
+   --!a:[*S:character_id]|!ConcentrationSpell:[&SpellName]
+   -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];10
+	
+   --/|Number of Targets
+   --C[$SpellLevel.Raw]|4:=Targets;1|5:=Targets;2|6:=Targets;3|7:=Targets;4|8:=Targets;5|9:=Targets;6
+   -->far_BuildTargetList|[$Targets.Total]
+   -->far_BuildTargetArray|Banished;[$Targets];TargetString
+   -->OutputResults|
+   --+|[br]
+   
+   --+Duration: |[&duration]
+   --+Desc: |[&desc]
+   --+At Higher Levels: |[&higherdesc]
+   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+	--X|
+
+--/| ____________________ Procedures_______________________________________________________________________________________
+
+  --:OutputResults|
+   --#whisper|
+   --+|[j]You targeted [$Targets] creature(s).[/j]
+   --+|[t border=3 width=100%][tr][td style="width:100px"][c]Target[/c][/td][td style="width:40px"][c]Save[/c][/td][td style="width:40px"][c]P/F?[/c][/td][td style="width:70px"][c]Banished?[/c][/td][/tr]
+   --%loop|foreach;Banished
+	-->Banish|[*[&loop]:t-id]
+	--+|[t border=3 width=100%][tr][td style="width:100px"][c][*[&loop]:character_name][/c][/td][td style="width:40px"][c][$TargetSave][/c][/td][td style="width:40px"][c][&CHASave][/c][/td][td style="width:70px"][c][&Banished][/c][/td][/tr]
+	--%|
+   --+|[/t]
+   --<|	 
+   
+  --:Banish|Tid
+   --#targettoken|[%1%]
+   
+   --&BlessFlag|
+   --&BaneMarkerFlag|
+   --&GlobalSave|
+   --&GlobalSkill|
+   
+   --&saveDice|1d20
+   
+   --?"X[*T:race]" -ne "X"|[
+    -->far_Check_GLOBAL_MOD_EXISTS|[*T:character_id]; save; [&damageType]; damageSave
+    -->far_Check_GLOBAL_MOD_EXISTS|[*T:character_id]; save; [&Displayattrib]; attribSaveRoll
+    --?[&damageSave] -eq 1 -or [&attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "1d20"|&saveDice;2d20kh1
+    --?[&damageSave] -eq 1 -or [&attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "2d20kl1"|&saveDice;1d20
+    
+    -->far_FIND_ACTIVE_GLOBAL_SAVE_MODS|[*T:character_id];GlobalSave
+    -->far_FIND_ACTIVE_GLOBAL_SKILL_MODS|[*T:character_id];GlobalSkill
+	--]|
+   
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BlessedMarker];BlessFlag;BlessCount
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
+
+   --?[&BaneMarkerFlag] -eq 1|&Baneroll;+ - 1d4 [Bane] |&Baneroll;
+   
+   --=TargetSave|[&saveDice] + [*T:[&attrib]_save_bonus] [&obrac][&Displayattrib][&cbrac] [&GlobalSave] [&GlobalSkill] [&Baneroll]
+   
+   --?[$TargetSave] -ge [*S:spell_save_dc] |[
+    --&Banished|No
+	--&CHASave|P
+	--]|[
+	--&Banished|Yes 
+	--&CHASave|F
+	-->far_PlayEffects|[*S:t-id];[*T:t-id];burst-magic;burn-holy
+	-->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&BanishMarker];
+	--/|@token-mod|_ignore-selected _ids [*T:t-id] _set layer|gmlayer
+	--!t:[*T:t-id]|layer:gmlayer
+	--]| 
+   --<|
+}}
