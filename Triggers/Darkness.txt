@@ -1,0 +1,29 @@
+!script {{
+  --/|This watches for graphics objects (in this case tokens) to change. If a Darkness token is placed it will 
+  --/|change the has_bright_light_vision off or on in support of the spell Darkness.
+  
+  --#hidecard|1
+  
+  --/|TRIGGER_REPLACEMENTS
+  +++snlib+++
+  
+  --~count|array;pagetokens;tokens;[&GraphicOld_id];tprop:name~=Darkness
+  --?[@tokens(0)] -eq ArrayError|Skip
+  
+  -->LibSN_CHECK_TOKEN_OVERLAP|[@tokens(0)];[&GraphicOld_id];OLap
+  --?[&OLap] -eq 0 -and [*[&GraphicOld_id]:darkness] -ne 1|Skip
+  --?[&OLap] -eq 0 -and [*[&GraphicOld_id]:darkness] -eq 1|TurnOn
+  
+  --?[*[&GraphicOld_id]:t-has_bright_light_vision] -eq false|Skip
+  
+  --!a:[*[&GraphicOld_id]:character_id]|!darkness:1
+  --!t:[*[&GraphicOld_id]:t-id]|t-has_bright_light_vision:false
+  
+  --:Skip|
+   --X|
+   
+  --:TurnOn|
+   --!t:[*[&GraphicOld_id]:t-id]|t-has_bright_light_vision:true
+   --!a:[*[&GraphicOld_id]:character_id]|darkness:0
+   --X|
+}}
