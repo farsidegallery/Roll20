@@ -1,0 +1,133 @@
+!script {{
+  +++5Elib;Farsidelib+++
+  
+  --/|Script Name : Shield
+  --/|Version     : 2.0
+  --/|Modified By : Farsidegallery
+  --/|  
+  --/|  Script checks for spell level used and makes sure the slot is available. Script will check for existence of global mod and create if necessary.
+  --/|  Script turns on Global Mod specified and plays visual effect. It will deduct 1 spell slot from the appropriate level.
+  --/|
+  
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+  
+  --/|What is the name of the Global AC Mod used for Shield.
+  --&ModName|Shield Spell
+  
+  --&SpellName|Shield
+  --&MinimumSpellLevel|1
+   
+  --/|Enter name for Shield Character.
+  --&CharName|Shield Spell
+  
+  --/|Enter name for Reaction Used Character.
+  --&ReactName|Reaction Used
+    
+  --/|Use ScriptCards (1) or SpawnDefaultToken (2) to place the Charm Person Character on the VTT?
+  --&SpawnScript|1
+  
+  --&URLlink|https://files.d20.io/images/466430946/7DPjXj0n0IMCLlbLg50mPg/med.webm?1764787074
+  
+  --&link1|https://files.d20.io/images/476457994/FdbUAgAk_G-
+  --&link2|-2d1MaQ9g4w/med.webm?1771472165
+  --&Reactlink|[&link1][&link2]
+    
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+
+  --#title|Shield
+  --#sourceToken|@{selected|token_id}
+  --#whisper|self,gm
+
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  --=SpellLevel|[&MinimumSpellLevel]
+  -->ChooseFunction|
+  --X|
+  
+  --:ChooseFunction|
+   --+Choose Function: |[rbutton]New Cast::CheckForMod[/rbutton][rbutton]Dismiss::Remove[/rbutton]
+   --X|
+  
+  --:CheckForMod|
+   --#leftsub|[*R:spellcastingtime]
+   --#rightsub|[*R:spellrange]
+   --&spelldesc|[*R:spelldescription]
+   --&TokenName|[*S:character_name] [&SpellName]
+   --&ReactName|[*S:character_name] [&ReactName]
+   -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
+   -->far_Check_GLOBAL_MOD_EXISTS|[*S:t-id]; ac; [&ModName]; Exists
+   --?[&Exists] -eq 1|>SetMod |>CreateMod
+   --<|
+  
+  --:CreateMod| 
+    --!a:[*S:character_id]|global_ac_mod_flag:1
+	--!or:[*S:character_id]:acmod|
+	  global_ac_name:[&ModName]|
+	  global_ac_val:5|
+	  global_ac_active_flag:1|
+	  options-flag:0
+	-->far_PlayEffects|[*S:t-id];;;burn-holy
+   -->Finish|
+  
+  --:SetMod|  
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*S:character_id];ac;[&ModName];1
+   -->far_PlayEffects|[*S:t-id];;;burn-holy
+   -->Finish|
+   
+  --:Remove|
+   --#targetToken|[&reentryval]
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*S:character_id];ac;[&ModName];0
+   --&TokenName|[*S:character_name] [&SpellName]
+   --&ReactName|[*S:character_name] [&ReactName]
+   --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&TokenName]
+   --~|object;token;delete;[@tokens(0)]
+   --~count|array;pagetokens;react;[*S:t-id];tprop:name=[&ReactName]
+   --~|object;token;delete;[@react(0)]
+   --#whisper|
+   --#emotetext|[*S:character_name] no longer has Shield!
+   --+|The inivisible barrier vanishes! Your AC returns to normal.
+   --X|
+  
+  --:Finish|
+   -->GetCharID|[&CharName];ShieldID
+   
+   --:SpawnToken|
+	--?[&SpawnScript] -eq 2|[
+	 --@forselected+|Spawn _name|[&CharName] _qty|1 _offset|0,0 _force|yes _size|3 _tokenProps|name:[&TokenName],showname:true,showplayers_name:true _order|toBack _bar1|KeepLink _fx|nova-magic _expand|15,30 {^&select @{selected|token_id}}
+	 --]|
+	 
+	--?[&SpawnScript] -eq 1|[
+	 --!ot:ReactTID|name:"[&ReactName]"|left:[*S:t-left]|top:[*S:t-top]|width:[=[*S:t-width]*3]|height:[=[*S:t-height]*3]|imgsrc:"[&Reactlink]"|bar1_value:1|represents:[&ReactID]|showname:0
+	 --z:graphic:[&ReactTID]|toback
+	 --@CARRY_TOKENS_CARRY_BELOW|[*S:t-id] [&ReactTID]
+	 
+	 --!ot:ShieldTID|name:"[&TokenName]"|left:[*S:t-left]|top:[*S:t-top]|width:[=[*S:t-width]*3]|height:[=[*S:t-height]*3]|imgsrc:"[&URLlink]"|bar1_value:1|represents:[&ShieldID]|showname:0
+	 --z:graphic:[&ShieldTID]|toback
+	 --@CARRY_TOKENS_CARRY_BELOW|[*S:t-id] [&ShieldTID]
+	 --]|
+   
+   --#whisper|
+   --#emotetext|[*S:character_name] casts Shield!
+   --+|[%1%]
+   --+|[br]
+   --+Desc: |[&spelldesc]
+   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+   --*Reaction Used: |Put out the reaction used token and carry underneath.
+   --X|
+
+ --/| ____________________ Procedures_______________________________________________________________________________________
+  
+  --:GetCharID|CharacterName;StringVariableForCharID
+   --~|array;objects:character;SpiritCharArr;[%1%]
+   --?[@SpiritCharArr(length)] -ne 1|>far_LogFatalError;Could not find character named [%1%]
+   --&[%2%]|[@SpiritCharArr(0)]
+   --<|
+}}

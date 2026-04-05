@@ -1,0 +1,25 @@
+!smartaoe {{
+  --title|Sunbeam
+  --leftsub|Slot level 6
+  --rightsub|DC @{selected|spell_save_dc} CON
+  --titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/253615223/QhQiZxJ2ufS_ry8uXVYPLQ/max.png?1635890238');background-size: 100% 100%; background-repeat: no-repeat
+  --aoeColor|#0044ff50
+  --resource|lvl6_slots_expended
+  --chatAvatarsEnabled|false
+
+  --aoeType|line
+  --radius|60ft
+  --fx|burn-Holy
+  --dc|@{selected|spell_save_dc}
+  --saveFormula|5eCON
+  --damageFormula1|[[6d8]]
+  --damageType|Radiant
+  --conditionfail|Blinded::7409948
+  --vulnerableAttr|npc_vulnerabilities
+  --casterCondition|Concentrating::7409928
+  --zeroHpMarker|dead
+  --instant|False
+  --autoApply|1
+  --bar|1
+  --desc|A beam of brilliant light flashes out from your hand in a 5-foot-wide, 60-foot-long line. Each creature in the line must make a Constitution saving throw. On a failed save, a creature takes 6d8 radiant damage and is blinded until your next turn. On a successful save, it takes half as much damage and isn’t blinded by this spell. Undead and oozes have disadvantage on this saving throw. You can create a new line of radiance as your action on any turn until the spell ends. For the duration, a mote of brilliant radiance shines in your hand. It sheds bright light in a 30-foot radius and dim light for an additional 30 feet. This light is sunlight.
+}}

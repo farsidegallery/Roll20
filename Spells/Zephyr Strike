@@ -1,0 +1,105 @@
+!scriptcards{{
+  +++5Elib;snlib;Farsidelib+++
+
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+  
+  --/|Script Name : Zephyr Strike
+  --/|Version     : 1.0
+  --/|Requires SC : Chatsetattr, ScriptCards Library 5Elib & snlib
+  --/|Author      : Farsidegallery
+  --/|
+  --/|
+  --/|
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+      
+   --&SpellName|Zephyr Strike
+   --&MinimumSpellLevel|1
+   
+   --/|Enter marker used for Concentration.
+   --&ConcentrationMarker|Concentrating::7409928
+   
+   --/|Zephyr Strike
+   --&zephyr|108-Range-Long::5818054
+   
+   --/|Zephyr's Strike
+   --&zephyrstrike|Zephyr-Strike
+  
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+
+  --#title|[&SpellName]
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  
+  --?[*S:Zephyr] -ne 0|>TurnOff
+  --?[*S:HunterMark] -ne 0|>TurnOffHunt
+  
+  -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+  --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+  
+  --+|[c][b]Cast At What Level?[/b][/c]
+    --&splvlMsg|
+    --%splvl|foreach;SpellCastLevel
+     --&splvlMsg|+ [rbutton][&splvl]::ChooseType;[&splvl][/rbutton]
+    --%|
+  --+|[c][&splvlMsg][/c]
+  --X|
+  
+  --:ChooseType|
+   --=SpellLevel|[&reentryval]
+   --&SpellLevel|[&reentryval]
+   -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
+   --#leftsub|[*R:spellcastingtime]
+   --#rightsub|[*R:spellrange]
+   --#emotetext|[*S:character_name] casts [&SpellName] at level [&SpellLevel]!
+   --&spelldesc|[*R:spelldescription]
+   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+  
+   --=ForceDamage| 1d8 [Force Damage]
+   --!a:[*S:character_id]|!Zephyr:1
+  
+   -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&zephyr];9
+   --!a:[*S:character_id]|!ConcentrationSpell:[&SpellName]
+   -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];10
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*S:t-id]; damage; [&zephyrstrike]; 1
+   -->Results|
+   
+  --:Results|
+   --#whisper|
+   --+Advantage: |Once before the spell ends, you can give yourself advantage on one weapon attack roll on your turn. 
+   --+Damage: |That attack deals [$ForceDamage] force damage extra.
+   --+Speed: |Your speed is increased by 30 ft until the end of this turn. When moving, you do not provoke opportunity attacks.
+   --+|[br]
+   --+Duration: |[&duration]
+   --+Desc: |[&spelldesc]
+   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+   --X| End Script
+  
+  --:TurnOffHunt|
+   --+Concentration: |You are no longer concentrating on Hunter's Mark.
+   --!a:[*S:character_id]| HunterMark:0
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];Concentrating::7409928;0
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*S:t-id]; damage; Hunter Mark; 0
+   --<|
+  
+  --:TurnOff|
+   --+Speed: |Your speed returns to normal.
+   --+Concentration: |You are no longer concentrating.
+   --!a:[*S:character_id]| Zephyr:0
+   --!a:[*S:character_id]|!ConcentrationSpell:**
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&zephyr]
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker]
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*S:t-id]; damage; [&zephyrstrike]; 0
+   --X|
+}}

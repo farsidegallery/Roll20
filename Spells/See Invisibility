@@ -1,0 +1,111 @@
+!script{{
+  +++snlib;Farsidelib+++	
+ 
+  --#title|See Invisibility
+  --#leftsub|Duration: 1 Minute
+  --#sourceToken|@{selected|token_id}
+  --#emotetext|[*S:character_name] casts See Invisibility!
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+
+  --/|Script Name : See Invisibility
+  --/|Version     : 1.0
+  --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
+  --/|Author      : Farsidegallery
+  --/|  
+  --/|  Script checks spell level, checks availability, and deducts a spell slot. Script will find Player Controlling source token.
+  --/|  Scripts applies token markers to caster and/or target, and uses bump for Invisibility affect. Recommend the
+  --/|  "No Bars on Slave" setting for bump be turned on if using Aura/Tint Healh API.
+  --/|
+
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+      
+  --/|Invisibility Marker
+  --&Invisibility|Invisible::7409942
+  
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  
+  --&Player|[*O:[*S:t-represents]:character:controlledby]
+  -->GetAllTokens|
+  -->ChooseFunction|
+  --X|
+  
+  --:ChooseFunction|
+   --+Choose Function: |[rbutton]New Cast::NewCast[/rbutton][rbutton]Refresh::Refresh[/rbutton][rbutton]Dismiss::Remove[/rbutton]
+   --X|
+  
+  --:NewCast|
+   --#whisper|
+   --=SpellLevel|2
+   -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
+   -->SetVision|
+   --+|[*S:character_name] can now see invisible creatures.
+   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+   --X|
+  
+  --:Refresh|
+   -->SetVision|
+   --X|
+  
+  --:GetAllTokens|
+   --~|array;pagetokens;alltokens;@{selected|token_id}
+   --~|array;define;Invis;
+   --~tokenid|array;getfirst;alltokens
+   --?[&tokenid] -eq ArrayError|>ErrorOut;Alltokens
+   
+  --:GetInvisTokens|
+   --?[*[&tokenid]:t-layer] -ne gmlayer|continue
+   -->LibSN_CHECK_STATUS_MARKER|[&tokenid];[&Invisibility];InvisibilityStatus;Counter
+   --?[&InvisibilityStatus] -eq 1|[
+    --~|array;add;Invis;[&tokenid]
+	--]|
+   
+  --:continue|
+   --~tokenid|array;getnext;alltokens
+   --?[&tokenid] -ne ArrayError|GetInvisTokens
+   --~|array;removeat;Invis;0
+   --~tokenid|array;getfirst;Invis
+   --?[&tokenid] -eq ArrayError|>ErrorOut;Invis
+   --<|
+  
+  --:SetVision|
+   --~InvisLength|array;getlength;Invis
+   --~TargetArrayString|array;stringify;Invis;,
+   --!a:[*S:character_id]|!SleepString:[&TargetArrayString]|!SleepString^:[&InvisLength]
+   --%loop|foreach;Invis
+    --?[*[&loop]ControlledBy] -eq **|[
+	 --&controllers|[*O:[*[&loop]:t-represents]:character:controlledby]
+	 --?"[&controllers]" -ninc "-"|&controllers;None
+	 --!a:[*[&loop]:character_id]|!ControlledBy:[&controllers]
+	 --]|
+	--?[&controllers] -eq None|&newcontrollers;[&Player] |&newcontrollers;[&controllers],[&Player]
+	--!c:[*[&loop]:character_id]|controlledby:[&newcontrollers]
+	--%|
+   --<|
+  
+  --:ErrorOut|
+   --+|There was an error in the [%1%] array processing.
+   --X|
+  
+  --:Remove|
+   --&TargetString|[*S:SleepString]
+   --=Number|[*S:SleepString^]
+   --~|array;fromstring;UndoInvis;,;[*S:SleepString]
+   --%loop|foreach;UndoInvis
+	--?[*[&loop]:ControlledBy] -eq None|&controllers; |&controllers;[*[&loop]:ControlledBy]
+	--!c:[*[&loop]:character_id]|controlledby:[&controllers]
+	--!a:[*[&loop]:character_id]|!ControlledBy:**
+	--%|
+   --!a:[*S:character_id]|!SleepString:**|!SleepString^:**
+   --#whisper|
+   --+|[*S:character_name] can no longer see invisible creatures.
+   --X|
+}}

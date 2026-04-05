@@ -1,0 +1,109 @@
+!script{{
+  +++5Elib;snlib;Farsidelib+++	
+ 
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+
+  --/|Script Name : Spirit Guardians
+  --/|Version     : 2.0
+  --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
+  --/|Author      : Farsidegallery
+  --/|  
+  --/|  Script checks spell slot availability, summons spirit guardian token, and deducts a spell slot. 
+  --/|
+  --/|
+  --/|
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+      
+   --&SpellName|Spirit Guardians
+   --&MinimumSpellLevel|3
+   
+   --/|Name of Spirit Guardians Character
+   --&SpiritName|[*S:character_name] Spirit Guardians
+   
+  --/|Enter marker used for Concentration.
+  --&ConcentrationMarker|Concentrating::7409928
+  
+  --/|Use ScriptCards (1) or SpawnDefaultToken (2) to place the Charm Person Character on the VTT?
+  --&SpawnScript|1
+  
+  --&URLlink|https://files.d20.io/images/466433185/WueYHkXXjmRE7CH4n6PM3w/med.webm?1764788481
+   
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --#title|[&SpellName]
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  
+  -->GetSpiritID|"[&SpiritName]";SpiritID
+  
+  --+Choose Function: |[rbutton]New Cast::New[/rbutton][rbutton]Dismiss::Remove[/rbutton]
+  --X|
+  
+  --:New|
+   -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+   --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+  
+   --+|[c][b]Cast At What Level?[/b][/c]
+    --&splvlMsg|
+    --%splvl|foreach;SpellCastLevel
+     --&splvlMsg|+ [rbutton][&splvl]::ChooseType;[&splvl][/rbutton]
+    --%|
+   --+|[c][&splvlMsg][/c]
+  --X|
+  
+  --:ChooseType|
+   --=SpellLevel|[&reentryval]
+   --&SpellLevel|[&reentryval]
+  
+   --#leftsub|[*R:spellcastingtime]
+   --#rightsub|[*R:spellrange]
+   --#emoteText|[*S:character_name] Casts Spirit Guardians.
+   
+   --!a:[*[&SpiritID]:character_id]|!CastInfo:[*S:t-id].[$SpellLevel]
+   --!a:[*S:character_id]|!ConcentrationSpell:[&SpellName]
+   --!a:[*S:character_id]|!ConcentrationSpellTargetToken:[&SpiritName]
+   -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];10
+   
+   --/|SPAWN Spirit Guardians Token
+   --:SpawnToken|
+	--?[&SpawnScript] -eq 1|[
+	 --!ot:SpiritTID|name:"[&SpiritName]"|left:[*S:t-left]|top:[*S:t-top]|width:[=[*S:t-width]*9]|height:[=[*S:t-height]*9]|imgsrc:"[&URLlink]"|bar1_value:1|represents:[&SpiritID]|showname:false
+	 --z:graphic:[&SpiritTID]|toback
+	 --@CARRY_TOKENS_CARRY_BELOW|[*S:t-id] [&SpiritTID]
+	 --]|
+	
+	--?[&SpawnScript] -eq 2|[
+	 --@forselected+|Spawn _name|[&SpiritName] _qty|1 _offset|0,0 _size|9 _force|yes _tokenProps|name:[&SpiritName],showname:true,showplayers_name:true _order|toBack _bar1|KeepLink _fx|nova-magic _expand|15,30 {^&select @{selected|token_id}}
+	 --]|
+   
+   --#whisper|
+   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+   --+Duration: |[&duration]
+   --+Desc: |[*R:spelldescription]
+   --+At Higher Levels: |[*R:spellathigherlevels]
+   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+   --X|
+   
+   --/| ____________________ Procedures_______________________________________________________________________________________
+  
+  --:GetSpiritID|CharacterName;StringVariableForCharID
+   --~|array;objects:character;SpiritCharArr;[%1%]
+   --?[@SpiritCharArr(length)] -ne 1|>far_LogFatalError;Could not find character named [%1%]
+   --&[%2%]|[@SpiritCharArr(0)]
+   --<|
+  
+  --:Remove|
+   --#targetToken|[*S:ConcentrationSpellTargetToken]
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker]
+   --&TokenName|[*S:character_name] [&SpiritName]
+   --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&SpiritName]
+   --~|object;token;delete;[@tokens(0)]
+   --!a:[*S:character_id]|!ConcentrationSpell:**
+   --!a:[*S:character_id]|!ConcentrationSpellTargetToken:**
+   --#whisper|
+   --#emotetext|[*S:character_name] is no longer concentrating on [&SpellName]!
+   --+|[*S:character_name]'s [&SpellName] vanishes.
+   --X| 
+}}

@@ -1,0 +1,33 @@
+!smartaoe {{
+  --title|Tidal Wave
+  --titlecardbackground|linear-gradient(blue, cyan)
+  --oddrowbackground|#00ccff
+  --evenrowbackground|#edfcfc
+  --oddrowfontcolor|#000000
+  --tablebgcolor|#edfcfc
+  --leftsub|Slot level 3
+  --rightsub|DC @{selected|spell_save_dc} DEX
+  --resource|lvl3_slots_expended,1
+  --chatAvatarsEnabled|false
+  
+  --aoeType|wall
+  --aoeColor|#00ccff50
+  --aoeOutlineColor|#0099ff
+  --gridColor|#99999900
+  --offset|1,0
+  --minGridArea|0.5
+  --radius|30ft
+  --width|10ft
+  --fx|burn-water
+  --saveFormula|5eDex
+  --dc|@{selected|spell_save_dc}
+  --damageFormula1|[[4d8]]
+  --damageType|Bludgeoning
+  --conditionfail|Prone::7409938
+  --instant|1
+
+  --autoApply|1
+  --bar|1
+  --zeroHPmarker|dead
+  --desc|You conjure up a wave of water that crashes down on an area within range. The area can be up to 30 feet long, up to 10 feet wide, and up to 10 feet tall. Each creature in that area must make a Dexterity saving throw. On a failed save, a creature takes 4d8 bludgeoning damage and is knocked prone. On a successful save, a creature takes half as much damage and isn’t knocked prone. The water then spreads out across the ground in all directions, extinguishing unprotected flames in its area and within 30 feet of it, and then it vanishes.
+}}

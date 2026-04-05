@@ -1,0 +1,149 @@
+!script{{
+  +++snlib;Farsidelib+++	
+ 
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+
+  --/|Script Name : Summon Draconic Spirit
+  --/|Version     : 1.0
+  --/|Requires SC : SpawnDefaultToken, SelectManager, Token Action Maker, ScriptCards Library snlib/Farsidelib
+  --/|Author      : Farsidegallery
+  --/|  
+  --/|  Script prompts user for spell level used and then queries for shape of the spirit. It will deduct 1 spell slot from the appropriate level and spawn the designated token to the VTT. Script calculates
+  --/|  to hit, AC, proficiency bonus, speed, and damage of the spirit and populates the fields on the character (NPC) sheet. Character/NPC sheet must be represented by a three sided rollable token.
+  --/|
+ 
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+    
+  --/|Enter name for Draconic Spirit Character.
+  --&SpiritName|[*S:character_name] Draconic Spirit
+  
+  --/|Enter marker used for Concentration.
+  --&ConcentrationMarker|Concentrating::7409928
+  
+  --&SpellName|Summon Draconic Spirit
+  --&MinimumSpellLevel|5
+  
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+  
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+   
+  -->GetSpiritID|[&SpiritName];SpiritID
+  --&control|[*O:[*S:t-represents]:character:controlledby]
+  --#title|[&SpellName]
+  -->ChooseLevel|
+  --X|  
+  
+  --:ChooseLevel|
+   --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+   --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+   -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+   --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+  
+   --+|[c][b]Cast At What Level?[/b][/c]
+    --&splvlMsg|
+    --%splvl|foreach;SpellCastLevel
+     --&splvlMsg|+ [rbutton][&splvl]::ChooseShape;[&splvl][/rbutton]
+    --%|
+   --+|[c][&splvlMsg][/c]
+  --X|
+  
+  --:ChooseShape|
+   --=SpellLevel|[&reentryval]
+   --&SpellLevel|[&reentryval]
+   --#leftsub|[*R:spellcastingtime]
+   --#rightsub|[*R:spellrange]
+   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+   --&spelldesc|[*R:spelldescription]
+   --&spellhigherdesc|[*R:spellathigherlevels]
+   -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
+   --+Choose Spirit Type: |
+   --+|[c][rbutton]Chromatic::Summon;Chromatic[/rbutton][rbutton]Gem::Summon;Gem[/rbutton][rbutton]Metallic::Summon;Metallic[/rbutton][/c]
+   --X|
+   
+  --:Summon|
+   --&Shape|[&reentryval]
+   --#emoteText|[*S:character_name] summons a [&Shape] Draconic Spirit!
+   --#rightsub|[&Shape] Draconic Spirit
+   --#whisper|
+   -->DetermineStats|
+   --+Duration: |[&duration]
+   --+Desc: |[&spelldesc]
+   --+At Higher Levels: |[&spellhigherdesc]
+   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+   --!a:[*S:character_id]|!ConcentrationSpell:[&SpiritName]
+   -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];
+   --!c:[&SpiritID]|controlledby:[&control]
+   --@forselected+|Spawn _name|[&SpiritName] _qty|1 _bar1|[$HP] _bar2|[$AC]/ _size|2 _side|[$side] _offset|1,2 _force|yes _tokenProps|showname:true,showplayers_name:true _order|toFront _fx|nova-magic _expand|15,30 {^&select @{selected|token_id}}
+   --X|
+  
+  --:GetSpiritID|CharacterName;StringVariableForCharID
+   --~|array;objects:character;SpiritCharArr;[%1%]
+   --?[@SpiritCharArr(length)] -ne 1|>far_LogFatalError;Could not find character named [%1%]
+   --&[%2%]|[@SpiritCharArr(0)]
+   --<|
+  
+  --:DetermineStats|
+   --c[&Shape]|Chromatic:=side;1|Gem:=side;2|Metallic:=side;3
+   --=HPMod|[$SpellLevel]-5
+   --=HPMod|[$HPMod]*10
+   --=HP|50+[$HPMod] 
+   --=AC|14+[$SpellLevel]
+   --=PB|[*S:pb]
+   --?[&Shape] -eq Gem|&resistance;force, necrotic, psychic, radiant, thunder |&resistance;acid, cold, fire, lightning, poison
+   --=action|1
+   --&damage|1d8+3+[&SpellLevel]
+   --&description|
+   --=attacks|[$SpellLevel]\2
+   --&BreathDesc|The dragon exhales destructive energy in a 30-foot cone. Each creature in that area must make a Dexterity saving throw against DC [*S:spell_save_dc]. A creature takes [[2d6]] (2d6) damage of a type this dragon has resistance to (your choice) on a failed save, or half as much damage on a successful one.
+   --&OnMyTurn|/w [&SpiritName] &[&brace]template:npcaction[&cbrace] [&brace][&brace]rname=[&SpiritName][&cbrace][&cbrace] [&brace][&brace]description=[&obrac]Breath-Recharge[&cbrac](~[&SpiritName]|Breath-Recharge)[&cbrace][&cbrace]
+   -->SetStats|[$action];[&damage];[&description]
+   --<|
+   
+  --:SetStats|
+   --/|Set HP
+   --!a:[&SpiritID]|hp:[$HP]
+   --!a:[&SpiritID]|hp^:[$HP]
+   
+   --/|Set AC and Prof Bonus
+   --!a:[&SpiritID]|npc_ac:[$AC]
+   --!a:[&SpiritID]|npc_pb:[$PB]
+   --!a:[&SpiritID]|npc_resistances:[&resistance]
+
+   --/|Set Actions information
+   --rbyindex|[&SpiritID];repeating_npcaction;0
+   --!a:[&SpiritID]|![*R>description]:The spirit makes [$attacks] Rend attack(s) and it uses Breath Weapon.
+   --rbyindex|[&SpiritID];repeating_npcaction;2
+   --!a:[&SpiritID]|![*R>description]:[&BreathDesc]
+   --rbyindex|[&SpiritID];repeating_npcaction;[%1%]
+   --!a:[&SpiritID]|![*R>attack_tohit]:[*S:spell_attack_bonus]
+   --!a:[&SpiritID]|![*R>attack_damage]:[%2%]
+   --!a:[&SpiritID]|![*R>description]:[%3%]
+   
+   --/|Set OnMyTurn Ability
+   --!b:AbilID9:[&SpiritID]:OnMyTurn:n|[&OnMyTurn]
+   -->SetTokenActions|
+   --<|
+   
+  --:SetTokenActions|
+   --~|array;objects:ability;AbilityArr;;[&SpiritID]
+	--!ability:[@AbilityArr(0)]|istokenaction:True
+	--!ability:[@AbilityArr(1)]|istokenaction:True
+	--!ability:[@AbilityArr(2)]|istokenaction:True
+	--!ability:[@AbilityArr(3)]|istokenaction:False
+	--!ability:[@AbilityArr(4)]|istokenaction:True
+	--!ability:[@AbilityArr(5)]|istokenaction:True
+	--!ability:[@AbilityArr(6)]|istokenaction:True
+	--!ability:[@AbilityArr(7)]|istokenaction:False
+	--!ability:[@AbilityArr(8)]|istokenaction:False
+   --<|
+}}

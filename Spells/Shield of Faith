@@ -1,0 +1,130 @@
+!script {{
+  +++5Elib;snlib;Farsidelib+++
+  
+  --/|Script Name : Shield of Faith
+  --/|Version     : 2.0
+  --/|Modified By : Farsidegallery
+  --/|  
+  --/|  Script checks for spell level used and makes sure the slot is available. Script will check for existence of global mod and create if necessary.
+  --/|  Script turns on Global Mod specified and plays visual effect. It will deduct 1 spell slot from the appropriate level.
+  --/|
+  
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+  
+  --/|What is the name of the Global AC Mod used for Shield of Faith.
+  --&FaithMod|Shield of Faith
+  
+  --&SpellName|Shield of Faith
+  --&MinimumSpellLevel|1
+  
+  --/|Enter marker used for Concentration.
+  --&ConcentrationMarker|Concentrating::7409928
+   
+  --/|Enter name for Shield of Faith Character.
+  --&CharName|Shield of Faith
+  
+  --/|Use ScriptCards (1) or SpawnDefaultToken (2) to place the Shield of Faith Character on the VTT?
+  --&SpawnScript|1
+  
+  --&URLlink|https://files.d20.io/images/466427878/d3CEuElOj687McxkWbS8Cw/med.webm?1764785094
+  
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)  
+
+  --#title|Shield of Faith
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  --=SpellLevel|1
+  -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
+  --#leftsub|[*R:spellcastingtime]
+  --#rightsub|[*R:spellrange]
+  --&spelldesc|[*R:spelldescription]
+  --&TokenName|[*S:character_name] [&SpellName]
+  --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+  --+Choose Function: |[rbutton]New Cast::New[/rbutton][rbutton]Dismiss::Remove[/rbutton]
+  --X|
+  
+  --:New|
+   --+Target|[rbutton]Click here to select your target.::SetTarget;&#64;{target|token_id}[/rbutton]
+   --X|
+  
+  --:SetTarget|
+   --#targettoken|[&reentryval]
+   --#whisper|
+   -->CheckForMod|
+   --<|
+  
+  --:CheckForMod|
+   -->far_Check_GLOBAL_MOD_EXISTS|[*T:t-id]; ac; [&FaithMod]; Exists
+   --?[&Exists] -eq 1|SetMod
+   --!a:[*T:character_id]|global_ac_mod_flag:1
+   --!or:[*T:character_id]:acmod|
+	  global_ac_name:[&FaithMod]|
+	  global_ac_val:2|
+	  options-flag:0
+    -->SetMod|
+   --<|
+  
+  --:SetMod|  
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*T:character_id];ac;[&FaithMod];1
+   -->far_PlayEffects|[*S:t-id];[*T:t-id];;burn-holy
+   -->GetCharID|[&CharName];ShieldID
+   
+   --:SpawnToken|
+	--?[&SpawnScript] -eq 2|[
+	 --@forselected+|Spawn _name|[&CharName] _qty|1 _targets|1,FX Spawn Selection _offset|0,0 _force|yes _size|3 _tokenProps|name:[&TokenName],showname:true,showplayers_name:true _order|toBack _bar1|KeepLink _fx|nova-magic _expand|15,30 {^&select @{selected|token_id}}
+	 --]|
+	 
+	--?[&SpawnScript] -eq 1|[
+	 --!ot:ShieldTID|name:"[&TokenName]"|left:[*T:t-left]|top:[*T:t-top]|width:[=[*T:t-width]*3]|height:[=[*T:t-height]*3]|imgsrc:"[&URLlink]"|bar1_value:1|represents:[&ShieldID]|showname:1
+	 --z:graphic:[&ShieldTID]|toback
+	 --@CARRY_TOKENS_CARRY_BELOW|[*T:t-id] [&ShieldTID]
+	 --]|
+   -->Finish|
+
+  --:Remove|
+   --#targetToken|[*S:ConcentrationSpellTargetToken]
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker]
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*T:character_id];ac;[&FaithMod];0
+   --!a:[*S:character_id]|!ConcentrationSpell:**
+   --!a:[*S:character_id]|!ConcentrationSpellTargetToken:**
+   --&TokenName|[*S:character_name] [&SpellName]
+   --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&TokenName]
+   --~|object;token;delete;[@tokens(0)]
+   --#whisper|
+   --#emotetext|[*S:character_name] is no longer concentrating on [&SpellName]!
+   --+|The inivisible barrier vanishes! [*T:character_name]'s AC returns to normal.
+   --X|  
+  
+  --:Finish|
+   --!a:[*S:character_id]|!ConcentrationSpell:[&TokenName]
+   --!a:[*S:character_id]|!ConcentrationSpellTargetToken:[*T:t-id]
+   -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];10
+   --#emotetext|[*S:character_name] casts Shield of Faith on [*T:character_name]
+   --+|[br]
+   --+Duration: |[&duration]
+   --+Desc: |[&spelldesc]
+   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+   --X|
+
+ --/| ____________________ Procedures_______________________________________________________________________________________
+  
+  --:GetCharID|CharacterName;StringVariableForCharID
+   --~|array;objects:character;SpiritCharArr;[%1%]
+   --?[@SpiritCharArr(length)] -ne 1|>far_LogFatalError;Could not find character named [%1%]
+   --&[%2%]|[@SpiritCharArr(0)]
+   --<|
+}}

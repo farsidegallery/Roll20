@@ -1,0 +1,24 @@
+!smartaoe {{
+  --title|Sunburst
+  --leftsub|Slot level 8
+  --rightsub|DC @{selected|spell_save_dc} CON
+  --titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/253615223/QhQiZxJ2ufS_ry8uXVYPLQ/max.png?1635890238');background-size: 100% 100%; background-repeat: no-repeat
+  --aoeColor|#0044ff50
+  --resource|lvl8_slots_expended
+  --chatAvatarsEnabled|false
+
+  --aoeType|circle, float
+  --radius|60ft
+  --fx|burn-Holy
+  --dc|@{selected|spell_save_dc}
+  --saveFormula|5eCON
+  --damageFormula1|[[12d6]]
+  --damageType|Radiant
+  --conditionfail|Blinded::7409948
+  --vulnerableAttr|npc_vulnerabilities
+  --zeroHpMarker|dead
+  --instant|true
+  --autoApply|1
+  --bar|1
+  --desc|Brilliant sunlight flashes in a 60-foot radius centered on a point you choose within range. Each creature in that light must make a Constitution saving throw. On a failed save, a creature takes 12d6 radiant damage and is blinded for 1 minute. On a successful save, it takes half as much damage and isn’t blinded by this spell. Undead and oozes have disadvantage on this saving throw. A creature blinded by this spell makes another Constitution saving throw at the end of each of its turns. On a successful save, it is no longer blinded. This spell dispels any darkness in its area that was created by a spell.
+}}

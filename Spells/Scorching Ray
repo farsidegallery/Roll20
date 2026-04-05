@@ -1,0 +1,283 @@
+!script {{ 
+  +++5Elib;snlib;Farsidelib+++
+  
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|token_id}
+  --#whisper|self,gm
+  
+  --/|Script Name : Scorching Ray
+  --/|Version     : 1.0
+  --/|Requires SC : 1.3.7+, TokenMod
+  --/|Author      : Will M.
+  --/|Modified By : Farsidegallery
+  --/|  
+  --/|  Script prompts for spell level, checks availability, and deducts a spell slot. User is prompted to select the damage type.
+  --/|  A ranged attack roll is made, checked to see if it hits, checks for damgae resistance/immunity, and applies damage to target.
+  --/|
+  --/|
+  --/|
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+      
+   --&SpellName|Scorching Ray
+   --&MinimumSpellLevel|2
+   
+   --&damageType|fire
+   
+   --&hpBar|1
+   --&tempHPbar|4
+   
+   --/|Put the name of your check if custom crit damage will be applied.
+   --&CustomCritCheck|far_CustomCritCheck
+   
+   --/|Define your custom crit damage dice roll modifier, roll type, roll modifier, and extra damage modifier
+   --/|ex 1: 2d8+8 is -1 dicemodifier (making 2d8), d dicerolltype, blank rollmodifier, and with +8 damagemodifier
+   --/|ex 2: 3d8 keep highest one is blank dicemodifier, with d dicerolltype, kh1 for rollmodifier, and blank for damagemodifier
+   --/|ex 3: 3d8 max all dice is blank dicemodifier, m dicerolltype, blank rollmodifier, and blank damagemodifier
+   --&CritDamageDiceModifier|-1
+   --&CritDamageDiceRollType|d
+   --&CritDamageRollModifier|
+   --=CritDamageModifier|+6
+   
+   --/|Are you using the matching Bardic Inspiration Script from FarsideGallery? (Default is No using 0. Change to 1 if using the script.)
+   --=Scriptcheck|1
+  
+   --/|Enter the Token Markers you use for each condition
+   --&BardicMarker|BardicInspiration::7409920
+   --&BlessedMarker|angel-outfit
+   --&InspirationMarker|Inspiration::7409921
+   --&BaneMarker|Hexed3::7409911
+   --&HexMarker|Hexed::7409913
+   --&HexBladebladeMarker|Hexed2::7409912
+   --&DeathMarker|dead
+  
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&perc|%
+  
+  --#title|[&SpellName]
+  --#emoteText|[*S:character_name] Casts [&SpellName]!
+  --&TFColor|#FFFFFF
+  --&STFColor|#000000
+  --&FColor1|#000000
+  --&FColor2|#000000
+  --&EBColor|#FFFFFF
+  --&BColor1|#FFFFFF
+  --&BColor2|#FFFFFF
+
+  --#titlecardbackground|[&BColor1]
+  --#titlecardbackgroundimage|linear-gradient(to bottom, #FFF000, #FF0000)
+  --#titleFontColor|[&TFColor]
+  --#subtitleFontColor|[&STFColor]
+  --#emoteBackground|[&EBColor]
+  --#titlefontsize|2.0em
+  --#titlefontlineheight|1.2em
+  --#titlefontface|Times New Roman
+  --#norollhighlight|0
+  --#hideTitleCard|0
+  --#bodyfontsize|12px
+
+  --#oddrowbackground|[&BColor1]
+  --#oddrowfontcolor|[&FColor2]
+  --#evenrowbackground|[&BColor2]
+  --#evenrowfontcolor|[&FColor1]
+
+  --:STEP1| Setup 
+
+   --=MissileDamage|2d6
+   --=DisplayCount|0
+
+   --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+   --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+   
+   --#leftsub|[*R:spellcastingtime]
+   --#rightsub|[*R:spellrange]
+   
+   --+|You create three rays of fire and hurl them at targets within range. You can hurl them at one target or several.  Make a ranged spell attack for each ray. On a hit, the target takes 2d6 fire damage.
+   --+|[b]At Higher Levels.[/b] When you cast this spell using a spell slot of 3rd level or higher, you create one additional ray for each slot level above 2nd.
+   --+|[br]
+   --+|[c][b]Spell Save DC: [#FF0000][*S:spell_save_dc][/#]   Damage: [#FF0000][$MissileDamage][/#][/b][/c]
+   --+|[br]
+
+   -->far_GetAvailableSpellLevels|[*S:t-id];[&MinimumSpellLevel];SpellCastLevel
+   --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+  
+   --+|[c][b]Cast At What Level?[/b][/c]
+   --&splvlMsg|
+   --%splvl|foreach;SpellCastLevel
+    --&splvlMsg|+ [rbutton][&splvl]::STEP2;[&splvl][/rbutton]
+    --%|
+   --+|[c][&splvlMsg][/c]
+   --+|[br]
+   --+|After picking a level above, you will be asked to select a series of targets until all your rays are delivered - [b]Good Luck![/b]
+
+   --X|
+
+  --:STEP2|
+   --=SpellLevel|[&reentryval]
+   --&SpellLevel|[&reentryval]
+   -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
+   --=MissileCount|[&SpellLevel] + 1
+
+  --:MissileLoop| 
+    --=DisplayCount|[$DisplayCount] + 1
+	
+	--&BlessFlag|
+    --&BaneMarkerFlag|
+	--&damageMod|
+
+    --?[$DisplayCount] -gt [$MissileCount]|EndMacro
+    --?[$DisplayCount] -ne 1|[
+      --+|[hr]
+      --+|[br]
+      --+|[c][rbutton]Next Target::NEXT_TARGET[/rbutton][/c]
+      --+|[br]
+      --+|[c][b]Spell Save DC: [#FF0000][*S:spell_save_dc][/#]   Damage: [#FF0000][$MissileDamage.Raw][/#][/b][/c]
+      --+|[br]
+      --X|
+    --]|
+
+    --:NEXT_TARGET|
+    --I Select the target of your Scorching Ray.;Scorching Ray #[$DisplayCount].|t;ThisTarget;Scorching Ray #[$DisplayCount]:
+    --#targetToken|[&ThisTarget]
+    --#leftsub|Ray # [$DisplayCount.Raw]
+    --#rightsub|[*T:t-name]
+    --#emoteText|Scorching Ray #[$DisplayCount.Raw]
+	-->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&InspirationMarker];InspiredFlag;InspiredCount
+    -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&BardicMarker];BardicFlag;BardicCount
+    -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
+    -->far_FIND_ACTIVE_GLOBAL_ATTACK_MODS|[*S:character_id];GlobalAttack
+    -->far_FindFeat|[*S:character_id];"Hexblade's Curse";HexBladeFlag
+    --?[*T:npc] -eq 1|=TargetAC;[*T:npc_ac]|=TargetAC;[*T:ac]
+    -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;1;0;0
+	-->GetAttackType|
+	
+	--:GetAttackType|
+	 --#whisper|self,gm
+	 --+|[c]Choose Attack Type:[/c]
+     --+|[c][rbutton]Advantage::AttackReentry;2d20kh1[/rbutton][rbutton]Normal::AttackReentry;1d20[/rbutton][rbutton]Disadvantage::AttackReentry;2d20kl1[/rbutton][/c]
+	 --X|
+
+   --:AttackReentry|
+	--&AttackDice|[&reentryval]
+	--&DamageResistNote|
+	--#whisper|
+	-->far_PlayEffects|[*S:t-id];[&ThisTarget];none;burst-smoke;beam-magic	
+	--?[&InspiredFlag] -ne 0 |>far_Inspiration;[*S:character_id];[&InspirationMarker];[&AttackDice];AttackDice
+   
+    --#whisper|
+    --=AttackDiceBase|[&AttackDice]
+    --+Rolling [&AttackDice]: |[$AttackDiceBase]
+    --=AttackRollMod|[$AttackDiceBase] + [*S:spell_attack_bonus] [Spell Attack Bonus]
+   
+    --?[&BardicFlag] -eq 1|>far_Bardic;[*S:t-id];[&BardicMarker];[$Scriptcheck];[$AttackDiceBase];[$AttackRollMod];BardRoll
+    --?[&BaneMarkerFlag] -eq 1|&Baneroll;+ - 1d4 [Bane] |&Baneroll;
+   
+    --=AttackRoll|[$AttackDiceBase] + [*S:spell_attack_bonus] [Spell Attack Bonus] [&GlobalAttack] [&Baneroll] [&BardRoll]
+
+    --/|Determine results|
+	--+|[br]Total Attack Roll [b]#[$Shot][/b]: [$AttackRoll]
+	--+[br]|
+    --?[$AttackDiceBase] -eq 20|>Crit
+    --?[$AttackDiceBase] -eq 19 -and [$HexBladeFlag] -eq 1 -and [&HexBladeMarkerFlag] -eq 1|>CRITICAL
+    --?[$AttackDiceBase] -eq 1|>Fumble
+    --?[$AttackRoll.Total] -ge [$TargetAC.Total] -and [$AttackRoll.Base] -nei 20|>HIT
+    --?[$AttackRoll.Total] -lt [$TargetAC.Total] -and [$AttackRoll.Base] -nei 1|>MISS
+    --X|
+  --<|
+
+  --:EndMacro|
+   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+   --X|
+
+  --/|PROCEDURES
+
+  --:FUMBLE|
+    --+&#x1F613;Ray #[$DisplayCount.Raw] Fumbles! |[*S:character_name] rolls [$AttackDiceBase] to attack [*T:t-name] and something went horribly wrong.
+	--=Fail|[T#Damage-Spell-Fail]
+   --&failText|[$Fail.tableEntryText]
+   --?"[&failText]" -inc "[&obrac][&obrac]"|[
+	--~failText1|string;before;[&obrac][&obrac];[&failText]
+	--~failText2|string;after;[&cbrac][&cbrac];[&failText]
+	--~roll|string;before;[&cbrac][&cbrac];[&failText]
+	--~roll|string;after;[&obrac][&obrac];[&roll]
+	--=failRoll|[&roll]
+	--&failText|[&failText1][$failRoll][&failText2]
+	--]|
+   --+|[br]
+   --+|[&failText]
+   --?"[&failText]" -inc "Roll for damage"|[
+    -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0
+    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexMarker];HexMarkerFlag;HexMarkerCount
+    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];HexBladeMarkerFlag;HexBladeMarkerCount
+   
+    --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex;+ + 1d6 [Hex] |&Hex;
+    --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade;
+   
+    --=Damage|[$MissileDamage] [&HexBlade] [&Hex] [&GlobalDamage] [&damageMod]
+	--+Damage: |[$Damage]
+	--]|  
+  --^MissileLoop|
+
+  --:MISS|
+      --+&#x274C;Ray #[$DisplayCount.Raw] Misses! |[*S:character_name] rolls [$AttackRoll] to attack [*T:t-name] and missed.
+  --^MissileLoop|
+
+  --:HIT| pass Damage string 
+   -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexMarker];HexMarkerFlag;HexMarkerCount
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];HexBladeMarkerFlag;HexBladeMarkerCount
+   
+   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex;+ + 1d6 [Hex] |&Hex;
+   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade;
+   
+   --=Damage|[$MissileDamage] [&HexBlade] [&Hex] [&GlobalDamage] [&damageMod]
+   --+&#x1F3AF;Ray #[$DisplayCount.Raw] hits! |[*S:t-name] rolls [$AttackRoll] to attack and hits [*T:t-name] for [$Damage] [&DamageType] damage.
+   -->ApplyDamage|
+   --^MissileLoop|
+
+  --:CRITICAL|
+   -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;1
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexMarker];HexMarkerFlag;HexMarkerCount
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];HexBladeMarkerFlag;HexBladeMarkerCount
+   
+   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex;+ + 1d6 [Hex] |&Hex;
+   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade;
+   
+   -->[&CustomCritCheck]|CustomCritFlag
+   --?[&CustomCritFlag] -eq 1|[
+	--=CritDice|1 + [&CritDamageDiceModifier]
+    --&CritDamage|[$CritDice][&CritDamageDiceRollType]10[&CritDamageRollModifier] + [$CritDamageModifier]
+    --=Damage|[$MissileDamage.Raw] [Hit] + [&CritDamage] [Crit] [&Blast] [&HexBlade] [&Hex] [&GlobalDamage] [&damageMod]
+	--+|[br]
+	--]|[
+	--=Damage|[$MissileDamage.Raw] [Hit] + [$MissileDamage.Raw] [Crit] [&HexBlade] [&Hex] [&GlobalDamage] [&damageMod]
+	--+|[br]
+	--]|
+   --+&#x2757;&#x2757;&#x2757;Crits!|[*S:character_name] rolls [$AttackRoll] to attack and CRITS [*T:t-name] for [$Damage] [&DamageType] damage.
+   -->ApplyDamage|
+   --^MissileLoop|
+
+  --:ApplyDamage|
+    --=CurrentHP|[*T:t-bar1_value]
+    --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$Damage.Raw];0;0;1
+	-->far_DamageTokenmod|[*T:t-id];1;4;-[$Damage.Raw];0;0;1
+
+    --/|Did that kill them?
+    --?[$CurrentHP.Raw] -gt [$Damage.Raw]|ALIVE|DEAD
+
+    --:ALIVE|
+      --/+|[*T:character_name] is still alive and kicking!
+      --<|
+    --:DEAD|
+      --+Congrats|You managed to kill [*T:character_name]
+      -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DeathMarker]
+      --?[$HexBladeFlag] -eq 1 -and [&HexBladeMarkerFlag] -eq 1|>HexHeal     
+      --<|
+}}
