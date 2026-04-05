@@ -1,0 +1,65 @@
+!script {{
+
+ --/| Script Name : Character New Ability Creation
+ --/| Version     : 2.0
+ --/| Requires SC : ScriptCards
+ --/| Author      : Farsidegallery
+ --/|  
+ --/| Script creates abilities on selected character. Script allows user to select if new character or updating existing character. New character is hard-coded to desired base abilities and ends immeadiately after execution. 
+ --/| If updating existing character, choose from general, racial, class, or spell categories. Further prompts will prompt user for desired class if class is selected. Next prompt for exact desired ability/spell and if it is 
+ --/| a token action. Final prompt is if to add another ability. Outputs are whispered to gm at the end.
+ --/| 
+ --/| An issue was found when using the LibSN_BUILD_DROPDOWN_FROM_ARRAY from the snlib provided by Kurt. An interaction between the LibSN_BUILD_DROPDOWN_FROM_ARRAY function and the -i function resulted in an extra close bracket.
+ --/| This broke the call to the ability on the macro mule specified. A modified version of the LibSN_BUILD_DROPDOWN_FROM_ARRAY function is built into this script.
+ --/|
+ --/| Planned update to this is when 5E-Action-Menu pulls abilities from mules correctly on all settings, abilities will be copied into reduced number of mules and script will be updated accordingly.
+ --/|
+
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+    
+  --/|Enter character IDs for mules in use.
+  
+  --&MacroMule|General_Macro_Mule
+  --&SpellMule|Spell_Mule
+  --&RacialMule|Race_Ability_Mule
+  --&BarbarianMule|Barbarian_Mule
+  
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --#sourceToken|@{selected|token_id}
+  --#whisper|gm
+  
+  --&obrac|{
+  --&cbrac|}
+  --&perc|%
+  
+  -->ChooseFunction|
+  
+  --:ChooseFunction|
+   --+Choose Function: |[rbutton]New Token::NewCharacter;[*S:t-id][/rbutton][rbutton]Update::Update;[*S:t-id][/rbutton]
+   --X|
+  
+  --:NewCharacter| 
+   --!ob:AbilID1:@{selected|character_id}:AFK:y|%[&obrac][&MacroMule]|AFK[&cbrac]
+   --!ob:AbilID2:@{selected|character_id}:DealDamage:n|%[&obrac][&MacroMule]|DealDamage[&cbrac]
+   --!ob:AbilID3:@{selected|character_id}:Gather-Information:y|%[&obrac][&MacroMule]|Gather-Information[&cbrac]
+   --!ob:AbilID4:@{selected|character_id}:Health-Check:y|%[&obrac][&MacroMule]|Health-Check[&cbrac]
+   --!ob:AbilID5:@{selected|character_id}:Long-Rest:y|%[&obrac][&MacroMule]|Long-Rest[&cbrac]
+   --!ob:AbilID7:@{selected|character_id}:pingMe:n|%[&obrac][&MacroMule]|pingMe[&cbrac]
+   --!ob:AbilID8:@{selected|character_id}:Remove-Aid:n|%[&obrac][&MacroMule]|Remove-Aid[&cbrac]
+   --!ob:AbilID9:@{selected|character_id}:Short-Rest:y|%[&obrac][&MacroMule]|Short-Rest[&cbrac]
+   --!ob:AbilID10:@{selected|character_id}:5E-Action-Menu:y|%[&obrac][&MacroMule]|5E-Action-Menu[&cbrac]
+   --!ob:AbilID10:@{selected|character_id}:Shopping:y|%[&obrac][&MacroMule]|Shopping[&cbrac]
+   --!a:@{selected|character_id}|!SmartAOE_ignore:1
+   -->OutputNew|
+  
+  --:OutputNew|
+   --%LoopCounter|1;10;1
+    --&AbilName|[*O:[&AbilID[&LoopCounter]]:ability:name]
+    --+Ability|[&AbilName] added.
+    --%|
+   --X|
+  
+  --:EndScript|
+   --X|  
+}}

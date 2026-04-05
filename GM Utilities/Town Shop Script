@@ -1,0 +1,670 @@
+!script {{
+
+  --/|Script Name : Town Shop Script
+  --/|Version     : 3.0
+  --/|Requires SC : ScriptCards
+  --/|Author      : Hanen
+  --/|Modified By : Farsidegallery
+  --/|  
+ 
+  --/===================Tokens==========================|
+  --:reselect|
+	  --?"[@SC_SelectedTokens()]" -eq "undefined array" -and 1 -ne 1|REPORT_NEED_SELECTED_TOKEN
+	  --?"[@SC_SelectedTokens()]" -ne "undefined array" -and "[@SC_SelectedTokens()]" -eq "1"|BEGIN_WITH_SC_SELECTED_TOKENS
+	  --?"[@SC_SelectedTokens()]" -gt 1|REPORT_MULTIPLE_SELECTED_TOKEN
+	  -->GET_CONTROLLED_TOKENS_FROM_PAGETOKENS|STokenID
+	  --?"[&STokenID]" -eq ""|REPORT_NO_TOKENS_ON_PAGE
+	  --?"[&STokenID]" -inc ","|REPORT_MULTIPLE_POSSIBLE_TOKENS
+	  --^SKIP_SELECTED_TOKENS|
+	  --:BEGIN_WITH_SC_SELECTED_TOKENS|
+	  --&STokenID|[@SC_SelectedTokens(0)]
+	  --:SKIP_SELECTED_TOKENS|
+	  --<|
+  --/===================Tokens==========================|
+    --/|Give the script a reentrant name based on the selected character id so we can have multiple instances at the same time
+	  --#reentrant|CharacterAction [&STokenID]
+	  --&QB|? --&QB|+{ --&QE|}
+	  --&AB|@ --&AB|+{
+	  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+	  --&BED|& --&BED|+# --&BED|+128719;
+	  --&CLOCK|& --&CLOCK|+# --&CLOCK|+128336;
+	  --&GEAR|& --&GEAR|+# --&GEAR|+x2699;
+	  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+	  --&NB|& --&NB|+nbsp --&NB|+;
+	  --&obrac|[ --&cbrac|]
+	  --&vbar||
+	  --&brace|{
+      --&cbrace|}
+	  --&OB|(
+	  --&CB|)
+  --#title|Town Menu
+  --#emoteBackground|#101010
+  --#bodyfontface|Helvetica
+  --#oddrowfontcolor|#ffffff
+  --#evenrowfontcolor|#ffffff
+  --#bodyfontsize|12px
+  --#buttonfontsize|11px
+  --#buttonbackground|#9727b0
+  --/#buttonbordercolor|rgba(0,0,0,0)
+  --/#buttonbackground|rgba(0,0,0,0); display:inline-block; border:none
+  --/#buttontextcolor|#930c10
+  --#buttonfontface|Tahoma
+  --#titlecardbackgroundcolor|#050505
+  --#titlefontsize|2em
+  --#oddrowbackground|#202020
+  --#evenrowbackground|#101010
+  --#subtitlefontcolor|#ffffff
+  --#tablebgcolor|#000000
+  --#lineheight|normal
+  --#buttonpadding|2px
+  --#titlecardbackgroundimage|url('https://s3.amazonaws.com/files.d20.io/images/371042796/BjME67alQzEk55qZLrVktQ/med.png?1702215702'); background-size: 100% 100%; background-repeat: no-repeat;
+  --#emoteState|off
+  --#whisper|self
+  --+|You are in a safe zone. There are various activities you can do in town, rest and relax. 
+	  --&targetString|[&TB]target|token_id}
+--#sourcetoken|[&STokenID]
+--+|[b]1.[/b] Visit a shop. [c][rbutton:12px]Visit Shop::Shopstart;[&targetString][/rbutton][/c]
+--+|[b]2.[/b] Visit a Library. [c][rbutton:12px]Browse Books::Librarystart;[&targetString][/rbutton][/c]
+--X|
+--:Shopstart|
+--#targettoken|[&reentryval]
+--&ShopID|[*T:character_id]
+--&Shopname|[*T:character_name]
+ --?"[&Shopname]" -inc "Shop" -or "[&Shopname]" -inc "Store" -or "[&Shopname]" -inc "Supplies" -or "[&Shopname]" -inc "Blacksmith" -or "[&Shopname]" -inc "Inn"|proc_startmsg|NotaShop 
+--:proc_startmsg|
+ --eHappenings|[*S:character_name] entered [&Shopname] to take a look around.
+ --a|Shopbell
+--:proc_start|
+
+
+ --#sourcetoken|[&STokenID]
+ --#title|[&Shopname]
+ --:continue_start|
+ --#rightSub|
+ --#whisper|self
+ --#leftsub|[*S:character_name]
+  --#emoteBackground|#101010
+  --#bodyfontface|Helvetica
+  --#oddrowfontcolor|#ffffff
+  --#evenrowfontcolor|#ffffff
+  --#bodyfontsize|12px
+  --#buttonfontsize|11px
+  --#buttonbackground|#ffffff
+  --/#buttonbordercolor|rgba(0,0,0,0)
+  --/#buttonbackground|rgba(0,0,0,0); display:inline-block; border:none
+  --/#buttontextcolor|#930c10
+  --#buttonfontface|Tahoma
+  --#titlecardbackgroundcolor|#050505
+  --#titlefontsize|2em
+  --#oddrowbackground|#202020
+  --#evenrowbackground|#101010
+  --#subtitlefontcolor|#ffffff
+  --#tablebgcolor|#000000
+  --#lineheight|normal
+  --#buttonpadding|2px
+  --#titlecardbackgroundimage|url('https://s3.amazonaws.com/files.d20.io/images/371042796/BjME67alQzEk55qZLrVktQ/med.png?1702215702'); background-size: 100% 100%; background-repeat: no-repeat;
+ 
+--#emoteState|off
+
+-->Load_Data|
+
+	
+--/|+|[l][r][button:#ffffff:#9727b0]Character Menu::~Relic|Runscript[/button][/l][button:#ffffff:#101010]Equipment Bag::~Relic|Runinventory[/button][/r]
+  --#oddrowbackground|#050505
+  --#evenrowbackground|#050505
+--+|[F:Contrail One:22][c]My Coins[/c][/f]
+  --#oddrowbackground|#202020
+  --#evenrowbackground|#101010
+--+|[t border=0 width=100%][tr]
+[td style"width=25%"][c][&C]:[*S:cp][/c][/td]
+[td style"width=25%"][c][&S]:[*S:sp][/c][/td]
+[td style"width=25%"][c][&G]:[*S:gp][/c][/td]
+[td style"width=25%"][c][&P]:[*S:pp][/c][/td]
+[/tr]
+[/td]
+[/t]
+--+|[t border=0 width=100%][tr]
+[td style"width=25%"][rbutton:#ffffff:#009900:8px]➕ Add::Coin_Exchange;1[&Coinexchange][/rbutton][/td]
+[td][c][rbutton:8px]🔺::Coin_ConvertUp;[&XchangeUp][/rbutton][rbutton:#ffffff:#9727b0]Gift::Coin_Exchange;0[&Coinexchange][/rbutton][rbutton:8px]🔻::Coin_ConvertDown;[&XchangeDown][/rbutton][/c][/td]
+[td style"width=25%"][r][rbutton:#ffffff:#990000:8px]Subtract ➖::Coin_Exchange;2[&Coinexchange][/r][/rbutton][/td]
+[/tr][/t]
+  --#oddrowbackground|#050505
+  --#evenrowbackground|#050505
+  
+--+|[F:Contrail One:22][c]Shop Inventory[/c][/f]
+  --#oddrowbackground|#202020
+  --#evenrowbackground|#101010
+
+--~|array;fullrepeatingsection;Inventory;[&ShopID];repeating_inventory;itemname:itemcount;♦
+--~|array;sort;Inventory
+--~Inventory|array;getfirst;Inventory
+
+-->ItemConvert|
+--?[&Itemcost] -inc cp|&Itemcostd;[&Itemcost(replace,cp,)] [&Cs]
+--?[&Itemcost] -inc sp|&Itemcostd;[&Itemcost(replace,sp,)] [&Ss]
+--?[&Itemcost] -inc gp|&Itemcostd;[&Itemcost(replace,gp,)] [&Gs]
+--?[&Itemcost] -inc pp|&Itemcostd;[&Itemcost(replace,pp,)] [&Ps]
+
+--Rfind|[&ShopID];[&Itemnamewcost];repeating_inventory;itemname
+--?[*R:equipped] -eq 0|Itemfindstart
+--+|[t border=0 width=100%][tr][td style"width=30px"][c][&Itemcount][/c][/td][td][&Itemname][/td]
+[td style"width=60px"][r][&Itemcostd][/r][/td]
+[td style"width=15px"][rbutton:#ffffff:#9727b0:10px]Buy::Buy_Item;[&Howmany]○[&Itemname]-[&Itemcost][/rbutton][/td][/td]
+[td style"width=20px"][rbutton:10px]🔎::Itemcard;[&Itemname]-[&Itemcost][/rbutton][/td][/t][/tr]
+
+--:Itemfindstart|
+--~Inventory|array;getnext;Inventory
+-->ItemConvert|
+--?"[&Inventory]" -eq ArrayError|Itemfinddone
+--?[&Itemcost] -inc cp|&Itemcostd;[&Itemcost(replace,cp,)] [&Cs]
+--?[&Itemcost] -inc sp|&Itemcostd;[&Itemcost(replace,sp,)] [&Ss]
+--?[&Itemcost] -inc gp|&Itemcostd;[&Itemcost(replace,gp,)] [&Gs]
+--?[&Itemcost] -inc pp|&Itemcostd;[&Itemcost(replace,pp,)] [&Ps]
+
+--Rfind|[&ShopID];[&Itemnamewcost];repeating_inventory;itemname
+--?[*R:equipped] -eq 0|Itemfindstart
+--+|[t border=0 width=100%][tr][td style"width=30px"][c][&Itemcount][/c][/td][td][&Itemname][/td]
+[td style"width=60px"][r][&Itemcostd][/r][/td]
+[td style"width=15px"][rbutton:#ffffff:#9727b0:10px]Buy::Buy_Item;[&Howmany]○[&Itemname]-[&Itemcost][/rbutton][/td]
+[td style"width=20px"][rbutton:10px]🔎::Itemcard;[&Itemname]-[&Itemcost][/rbutton][/td][/t][/tr]
+--^Itemfindstart|
+--:Itemfinddone|
+
+--X|
+
+--:ItemConvert|
+--&Itemnamewcost|[&Inventory(before,♦)]
+--&Itemname|[&Itemnamewcost(before,-)]
+--&Itemcount|[&Inventory(after,♦)]
+--&Itemcost|[&Itemnamewcost(after,-)]
+--<|
+
+--:Itemcard|
+  	--#title|[&reentryval(before,-)]
+	--#titleCardBackground|#733a1e
+	--#titlecardbackgroundimage|#733a1e
+	--#leftsub| 
+	--#rightsub| 																										
+	--#titlefontsize| 2.0em
+	--#titlefontface| Contrail One
+	--#titlefontcolor|#ffffff
+	--#oddRowBackground|#FFFFFF
+    --#evenrowbackground|#F0F0F0
+	--#oddrowfontcolor|#000000
+	--#evenrowfontcolor|#000000
+	--#bodyfontsize|14px
+    --#buttonfontsize|10px
+	--#buttonbackground|#5e5e5e
+	--#buttonfontface|Tahoma
+	--#subtitlefontcolor|#ffffff
+	--#lineheight|normal
+	--#buttonpadding|3px
+	--#emoteState|off
+	
+--&Changeinfo|[&QB]Change Description| Paste Here[&QE]
+	
+--Rfind|[&ShopID];[&reentryval];repeating_inventory;itemname
+--&name|[*R:itemname]
+--&Carrying|[*R:itemcount]
+--&Weight|[*R:itemweight]
+--&Resource|[*R:useasresource]
+--&ItemProp|[*R:itemproperties] 
+  --&ItemModi|[*R:itemmodifiers] 
+  --&ItemDescr|[*R:itemcontent]
+  --&hasatk|[*R:hasattack]
+  
+--:Itemcardreturn|
+
+--?[&View] -eq 1|[
+  --+Item Properties:|[&ItemProp] 
+  --+Item Description:|[&ItemDescr]
+  --^Enddesc|
+--]|
+	--#oddRowBackground|#733a1e
+    --#evenrowbackground|#733a1e
+  --+|[l][r][rbutton]Back to shop::proc_start[/rbutton][/l][rbutton:#ffffff:#9727b0:10px]Buy Item::Buy_Item;[&Howmany]○[&reentryval][/rbutton][/r]
+  	--#oddRowBackground|#FFFFFF
+    --#evenrowbackground|#F0F0F0
+  --+Weight:|[&Weight]
+  --+Item Properties:|[&ItemProp] 
+  --+Item Modifiers:|[br][&ItemModi(replace,Item Type:,)] 
+  --?"[&ItemDescr(length)]" -gt "15"|[
+  --+Item Description:|[&ItemDescr]
+  --]|
+--X|
+
+--:GET_CONTROLLED_TOKENS_FROM_PAGETOKENS|
+	--~|array;pagetokens;_FCT_Tokens;[*C:playerpageid];pc
+	--%_loop|0;[@_FCT_Tokens(maxindex)]
+    --&_FCT_TID|[@_FCT_Tokens([&_loop])]
+    --&_FCT_CHAR|[*[&_FCT_TID]:t-represents]
+    --?"[*O:[&_FCT_CHAR]:character:controlledby]" -ninc [&SendingPlayerID]|%
+    --?"[&[%1%]]" -eq ""|&[%1%];+[&_FCT_TID]|&[%1%];+,[&_FCT_TID]]
+  --%|
+  --<|
+
+--:Buy_Item|
+--&Amount|[&reentryval(before,○)]
+--&reentryval|[&reentryval(replace,[&Amount]○,)]
+
+
+--Rfind|[&ShopID];[&reentryval];repeating_inventory;itemname
+--&Carrying|[&Amount]
+--&Weight|[*R:itemweight]
+--&Resource|[*R:useasresource]
+--&ItemProp|[*R:itemproperties] 
+--&ItemModi|[*R:itemmodifiers] 
+--&ItemDescr|[*R:itemcontent]
+--&hasatk|[*R:hasattack]
+--?"[&ItemDescr]" -inc !!|[
+--?[*R:itemcount] -lt [&Amount]|Nostock
+--]|
+-->reselect|
+--#sourcetoken|[&STokenID]
+--&Itemname|[&reentryval(before,-)]
+--&Itemcost|[&reentryval(after,-)]
+--&name|[&Itemname]
+
+
+
+--?[&Itemcost] -inc cp|[
+--=Itemcost|[&Itemcost(replace,cp,)]*[&Amount]
+--?[$Itemcost] -gt [*S:cp]|Nocoin
+--!a:[&STokenID]|cp:-=[$Itemcost]
+--&Coinused|cp
+--^Purchased|
+--]|
+--?[&Itemcost] -inc sp|[
+--=Itemcost|[&Itemcost(replace,sp,)]*[&Amount]
+--?[$Itemcost] -gt [*S:sp]|Nocoin
+--!a:[&STokenID]|sp:-=[$Itemcost]
+--&Coinused|sp
+--^Purchased|
+--]|
+--?[&Itemcost] -inc gp|[
+--=Itemcost|[&Itemcost(replace,gp,)]*[&Amount]
+--?[$Itemcost] -gt [*S:gp]|Nocoin
+--!a:[&STokenID]|gp:-=[$Itemcost]
+--&Coinused|gp
+--^Purchased|
+--]|
+--?[&Itemcost] -inc pp|[
+--=Itemcost|[&Itemcost(replace,pp,)]*[&Amount]
+--?[$Itemcost] -gt [*S:pp]|Nocoin
+--!a:[&STokenID]|pp:-=[$Itemcost]
+--&Coinused|pp
+--^Purchased|
+--]|
+
+--:Purchased|
+--?"[&ItemDescr]" -inc !!|[
+--!a:[&ShopID]|![*R>itemcount]:-=[&Amount]
+--&ItemDescr|[&ItemDescr(replace,!!,)]
+--]|
+--?"[&ItemDescr]" -inc "noinvt"|[
+--=Itemcostd|[$Itemcost]
+--e[&Shopname]|[*S:character_name] paid [$Itemcostd.Text] [&Coinused] for [&Amount] [&name].
+--^proc_start|
+--]|
+--Rfind|[*S:character_id];[&name];repeating_inventory;itemname
+--?"[*R:itemname]" -ne "NoRepeatingAttributeLoaded"|[
+--!a:[*S:character_id]|![*R>itemcount]:+=[&Amount]
+--!a:[*S:character_id]|![*R>equipped]:1
+--^Purchasedone|
+--]|
+--!or:[*S:character_id]:inventory|
+        itemname:[&name]|
+		itemcount:[&Carrying]|
+		itemmodifiers:[&ItemModi(replaceall,:,;)]|
+		itemweight:[&Weight]|
+		useasresource:[&Resource]|
+		itemproperties:[&ItemProp]|
+		equipped:1|
+		
+--Rfind|[*S:character_id];[&name];repeating_inventory;itemname
+--!a:[*S:character_id]|![*R>itemcontent]:[&ItemDescr]
+
+--?[&hasatk] -eq 1|[
+--Rfind|[&ShopID];[&reentryval];repeating_attack;atkname
+--?"[*R:atkname]" -eq "NoRepeatingAttributeLoaded"|Purchasedone
+--!or:[*S:character_id]:attack|
+        atkname:[&name]|
+		atkattr_base:[*R:atkattr_base]|
+		atkrange:[*R:atkrange]|
+		atkmagic:[*R:atkmagic]|
+		dmgbase:[*R:dmgbase]|
+		dmgtype:[*R:dmgtype]|
+		dmg2base:[*R:dmg2base]|
+		dmg2type:[*R:dmg2type]|
+		dmg2flag:[*R:dmg2flag]|
+		options-flag:[*R:options-flag]|
+--]|
+--:Purchasedone|		
+--Rfind|[*S:character_id];[&name];repeating_inventory;itemname
+  --!a:[*S:character_id]|![*R>itemmodifiers]:[&ItemModi]
+  --=Itemcostd|[$Itemcost]
+ --+You| purchased [&Amount] [&name] for [$Itemcostd.Text] [&Coinused]
+ --+|Item has been added to your inventory.
+ --e[&Shopname]|[*S:character_name] purchased [&Amount] [&name] for [$Itemcostd.Text] [&Coinused]
+ --a|Buy
+ --^proc_start|
+--:Nostock|
+--+|Item is no longer in stock or you have attempted to buy more than what the shop has.
+--X|
+--:Nocoin|
+--+|You do not have enough coins.
+--X|
+
+
+--:REPORT_NEED_SELECTED_TOKEN|
+--#title|Error
+  --#whisper|self
+  --+No Token Selected|You need to have a single token selected in order to use the 5E Character Action Menu.
+  --X|
+
+  --:REPORT_MULTIPLE_SELECTED_TOKEN|
+  --#title|Error
+  --#whisper|self
+  --+Multiple Tokens Selected|You need to have a single token selected in order to use the 5E Character Action Menu.
+  --X|
+
+  --:REPORT_NO_TOKENS_ON_PAGE|
+  --#title|Error
+  --#whisper|self
+  --+No Controlled Tokens|You do not appear to have any tokens on this page under your control.
+  --X|
+
+  --:REPORT_MULTIPLE_POSSIBLE_TOKENS|
+  --#title|Error
+  --#whisper|self
+  --+Multiple Tokens|You appear to have more than one controlled token on this page. You will need to select a token manually to use the 5E Character Action Menu
+  --X|
+  
+  
+--:Load_Data|
+--&C|[img width=15 height=15]https://s3.amazonaws.com/files.d20.io/images/349071385/EuhP_53v-JukfJCn1SJzNA/max.png?1688608767 [/img]
+--&S|[img width=17 height=15]https://s3.amazonaws.com/files.d20.io/images/349071383/gBSdiDIklpD0VmjYjozFAQ/max.png?1688608767 [/img]
+--&G|[img width=15 height=15]https://s3.amazonaws.com/files.d20.io/images/349071384/yQjoOmap1a6CcgxOx2nEDA/max.png?1688608767 [/img]
+--&P|[img width=15 height=15]https://s3.amazonaws.com/files.d20.io/images/349071382/bgwsROgCyQAkn1dFdWOndQ/max.png?1688608767 [/img]
+
+--&Cs|[img width=12 height=12]https://s3.amazonaws.com/files.d20.io/images/349071385/EuhP_53v-JukfJCn1SJzNA/max.png?1688608767 [/img]
+--&Ss|[img width=14 height=12]https://s3.amazonaws.com/files.d20.io/images/349071383/gBSdiDIklpD0VmjYjozFAQ/max.png?1688608767 [/img]
+--&Gs|[img width=12 height=12]https://s3.amazonaws.com/files.d20.io/images/349071384/yQjoOmap1a6CcgxOx2nEDA/max.png?1688608767 [/img]
+--&Ps|[img width=12 height=12]https://s3.amazonaws.com/files.d20.io/images/349071382/bgwsROgCyQAkn1dFdWOndQ/max.png?1688608767 [/img]
+--&Yesno|[&QB]Confirm?|Yes,1|No,0[&QE]
+--&Coinexchange|cp[&QB]Copper?|0 [&QE]sp[&QB]Silver?|0 [&QE]gp[&QB]Gold?|0 [&QE]pp[&Plat][&QB]Platinum?|0 [&QE]
+--&XchangeUp|[&QB]Convert Coin?|Copper|Silver|Gold[&QE]-[&QB]How much?| [&QE]
+--&XchangeDown|[&QB]Convert Coin?|Silver|Gold|Platinum[&QE]-[&QB]How much?| [&QE]
+--&Howmany|[&QB]How Many?|1[&QE]
+--&Addnewitem|[&QB]Item Name?| [&QE]
+	--?"[*S:cp]" -eq ""|[
+	--!a:[&STokenID]|!cp:0
+	--]|
+	--?"[*S:sp]" -eq ""|[
+	--!a:[&STokenID]|!sp:0
+	--]|
+	--?"[*S:gp]" -eq ""|[
+	--!a:[&STokenID]|!gp:0
+	--]|
+	--?"[*S:pp]" -eq ""|[
+	--!a:[&STokenID]|!pp:0
+	--]|
+	--<|
+	--:NotaShop|
+	--+|The target you selected is not a shop.
+	--X|
+	
+
+--:Coin_Exchange|
+--&type|[&reentryval(0,1)]
+--&cpt|[&reentryval(after,cp)]
+--&cp|[&cpt(before,sp)]
+--&spt|[&reentryval(after,sp)]
+--&sp|[&spt(before,gp)]
+--&gpt|[&reentryval(after,gp)]
+--&gp|[&gpt(before,pp)]
+--&pp|[&reentryval(after,pp)]
+--:Coindisplay|
+--?[&cp] -ge 1 |&Coindisplay;+ [&cp] cp [&SPACE]
+--?[&sp] -ge 1 |&Coindisplay;+ [&sp] sp [&SPACE]
+--?[&gp] -ge 1 |&Coindisplay;+ [&gp] gp [&SPACE]
+--?[&pp] -ge 1 |&Coindisplay;+ [&pp] pp [&SPACE]
+
+--?[&type] -eq 0|Sendcoin
+--?[&type] -eq 1|Getcoin
+--?[&type] -eq 2|Losecoin
+
+--:Getcoin| 
+--+[*S:character_name]| added [&Coindisplay]
+--eCoin Exchange|[*S:character_name] has added [&Coindisplay]
+--!a:[&STokenID]|cp:+=[&cp]
+--!a:[&STokenID]|sp:+=[&sp]
+--!a:[&STokenID]|gp:+=[&gp]
+--!a:[&STokenID]|pp:+=[&pp]
+-->Coinreset|
+--^proc_start|
+--X|
+
+
+--:Losecoin|
+-->Coincheck|
+--+|Removed [&Coindisplay]
+--+[*S:character_name]| removed [&Coindisplay]
+--eCoin Exchange|[*S:character_name] has removed [&Coindisplay]
+--!a:[&STokenID]|cp:-=[&cp]
+--!a:[&STokenID]|sp:-=[&sp]
+--!a:[&STokenID]|gp:-=[&gp]
+--!a:[&STokenID]|pp:-=[&pp]
+-->Coinreset|
+--^proc_start|
+--X|
+
+--:Sendcoin|
+-->Coincheck|
+--#whisper| 
+--+[*S:character_name]| has placed [&Coindisplay] on the table for others to claim.
+--+[*S:character_name]| removed [&Coindisplay]
+--!a:[&STokenID]|cp:-=[&cp]
+--!a:[&STokenID]|sp:-=[&sp]
+--!a:[&STokenID]|gp:-=[&gp]
+--!a:[&STokenID]|pp:-=[&pp]
+--+|[c][rbutton:#ffffff:#9727b0]Claim Amount::Getsendcoin[/rbutton][/c]
+--&STokenID| [&SPACE]
+--X|
+
+--:Getsendcoin|
+-->reselect|
+--#sourcetoken|[&STokenID]
+--#whisper|self
+--+You| claimed the [&Coindisplay]
+--eCoin Exchange|[*S:character_name] claimed the [&Coindisplay]
+--!a:[&STokenID]|cp:+=[&cp]
+--!a:[&STokenID]|sp:+=[&sp]
+--!a:[&STokenID]|gp:+=[&gp]
+--!a:[&STokenID]|pp:+=[&pp]
+--/|+|[button:#ffffff:#101010]Equipment Bag::~Relic|Runinventory[/button]
+-->Coinreset|
+--X|
+
+--:Coin_ConvertUp|
+
+--&Cointype|[&reentryval(before,-)]
+--&Coinamount|[&reentryval(after,-)]
+--=Amount|[&Coinamount]/10 {FLOOR}
+--=Amount|[$Amount]
+
+
+--?[&Cointype] -eq Copper|[
+--?[*S:cp] -lt [&Coinamount]|Noconvert
+--!a:[&STokenID]|cp:-=[&Coinamount]
+--!a:[&STokenID]|sp:+=[$Amount]
+--+|Converted [&C][&Coinamount] to [&S][$Amount.Text]
+--]|
+--?[&Cointype] -eq Silver|[
+--?[*S:sp] -lt [&Coinamount]|Noconvert
+--!a:[&STokenID]|sp:-=[&Coinamount]
+--!a:[&STokenID]|gp:+=[$Amount]
+--+|Converted [&S][&Coinamount] to [&G][$Amount.Text]
+
+--]|
+--?[&Cointype] -eq Gold|[
+--?[*S:gp] -lt [&Coinamount]|Noconvert
+--!a:[&STokenID]|gp:-=[&Coinamount]
+--!a:[&STokenID]|pp:+=[$Amount]
+--+|Converted [&G][&Coinamount] to [&P][$Amount.Text]
+
+--]|
+--^proc_start|
+--X|
+
+--:Coin_ConvertDown|
+
+--&Cointype|[&reentryval(before,-)]
+--&Coinamount|[&reentryval(after,-)]
+--=Amount|[&Coinamount]*10
+--=Amount|[$Amount]
+
+
+--?[&Cointype] -eq Silver|[
+--?[*S:sp] -lt [&Coinamount]|Noconvert
+--!a:[&STokenID]|sp:-=[&Coinamount]
+--!a:[&STokenID]|cp:+=[$Amount]
+--+|Converted [&S][&Coinamount] to [&C][$Amount.Text]
+
+--]|
+--?[&Cointype] -eq Gold|[
+--?[*S:gp] -lt [&Coinamount]|Noconvert
+--!a:[&STokenID]|gp:-=[&Coinamount]
+--!a:[&STokenID]|sp:+=[$Amount]
+--+|Converted [&G][&Coinamount] to [&S][$Amount.Text]
+
+--]|
+--?[&Cointype] -eq Platinum|[
+--?[*S:pp] -lt [&Coinamount]|Noconvert
+--!a:[&STokenID]|pp:-=[&Coinamount]
+--!a:[&STokenID]|gp:+=[$Amount]
+--+|Converted [&P][&Coinamount] to [&G][$Amount.Text]
+--]|
+--^proc_start|
+--X|
+
+--:Noconvert|
+--+|You do not have enough.
+-->Coinreset|
+--X|
+
+--:Coinreset|
+--&Coindisplay| [&SPACE]
+--&cp| [&SPACE]
+--&sp| [&SPACE]
+--&gp| [&SPACE]
+--&pp| [&SPACE]
+--<|
+
+--:Coincheck|
+--?[*S:cp] -lt [&cp]|Noconvert
+--?[*S:sp] -lt [&sp]|Noconvert
+--?[*S:gp] -lt [&gp]|Noconvert
+--?[*S:pp] -lt [&pp]|Noconvert
+--<|
+
+--X|
+
+--:Librarystart|
+--#targettoken|[&reentryval]
+--&ShopID|[*T:character_id]
+--&Shopname|[*T:character_name]
+--eHappenings|[*S:character_name] started browsing some books.
+--?"[&Shopname]" -inc "Book"|proc_startBrowsing|NotaLib 
+
+
+--:proc_startBrowsing|
+ --#sourcetoken|[&STokenID]
+ --#title|[&Shopname]
+ --#rightSub|
+ --#whisper|self
+ --#leftsub|[*S:character_name]
+  --#emoteBackground|#101010
+  --#bodyfontface|Helvetica
+  --#oddrowfontcolor|#ffffff
+  --#evenrowfontcolor|#ffffff
+  --#bodyfontsize|12px
+  --#buttonfontsize|11px
+  --#buttonbackground|#ffffff
+  --#buttonfontface|Tahoma
+  --#titlecardbackgroundcolor|#050505
+  --#titlefontsize|2em
+  --#oddrowbackground|#202020
+  --#evenrowbackground|#101010
+  --#subtitlefontcolor|#ffffff
+  --#tablebgcolor|#000000
+  --#lineheight|normal
+  --#buttonpadding|2px
+  --#titlecardbackgroundimage|url('https://s3.amazonaws.com/files.d20.io/images/371042796/BjME67alQzEk55qZLrVktQ/med.png?1702215702'); background-size: 100% 100%; background-repeat: no-repeat;
+ 
+--#emoteState|off
+  --#oddrowbackground|#050505
+  --#evenrowbackground|#050505
+--+|[F:Contrail One:22][c]Books[/c][/f]
+  --#oddrowbackground|#202020
+  --#evenrowbackground|#101010
+--~|array;fromrepeatingsection;Inventory;[&ShopID];repeating_inventory;itemname
+--~|array;sort;Inventory
+--~Inventory|array;getfirst;Inventory
+--?"[&Inventory]" -eq ArrayError|Bookfinddone
+--Rfind|[&ShopID];[&Inventory];repeating_inventory;itemname
+--?[*R:equipped] -eq 0|Bookfindstart
+--+|[t border=0 width=100%][tr][td style"width=20px"][/td][td][&Inventory][/td]
+[td style"width=50px"][/td]
+[td style"width=15px"][/td][/td]
+[td style"width=20px"][rbutton:10px]🔎::Bookcard;[&Inventory][/rbutton][/td][/t][/tr]
+
+--:Bookfindstart|
+--~Inventory|array;getnext;Inventory
+--?"[&Inventory]" -eq ArrayError|Bookfinddone
+
+--Rfind|[&ShopID];[&Inventory];repeating_inventory;itemname
+--?[*R:equipped] -eq 0|Bookfindstart
+--+|[t border=0 width=100%][tr][td style"width=20px"][c][&Itemcount][/c][/td][td][&Inventory][/td]
+[td style"width=50px"][/td]
+[td style"width=15px"][/td][/td]
+[td style"width=20px"][rbutton:10px]🔎::Bookcard;[&Inventory][/rbutton][/td][/t][/tr]
+--^Bookfindstart|
+--:Bookfinddone|
+--X|
+
+--:Bookcard|
+  	--#title|[&reentryval(before,-)]
+	--#titleCardBackground|#733a1e
+	--#titlecardbackgroundimage|#733a1e
+	--#leftsub|Book
+	--#rightsub| 																										
+	--#titlefontsize| 2.0em
+	--#titlefontface| Contrail One
+	--#titlefontcolor|#ffffff
+	--#oddRowBackground|#FFFFFF
+    --#evenrowbackground|#F0F0F0
+	--#oddrowfontcolor|#000000
+	--#evenrowfontcolor|#000000
+	--#bodyfontsize|12px
+    --#buttonfontsize|10px
+	--#buttonbackground|#5e5e5e
+	--#buttonfontface|Tahoma
+	--#subtitlefontcolor|#ffffff
+	--#lineheight|normal
+	--#buttonpadding|3px
+	--#emoteState|off
+	
+--Rfind|[&ShopID];[&reentryval];repeating_inventory;itemname
+--&name|[*R:itemname]
+--&ItemDescr|[*R:itemcontent]
+
+--:Bookcardreturn|
+  	--#oddRowBackground|#FFFFFF
+    --#evenrowbackground|#F0F0F0
+  --+|[&ItemDescr]
+  --+|[l][r][rbutton]Back to Browsing::proc_startBrowsing[/rbutton][/l][/r]
+--X|
+	--:NotaLib|
+	--+|The target you selected has nothing you could browse.
+}}

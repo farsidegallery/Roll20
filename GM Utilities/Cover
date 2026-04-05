@@ -1,0 +1,56 @@
+!script{{
+  +++5Elib;snlib;Farsidelib+++
+
+  --#title|Cover
+  --#whisper|gm
+  
+  --/|Script Name : Cover
+  --/|Version     : 1.5
+  --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
+  --/|Author      : Farsidegallery
+  
+  -->ChooseFunction|
+  
+  --:ChooseFunction|
+   --+Choose Cover: |[rbutton]Half::Half;&#64;{target|token_id}[/rbutton][rbutton]Three Quarters::ThreeQuarters;&#64;{target|token_id}[/rbutton][rbutton]Remove::TurnOff;&#64;{target|token_id}[/rbutton]
+   --X|
+  
+  --:Half|
+   --#whisper|
+   --#targettoken|[&reentryval]
+   --+Cover Target|[*T:character_name]
+   -->CheckForMod|1/2 Cover;2
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*T:id]; ac; 1/2 Cover; 1
+   -->LibSN_ADD_STATUS_MARKER|[*T:t-id];HalfCover::7409904
+   --+|[*T:character_name] is now behind 1/2 cover and gains a +2 to AC.
+   --X|
+  
+  --:ThreeQuarters|
+   --#whisper|
+   --#targettoken|[&reentryval]
+   -->CheckForMod|3/4 Cover;5
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*T:id]; ac; 3/4 Cover; 1
+   -->LibSN_ADD_STATUS_MARKER|[*T:t-id];ThreeQuarterCover::7409905
+   --+|[*T:character_name] is now behind 3/4 cover and gains a +5 to AC.
+   --X|
+    
+  --:TurnOff|
+   --#targettoken|[&reentryval]
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*T:id]; ac; 3/4 Cover; 0
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*T:id]; ac; 1/2 Cover; 0
+   -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];ThreeQuarterCover::7409905
+   -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];HalfCover::7409904
+   --+|[*T:character_name] is no longer behind cover.
+   --X|
+  
+  --:CheckForMod|
+   -->far_Check_GLOBAL_MOD_EXISTS|[*T:id]; ac; [%1%]; Exists
+   --?[&Exists] -eq 0|[
+    --!a:[*T:id]|global_ac_mod_flag:1
+	--!or:[*T:id]:acmod|
+	  global_ac_name:[%1%]|
+	  global_ac_val:[%2%]|
+	  options-flag:0
+	--]|
+   --<|
+}}

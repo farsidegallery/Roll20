@@ -1,0 +1,1 @@
+/w @{character_name} &{template:default}{{name=On Your Turn You Can}}{{Move=Up to your speed (can be broken up)}}{{Attack=Click the weapon or spell you want to attack with on your character sheet}}{{Bonus Action=Ex: Hide (make a stealth check)}}
