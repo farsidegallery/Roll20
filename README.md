@@ -7,3 +7,5 @@ Kurt's Scripts and Libraries can be found here: https://github.com/kjaegers/Scri
 
 I have tried to give credit to all scripts that are not my direct creation. If you find one that you wrote and are not credited, please contact me and I will give credit
 or delete if requested.
+
+If you wish to tip or donate (I have been asked several times), please contact me and I will provide the options. They are always welcome but NEVER required or needed.
