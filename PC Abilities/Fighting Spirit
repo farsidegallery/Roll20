@@ -1,0 +1,46 @@
+!scriptcard {{
+  +++5Elib;snlib;Farsidelib+++  
+  
+  --#title|Fighting Spirit
+  --#sourceToken|@{selected|token_id}
+  --#leftsub|Healing
+  --#rightsub|Fighting Spirit
+  
+  --/|Script Name : Fighting Spirit
+  --/|Version     : 1.5
+  --/|Requires SC : ScriptCards Library 5Elib
+  --/|Author      : Farsidegallery
+  --/|  
+  --/|  Script checks for resource availability, udpdates target character sheet, places token marker, and deducts a resource slot.
+  --/|
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+      
+  --/|What resource name is used for Fighting Spirit?
+  --&SpiritResource|Fighting Spirit
+   
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+  
+  -->Lib5E_FIND_RESOURCE|[*S:character_id];[&SpiritResource];Spiritname;SpiritAmmo
+  --?[&SpiritAmmo] -eq 0|NoSpirit
+  --=Healing|15
+  --+|
+  --+Healing:|[*S:t-name] now has [$Healing] temporary hit points and advantage on the next attack!
+  -->SetAttribs|
+  --X| Done
+
+ --:SetAttribs|   
+   --!a:[*S:t-id]|hp_temp:[$Healing]
+   --=FinalSpirit|[$SpiritAmmo] - 1 
+   --!a:[*S:character_id]|[&SpiritAmmo]:[$FinalSpirit]
+   --&obrac|{
+   --&cbrac|}
+   --&At|@
+   --!a:[*S:t-id]|rtype:[&At]{advantagetoggle}
+   --!a:[*S:t-id]|advantagetoggle:[&obrac][&obrac]query=1[&cbrac][&cbrac] [&obrac][&obrac]advantage=1[&cbrac][&cbrac] [&obrac][&obrac]r2=[[[&At]{d20}
+   --<|
+
+  --:NoSpirit|
+   --#emoteText|[*S:t-name] tries to to use Fighting Spirit, but needs to take a long rest first.
+   --+|[*S:t-name] has no Fighting Spirit uses available.
+   --X| DONE
+}}

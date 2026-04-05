@@ -1,0 +1,134 @@
+!script {{
+ +++5Elib;snlib;dnd5elib+++
+
+  --&CharID|@{selected|character_id}
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+ 
+ 
+  --/|------------------------------------------------------------------
+  --/|Script Name : Path to the Grave
+  --/|Version     : 1.5
+  --/|Requires SC : SC libs 5Elib;snlib;dnd5elib
+  --/|Author      : Si
+  --/|Modified By : Farsidegallery
+
+  --/| Description : A custom Channel Divinity: Path to the Grave script for a player
+  --/| 
+      
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+  
+  --/|Enter Token Marker used for Toll the Dead.
+  --&TollMarker|Marked4::7409915
+  
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  
+  --#Title|Path to the Grave
+  --#titlecardBackgroundImage|url('https://s3.amazonaws.com/files.d20.io/images/408609219/03FnSne7e0c5JbTwTJ2Q4w/max.jpg'); background-size: 100% 300%; background-repeat: no-repeat;
+  --#titleFontColor|#fad105
+  --#subtitleFontColor|#fad105
+  --#emoteBackground|#223030
+  --#emoteFontColor|#FFFFFF
+  --#emoteFontSize|28
+ 
+  --&FeatureName|Channel Divinity
+  --&ResourceName|[&FeatureName]
+ 
+  --?[*S:TollDead] -eq 1|Remove
+
+  --:(A) CHECK CHANNEL DIVINITY RESOURCE HAS USES LEFT|
+  --#emoteText|[*S:t-name] uses Channel Divinity: Path to the Grave!
+  -->Lib5E_FIND_RESOURCE|[&CharID];[&ResourceName];ResName;ResValue 
+  --?[$ResValue] -lt 1|>NoSlotsLeft
+    
+  --:(0) DEDUCT RESOURCE| 
+  
+  --!a:[&CharID]|[&ResValue]:-=1
+
+  --:New|
+   --+Target|[rbutton]Click here to select your target.::SetTarget;[&TB]target|token_id}[/rbutton]
+   --X|
+  
+  --:SetTarget|
+   --#targettoken|[&reentryval]
+   -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&TollMarker];1
+   --&NewVuln|bludgeoning, piercing, slashing, fire, cold, acid, lightning, poison, necrotic, force, radiant, thunder, psychic
+  
+   --!a:[*S:character_id]|!TollDead:1
+   --!a:[*S:character_id]|!TollTarget:[*T:t-id]
+
+   --/|Copy and remove Vulnerabilities
+   --&vuln|[*T:npc_vulnerabilities]
+   --!a:[*T:character_id]|!OrigVulnerable:[&vuln]
+   --!a:[*T:character_id]|!npc_vulnerabilities:[&NewVuln]
+   
+   --/|Copy and remove Resistances
+   --&resist|[*T:npc_resistances]
+   --!a:[*T:character_id]|!OrigResist:[&resist]
+   --!a:[*T:character_id]|!npc_resistances:
+   
+   --/|Copy and remove Immunities
+   --&immune|[*T:npc_immunities]
+   --!a:[*T:character_id]|!OrigImmune:[&immune]
+   --!a:[*T:character_id]|!npc_immunities:
+   --^Final|
+
+  --:Final|
+   --#whisper|
+   -->PlayEffects|none;none;bomb-smoke;none;
+   --+| The awesome wrath of your god is manifest, [*T:t-name] is vulnerable to ALL damage from the next attack that hits. NO SAVE!!!
+   --X|
+
+  --:PlayEffects|
+   --a|[%1%]
+   --w1:vtoken|[*T:t-id] bomb-smoke
+   --vtoken|[*S:t-id] [%4%]
+   --<|
+    
+  --:NoSlotsLeft|
+   --#whisper|
+   --#title|[*S:t-name], your god wishes you to trust in your own abilities!
+   --+|[b] You may not call upon your deity any more this day[/b]
+   --X|
+  
+  --:Remove|
+   --#whisper|
+   --&ThisTarget|[*S:TollTarget]
+   -->LibSN_REMOVE_STATUS_MARKER|[*[&ThisTarget]:t-id];[&TollMarker];1
+   
+   --?"[*[&ThisTarget]:OrigVulnerable]" -eqi "undefined"|[
+    --!a:[*[&ThisTarget]:character_id]|npc_vulnerabilities:
+	--]|[
+	--!a:[*[&ThisTarget]:character_id]|npc_vulnerabilities:[*[&ThisTarget]:OrigVulnerable]
+	--]|
+   --!a:[*[&ThisTarget]:character_id]|OrigVulnerable:**
+   
+   --?"[*[&ThisTarget]:OrigResist]" -eqi "undefined"|[
+    --!a:[*[&ThisTarget]:character_id]|npc_resistances:
+	--]|[
+	--!a:[*[&ThisTarget]:character_id]|npc_resistances:[*[&ThisTarget]:OrigResist]
+	--]|
+   --!a:[*[&ThisTarget]:character_id]|OrigResist:**
+   
+   --?"[*[&ThisTarget]:OrigImmune]" -eqi "undefined"|[
+    --!a:[*[&ThisTarget]:character_id]|npc_immunities:
+	--]|[
+	--!a:[*[&ThisTarget]:character_id]|npc_immunities:[*[&ThisTarget]:OrigImmune]
+	--]|
+   --!a:[*[&ThisTarget]:character_id]|OrigImmune:**
+   
+   --!a:[*S:character_id]|TollDead:0
+   --!a:[*S:character_id]|TollTarget:**
+   
+   --+Path to the Grave Fades!|[*[&ThisTarget]:t-name]'s resistances are restored.
+   --X|
+}}

@@ -1,0 +1,68 @@
+!scriptcards {{
+  +++5Elib;snlib;Farsidelib+++	
+  
+  --/|Script Name : Intangible Spirit
+  --/|Version     : 1.0
+  --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
+  --/|Author      : Farsidegallery
+  --/|  
+  --/|  Script rolls saving throw, compares to caster's DC, and determines if spell hits. Script finds Caster's level, scales and calculates damage,
+  --/|  determines damage modifier (resistant, immune), and applies damage. If target dies due to damgae, the "Dead" token marker is applied.
+  --/|
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+    
+   
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+ 
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&At|@
+  
+  --#hideCard|1
+  --#whisper|self,gm
+  --#sourceToken|@{selected|token_id}
+  --=DC|8 +[*S:pb] + [*S:constitution_mod]
+
+  
+  --?[*S:Raging] -nei 1|>Error;rage
+  --?[*S:SurgeRoll] -nei 3|>Error;surge
+  
+  --@forselected+|smartaoe [&brace][&brace] 
+	   _title|Intangible Spirit
+	   _titlecardbackground|linear-gradient(blue, cyan)
+	   _leftsub|Rage Wild Magic 
+	   _rightsub|DC [$DC] DEX
+	   _chatAvatarsEnabled|false 
+	   _aoeType|circle, float 
+	   _forceIntersection|0 
+	   _radius|5ft 
+	   _fx|burst-fire 
+	   _dc|[$DC] 
+	   _saveFormula|5eDEX 
+	   _damagesaverule|*0
+	   _damageFormula1|[[1d6]]
+	   _damageType1|force
+	   _autoApply|1 
+	   _bar|1 
+	   _instant|1 
+	   _zeroHPmarker|dead 
+	   _desc|An intangible spirit, which looks like a **flumph** or a **pixie** (your choice), appears within 5 feet of one creature of your choice that you can see within 30 feet of you. At the end of the current turn, the spirit explodes, and each creature within 5 feet of it must succeed on a Dexterity saving throw or take 1d6 force damage.
+	   [&cbrace][&cbrace]
+  --X|
+  
+  --:Error|ErrorType
+   --#whisper|
+   --?"[%1%]" -eq "rage"|[
+    --+Error! |[*S:t-name] is not currently raging!
+    --]|
+  
+   --?"[%1%]" -eq "surge"|[
+    --+Error! |[*S:t-name] did not have this effect rolled on the Wild Surge Magic Table!
+    --]|
+   --X|
+}}

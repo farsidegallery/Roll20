@@ -1,0 +1,46 @@
+!scriptcard {{
+  +++5Elib;snlib;Farsidelib+++
+  --#overridetemplate|wizard 
+ 
+  --#title|Healing Hands
+  --#sourceToken|@{selected|token_id}
+  --#targetToken|@{target|token_id}
+  --#leftsub|Healing
+  --#rightsub|Resource Pool
+  
+  --/|Script Name : Healing Hands
+  --/|Version     : 1.5
+  --/|Requires SC : ScriptCards Library 5Elib
+  --/|Author      : Farsidegallery
+  --/|  
+  --/|  Script checks for resource availability, udpdates target character sheet, places token marker, and deducts a resource slot.
+  --/|
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+      
+  --/|What resource name is used for Healing Hands?
+  --&HealingResource|Healing Hands
+   
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+    
+  --#emoteText|[*S:t-name] uses Healing Hands on [*T:t-name].
+
+  --:Base|
+   --=AasimarLevel|@{selected|level}
+   -->Lib5E_FIND_RESOURCE|[*S:character_id];[&HealingResource];Handname;HandAmmo
+   --?[$HandAmmo] -eq 0|NoHand
+   -->Heal|[$AasimarLevel]
+   --X| Done
+   
+  --:Heal|HealAmount
+    --=Missing|[*T:t-bar1_max] - [*T:t-bar1_value]
+	--?[%1%] -gt [$Missing]|=HealAmount;[$Missing]|=HealAmount;[%1%]
+   -->LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;[$AasimarLevel];0;0
+   --+Healing:|[*T:t-name] regains [$HealAmount] hit points.
+   --!a:[*S:character_id]|[&HandAmmo]:0
+   --X| Done
+  
+  --:NoHand|
+   --#emoteText|[*S:t-name] tries to to use Healing Hands, but needs to take a long rest first.
+   --+|[*S:t-name] does not have Healing Hands available.
+   --X| DONE
+}}

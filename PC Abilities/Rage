@@ -1,0 +1,729 @@
+!scriptcard {{
+  +++5Elib;snlib;Farsidelib+++	
+  
+   
+--/|                >>>>> Formatting <<<<<
+  --#emoteBackground|#transparent
+  --#titleCardBackground|#ed0202
+  --#titlefontsize|1.75em
+  --#titlefontlineheight|1.75em
+  --#titleFontColor|white
+  --#titlefontface|Shadows Into Light
+  --#subtitleFontSize|12px
+  --#subtitleFontFace|Verdana
+  --#evenRowBackground|#B6AB91
+  --#evenRowFontColor|#000000
+  --#oddRowBackground|#CEC7B6
+  --#oddRowFontColor|#000000
+  --#whisper|self,gm
+  --#title|RAGE
+  --#titleCardBackground|#FF0000
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|RAGE @{selected|character_id}
+  
+  --/|------------------------------------------------------------------
+  
+  --/|Script Name : Rage
+  --/|Version     : 2.0
+  --/|Requires SC : ScriptCards Library 5Elib/Farsidelib
+  --/|Author      : Farsidegallery
+
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+    
+  --/|Enter Token Markers used for each of the following.
+  --&Rage|Raging::7409927
+  --&BlindednMarker|Blinded::7409948
+
+  --/|What is the name of the Global Damage Mod used for Rage.
+  --&ModName|Rage Damage
+   
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+  
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&At|@
+   
+   --?[*S:Raging] -eq 1|TurnOff
+   
+   --#whisper|
+   -->Lib5E_FIND_RESOURCE|[*S:character_id];Rage;Ammoname;Ammo
+   --?[$Ammo] -eq 0|NoAmmoLeft
+   --=Ammo|[$Ammo] - 1
+   
+   --#emoteText|@{selected|token_name} goes into a fit of RAGE!!!
+   --/| +|[img]https://c.tenor.com/ob62tslCeUIAAAAC/gnome-gravity-falls.gif[/img]
+   --/| @roll20AM|_audio,play,nomenu|rage
+   --vtoken|[*S:t-id] burn-death
+   -->far_Check_GLOBAL_MOD_EXISTS|[*S:t-id]; damage; [&ModName]; Exists
+   --?[&Exists] -eq 1|>SetRageMod |>CreateRageMod
+   --!a:[*S:character_id]|!Raging:1
+   -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&Rage]
+   -->Lib5E_FIND_CLASS_LEVEL|[*S:character_id];Barbarian;BarbLevel
+   --=DC|8 + [*S:pb] + [*S:constitution_mod]
+   --=PB|[*S:pb]
+   --&BarbResist|,bludgeoning, piercing, slashing
+   -->Resistances|[&BarbResist]
+   
+   --+Strength: |[*S:t-name] now has advantage on Strength checks and Strength saving throws.
+   --+|[br]
+   --+Damage: |[*S:t-name] now does extra damage.
+   --+|[br] 
+   --+Resistance: |[*S:t-name] is now resistant to bludgeoning, piercing, and slashing damage.
+   --+|[br]
+   
+   --?"[*S:class_display]" -inc "Berserker"|>Berserker
+   --?"[*S:class_display]" -inc "Totem"|>Totem
+   --?"[*S:class_display]" -inc "Ancestral"|>Ancestral
+   --?"[*S:class_display]" -inc "Storm"|>Storm
+   --?"[*S:class_display]" -inc "Zealot"|>Zealot
+   --?"[*S:class_display]" -inc "Battlerager"|>Battlerager
+   --?"[*S:class_display]" -inc "Beast"|>Beast
+   --?"[*S:class_display]" -inc "Wild"|>Wild
+   
+   
+ --/| ____________________ Procedures_______________________________________________________________________________________
+ 
+   --:Berserker|    
+	--+|[c][b]Rage Related Feats[/b][/c]
+   --+|[br]
+	
+	--?[&BarbLevel] -ge 3|[
+    --+Frenzy: |You can go into a frenzy when you rage. If you do so, for the duration of your rage you can make a single melee weapon attack as a bonus action on each of your turns after this one. When your rage ends, you suffer one level of exhaustion.
+	--+|[br]
+	--]|
+   
+   --?[&BarbLevel] -ge 6|[
+    --&BersImmune|,charmed, frightened
+	-->Immunities|[&BersImmune]
+	--+Mindless Rage: |You can’t be charmed or frightened while raging. If you are charmed or frightened when you enter your rage, the effect is suspended for the duration of the rage.
+	--+|[br]
+	--]|
+   
+   --?[&BarbLevel] -ge 14|[
+    --+Retaliation: |When you take damage from a creature that is within 5 feet of you, you can use your reaction to make a melee weapon attack against that creature.
+	--]|
+   
+   -->AmmoSpent|
+  
+  --:Totem|
+   -->far_FindFeat|[*S:character_id];Totem Spirit: Bear;BearFlag
+   -->far_FindFeat|[*S:character_id];Totem Spirit: Eagle;EagleFlag
+   -->far_FindFeat|[*S:character_id];Totem Spirit: Wolf;WolfFlag
+   -->far_FindFeat|[*S:character_id];Totem Spirit: Elk;ElkFlag
+   -->far_FindFeat|[*S:character_id];Totem Spirit: Tiger;TigerFlag
+      
+   --+|[c][b]Rage Related Feats[/b][/c]
+   --+|[br]
+   
+   --?[&BarbLevel] -ge 3 -and [$BearFlag] -eq 1|[
+    --+Level 3 - Bear: |While raging, you have resistance to all damage except psychic damage. The spirit of the bear makes you tough enough to stand up to any punishment.
+	--!a:[*S:character_id]|!npc_resistances:[*S:OrigResist]
+    --&BearResist|,bludgeoning, piercing, slashing, fire, cold, acid, lightning, poison, necrotic, force, radiant, thunder
+    -->Resistances|[&BearResist]
+	--+|[br]
+    --+Resistance: | [*S:t-name]'s resistance is modified to bludgeoning, piercing, slashing, fire, cold, acid, lightning, poison, necrotic, force, radiant, and thunder.
+	--+|[br]
+	--]|
+   
+   --?[&BarbLevel] -ge 3 -and [$EagleFlag] -eq 1|[
+    --+Level 3 - Eagle: |While you’re raging, other creatures have disadvantage on opportunity attack rolls against you, and you can use the Dash action as a bonus action on your turn. The spirit of the eagle makes you into a predator who can weave through the fray with ease.
+	--+|[br]
+	--]|
+   
+   --?[&BarbLevel] -ge 3 -and [$WolfFlag] -eq 1|[
+    --+Level 3 - Wolf: |While you’re raging, your friends have advantage on melee attack rolls against any creature within 5 feet of you that is hostile to you. The spirit of the wolf makes you a leader of hunters.
+	--+|[br]
+	--]|
+   
+   --?[&BarbLevel] -ge 3 -and [$ElkFlag] -eq 1|[
+    --+Level 3 - Elk: |While you're raging and aren't wearing heavy armor, your walking speed increases by 15 feet. The spirit of the elk makes you extraordinarily swift.
+	--+Speed: |Your movement speed by 15 feet.
+    --!a:[*S:character_id]|!OrigSpeed:[*S:speed]
+    --=NewSpeed|[*S:speed]+15
+    --!a:[*S:character_id]|!speed:[$NewSpeed]
+	--+|[br]
+	--]|
+   
+   --?[&BarbLevel] -ge 3 -and [$TigerFlag] -eq 1|[
+    --+Level 3 - Tiger: |While raging, you can add 10 feet to your long jump distance and 3 feet to your high jump distance. The spirit of the tiger empowers your leaps.
+	--+|[br]
+	--]|
+   
+   --?[&BarbLevel] -ge 14 -and [$BearFlag] -eq 1|[
+	--+Level 14 - Bear: |While you're raging, any creature within 5 feet of you that's hostile to you has disadvantage on attack rolls against targets other than you or another character with this feature. An enemy is immune to this effect if it can't see or hear you or if it can't be frightened.
+	--+|[br]
+	--]|
+   
+   --?[&BarbLevel] -ge 14 -and [$EagleFlag] -eq 1|[
+	--+Level 14 - Eagle: |While raging, you have a flying speed equal to your current walking speed. This benefit works only in short bursts; you fall if you end your turn in the air and nothing else is holding you aloft.
+	--+|[br]
+	--]|
+   
+   --?[&BarbLevel] -ge 14 -and [$WolfFlag] -eq 1|[
+    --+Level 14 - Wolf: |While you're raging, you can use a bonus action on your turn to knock a Large or smaller creature prone when you hit it with melee weapon attack.
+	--+|[br]
+	--]|
+   
+   --?[&BarbLevel] -ge 14 -and [$ElkFlag] -eq 1|[
+    --+Level 14 - Elk: |While raging, you can use a bonus action during your move to pass through the space of a Large or smaller creature. That creature must succeed on a DC [$DC] Strength saving throw (DC 8 + your Strength bonus + your proficiency bonus) or be knocked prone and take bludgeoning damage equal to 1d12 + your Strength modifier.
+	--+|[br]
+	--]|
+   
+   --?[&BarbLevel] -ge 14 -and [$TigerFlag] -eq 1|[
+    --+Level 14 - Tiger: |While you're raging, if you move at least 20 feet in a straight line toward a Large or smaller target right before making a melee weapon attack against it, you can use a bonus action to make an additional melee weapon attack against it.
+	--+|[br]
+	--]|
+   
+   -->AmmoSpent|
+  
+  --:Wild|
+   
+   --:WildWhisperEntry|
+   
+   --#targettoken|[&reentryval]
+   --#whisper|self,gm
+   
+   --?[&BarbLevel] -ge 3 -and [$SurgeFlag] -nei 1|>SurgeRoll
+  
+  --+|[br]
+  --+Click to display results: |[c][rbutton]Continue::WildDisplayEntry[/rbutton][/c]
+  --X|
+  
+  --:RollTwice|
+   --=SurgeRoll1|1d8
+   --=SurgeRoll2|1d8
+   --+Controlled Surge: |Whenever you roll on the Wild Magic table, you can roll the die twice and choose which of the two effects to unleash. If you roll the same number on both dice, you can ignore the number and choose any effect on the table.
+   --+|[br]
+   --?[$SurgeRoll1] -eq [$SurgeRoll2]|[
+    --+Result: |You rolled a [$SurgeRoll1] and a [$SurgeRoll2].
+	--+|[br]
+	--+|[c][b]Please Choose Between:[/b][/c]
+	--+|[rbutton]Shadow Tendrils::RollEntry;1[/rbutton][rbutton]Teleport::RollEntry;2[/rbutton][rbutton]Intangible Spirit::RollEntry;3[/rbutton]
+	--+|[rbutton]Force Weapon::RollEntry;4[/rbutton][rbutton]Retributive Strike::RollEntry;5[/rbutton][rbutton]Protective Aura::RollEntry;6[/rbutton]
+	--+|[rbutton]Entangling Aura::RollEntry;7[/rbutton][rbutton]Radiant Bolt::RollEntry;8[/rbutton]
+	--X|
+	--]|[
+	--+Result: |You rolled a [$SurgeRoll1] and a [$SurgeRoll2].
+	--+|[br]
+	--C[$SurgeRoll1]|1:&Roll1Effect;Shadow Tendrils|2:&Roll1Effect;Teleport|3:&Roll1Effect;Intangible Spirit|4:&Roll1Effect;Force Weapon|5:&Roll1Effect;Retributive Strike|6:&Roll1Effect;Protective Aura|7:&Roll1Effect;Entangling Aura|8:&Roll1Effect;Radiant Bolt
+	--C[$SurgeRoll2]|1:&Roll2Effect;Shadow Tendrils|2:&Roll2Effect;Teleport|3:&Roll2Effect;Intangible Spirit|4:&Roll2Effect;Force Weapon|5:&Roll2Effect;Retributive Strike|6:&Roll2Effect;Protective Aura|7:&Roll2Effect;Entangling Aura|8:&Roll2Effect;Radiant Bolt
+	--+|[c][b]Please Choose Between:[/b][/c]
+	--+|[c][rbutton][&Roll1Effect]::RollEntry;[$SurgeRoll1][/rbutton][rbutton][&Roll2Effect]::RollEntry;[$SurgeRoll2][/rbutton][/c]
+	--X|
+	--]|
+  
+  --:RollEntry|
+   --=SurgeRoll|[&reentryval]
+   --C[$SurgeRoll]|1:&RollEffect;Shadow Tendrils|2:&RollEffect;Teleport|3:&RollEffect;Intangible Spirit|4:&RollEffect;Force Weapon|5:&RollEffect;Retributive Strike|6:&RollEffect;Protective Aura|7:&RollEffect;Entangling Aura|8:&RollEffect;Radiant Bolt
+   --+|You chose [b][&RollEffect][/b]!
+   -->SurgeEntry|
+   --<|
+  
+  --:CreateAura| 
+    --!a:[*S:character_id]|global_ac_mod_flag:1
+    --!or:[*S:character_id]:acmod|
+	global_ac_name:Protective Aura|
+	global_ac_val:1|
+	global_ac_active_flag:1|
+	options-flag:0
+	--<|
+  
+  --:SetAura|  
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*S:character_id];ac;Protective Aura;1
+   --<|
+  
+  --:SurgeRoll|
+   --=SurgeFlag|1
+   --?[&BarbLevel] -ge 14|RollTwice |=SurgeRoll;1d8
+   --+|You rolled a [$SurgeRoll]
+   
+  --:SurgeEntry|
+   --!a:[*S:character_id]|!SurgeRoll:[$SurgeRoll]
+   --+|[br]
+   --?[$SurgeRoll] -eq 1| >Roll_1
+   --?[$SurgeRoll] -eq 2| >Roll_2
+   --?[$SurgeRoll] -eq 3| >Roll_3
+   --?[$SurgeRoll] -eq 4| >Roll_4
+   --?[$SurgeRoll] -eq 5| >Roll_5
+   --?[$SurgeRoll] -eq 6| >Roll_6
+   --?[$SurgeRoll] -eq 7| >Roll_7
+   --?[$SurgeRoll] -eq 8| >Roll_8
+   --<|
+  
+  --:Roll_1|
+	  --=TempHP|1d12
+      --+[c][#030bfc]**~~Shadow Tendrils~~|**[/#][/c]
+      --+|Shadowy tendrils lash around you. 
+      --+|[j]Each creature of your choice that you can see within 30 feet of you must succeed on a **[#990000]Constitution saving throw[/#]** or take 1d12 necrotic damage.[/j]
+      --+|You also gain [$TempHP] temporary hit points.
+	  --!a:[*S:character_id]|!hp_temp:[$TempHP]
+      
+	  --@forselected+|smartaoe [&brace][&brace] 
+	   _title|Shadow Tendrils 
+	   _titlecardbackground|linear-gradient(gray, black)
+	   _titlefontcolor|white
+	   _subtitlefontcolor|white
+	   _leftsub|Rage Wild Magic 
+	   _rightsub|DC [$DC] CON
+	   _chatAvatarsEnabled|false 
+	   _aoeType|circle, float 
+	   _forceIntersection|0 
+	   _radius|30ft 
+	   _fx|burst-death 
+	   _dc|[$DC] 
+	   _saveFormula|5eCON 
+	   _damagesaverule|*0
+	   _damageFormula1|[[1d12]]
+	   _damageType1|necrotic
+	   _ignore|SmartAoE_Ignore,1
+	   _autoApply|1 
+	   _bar|1 
+	   _instant|1 
+	   _zeroHPmarker|dead 
+	   _desc|Each creature of your choice that you can see within 30 feet of you must succeed on a Constitution saving throw or take 1d12 necrotic damage.
+	   [&cbrace][&cbrace]
+	  
+	  --<|
+
+  --:Roll_2|
+      --+[c][#030bfc]**~~Teleport~~|**[/#][/c]
+      --+|[j]**You teleport up to 30 feet** to an unoccupied space you can see.[/j]
+      --+Ongoing Effect: |[j]Until your rage ends, you can use this effect again on each of your turns as a bonus action.[/j]
+	  --+|[br]
+	  --+Ability: |Use the [b]WM Teleport[/b] script in your attacks area for this ability.
+      --<|
+  
+  --:Roll_3|
+      --+[c][#030bfc]**~~Intangible Spirit~~|**[/#][/c]
+      --+|[j]An intangible spirit, which looks like a **flumph** or a **pixie** (your choice), appears within 5 feet of one creature of your choice that you can see within 30 feet of you.[/j]
+      --+|[j]At the end of the current turn, the spirit explodes, and each creature within 5 feet of it must succeed on a **[#990000]Dexterity saving throw[/#]** or take 1d6 force damage.[/j] 
+      --+|[br]
+	  --+Ongoing Effect: |[j]Until your rage ends, you can use this effect again, summoning another spirit, on each of your turns as a bonus action.[/j]
+	  --+|[br]
+	  --+Ability: |Use the [b]WM Intangible Spirit[/b] script in your attacks area for this ability.
+      --<|
+  
+  --:Roll_4|
+      --+[c][#030bfc]**~~Force Weapon~~|**[/#][/c]
+      --+|[j]Magic infuses one weapon of your choice that you are holding.[/j]
+      --+|[j]Until your rage ends, the **weapon's damage type changes to force, and it gains the light and thrown properties**, with a normal range of 20 feet and a long range of 60 feet.[/j]
+      --+|[j]If the weapon leaves your hand, the weapon reappears in your hand at the end of the current turn.[/j]
+      --<|
+  
+  --:Roll_5|
+      --=Retribution|1d6
+	  --+[c][#030bfc]**~~Retributive Strike~~|**[/#][/c]
+      --+Ongoing Effect: |[j]Whenever a creature hits you with an attack roll before your rage ends, that creature takes **[#990000]1d6 force damage[/#]**, as magic lashes out in retribution.[/j]
+      --<|
+  
+  --:Roll_6|
+      --+[c][#030bfc]**~~Protective Aura~~|**[/#][/c]
+      --+Ongoing Effect: |[j]Until your rage ends, you are surrounded by multi colored, protective lights. You gain a **[#990000]+1 bonus to AC[/#]**, and while within 10 feet of you, your allies gain the same bonus.[/j]
+	  -->far_Check_GLOBAL_MOD_EXISTS|[*S:t-id]; ac;"Protective Aura"; ACModExists
+	  --?[&ACModExists] -eq 1|>SetAura |>CreateAura
+	  --<|
+  
+  --:Roll_7|
+      --+[c][#030bfc]**~~Entangling Aura~~|**[/#][/c]
+      --+|[j]Flowers and vines temporarily grow around you.[/j]
+      --+Ongoing Effect: |[j]Until your rage ends, the ground within 15 feet of you is **[#990000]difficult terrain[/#]** for your enemies.[/j]
+      --<|
+  
+  --:Roll_8|
+	  --=BoltFlag|1
+      --+[c][#030bfc]**~~Radiant Bolt~~|**[/#][/c]
+      --+|[j]A bolt of light shoots from your chest.[/j]
+      --+|[j]Another creature of your choice that you can see within 30 feet of you must succeed on a **[#990000]Constitution saving throw[/#]** or take [$RadiantDam] radiant damage and be blinded until the start of your next turn.[/j]
+      --+|[br]
+	  --+Ongoing Effect: |[j]Until your rage ends, you can use this effect again on each of your turns as a bonus action.[/j]
+	  --+|[br]
+	  --+Ability: |Use the [b]WM Radiant Bolt[/b] script in your attacks area for this ability.
+	  --<|
+  
+  --:Roll1Effect|
+   --+[c][#030bfc]**~~Shadow Tendrils~~|**[/#][/c]
+   --+|Shadowy tendrils lash around you. 
+   --+|[j]Each creature of your choice that you can see within 30 feet of you must succeed on a **[#990000]Constitution saving throw)[/#]** or take [$NecroDam] necrotic damage.[/j]
+   --+|You also gain [$TempHP] temporary hit points.
+   --+|[br]
+   --<|
+
+  --:Roll2Effect|
+   --+[c][#030bfc]**~~Teleport~~|**[/#][/c]
+   --+|[j]**You teleport up to 30 feet** to an unoccupied space you can see.[/j]
+   --+|[br]
+   --+Ongoing Effect: |[j]Until your rage ends, you can use this effect again on each of your turns as a bonus action.[/j]
+   --+|[br]
+   --<|
+
+  --:Roll3Effect|
+   --+[c][#030bfc]**~~Intangible Spirit~~|**[/#][/c]
+   --+|[j]An intangible spirit, which looks like a **flumph** or a **pixie** (your choice), appears within 5 feet of one creature of your choice that you can see within 30 feet of you.[/j]
+   --+|[j]At the end of the current turn, the spirit explodes, and each creature within 5 feet of it must succeed on a **[#990000]Dexterity saving throw)[/#]** or take [$ForceDam] (1d6) force damage.[/j] 
+   --+|[br]
+   --+Ongoing Effect: |[j]Until your rage ends, you can use this effect again, summoning another spirit, on each of your turns as a bonus action.[/j]
+   --+|[br]
+   --<|
+
+  --:Roll4Effect|
+   --+[c][#030bfc]**~~Force Weapon~~|**[/#][/c]
+   --+|[j]Magic infuses one weapon of your choice that you are holding.[/j]
+   --+|[j]Until your rage ends, the **weapon's damage type changes to force, and it gains the light and thrown properties**, with a normal range of 20 feet and a long range of 60 feet.[/j]
+   --+|[j]If the weapon leaves your hand, the weapon reappears in your hand at the end of the current turn.[/j]
+   --+|[br]
+   --<|
+
+  --:Roll5Effect|
+   --+[c][#030bfc]**~~Retributive Strike~~|**[/#][/c]
+   --+Ongoing Effect: |[j]Whenever a creature hits you with an attack roll before your rage ends, that creature takes **[#990000][$Retribution] (1d6) force damage[/#]**, as magic lashes out in retribution.[/j]
+   --+|[br]
+   --<|
+
+  --:Roll6Effect|
+   --+[c][#030bfc]**~~Protective Aura~~|**[/#][/c]
+   --+Ongoing Effect: |[j]Until your rage ends, you are surrounded by multi colored, protective lights. You gain a **[#990000]+1 bonus to AC[/#]**, and while within 10 feet of you, your allies gain the same bonus.[/j]
+   --+|[br]
+   --<|
+
+  --:Roll7Effect|
+   --+[c][#030bfc]**~~Entangling Aura~~|**[/#][/c]
+   --+|[j]Flowers and vines temporarily grow around you.[/j]
+   --+|[br]
+   --+Ongoing Effect: |[j]Until your rage ends, the ground within 15 feet of you is **[#990000]difficult terrain[/#]** for your enemies.[/j]
+   --+|[br]
+   --<|
+  
+  --:Roll8Effect|
+   --+[c][#030bfc]**~~Radiant Bolt~~|**[/#][/c]
+   --+|[j]A bolt of light shoots from your chest.[/j]
+   --+|[j]Another creature of your choice that you can see within 30 feet of you must succeed on a **[#990000]Constitution saving throw[/#]** or take 1d6 radiant damage and be blinded until the start of your next turn.[/j]
+   --+|[br]
+   --+Ongoing Effect: |[j]Until your rage ends, you can use this effect again on each of your turns as a bonus action.[/j]
+   --+|[br]
+   --<|
+  
+  --:WildDisplayEntry|
+      
+   --#whisper|
+   --+Strength: |[*S:t-name] now has advantage on Strength checks and Strength saving throws.
+   --+|[br]
+   --+Damage: |[*S:t-name] now does extra damage.
+   --+|[br] 
+   --+Resistance: |[*S:t-name] is now resistant to bludgeoning, piercing, and slashing damage.
+   --+|[br]
+   
+   --?[&BarbLevel] -ge 3|[
+    --+Wild Surge: |The magical energy roiling inside you sometimes erupts from you. When you enter your rage, roll on the Wild Magic table to determine the magical effect produced.
+	--+|If the effect requires a saving throw, the DC equals [$DC] (8 + your proficiency bonus + your Constitution modifier).
+	--+|[br]
+	--]|
+
+   --C[$SurgeRoll]|1:>Roll1Effect|2:>Roll2Effect|3:>Roll3Effect|4:>Roll4Effect|5:>Roll5Effect|6:>Roll6Effect|7:>Roll7Effect|8:>Roll8Effect
+   
+   --+|[c][b]Rage Related Feats[/b][/c]
+   --+|[br]
+   --?[&BarbLevel] -ge 10|[
+	--+Unstable Backlash: |When you are imperiled during your rage, the magic within you can lash out; immediately after you take damage or fail a saving throw while raging, you can use your reaction to roll on the Wild Magic table and immediately produce the effect rolled. This effect replaces your current Wild Magic effect.
+	--+|[br]
+	--]|
+   
+   --?[&BarbLevel] -ge 14|[
+    --+Controlled Surge: |Whenever you roll on the Wild Magic table, you can roll the die twice and choose which of the two effects to unleash. If you roll the same number on both dice, you can ignore the number and choose any effect on the table.
+	--]|
+   
+   -->AmmoSpent|
+  
+  --:Ancestral|
+   
+   --#whisper|
+   --+Strength: |[*S:t-name] now has advantage on Strength checks and Strength saving throws.
+   --+|[br]
+   --+Damage: |[*S:t-name] now does extra damage.
+   --+|[br] 
+   --+Resistance: |[*S:t-name] is now resistant to bludgeoning, piercing, and slashing damage.
+   --+|[br]
+   
+   --+|[c][b]Rage Related Feats[/b][/c]
+   --+|[br]
+   
+   --?[&BarbLevel] -ge 3|[
+    --+Ancestral Protectors: |Starting when you choose this path at 3rd level, spectral warriors appear when you enter your rage. While you’re raging, the first creature you hit with an attack on your turn becomes the target of the warriors, which hinder its attacks. Until the start of your next turn, that target has disadvantage on any attack roll that isn’t against you, and when the target hits a creature other than you with an attack, that creature has resistance to the damage dealt by the attack. The effect on the target ends early if your rage ends.
+	--+|[br]
+	--]|
+   
+   --?[&BarbLevel] -ge 6|[
+    --=ReduceRoll|2d6
+	--+Spirit Shield: |The guardian spirits that aid you can provide supernatural protection to those you defend. If you are raging and another creature you can see within 30 feet of you takes damage, you can use your reaction to reduce that damage by [$ReduceRoll] (2d6).
+	--+|[br]
+	--]|
+   
+   --?[&BarbLevel] -ge 10|[
+    --+Consult the Spirits: |You gain the ability to consult with your ancestral spirits. When you do so, you cast the augury or clairvoyance spell, without using a spell slot or material components. Rather than creating a spherical sensor, this use of clairvoyance invisibly summons one of your ancestral spirits to the chosen location. Wisdom is your spellcasting ability for these spells.
+	--+|After you cast either spell in this way, you can’t use this feature again until you finish a short or long rest.
+	--+|[br]
+	--+Spirit Shield: |You can now reduce the damage by 3d6.
+	--+|[br]
+	--]|
+   
+   --?[&BarbLevel] -ge 14|[
+    --=VengefulRoll|4d6
+	--+Vengeful Ancestors: |Your ancestral spirits grow powerful enough to retaliate. When you use your Spirit Shield to reduce the damage of an attack, the attacker takes an amount of force damage equal to the damage that your Spirit Shield prevents.
+	--+|[br]
+	--+Spirit Shield: |You can now reduce the damage by [$VengefulRoll] (4d6).
+	--+|[br]
+	--]|
+   
+   -->AmmoSpent|
+  
+  --:Storm|
+   
+   --#whisper|
+   --+Strength: |[*S:t-name] now has advantage on Strength checks and Strength saving throws.
+   --+|[br]
+   --+Damage: |[*S:t-name] now does extra damage.
+   --+|[br] 
+   --+Resistance: |[*S:t-name] is now resistant to bludgeoning, piercing, and slashing damage.
+   --+|[br]
+   
+   --+|[c][b]Rage Related Feats[/b][/c]
+   --+|[br]
+   
+   --?[&BarbLevel] -ge 3|[
+    --+Storm Aura: |You emanate a stormy, magical aura while you rage. The aura extends 10 feet from you in every direction, but not through total cover.
+	--+|Your aura has an effect that activates when you enter your rage, and you can activate the effect again on each of your turns as a bonus action.
+	--+|[br]
+	--]|
+
+   --?[&BarbLevel] -ge 10|[
+    --+Shielding Storm: |You learn to use your mastery of the storm to protect others. Each creature of your choice has the damage resistance you gained from the Storm Soul feature while the creature is in your Storm Aura.
+	--+|[br]
+	--]|
+   
+   --?[&BarbLevel] -ge 14|[
+    --+Raging Storm: |The power of the storm you channel grows mightier, lashing out at your foes. The effect is based on the environment you chose for your Storm Aura.
+	--+|[br]
+	--]|
+   
+   -->AmmoSpent|
+  
+  --:Zealot|
+   
+   --#whisper|
+   --+Strength: |[*S:t-name] now has advantage on Strength checks and Strength saving throws.
+   --+|[br]
+   --+Damage: |[*S:t-name] now does extra damage.
+   --+|[br] 
+   --+Resistance: |[*S:t-name] is now resistant to bludgeoning, piercing, and slashing damage.
+   --+|[br]
+   
+   --+|[c][b]Rage Related Feats[/b][/c]
+   --+|[br]
+   --&HalfLevel|[&BarbLevel]\2
+   --=ExtraDamage|1d6 + [&HalfLevel]
+   
+   --?[&BarbLevel] -ge 3|[
+    --+Divine Fury: |You can channel divine fury into your weapon strikes. While you’re raging, the first creature you hit on each of your turns with a weapon attack takes [$ExtraDamage] extra damage (equal to 1d6 + half your barbarian level). The extra damage is necrotic or radiant, you choose the type of damage when you gain this feature..
+	--+|[br]
+	--+Warrior of the Gods: |Your soul is marked for endless battle. If a spell, such as raise dead, has the sole effect of restoring you to life (but not undeath), the caster doesn’t need material components to cast the spell on you.
+	--+|[br]
+	--]|
+   
+   --?[&BarbLevel] -ge 6|[
+    --+Fanatical Focus: |The divine power that fuels your rage can protect you. If you fail a saving throw while you’re raging, you can reroll it, and you must use the new roll. You can use this ability only once per rage.
+	--+|[br]
+	--]|
+   
+   --?[&BarbLevel] -ge 10|[
+    --+Zealous Presence: |You learn to channel divine power to inspire zealotry in others. As a bonus action, you unleash a battle cry infused with divine energy. Up to ten other creatures of your choice within 60 feet of you that can hear you gain advantage on attack rolls and saving throws until the start of your next turn.
+	--+|Once you use this feature, you can’t use it again until you finish a long rest.
+	--+|[br]
+	--]|
+   
+   --?[&BarbLevel] -ge 14|[
+    --+Rage beyond Death: |While you’re raging, having 0 hit points doesn’t knock you unconscious. You still must make death saving throws, and you suffer the normal effects of taking damage while at 0 hit points. However, if you would die due to failing death saving throws, you don’t die until your rage ends, and you die then only if you still have 0 hit points.
+	--+|[br]
+	--]|
+   
+   -->AmmoSpent|
+  
+  --:Battlerager|
+   
+   --#whisper|
+   --+Strength: |[*S:t-name] now has advantage on Strength checks and Strength saving throws.
+   --+|[br]
+   --+Damage: |[*S:t-name] now does extra damage.
+   --+|[br] 
+   --+Resistance: |[*S:t-name] is now resistant to bludgeoning, piercing, and slashing damage.
+   --+|[br]
+   
+   --+|[c][b]Rage Related Feats[/b][/c]
+   --+|[br]
+   
+   --?[&BarbLevel] -ge 6|[
+    --!a:[*S:character_id]|hp_temp:[*S:constitution_mod]
+	--+Reckless Abandon: |When you use Reckless Attack while raging, you also gain [*S:constitution_mod] temporary hit points (equal to your Constitution modifier (minimum of 1)). They vanish if any of them are left when your rage ends.
+	--+|[br]
+	--]|
+   
+   --?[&BarbLevel] -ge 10|[
+    --+Battlerager Charge: |You can take the Dash action as a bonus action while you are raging.
+	--+|[br]
+	--]|
+   
+   --?[&BarbLevel] -ge 14|[
+    --+Spiked Retribution: |When a creature within 5 feet of you hits you with a melee attack, the attacker takes 3 piercing damage if you are raging, aren’t incapacitated, and are wearing spiked armor.
+	--+|[br]
+	--]|
+   
+   -->AmmoSpent|
+  
+  --:Beast|
+   
+   --#whisper|
+   --+Strength: |[*S:t-name] now has advantage on Strength checks and Strength saving throws.
+   --+|[br]
+   --+Damage: |[*S:t-name] now does extra damage.
+   --+|[br] 
+   --+Resistance: |[*S:t-name] is now resistant to bludgeoning, piercing, and slashing damage.
+   --+|[br]   
+   
+   --+|[c][b]Rage Related Feats[/b][/c]
+   --+|[br]
+   
+   --?[&BarbLevel] -ge 3|[
+    --+Form of the Beast: |When you enter your rage, you can transform, revealing the bestial power within you. Until the rage ends, you manifest a natural weapon. It counts as a simple melee weapon for you, and you add your Strength modifier to the attack and damage rolls when you attack with it, as normal.
+	--+|You choose the weapon's form each time you rage: Bite, Claws, or Tail.
+	--+|[br]
+	--]|
+   
+   --?[&BarbLevel] -ge 10|[
+	--+Infectious Fury: |When you hit a creature with your natural weapons while you are raging, the beast within you can curse your target with rabid fury. The target must succeed on a DC [$DC] Wisdom saving throw (DC equal to 8 + your Constitution modifier + your proficiency bonus) or suffer one of the following effects (your choice):
+	--+|*The target must use its reaction to make a melee attack against another creature of your choice that you can see.
+	--+|*The target takes 2d12 psychic damage.
+	--+|You can use this feature a number of times equal to your proficiency bonus ([$PB]), and you regain all expended uses when you finish a long rest.
+	--+|[br]
+	--]|
+   
+   --?[&BarbLevel] -ge 14|[
+    --=ConMod|[*S:constitution_mod]
+	--+Call the Hunt: |The beast within you grows so powerful that you can spread its ferocity to others and gain resilience from them joining your hunt. When you enter your rage, you can choose [$ConMod] willing creatures you can see within 30 feet of you (equal to your Constitution modifier). You gain 5 temporary hit points for each creature that accepts this feature. Until the rage ends, the chosen creatures can each use the following benefit once on each of their turns: when the creature hits a target with an attack roll and deals damage to it, the creature can roll a d6 and gain a bonus to the damage equal to the number rolled.
+	--+|You can use this feature a number of times equal to your proficiency bonus, and you regain all expended uses when you finish a long rest.
+	--+|[br]
+	--]|
+      
+   -->AmmoSpent|
+  
+  --:Resistances|NewResistances
+   --&RageResist|[%1%]
+   --!a:[*S:character_id]|!OrigResist:[*S:npc_resistances]
+   --&NewResist|[*S:npc_resistances][&RageResist]
+   --!a:[*S:character_id]|!npc_resistances:[&NewResist]
+   --<|
+   
+  --:Immunities|NewImmune
+   --&MindlessResist|[%1%]
+   --!a:[*S:character_id]|!OrigImmune:[*S:npc_immunities]
+   --&NewImmune|[*S:npc_immunities][&MindlessResist]
+   --!a:[*S:character_id]|!npc_immunities:[&NewImmune]
+   --<|
+   
+  --:NoAmmoLeft|
+   --#whisper|
+   --+|[*S:t-name] has no Rages left.
+   --#emoteText|[*S:t-name] is all out of Rage.
+   --X|
+
+  --:Continue|
+   --<|
+  
+  --:AmmoSpent|
+   --!a:[*S:character_id]|[&Ammo]:[$Ammo]
+   --+|[br]
+   --+|Rage Left: [$Ammo] 
+   --X|
+  
+  --:TurnOff|
+   --#whisper|
+   --#emoteText|[*S:t-name] calms down.
+   -->Lib5E_FIND_RESOURCE|[*S:character_id];Rage;Ammoname;Ammo
+   --=Rages|[$Ammo]
+   --#leftsub|Remaining Rages: [$Rages.Total]
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&Rage]
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*S:t-id]; damage; Rage Damage; 0
+   --!a:[*S:character_id]|!Raging:0
+   --+Damage: |Extra damage is turned off.
+   --+|[br]
+ 
+   --~|array;attributes;Resist;[*S:character_id];OrigResist
+   --~|array;attributes;Immune;[*S:character_id];OrigImmune
+   --~|array;attributes;Speed;[*S:character_id];OrigSpeed
+   
+   --?"[@Resist(0)]" -nei ""|[
+    --!a:[*S:character_id]|npc_resistances:[*S:OrigResist]
+	--!a:[*S:character_id]|OrigResist:**
+	--+Resistance: |Extra resistance removed.
+    --+|[br]
+	--]|
+   
+   --?"[@Immune(0)]" -nei ""|[
+    --!a:[*S:character_id]|npc_immunities:[*S:OrigImmune]
+	--!a:[*S:character_id]|OrigImmune:**
+	--+Immunities: |Extra immunities removed.
+	--+|[br]
+	--]|
+   
+   --?"[@Speed(0)]" -nei ""|[
+    --!a:[*S:character_id]|speed:[*S:OrigSpeed]
+	--!a:[*S:character_id]|OrigSpeed:**
+	--+Speed: |Speed returned to normal.
+    --+|[br]
+	--]|
+   
+   --?[*S:SurgeRoll] -eq 1|[
+    --+Temp HP: |[*S:t-name]'s temporary HP is removed.
+	--!a:[*S:character_id]|!hp_temp:0
+	--]|
+   
+   --?[*S:SurgeRoll] -eq 6|[
+    --+Protective Aura: |[*S:t-name]'s protective aura vanishes!
+	-->Lib5E_SET_GLOBAL_MOD_STATUS|[*S:character_id];ac;Protective Aura;0
+	--]|
+   
+   --?"[*S:class_display]" -inc "Wild"|[
+    --!a:[*S:character_id]|!SurgeRoll:**
+	--]|
+   
+   --+[*S:t-name]| calms down and now has [b][$Rages.Total][/b] rages left.
+   --X|
+
+  --:CreateRageMod| 
+   -->FindRageDamage|
+   --!a:[*S:character_id]|global_damage_mod_flag:1
+   --!or:[*S:character_id]:damagemod|
+	global_damage_name:[&ModName]|
+	global_damage_damage:[$RageDamage]|
+	global_damage_type:Rage|
+	global_damage_active_flag:1|
+	options-flag:0
+   --<|
+  
+  --:FindRageDamage|
+   --?[*S:level] -le 8|=RageDamage;2
+   --?[*S:level] -gt 8 -and [*S:level] -le 15|=RageDamage;3
+   --?[*S:level] -gt 15|=RageDamage;4
+   --<|
+  
+  --:SetRageMod|  
+   -->FindRageDamage|
+   --?[*R:global_damage_damage] -nei [$RageDamage]|[
+    --*Error: |Damage is not the same! Damage amount updated.
+	--!a:[*S:character_id]|![*R>global_damage_damage]:[$RageDamage]
+	--]|
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*S:character_id];damage;[&ModName];1
+   --<|
+}}

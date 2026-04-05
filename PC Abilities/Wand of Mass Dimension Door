@@ -1,0 +1,166 @@
+!script{{
+  +++5Elib;snlib+++	
+ 
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+
+  --/|Script Name : Mass Dimension Door
+  --/|Version     : 1.0
+  --/|Requires SC : DefaultSpawnToken ScriptCards Library 5Elib/snlib
+  --/|Author      : Farsidegallery
+  --/|  
+  --/|  Script checks spell slot availability, summons teleport token, and deducts a spell slot. 
+  --/|
+  --/|
+  --/|
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+      
+   --&ItemName|Wand of Mass Dimension Door
+   
+   --/|Does item use charges? (0 for no, 1 for yes attribute on Mass Dimension Door Token , 2 for resource on player sheet). 
+   --=ChargeFlag|2
+   
+   --/|If charges is 1, what is the attribute name on the teleport character sheet for the charges?
+   --&ChargeAttrib|Charges
+   
+   --/|If charges is 2, what is the resource on the character sheet for the charges?
+   --&ChargeResource|Wand of Mass Dimension Door [l]
+   
+   --/|Name of Dimension Door TokenID
+   --&TeleportToken|MassDimensionDoor
+   
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --#title|[&ItemName]
+  --#leftsub|1 Action
+  --#rightsub|60 ft
+  --#emoteText|[*S:t-name] Casts Mass Dimension Door.
+  
+  --/| Find the Character ID of the token used in part 2 of the script.
+  -->GetCharID|[&TeleportToken];TeleportID
+  
+  --?[$ChargeFlag] -eq 1|[
+   --=NumCharges|[*[&TeleportID]:[&ChargeAttrib]]
+   --?[$NumCharges] -le 0|>NoCharges
+   --=FinalCharges|[$NumCharges]-1
+   --!a:[&TeleportID]|[&ChargeAttrib]:[$FinalCharges]
+   --]|
+   
+   --?[$ChargeFlag] -eq 2|[
+   -->Lib5E_FIND_RESOURCE|[*S:character_id];[&ChargeResource];Chargename;NumCharges
+   --?[$NumCharges] -le 0|>NoCharges
+   --=FinalCharges|[$NumCharges]-1
+   --!a:[*S:character_id]|[&NumCharges]:[$FinalCharges]
+   --]|
+  
+   --?[$ChargeFlag] -ne 0|[
+    --+Item Charges: |[&ItemName] has [$FinalCharges] charges left.
+    --|[br]
+	--]|
+  
+  --=CompanionFlag|0
+  --=CasterTop|[*S:t-top]
+  --=CasterLeft|[*S:t-left]
+
+  --/|SPAWN Mass Dimension Door TOKEN USING DefaultSpawnToken API
+  --:SpawnToken|
+	--@forselected+|Spawn _name|[&TeleportToken] _qty|1 _offset|0,0 _force|yes _tokenProps|name:Mass Dimension Door,showname:true,showplayers_name:true _order|toFront _fx|nova-magic _expand|15,30 {^&select @{selected|token_id}}
+  
+  --/| Find out if companions are going with the caster.
+  --+|[b][c]Are you taking a companion with you? (You will target the companion after clicking yes.)[/c][/b]
+  --+|[c][rbutton]Yes::FindCompanionCount[/rbutton][rbutton]No::StoreTID[/rbutton][/c]
+  --X|
+  
+  --/| Determiine how many are traveling (using "trust" method for distance from caster)
+  --:FindCompanionCount|
+   --~|array;define;Count;1;2;3;4;5 
+   --+|[c]How many Companions are traveling? (Companions [b]MUST[/b] be within 5 ft of Caster)[/c]
+    --&splvlMsg|
+    --%splvl|foreach;Count
+     --&splvlMsg|+ [rbutton][&splvl]::CompanionIdentity;[&splvl][/rbutton]
+    --%|
+   --+|[c][&splvlMsg][/c]
+   --X|
+  
+  --/| Select the tokens that are traveling.
+  --:CompanionIdentity|   
+   --=CompanionCount|[&reentryval]
+   --=CompanionFlag|1
+   -->far_BuildTargetList|[$CompanionCount.Total]
+   -->far_BuildTargetArray|Companions;[$CompanionCount];TargetString
+   --~arraystring|array;stringify;Companions
+	
+  --/| Store information on the Mass Dimension Door token
+  --:StoreTID|
+   --!a:[&TeleportID]|!caster_ID:[*S:t-id]
+   --!a:[&TeleportID]|!CompanionFlag:[$CompanionFlag]
+   --?[$CompanionFlag] -eq 1|[
+    --!a:[&TeleportID]|!CompanionCount:[$CompanionCount]
+	--!a:[&TeleportID]|!CompanionString:[&arraystring]
+	--=CompCount|1
+	--%loop|foreach;Companions 
+	 --=CompTop|[*[&loop]:t-top]
+     --=CompLeft|[*[&loop]:t-left]
+     --=OffsetTop|[$CasterTop]-[$CompTop]
+     --=OffsetLeft|[$CasterLeft]-[$CompLeft]
+	 --!a:[&TeleportID]|!OffsetTop[$CompCount]:[$OffsetTop]
+     --!a:[&TeleportID]|!OffsetLeft[$CompCount]:[$OffsetLeft]
+	 --=CompCount|[$CompCount]+1
+	 --%|
+	--]|
+  
+  --#whisper|
+  --?[$CompanionFlag] -eq 1|[
+   --+Spell! |[*S:t-name] casts Mass Dimension Door on:
+   --+|[c][*S:t-name][/c]
+   --%loop|foreach;Companions
+    --+|[c][*[&loop]:t-name][/c]
+	--%|
+   --]|[
+   --+Spell! |[*S:t-name] casts Dimension Door!
+   --]|
+  --X| End Script
+  
+  --/| ____________________ Procedures_______________________________________________________________________________________
+  
+  --:GetCharID|CharacterName;StringVariableForCharID
+   --~|array;objects:character;CharArr;[%1%]
+   --?[@CharArr(length)] -ne 1|>far_LogFatalError;Could not find character named [%1%]
+   --&[%2%]|[@CharArr(0)]
+   --<|
+  
+  --:far_BuildTargetList|Targets
+   --&TargetString|
+   --=targetCount|1
+   -->far_TargetLoop|[%1%]
+   --<|
+  
+  --:far_TargetLoop|
+   --&TargetString|+t;target[$targetCount.Raw];Target [$targetCount.Raw] 
+   --=targetCount|[$targetCount.Raw] + 1
+   --?[$targetCount] -le [%1%]|>far_AddSeparator
+   --?[$targetCount] -le [%1%]|far_TargetLoop
+   --iPlease click the button below to select characters to target. The same target cannot be selected multiple times.;Select [%1%] Targets|[&TargetString]
+   --/|
+   --<|
+
+  --:far_AddSeparator|
+   --&TargetString|+||
+   --<|
+  
+  --:far_BuildTargetArray|ArrayName;LoopMax;TargetString
+   --~|array;define;[%1%];[&target1]
+   --%LoopCounter|2;[%2%];1
+    --&ThisTarget|[&target[&LoopCounter]]
+    --~testvar|array;indexof;[%1%];[&ThisTarget]
+    --?[&testvar] -eq ArrayError | [
+     --~|array;add;[%1%];[&ThisTarget]
+	 --]|
+    --%|
+   --<|
+  
+  --:NoCharges|
+   --+[&ItemName] is out of Charges!|
+   --X| End Script
+}}

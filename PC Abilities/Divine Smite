@@ -1,0 +1,81 @@
+!scriptcard  {{
+  +++5Elib;snlib;Farsidelib+++
+  --#overridetemplate|wizard
+
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+
+  --/|Script Name : Divine Smite
+  --/|Version     : 1.5
+  --/|Requires SC : TokenMod, Chatsetattr, ScriptCards Library snlib
+  --/|Author      : Kurt Jaegers
+  --/|Modified By : Farsidegallery
+  --/|  
+  --/|  Script checks for resource availability, udpdates target character sheet, and deducts a resource slot.
+  --/|
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+      
+   --&SpellName|Divine Smite
+   --&MinimumSpellLevel|1
+   
+   --&DeathMarker|dead
+   
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  
+  --#title|[&SpellName]
+  -->far_FindFeat|[*S:character_id];Divine Smite;SmiteFlag
+  --?[$SmiteFlag] -ne 1|>far_FatalError;Spell Not Found;ERROR;Could not find a feat named [&SpellName]
+  -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+  --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+  
+  --+|[c][b]Cast At What Level and What Target?[/b][/c]
+    --&splvlMsg|
+    --%splvl|foreach;SpellCastLevel
+     --&splvlMsg|+ [rbutton][&splvl]::ChooseType;[&TB]target|token_id}%[&splvl][/rbutton]
+    --%|
+  --+|[c][&splvlMsg][/c]
+  --X|
+  
+  --:ChooseType|
+   --#whisper|
+   --#targetToken|[&reentryval(split,%,0)]
+   --=SpellLevel|[&reentryval(split,%,1)]
+   --&SpellLevel|[&reentryval(split,%,1)]
+   -->far_CheckDamageModifiers|[*T:character_id];radiant;damageMod;1;0;0
+   --=DiceCount| [$SpellLevel] + 1
+   --?[$DiceCount] -gt 5|=DiceCount;5
+   --#emoteText|[*S:t-name] smites [*T:t-name]
+   --#leftsub|Level: [$SpellLevel]
+   --#rightsub|[$DiceCount]d8 Base Damage
+   --?"[*T:npc_type]" -inc "fiend"|[
+    --+Bonus: |Target type is [b]FIEND[/b]! Extra 1d8 damage!
+	--+|[br]
+	--=DiceCount|[$DiceCount.Raw] + 1
+	--]|
+   --?"[*T:npc_type]" -inc "undead"|[
+    --+Bonus: |Target type is [b]UNDEAD[/b]! Extra 1d8 damage!
+	--+|[br]
+	--=DiceCount|[$DiceCount.Raw] + 1
+	--]|
+   --=SmiteRoll|[$DiceCount]d8[&damageMod]
+   --+Damage: |Divine Smite deals [$SmiteRoll] radiant damage.
+   --+|[br]
+   --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$SmiteRoll];0
+   -->far_DamageTokenmod|[*T:t-id];1;4;-[$SmiteRoll];0;0;1
+   --?[*T:t-bar1_value] -le 0|>Died
+   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+  --X|
+  
+  --:Died|
+   -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DeathMarker]
+   --<|
+}}

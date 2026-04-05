@@ -1,0 +1,86 @@
+!scriptcard  {{ 
+ +++5Elib;snlib+++
+
+  --#sourceToken|@{selected|token_id}
+  --#hideTitleCard|1
+  --#emoteState|1
+  --#whisper|self,gm
+  
+  --/|Script Name : Mass Dimension Door Token
+  --/|Version     : 1.0
+  --/|Requires SC : ScriptCards Library 5Elib/snlib
+  --/|Author      : Farsidegallery
+  --/|  
+  --/|  Script checks spell slot availability, summons teleport token, and deducts a spell slot. 
+  --/|
+
+
+  --/|PLAY SOUND
+   --/|a|Magic missile
+  
+  --/|GET CASTER TOKEN and Companion IDs
+   --&CasterTID|[*S:caster_ID]
+   --=CompanionFlag|[*S:CompanionFlag]
+   --=CasterTop|[*[&CasterTID]:t-top]
+   --=CasterLeft|[*[&CasterTID]:t-left]
+   
+   --?[$CompanionFlag] -eq 1|[
+    --&arraystring|[*S:CompanionString]
+	--=CompanionCount|[*S:CompanionCount]
+	--~|array;define;Companions;[&arraystring]
+	--=CompCount|1
+	--]|
+
+
+  --/|VISUAL EFFECTS for movement to GM Layer
+   --vtoken|[&CasterTID] burst-magic
+   --?[$CompanionFlag] -eq 1|[
+    --%loop|foreach;Companions
+	 --vtoken|[&loop] burst-magic
+	 --%|
+	--]|
+   --vtoken|[*S:t-id] burst-magic
+  
+  --/|Move Tokens to new location
+  --:MoveTokens|
+   --!t:[&CasterTID]|layer:gmlayer
+   --?[$CompanionFlag] -eq 1|[
+    --%loop|foreach;Companions
+	--!t:[*[&loop]:t-id]|layer:gmlayer
+	--%|
+	--]|
+
+   --!t:[&CasterTID]|top:[*S:t-top]|left:[*S:t-left]
+   --?[$CompanionFlag] -eq 1|[
+    --%loop|foreach;Companions
+	 --=OffsetTop|[*S:OffsetTop[$CompCount]]
+	 --=OffsetLeft|[*S:OffsetLeft[$CompCount]]
+	 --!t:[*[&loop]:t-id]|top:[=[*S:t-top]-[$OffsetTop]]|left:[=[*S:t-left]-[$OffsetLeft]]
+	 --=CompCount|[$CompCount]+1
+	 --%|
+	--]|
+ 
+  --/|DELETE TARGET TOKEN, Hash Table, and Stored Info
+  --:ClearInfo|
+   --!a:[*S:character_id]|caster_ID:**
+   --?[$CompanionFlag] -eq 1|[
+    --!a:[*S:character_id]|CompanionFlag:**
+	--!a:[*S:character_id]|CompanionString:**
+	--!a:[*S:character_id]|CompanionCount:**
+	--%LoopCounter|1;[$CompCount];1
+	 --!a:[*S:character_id]|OffsetTop[&LoopCounter]:**
+	 --!a:[*S:character_id]|OffsetLeft[&LoopCounter]:**
+	 --%|
+	--]|
+   --~|object;token;delete;[*S:t-id]
+   
+ --/| Move to Objects Layer with VFX
+   --w1:!t:[&CasterTID]|layer:objects
+   --vtoken|[&CasterTID] burst-magic
+   --?[$CompanionFlag] -eq 1|[
+    --%loop|foreach;Companions
+	 --w1:!t:[&loop]|layer:objects
+	 --vtoken|[&loop] burst-magic
+	 --%|
+	--]|
+   --X|

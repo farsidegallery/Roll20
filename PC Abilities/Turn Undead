@@ -1,0 +1,139 @@
+!script {{
+  +++5Elib;snlib+++
+  
+  --#sourceToken|@{selected|token_id}
+  --#title|Turn Undead!
+  --#leftsub|Save DC @{selected|spell_save_dc}
+  --#titlecardBackgroundImage|url('https://s3.amazonaws.com/files.d20.io/images/378222701/ZqPD4-n87-r0RNNaHGJrRQ/max.png'); background-size: 100% 100%; background-repeat: no-repeat;
+  --#titleFontColor|#fad105
+  --#subtitleFontColor|#fad105
+  --#emoteBackground|#223030
+  --#emoteFontColor|#fad105
+  
+  --/|Script Name : Turn Undead
+  --/|Version     : 1.5
+  --/|Requires SC : TokenMod, Chatsetattr, SelectManager, Radar, ScriptCards Library snlib
+  --/|Author      : David M.
+  --/|Modified By : Farsidegallery
+  --/|
+  --/|  Script prompts user for to choose between healing and condition removal. For both functions it checks to ensure character has enough pool points
+  --/|  and deducts the amount used. For healing, it automatically adds the hp to the target. For condition removal it looks for and removes the token markers.
+  --/|
+  
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+      
+   --/|What resource name is used for Turn Undead?
+   --&TurnResource|Channel Divinity
+   
+   --/|What token marker is used for Fear?
+   --&FearMarker|Frightened::7409945
+   
+   --/|What token marker is used for Dead?
+   --&DeadMarker|dead
+  
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+    
+  -->Lib5E_FIND_RESOURCE|[*S:character_id];[&TurnResource];Turnname;TurnAmmo
+  --?[$TurnAmmo] -eq 0|NoTurn
+  --=FinalAmmo|[$TurnAmmo]-1
+  --!a:[*S:character_id]|[&TurnAmmo]:[$FinalAmmo]
+  --#emoteText|@{selected|t-name} Turns Undead!
+  
+  --:(0) CREATE AN ANIMATED WAVEFRONT WITH RADAR SCRIPT| uses SelectManager to retain selected token
+  --@forselected|radar_range|30ft _pinglife|0 _wavedelay|20 _wavespacing|10 _silent|true
+
+  --:(1) DETERMINE CR OF UNDEAD THAT CAN BE DESTROYED|
+  --=charLevel|@{selected|level}
+  --?[$charLevel] -lt 5|>SetCRdestroy;0
+  --?[$charLevel] -ge 5 -and [$charLevel] -lt 8|>SetCRdestroy;0.5
+  --?[$charLevel] -ge 8 -and [$charLevel] -lt 11|>SetCRdestroy;1
+  --?[$charLevel] -ge 11 -and [$charLevel] -lt 14|>SetCRdestroy;2
+  --?[$charLevel] -ge 14 -and [$charLevel] -lt 17|>SetCRdestroy;3
+  --?[$charLevel] -ge 17|>SetCRdestroy;4
+
+  --:(2) GET ALL TOKENS INTO THE "allTokens" ARRAY| will have blank 1st element to be removed later
+  --~|array;pagetokens;allTokens;@{selected|token_id}
+
+  --:(3) CREATE THE "inRange" ARRAY TO HOLD TOKENS IN RANGE|
+  --~|array;define;inRange;
+
+  --:(4) PREP ARRAY FOR LOOP| if no array elements then end macro
+  --~tokenid|array;getfirst;allTokens
+  --?[&tokenid] -eq ArrayError|endOutput
+
+  --:(5) FIND ALL TOKENS IN RANGE|
+  --:RangeLoop|
+          --:TOKEN MUST BE ON OBJECTS OR GMLAYER AND TYPE MUST INCLUDE UNDEAD|
+          --?[*[&tokenid]:t-layer] -ne objects -and [*[&tokenid]:t-layer] -ne gmlayer|NextToken
+          --?"[*[&tokenid]:npc_type]" -ninc "undead"|NextToken
+          
+          --:CHECK DISTANCE IN UNITS. 30ft is 5UNITS|
+          --~dist|euclideandistance;@{selected|token_id};[&tokenid]
+          --?[$dist] -gt 5|NextToken
+          
+          --:ADD TO THE "inRange" ARRAY|
+          --~|array;add;inRange;[&tokenid]
+
+          --:NextToken|
+          --~tokenid|array;getnext;allTokens
+          --?[&tokenid] -ne ArrayError|RangeLoop
+
+  --:(6) REMOVE DUMMY FIRST ITEM IN inRange ARRAY|
+  --~|array;removeat;inRange;0
+
+  --:(7) ROLL SAVES FOR EACH TOKEN IN RANGE| if fail, set a token condition marker to denote turned
+  --~tokenid|array;getfirst;inRange
+  --?[&tokenid] -eq ArrayError|End
+  --:SaveLoop|
+          --&FailureText|
+          -->GetSaveBonus|[&tokenid];wisdom;wis
+          --=SaveRoll|1d20 + [$saveBonus] [BONUS]        
+          --?[$SaveRoll.Total] -ge @{selected|spell_save_dc}|>MadeSave|>FailedSave
+          --~tokenid|array;getnext;inRange
+          --?[&tokenid] -ne ArrayError|SaveLoop
+
+  --:End|
+  --X|
+
+--:PROCEDURES|
+  --:SetCRdestroy| accepts CR as parameter
+      --=CRdestroy|[%1%]
+  --<|
+
+  --:GetSaveBonus| accepts tokenid, full attribute name, short attribute name as parameters
+      --?[*[%1%]:npc] -eq 1 -and [*[%1%]:npc_wis_save_flag] -gt 0|&Bonus;npc_wis_save|&Bonus;wisdom_save_bonus
+	  --=saveBonus|[*[%1%]:[&Bonus]]
+  --<|
+
+  --:Set_npc_attr_save_bonus| blank value is set to -99, otherwise use value stored in attribute
+      --=bonus2|[%1%]
+  --<|
+
+  --:MadeSave| 
+        --/|+[*[&tokenid]:t-name]:|[#009900][b]Made Save[/b][/#] [$SaveRoll]
+		--+|[t border=3 width=100%][tr][td style="width:100px"][c][*[&tokenid]:t-name][/c][/td][td style="width:50px"][#009900][c][b]Saved[/b][/c][/#][/td][td style="width:40px"][c][$SaveRoll][/c][/td][td style="width:50px"][c][b][/b][/c][/td][/tr]
+  --<|
+
+  --:FailedSave| add either a dead or fear condition marker to the token, depending on CR
+	  --=CR|[*[&tokenid]:npc_challenge]
+      --?[$CR] -le [$CRdestroy]|[
+	    --=Health|[*[&tokenid]:t-bar1_value]
+		--/|>LibSN_APPLY_DAMAGE_OR_HEALING|[&tokenid];1;-[$Health];0;0;1
+		-->far_DamageTokenmod|[&tokenid];1;4;-[$Health];0;0;1
+		-->AddConditionMarker|[&tokenid];[&DeadMarker];Destroy
+		--]|[
+		-->AddConditionMarker|[&tokenid];[&FearMarker];Turn
+		--]|
+	  --+|[t border=3 width=100%][tr][td style="width:100px"][c][*[&tokenid]:t-name][/c][/td][td style="width:50px"][#990000][c][b]Failed[/b][/c][/#][/td][td style="width:40px"][c][$SaveRoll][/c][/td][td style="width:50px"][c][b][&FailureText][/b][/c][/td][/tr]
+  --<|
+
+  --:AddConditionMarker| accepts tokenID, condition marker, and descriptive text as parameters
+      -->LibSN_ADD_STATUS_MARKER|[%1%];[%2%]
+      --&FailureText|[%3%]
+  --<|
+  
+  --:NoTurn|
+   --#emoteText|[*S:t-name] tries to to use Turn Undead, but needs to take a long rest first.
+   --+|[*S:t-name] has no Channel Divinity uses available.
+   --X| DONE
+}}

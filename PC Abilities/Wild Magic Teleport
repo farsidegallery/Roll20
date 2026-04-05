@@ -1,0 +1,82 @@
+!script{{
+  +++5Elib;snlib;Farsidelib+++	
+ 
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+
+  --/|Script Name : Wild Magic Teleport
+  --/|Version     : 1.0
+  --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
+  --/|Author      : Arak Stoneboulder
+  --/|Modified By : Farsidegallery
+  --/|  
+  --/|  Script checks spell slot availability, summons teleport token, and deducts a spell slot. 
+  --/|
+  --/|
+  --/|
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+      
+   --&SpellName|WM Teleport
+   
+   --/|Name of Wild Magic Teleport TokenID
+   --&SpellToken|Spell Token
+   
+   --/|Use ScriptCards (1) or SpawnDefaultToken (2) to place the Charm Person Character on the VTT?
+  --&SpawnScript|1
+  
+  --&URLlink|https://files.d20.io/images/469753332/ew1SU1DcQK4eborJlOqNQw/original.png
+   
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --#title|[&SpellName]
+  
+  --?[*S:Raging] -nei 1|>Error;rage
+  --?[*S:SurgeRoll] -nei 2|>Error;surge
+  
+  --#leftsub|30 ft
+  --#rightsub|Con Save DC: [$DC]
+  --#emoteText|[*S:t-name] Teleports!
+  -->GetCharID|[&SpellToken];TokenID
+	
+  --:SpawnToken|
+	--?[&SpawnScript] -eq 2|[
+	 --@forselected+|Spawn _name|[&SpellName] _qty|1 _offset|0,0 _force|yes _size|3 _tokenProps|name:[&SpellName],showname:true,showplayers_name:true _order|toFront _bar1|KeepLink _fx|nova-magic _expand|15,30 {^&select @{selected|token_id}}
+	 --]|
+	
+	--?[&SpawnScript] -eq 1|[
+	 --!ot:TokenTID|name:"[&SpellName]"|left:[*S:t-left]|top:[*S:t-top]|width:[*S:t-width]|height:[*S:t-height]|imgsrc:"[&URLlink]"|bar1_value:1|represents:[&TokenID]|showname:false|t-aura1_radius:30|t-aura1_color:#d0e0e3
+	 --z:graphic:[&TokenTID]|toFront
+	 --]|
+  
+  --:GET AND STORE CASTER TOKEN ID ONTO MISTY STEP CHARACTER FOR LATER USE|
+   --!a:[*[&TokenID]:character_id]|!caster_ID:[*S:t-id]
+  
+  -->SetAbility|
+  --X|
+
+  --/| ____________________ Procedures_______________________________________________________________________________________
+  
+  --:GetCharID|CharacterName;StringVariableForCharID
+   --~|array;objects:character;SpiritCharArr;[%1%]
+   --?[@SpiritCharArr(length)] -ne 1|>far_LogFatalError;Could not find character named [%1%]
+   --&[%2%]|[@SpiritCharArr(0)]
+   --<|
+
+  --:Error|ErrorType
+   --#whisper|
+   --?"[%1%]" -eq "rage"|[
+    --+Error! |[*S:t-name] is not currently raging!
+    --]|
+  
+   --?"[%1%]" -eq "surge"|[
+    --+Error! |[*S:t-name] did not have this effect rolled on the Wild Surge Magic Table!
+    --]|
+   --X|   
+
+  --:SetAbility|
+   --~|array;objects:ability;AbilityArr;;[&TokenID]
+    --!ability:[@AbilityArr(0)]|istokenaction:False
+	--!ability:[@AbilityArr(1)]|istokenaction:False
+	--!ability:[@AbilityArr(2)]|istokenaction:True
+	--!ability:[@AbilityArr(2)]|istokenaction:False
+   --<|

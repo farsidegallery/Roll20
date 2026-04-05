@@ -1,0 +1,46 @@
+!scriptcard {{
+  +++5Elib;snlib+++
+  --#overridetemplate|wizard
+	
+  --#title|Healer's Kit
+  --#sourceToken|@{selected|token_id}
+  --#targetToken|@{target|token_id}
+  --#leftsub|Healing
+  --#rightsub|Healer's Kit
+  
+  --/|Script Name : Cleric Healer's Kit
+  --/|Version     : 1.0
+  --/|Requires SC : TokenMod, ScriptCards Library 5Elib
+  --/|Author      : Farsidegallery
+  --/|  
+  --/|  Script checks for resource availability, udpdates target character sheet, places token marker, and deducts a resource slot.
+  --/|
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+      
+  --/|What resource name is used for Healing Hands?
+  --&HealingResource|Healer's kit
+   
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+      
+  --#emoteText|[*S:t-name] uses a Healer's Kit on [*T:t-name].
+
+  --=KitHealing|1d6+4+[*T:hit_dice^]
+  -->Lib5E_FIND_RESOURCE|[*S:character_id];"[&HealingResource]";Kitname;KitAmmo
+  --?[$KitAmmo] -eq 0|NoKit
+  --=FinalKits|[$KitAmmo] - 1
+  --!a:[*S:character_id]|[&KitAmmo]:[$FinalKits]
+  -->Heal|[$KitHealing]
+  --X| Done
+   
+  --:Heal|HealAmount
+   --=Missing|[*T:hp^] - [*T:hp]
+   --?[%1%] -gt [$Missing]|=DisplayAmount;[$Missing]|=DisplayAmount;[%1%]
+   -->LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;[$KitHealing];0;0
+   --+Healing:|[*T:t-name] regains [$DisplayAmount] hit points.
+   --X| Done
+  
+  --:NoKit|
+   --#emoteText|[*S:t-name] tries to to use a Healer's Kit, but needs has none available.
+   --+|[*S:t-name] does not have any Healer's Kits available.
+   --X| DONE
+}}

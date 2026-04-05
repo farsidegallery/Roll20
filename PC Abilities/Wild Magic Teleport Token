@@ -1,0 +1,39 @@
+!scriptcard  {{ 
+ +++5Elib;snlib;Farsidelib+++
+
+  --#sourceToken|@{selected|token_id}
+  --#hideTitleCard|1
+  --#emoteState|1
+  --#whisper|
+  
+  --/|Script Name : WM Teleport Token
+  --/|Version     : 1.0
+  --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
+  --/|Author      : Arak Stoneboulder
+  --/|Modified By : Farsidegallery
+  --/|  
+  --/|  Script checks spell slot availability, summons teleport token, and deducts a spell slot. 
+  --/|
+
+  --:PLAY SOUND|
+   --/|a|
+  
+  --:GET CASTER TOKEN ID|
+   --&TokenID|[*S:caster_ID]
+   --!a:[*S:character_id]|!caster_ID:**
+  
+  --:VISUAL EFFECTS|
+   --w2:vtoken|[&TokenID] burst-magic
+   --w2:vtoken|[*S:t-id] burst-magic
+  
+  --:MOVE CASTER TOKEN AND REMOVE AURA|
+   --!t:[&TokenID]|layer:gmlayer
+   --w1:!t:[&TokenID]|top:[*S:t-top]|left:[*S:t-left]
+   --w2:!t:[&TokenID]|layer:objects
+  
+  --:DELETE TARGET TOKEN|
+   --~|object;token;delete;[*S:t-id]
+   
+  --+|[*[&TokenID]:t-name] teleports!
+  --X| 
+}}

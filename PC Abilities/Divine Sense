@@ -1,0 +1,35 @@
+!script {{
+  +++5Elib;snlib+++
+  
+  --#sourceToken|@{selected|token_id}
+  --#title|@{selected|t-name} uses Divine Sense!
+  
+  --/|Script Name : Divine Sense
+  --/|Version     : 1.0
+  --/|Requires SC : SelectManager, Radar, ScriptCards Library snlib
+  --/|Author      : Farsidegallery
+  --/|  
+  --/|  Script checks for resource availability, udpdates target character sheet, places token marker, and deducts a resource slot.
+  --/|
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+      
+   --/|Enter the resource name for Divine Sense
+   --&DivineResource|Divine Sense
+   
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+   
+  -->Lib5E_FIND_RESOURCE|[*S:character_id];[&DivineResource];Sensename;SenseAmmo
+  --?[$SenseAmmo] -le 0|NoSense
+  --=FinalAmmo|[$SenseAmmo]-1
+  --!a:[*S:character_id]|[&SenseAmmo]:[$FinalAmmo]
+  --+|[*S:t-name] can use this ability [$FinalAmmo] more times.
+  
+  --:(0) CREATE AN ANIMATED WAVEFRONT WITH RADAR SCRIPT| uses SelectManager to retain selected token
+  --@forselected|radar_range|60ft _pinglife|3000 _wavedelay|50 _wavespacing|35 _wavelife|200 _layers|gm,token,map _charfilter|npc_type: celestial#yellow, fiend#red, undead#blue, -nondetection _title|Divine Sense _silent|no gm _units|ft _graphoptions|grid circle _output|graph table _LOS|false
+  --X|
+  
+  --:NoSense|
+   --#emoteText|[*S:t-name] tries to to use Divine Sense, but needs to take a long rest first.
+   --+|[*S:t-name] has no Divine Sense uses available.
+   --X| DONE
+}}

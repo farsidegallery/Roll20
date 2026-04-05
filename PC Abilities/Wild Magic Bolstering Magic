@@ -1,0 +1,158 @@
+!scriptcard {{ 
+  +++5Elib;snlib;Farsidelib+++ 
+
+  --#title|Bolstering Magic
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|token_id}
+  --#leftsub|1 Action
+  --#rightsub|Touch
+  --#whisper|self,gm
+  
+  --/|Script Name : Bolstering Magic
+  --/|Version     : 1.0
+  --/|Requires SC : TokenMod, Chatsetattr, ScriptCards Library 5Elib
+  --/|Author      : Farsidegallery
+  --/|
+  --/|  Script checks for resource availability, udpdates target character sheet, places token marker, and deducts a resource slot.
+  --/|
+  
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+      
+   --&FeatName|Bolstering Magic
+   
+   --/|What resource name is used for Bolstering Magic?
+   --&Resource|Bolstering Magic
+   
+   --/|What is the name you want used for the 1d3?
+   --&D3Name|Wild Magic Rage
+  
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+  
+  -->far_FindFeat|[*S:t-id];[&FeatName];FeatFlag
+  --?[$FeatFlag] -ne 1|>far_FatalError;Feat Not Found;ERROR;Could not find feat [&FeatName]
+  
+  --#emoteText|[*S:t-name] uses Bolstering Magic.
+
+  --+|[c]Which benefit do you choose?[/c]
+  --+|[c][rbutton]New Cast::New[/rbutton][rbutton]Dismiss::Remove[/rbutton][/c]
+  --X|
+   
+  --:New|
+   -->Lib5E_FIND_CLASS_LEVEL|[*S:character_id];Barbarian;Level
+   --?[$Level] -lt 6|>NoResource;level
+   -->Lib5E_FIND_RESOURCE|[*S:character_id];[&Resource];ResourceName;ResourceAmmo
+   --?[$ResourceAmmo] -eq 0|NoResource;resource  
+  
+   --+Bolstering Magic: |You can harness your wild magic to bolster yourself or a companion. As an action, you can touch one creature (which can be yourself) and confer one of the following benefits of your choice to that creature:
+   --+|[br]
+   --+|For 10 minutes, the creature can roll a d3 whenever making an attack roll or an ability check and add the number rolled to the d20 roll.
+   --+|[br]
+   --+|Roll a d3. The creature regains one expended spell slot, the level of which equals the number rolled or lower (the creature's choice). Once a creature receives this benefit, that creature can't receive it again until after a long rest.
+   --+|[br]
+   --+Target|[rbutton]Click this button to select your target.::TargetInfo;&#64;{target|token_id}[/rbutton]
+   --X|
+ 
+  --:TargetInfo|
+   --#targettoken|[&reentryval]
+   --!a:[*S:character_id]|!D3Target:[*T:t-id]
+   --+|[c]Which benefit do you choose?[/c]
+   --+|[c][rbutton]Add D3::AddD3[/rbutton][rbutton]Regen Spell Slot::Regen[/rbutton][/c]
+   --X|
+  
+
+--/| ____________________ Procedures_______________________________________________________________________________________
+
+  --:AddD3|
+   -->far_Check_GLOBAL_MOD_EXISTS|[*T:t-id]; damage; Wild Magic Rage; DamageExists
+   --?[&DamageExists] -eq 1|>SetD3Mod;damage |>CreateDamageMod
+   -->far_Check_GLOBAL_MOD_EXISTS|[*T:t-id]; save; Wild Magic Rage; SaveExists
+   --?[&SaveExists] -eq 1|>SetD3Mod;save |>CreateSaveMod
+   -->D3Output|
+   
+  --:CreateDamageMod|
+   --!a:[*T:character_id]|global_damage_mod_flag:1
+   --!or:[*T:character_id]:damagemod|
+	global_damage_name:[&D3Name]|
+	global_damage_damage:1d3|
+	global_damage_type:Rage|
+	global_damage_active_flag:1|
+	options-flag:0
+   --<|
+
+  --:CreateSaveMod|
+   --!a:[*T:character_id]|global_save_mod_flag:1
+   --!or:[*T:character_id]:savemod|
+	global_save_name:[&D3Name]|
+	global_save_roll:1d3|
+	global_save_active_flag:1|
+	options-flag:0
+   --<|
+  
+  --:SetD3Mod|  
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*T:character_id];damage;[&D3Name];1
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*T:character_id];save;[&D3Name];1
+   --<|
+  
+  --:D3Output|
+    --#whisper|
+	--+Bolstering Magic: |You can harness your wild magic to bolster yourself or a companion. As an action, you can touch one creature (which can be yourself) and confer the following benefit to that creature:
+	--+|[br]
+	--+|For 10 minutes, the creature can roll a d3 whenever making an attack roll or an ability check and add the number rolled to the d20 roll.
+	--+|[br]
+	--+|You chose to give this benefit to [b][*T:t-name][/b].
+	--+|[br]
+	--+|You can take this action [$PB] times (equal to your proficiency bonus, and you regain all expended uses when you finish a long rest.
+	--+|[br]
+	--=FinalAmmo|[$ResourceAmmo] - 1 
+	--!a:[*S:character_id]|[&ResourceAmmo]:[$FinalAmmo]
+	--+|[*S:t-name] has [$FinalAmmo] uses left.
+	--X|
+   
+   --:Regen|
+    --#whisper|
+	--+Bolstering Magic: |You can harness your wild magic to bolster yourself or a companion. As an action, you can touch one creature (which can be yourself) and confer the following benefit to that creature:
+	--+|[br]
+	--+Spell Slot: |Roll a d3. The creature regains one expended spell slot, the level of which equals the number rolled or lower (the creature's choice). Once a creature receives this benefit, that creature can't receive it again until after a long rest.
+	--=Regain|1d3
+	--+|[br]
+	--+|You rolled a [$Regain]. [*T:t-name] regains one level [$Regain] spell slot.
+	--+|[br]
+	--+|You can take this action [$PB] times (equal to your proficiency bonus), and you regain all expended uses when you finish a long rest.
+	--+|[br]
+	--=FinalAmmo|[$ResourceAmmo] - 1 
+	--!a:[*S:character_id]|[&ResourceAmmo]:[$FinalAmmo]
+	--+|[*S:t-name] has [$FinalAmmo] uses left.
+	--X|
+	
+  --:Remove|  
+   --#whisper|
+   --#targettoken|[*S:D3Target]  
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*T:character_id];damage;[&D3Name];0
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*T:character_id];save;[&D3Name];0
+   --+Extra D3: |[*T:t-name] can no longer add a 1d3 to their rolls.
+   --!a:[*S:character_id]|!D3Target:**
+   --X|
+   
+  
+  --:NoResource|
+   --?"[%1%]" -eq "Level"|[
+    --#emoteText|[*S:t-name] needs more XP!
+    --+|[*S:t-name] but is not a high enough level for this ability.
+	--]
+   
+   --?"[%1%]" -eq "resource"|[  
+	--#emoteText|[*S:t-name] tries to to use Bolstering Magic, but needs to take a long rest first.
+    --+|[*S:t-name] has no Bolstering Magic uses available.
+	--]|
+   --X| DONE
+}}

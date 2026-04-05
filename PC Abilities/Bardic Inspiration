@@ -1,0 +1,37 @@
+!script {{
+  +++5Elib;snlib;Farsidelib+++
+ 
+  --/|Script Name : Bardic Inspiration
+  --/|Version     : 1.0
+  --/|Requires SC : TokenMod, ScriptCards Library 5Elib/snlib
+  --/|Author      : Nick O. (YouTube) 
+  --/|Modified By : Farsidegallery
+  --/|  
+  --/|  Script checks for resource availability, udpdates target character sheet, places token marker, and deducts a resource slot.
+  --/|
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+      
+   --/|Enter the Token Markers you use for each condition
+   --&BardicMarker|BardicInspiration::7409920
+   
+   --/|Enter the resource name for Bardic Inspiration
+   --&BardicResource|Bardic Inspiration
+   
+ --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+ --#title|Granting Inspiration
+ --#sourceToken|@{selected|token_id}
+ 
+ -->Lib5E_FIND_RESOURCE|[*S:character_id];[&BardicResource];bardicInspirations;InspirationAmmo
+ --?[$InspirationAmmo] -eq 0|[
+  --+|[c][#ff0000]You are unable to inspire others until you finish a rest[/#][/c]
+ --]|[
+  --#targetToken|@{target|Give to Whom?|token_id}
+  --=FinalInspirations|[$InspirationAmmo] - 1
+  --+|[c]You inspire [*T:t-name][/c]
+  --+|[c]You have [$FinalInspirations] bardic inspirations remaining![/c]
+  --!a:[*S:character_id]|[&InspirationAmmo]:[$FinalInspirations]
+  -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&BardicMarker];9
+  --!a:[*T:t-id]|!InspireByName: [*S:character_id] |!InspireByTID: [*S:character_id]
+ --]|
+}}

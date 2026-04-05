@@ -1,0 +1,231 @@
+!scriptcards {{
+  +++5Elib;snlib;Farsidelib+++	
+  
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|token_id}
+  --#whisper|self,gm
+  
+  --/|Script Name : Radiant Bolt
+  --/|Version     : 1.0
+  --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
+  --/|Author      : Farsidegallery
+  --/|  
+  --/|  Script rolls saving throw, compares to caster's DC, and determines if spell hits. Script finds Caster's level, scales and calculates damage,
+  --/|  determines damage modifier (resistant, immune), and applies damage. If target dies due to damgae, the "Dead" token marker is applied.
+  --/|
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+    
+   --&SpellName|Radiant Bolt
+   --&damageType|radiant
+   
+   --&hpBar|1
+   --&tempHPbar|4
+   
+   --&attrib|constitution
+   
+   --/|Put the name of your check if custom crit damage will be applied.
+   --&CustomCritCheck|far_CustomCritCheck
+   
+   --/|Define your custom crit damage dice roll modifier, roll type, roll modifier, and extra damage modifier
+   --/|ex 1: 2d8+8 is -1 dicemodifier (making 2d8), d dicerolltype, blank rollmodifier, and with +8 damagemodifier
+   --/|ex 2: 3d8 keep highest one is blank dicemodifier, with d dicerolltype, kh1 for rollmodifier, and blank for damagemodifier
+   --/|ex 3: 3d8 max all dice is blank dicemodifier, m dicerolltype, blank rollmodifier, and blank damagemodifier
+   --&CritDamageDiceModifier|-1
+   --&CritDamageDiceRollType|d
+   --&CritDamageRollModifier|
+   --=CritDamageModifier|+8
+   
+   --/|Are you using the matching Bardic Inspiration Script from FarsideGallery? (Default is No using 0. Change to 1 if using the script.)
+   --=Scriptcheck|1
+  
+   --/|Enter the Token Markers you use for each condition
+   --&BardicMarker|BardicInspiration::7409920
+   --&BlessedMarker|angel-outfit
+   --&InspirationMarker|Inspiration::7409921
+   --&BaneMarker|Hexed3::7409911
+   --&HexMarker|Hexed::7409913
+   --&HexBladebladeMarker|Hexed2
+   --&BlindedMarker|Blinded::7409948
+   
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+ 
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+  
+  --~shortattrib|string;left;3;[&attrib]
+  --~Displayattrib|string;touppercase;[&shortattrib]
+  
+  --=DC|8 +[*S:pb] + [*S:[&attrib]_mod]
+  
+  --#title|[&SpellName]
+  --#leftsub|30 ft
+  --#rightsub|[&Displayattrib] Save DC: [$DC]
+  
+  --?[*S:Raging] -nei 1|>Error;rage
+  --?[*S:SurgeRoll] -nei 8|>Error;surge
+  
+  --+|[j]A bolt of light shoots from your chest.[/j]
+  --+|[j]Another creature of your choice that you can see within 30 feet of you must succeed on a **[#990000]Constitution saving throw[/#]** or take 1d6 radiant damage and be blinded until the start of your next turn.[/j]
+  --+|[br]
+  --+Ongoing Effect|[j]Until your rage ends, you can use this effect again on each of your turns as a bonus action.[/j]
+  --+|[br]
+  
+  --+Target|[rbutton]Click this button to select your target.::TargetInfo;[&TB]target|token_id}[/rbutton]
+  --X|
+  
+  --:TargetInfo|
+   --#targettoken|[&reentryval]
+   --#emoteText|[*S:t-name] attacks [*T:t-name]!
+   --&DamageDice|1d6
+   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;1;0;0
+   --+[c][#030bfc]**~~Radiant Bolt~~|**[/#][/c]
+   --+|[j]A bolt of light shoots from your chest.[/j]
+   --+|[br]
+   --?"[*T:npc]" -ne "1"|PCRoll |NPCRoll
+   -->CheckSave|
+
+  --/| ____________________ Procedures_______________________________________________________________________________________
+  
+  --:PCRoll|
+   --&control|[*O:[*T:t-represents]:character:controlledby]
+   --&playername|[*O:[&control]:player:displayname]
+   --?"X[&playername]" -eq "X"|[
+    --#whisper|gm
+	--]|[
+    --#whisper|[&playername],gm
+	--]|
+   -->ChooseRoll|PC
+  
+  --:NPCRoll|
+   --#whisper|gm
+   -->ChooseRoll|NPC
+  
+  --:ChooseRoll| 
+   --&function|[%1%]
+   --+|[c]Choose Saving Throw Type:[/c]
+   --+|[c][rbutton]Advantage::[&function];2d20kh1[/rbutton][rbutton]Normal::[&function];1d20[/rbutton][rbutton]Disadvantage::[&function];2d20kl1[/rbutton][/c]
+   --X|
+  
+  --:NPC|
+   --&saveDice|[&reentryval]
+   --?[*T:npc] -eq 1 -and [*T:npc_[&shortattrib]_save_flag] -gt 0|&Save;npc_[&shortattrib]_save |&Save;[&attrib]_mod
+   --=Save|[&saveDice] + [*T:[&Save]] [&Displayattrib]
+   --#whisper|
+   --?[$Save.Base] -eq 20|>Crit
+   --?[$Save] -ge [$DC]|>Pass |>Fail   
+   
+  --:PC| 
+   --&saveDice|[&reentryval]
+   -->far_Check_GLOBAL_MOD_EXISTS|[*T:character_id]; save; [&damageType]; damageSave
+   -->far_Check_GLOBAL_MOD_EXISTS|[*T:character_id]; save; [&Displayattrib]; attribSaveRoll
+   --?[&damageSave] -eq 1 -or [&attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "1d20"|&saveDice;2d20kh1
+   --?[&damageSave] -eq 1 -or [&attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "2d20kl1"|&saveDice;1d20
+   
+  
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&InspirationMarker];InspiredFlag;InspiredCount
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BardicMarker];BardicFlag;BardicCount
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexMarker];HexMarkerFlag;HexMarkerCount
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];HexBladeMarkerFlag;HexBladeMarkerCount
+   -->far_FindFeat|[*T:character_id];"Thought Shield";ThoughtFlag
+   
+   --?[&InspiredFlag] -ne 0 |>far_Inspiration;[*T:t-id];[&InspirationMarker];[&saveDice];saveDice
+   -->far_FIND_ACTIVE_GLOBAL_SAVE_MODS|[*T:character_id];GlobalSave
+   -->far_FIND_ACTIVE_GLOBAL_SKILL_MODS|[*T:character_id];GlobalSkill
+   
+   --=InitSave|[&saveDice]
+   --+Rolling [&saveDice]: |[$InitSave]
+   --+|[br]
+   --?[$InitSave.Base] -eq 20|>Crit
+   
+   --=attribSaveRoll|[$InitSave] + [*T:[&attrib]_save_bonus] [&Displayattrib]
+   --?[&BardicFlag] -eq 1|>far_Bardic;[*T:t-id];[&BardicMarker];[$Scriptcheck];[$InitSave.Base];[$attribSaveRoll];BardRoll
+   --?[&BaneMarkerFlag] -eq 1|&Baneroll;+ - 1d4 [Bane] |&Baneroll;
+   
+   --=Save|[$InitSave] + [*T:[&attrib]_save_bonus] [&obrac][&Displayattrib][&cbrac] [&GlobalSave] [&GlobalSkill] [&Baneroll] [&BardRoll]
+
+   --#whisper|
+   --?[$Save] -ge [$DC]|>Pass |>Fail
+  
+  --:Crit|
+   --+Save: |[*T:t-name] rolled a [$Save.Base] vs a DC [$DC] and cannot fail the saving throw. 
+   --+|[br]
+   --+Result: |[*T:t-name] takes no damage.
+   -->Output|
+  
+  --:Pass|
+   --+Save: |[*T:t-name] rolled a [$Save] vs a DC [$DC] and passed the saving throw. 
+   --+|[br]
+   --+Result: |[*T:t-name] takes no damage.
+   -->Output|
+   
+  --:Fail|
+   -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&BlindedMarker];1
+   -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0  
+   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex;+ + 1d6 [Hex] |&Hex;
+   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade;
+   --=Damage|[&DamageDice] [&HexBlade] [&Hex][&GlobalDamage][&damageMod]
+   -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
+   --+Save: |[*T:t-name] rolled a [$Save] vs a DC [$DC] and failed the saving throw. 
+   --+|[br]
+   --+Result: |[*T:t-name] takes [$Damage] points of [&damageType] damage. [*T:t-name] is blinded until the start of [*S:t-name]'s next turn.
+   
+   
+   --?[$ThoughtFlag] -eq 1|[
+    --+|[br]
+    --+Additonal Result: |[*S:t-name] takes [$Damage] hp of [&damageType] damage due to [*T:t-name]'s mental defenses.
+    -->far_DamageTokenmod|[*S:t-id];[&bar];[&tempBar];-[$Damage];0;0;1
+   --]|
+   -->Output|
+  
+  --:Output|
+   --=FinalHP|[*T:t-bar[&hpBar]_value]-[$Damage]
+   --?[$FinalHP] -le 0|>Died
+   
+   -->far_PlayEffects|[*S:t-id];[*T:t-id];;burst-magic;beam-magic
+   
+   --#leftsub|Spell Level: [&MinimumSpellLevel]
+   --#rightsub|Range: [&range]
+   --+|[br]
+   --+Desc: |A bolt of light shoots from your chest. 
+   --+|Another creature of your choice that you can see within 30 feet of you must succeed on a **[#990000]Constitution saving throw[/#]** or take 1d6 radiant damage and be blinded until the start of [*S:t-name]'s next turn.
+   --+|[br]
+   --+Ongoing Effect|Until your rage ends, you can use this effect again on each of your turns as a bonus action.
+   --X|
+  
+  --:Died|
+   --#whisper|
+   --?[$HexBladeFlag] -eq 1 -and [&HexBladeMarkerFlag] -eq 1|>HexHeal
+   --~|turnorder;removetoken;[*T:t-id]
+   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|[
+    -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexMarker];0
+	-->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];0
+	--]|
+   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|[
+    -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];0
+	--]|
+   -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DeathMarker]
+   --<|
+  
+  --:HexHeal|
+   -->far_HexHeal|[*S:character_id];[*S:t-id]
+   --<|
+  
+  --:Error|ErrorType
+  --#whisper|
+  --?"[%1%]" -eq "rage"|[
+   --+Error! |[*S:t-name] is not currently raging!
+   --]|
+  
+  --?"[%1%]" -eq "surge"|[
+   --+Error! |[*S:t-name] did not have this effect rolled on the Wild Surge Magic Table!
+   --]|
+  --X|
+}}

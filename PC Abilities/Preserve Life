@@ -1,0 +1,161 @@
+!script {{
+  +++5Elib;snlib;Farsidelib+++
+  
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|targetPicker_[&SendingPlayerID]
+  --#whisper|self,gm
+
+  
+  --/|Script Name : Preserve Life
+  --/|Version     : 1.0
+  --/|Requires SC : ScriptCards Library 5Elib/dnd5elib/snlib
+  --/|Author      : Farsidegallery
+  --/|
+  --/|  Script checks for ability, prompts player to selecte a target, checks resource availability, and calculates the amount of healing.
+  --/|  It automatically adds the hp to the target.
+  --/|
+  
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+      
+   --/|What resource name is used for Preserve Life?
+   --&ChannelResource|Channel Divinity
+   
+   --/|Feat name used for Preserve Life.
+   --&ChannelFeat|Channel Divinity: Preserve Life
+   
+   --/|What bar is used for HP?
+   --&Bar|1
+   
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+    
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&QB|? --&QB|+{ --&QE|}
+  
+  --#title|Preserve Life! (Undead and Constructs Forbidden)
+  
+  -->far_FindFeat|[*S:character_id];Channel Divinity: Preserve Life;LifeFlag
+  --?[&LifeFlag] -ne 1|>far_FatalError;Feat Not Found;ERROR;Could not find feat Channel Divinity: Preserve Life
+  
+  --Rfind|[*S:character_id];[&ChannelFeat];repeating_traits;name
+  --&desc|[*R:description]
+  --#emoteText|[*S:t-name] uses Preserve Life!
+  
+  -->Lib5E_FIND_RESOURCE|[*S:character_id];[&ChannelResource];Channelname;ChannelAmmo
+  --?[$ChannelAmmo] -eq 0|NoChannel
+  --=FinalAmmo|[$ChannelAmmo]-1
+  -->Lib5E_FIND_CLASS_LEVEL|[*S:character_id];Cleric;Level 
+  --=Healing|[&Level]*5
+  --=Used|0
+  --=Left|[$Healing]
+  --=TargetNum|1
+
+  --:Restart|
+   --+|[t border=3 width=100%][tr][td]Max: [$Healing][/td] [td][c]Used: [$Used][/c][/td] [td][r]Left: [$Left][/r][/td][/tr][/t]
+   --+|[c][rbutton]Add Target::AddATarget;[&TB]Target|[$TargetNum.Raw]|token_id}[/rbutton]  [rbutton]End Selection::EndSelection[/rbutton][/c]
+   --X|
+
+  --:ShowTargetList|
+   --?"[@targetList()]" -eq "undefined array"|<
+   --=Index|0
+   --%loop|foreach;targetList
+	--=HalfHealth|[*[&loop]:t-bar[&Bar]_max]\2
+	--=Missing|[$HalfHealth] - [*[&loop]:t-bar[&Bar]_value]
+	--&HPChoice|[&QB][$Left] HP Healing Remaining. How Much Healing (Max of [$Missing] HP)?|1[&QE]
+	--&append1|[r][rbutton]X::RemoveTarget;[$Index.Raw][/rbutton][/r]
+	--&append2|[r][rbutton]HP::PreHeal;[&loop]%[&HPChoice][/rbutton][rbutton]X::RemoveTarget;[$Index.Raw][/rbutton][/r]
+    --?"[%1%]" -ne "Y"|&append;
+	--?[$Missing] -le 0|[
+	 --+[*[&loop]:t-name]: |(Over 1/2 Health)[&append1]
+	 --]|[
+	 --/|&thisTarget|[*[&loop]:t-id]
+	 --+[*[&loop]:t-name]: |(Max: [$Missing]  Heal: [$HealAmount[&loop]])[&append2]
+	 --]|
+	--=Index|[$Index] + 1
+   --%|
+   --<|
+
+  --:AddATarget|
+   --=TargetNum|[$TargetNum.Raw] + 1
+   --&target|[&reentryval]
+   --?[*[&target]:npc] -eq 1|&targetRace;[*[&target]:npc_type] |&targetRace;[*[&target]:race]
+   --?"[&targetRace]" -inc "Undead" -or "[&targetRace]" -inc "Construct"|[
+    --+Error: |Undead and Constructs forbidden!
+	--^Restart|
+	--]|
+   --~|array;indexof;targetList;[&target];testindex
+   --?"[&testindex]" -eq "" | [
+    --&targetList(99999)|[&target]
+	--=HealAmount[&target]|0
+	--]|
+   -->ShowTargetList|Y
+   --^Restart|
+   --X|
+
+  --:RemoveTarget|
+   --=TargetNum|[$TargetNum.Raw] - 1
+   --&TargetID|[@targetList([&reentryval])]
+   --=Used|[$Used]-[$HealAmount[&TargetID]]
+   --=Left|[$Left]+[$HealAmount[&TargetID]]
+   --~|array;removeat;targetList;[&reentryval]
+   -->ShowTargetList|Y
+   --^Restart|
+
+  --:EndSelection|
+   --?[$Used] -gt [$Healing]|[
+    --+ERROR: |You have used more than [$Healing] HP. Go back and edit the amounts!
+	-->ShowTargetList|Y
+	--^Restart|
+	--]|[
+    -->HPCalc|
+    --]|
+   --X|
+
+ --/| ____________________ Procedures_______________________________________________________________________________________    
+  
+  
+  --:PreHeal|
+   --&target|[&reentryval(split,%,0)]
+   --=HealAmount[&target]|[&reentryval(split,%,1)]
+   --?[$HealAmount[&target]] -gt [$Healing]|=HealAmount[&target];[$Healing]
+   --?[$HealAmount[&target]] -gt [$Missing]|=HealAmount[&target];[$Missing]
+   --=Used|0
+   --&HealString|
+   --%loop|foreach;targetList
+    --?"[&HealString]" -ninc "[&loop]"|[
+	 --=Used|[$Used]+[$HealAmount[&loop]]
+	 --&HealString|+;[&loop]
+	 --]|
+   --%|
+   --=Left|[$Healing]-[$Used]
+   --?[$Used] -gt [$Healing]|[
+    --+ERROR: |You have used more than [$Healing] HP. Go back and edit the amounts!
+	--]|
+   -->ShowTargetList|Y
+   --^Restart|
+  
+  --:HPCalc|
+   --+|[t border=3 width=100%][tr][td style="width:150px"][c][b]Total Healing: [$Healing][/b][/c][/td][/tr]
+   --+|[t border=3 width=100%][tr][td style="width:150px"][c][b]Target[/b][/c][/td][td style="width:100px"][c][b]HP Healed[/b][/c][/td][/tr]
+   -->Final|
+   
+  --:Final| 
+   --#whisper|
+   -->far_PlayEffects|[*S:t-id];;burst-magic;;; 
+   --%loop|foreach;targetList
+    --=FinalHeal|[$HealAmount[&loop]]
+	--+|[t border=3 width=100%][tr][td style="width:150px"][c][*[&loop]:t-name][/c][/td][td style="width:100px"][c][$FinalHeal][/c][/td][/tr]
+    -->LibSN_APPLY_DAMAGE_OR_HEALING|[&loop];[&Bar];[$FinalHeal];0
+	-->far_PlayEffects|;[&loop];;burst-holy;; 
+	--%|
+   --!a:[*S:character_id]|[&ChannelAmmo]:[$FinalAmmo]
+   --+|[br]
+   --+Desc: |[&desc]
+   --+|[br]
+   --+|[*S:t-name] has [$FinalAmmo] Channel Divinity uses left.
+   --X|  End Script
+  
+  --:NoChannel|
+   --#emoteText|[*S:t-name] tries to to use Preserve Life, but needs to take a long rest first.
+   --+|[*S:t-name] does not have Channel Divinity available.
+   --X| DONE
+}}

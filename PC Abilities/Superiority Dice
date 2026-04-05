@@ -1,0 +1,40 @@
+!scriptcard {{ 
+  +++5Elib+++
+  --#overridetemplate|wizard
+  
+  --#title|Superiority Dice
+  --#sourceToken|@{selected|token_id}
+  --#leftsub|Tactics
+  --#rightsub|Superiority Dice
+  
+  --/|Script Name : Superiority Dice
+  --/|Version     : 1.5
+  --/|Requires SC : ScriptCards Library 5Elib
+  --/|Author      : Farsidegallery
+  --/|
+  --/|  Script checks for resource availability, udpdates target character sheet, places token marker, and deducts a resource slot.
+  --/|
+  
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+      
+   --/|What resource name is used for Superiority Dice?
+   --&DiceResource|Superiority Dice
+  
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+  
+  -->Lib5E_FIND_RESOURCE|[*S:character_id];[&DiceResource];Dicename;DiceAmmo
+  --?[&DiceAmmo] -eq 0|NoDice
+  --=DieRoll|1d8
+  --+|
+  --+Die Roll:|You rolled a [$DieRoll].
+  --=FinalDice|[$DiceAmmo] - 1 
+  --!a:[*S:character_id]|[&DiceAmmo]:[$FinalDice]
+  --+|
+  --+|[*S:t-name] has [$FinalDice] Superiority Dice left.
+  --X|
+
+  --:NoDice|
+   --#emoteText|[*S:t-name] tries to to use Superiority Dice, but needs to take a long rest first.
+   --+|[*S:t-name] has no Superiority Dice uses available.
+   --X| DONE  
+}}

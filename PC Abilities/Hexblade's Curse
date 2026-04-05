@@ -1,0 +1,95 @@
+!scriptcard {{
+  +++5Elib;snlib;Farsidelib+++
+
+  --#title|Hexblade's Curse
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+  --#leftsub|30 ft
+  --#rightsub|Curse
+  
+  --/|Script Name : Hexblade's Curse
+  --/|Version     : 1.0
+  --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
+  --/|Author      : Farsidegallery
+  --/|
+  --/|  Script prompts user for to choose target of curse, marks target, and reduces resource.
+  --/|
+  
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+      
+   --/|What token marker is used for Hexblade's Curse?
+   --&HexbladeMarker|Hexed2::7409912
+   
+   --/|Enter name for Hex Character.
+   --&CharName|Hex
+  
+   --/|Use ScriptCards (1) or SpawnDefaultToken (2) to place the Charm Person Character on the VTT?
+   --&SpawnScript|1
+  
+   --&URLlink|https://files.d20.io/images/466487142/LFih0-BYMb8YKB5Vc8YGdw/med.webm?1764822315
+
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+  
+  -->far_FindFeat|[*S:character_id];"Hexblade's Curse";HexFlag
+  --?[$HexFlag] -eq 0|>far_FatalError;Feat Not Found;ERROR;Could not find a feat spell named Hexblade's Curse.
+  
+  --&TokenName|[*S:t-name] [&CharName]
+  -->GetCharID|[&CharName];CurseID
+  
+  --+Choose Function: |[rbutton]New Curse::New[/rbutton][rbutton]Dismiss::Remove[/rbutton]
+  --X|
+  
+  --:New|
+   --+Target|[rbutton]Click here to select your target.::SetTarget;&#64;{target|token_id}[/rbutton]
+   --X|
+  
+  --:SetTarget|
+   --#targettoken|[&reentryval]   
+   --#emoteText|[*S:t-name] uses Hexblade's Curse to curse [*T:t-name].
+   -->Lib5E_FIND_RESOURCE|[*S:character_id];"Hexblade's Curse";Cursename;CurseAmmo
+   --?[$CurseAmmo] -eq 0|NoSlotsLeft
+   -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&HexbladeMarker];9
+   --:SpawnToken|
+   --?[&SpawnScript] -eq 2|[
+    --@forselected+|Spawn _name|[&CharName] _qty|1 _targets|1,Select the target of your curse for an FX. _offset|0,0 _force|yes _size|3 _tokenProps|name:[&TokenName],showname:false,showplayers_name:false _order|toBack _bar1|KeepLink _fx|nova-magic _expand|15,30 {^&select @{selected|token_id}}
+    --]|
+  
+  --?[&SpawnScript] -eq 1|[
+   --!ot:CurseTID|name:"[&TokenName]"|left:[*T:t-left]|top:[*T:t-top]|width:[=[*T:t-width]*3]|height:[=[*T:t-height]*3]|imgsrc:"[&URLlink]"|bar1_value:1|represents:[&CurseID]|showname:0
+   --z:graphic:[&CurseTID]|toback
+   --@CARRY_TOKENS_CARRY_BELOW|[*T:t-id] [&CurseTID]
+   --]|
+  
+  --!a:[*S:character_id]|[&CurseAmmo]:0
+  --!a:[*S:character_id]|!CurseTarget:[*T:t-id]
+  
+  --#whisper|
+  --+Cursed! |[*S:t-name] curses [*T:t-name] with Hexblade's Curse!
+  
+  --X|
+  
+ --/| ____________________ Procedures_______________________________________________________________________________________
+  
+  --:GetCharID|CharacterName;StringVariableForCharID
+   --~|array;objects:character;SpiritCharArr;[%1%]
+   --?[@SpiritCharArr(length)] -ne 1|>far_LogFatalError;Could not find character named [%1%]
+   --&[%2%]|[@SpiritCharArr(0)]
+   --<|
+  
+  --:NoSlotsLeft|
+   --#whisper|
+   --+|[*S:t-name] has no Hexblade's Curse resources available.
+   --#emoteText|[*S:t-name] tries to to use Hexblade's Curse, but needs to take a long or short rest first.
+   --X|NoSlotsLeftStop 
+  
+  --:Remove|
+   --#targetToken|[*S:CurseTarget]
+   -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexbladeMarker]
+   --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&TokenName]
+   --~|object;token;delete;[@tokens(0)]
+   --!a:[*S:character_id]|!CurseTarget:**
+   --#whisper|
+   --#emotetext|[*T:t-name] is no longer cursed!
+   --X|  
+}}

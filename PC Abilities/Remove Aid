@@ -1,0 +1,27 @@
+!script{{
+	
+  --/|Script Name : Remove Aid
+  --/|Version     : 1.0
+  --/|Requires SC : TokenMod, Chatsetattr
+  --/|Author      : Nick O. (YouTube)
+  --/|Modified By : Farsidegallery
+  
+ --#sourceToken|@{selected|token_id}
+ 
+ --?"[*S:origMaxHP]" -eq "**"|>Noaid
+ 
+ --#title|Aid Wore Off for [*S:t-name]!
+ --?[*S:hp] -gt [*S:origMaxHP]|[
+  --!a:[*S:character_id]|hp:[*S:origMaxHP]
+  --+|HP Reset to @{selected|origMaxHP}
+ --]|
+ --!a:[*S:character_id]|hp^:[*S:origMaxHP]
+ --!t:[*S:t-id]|status_strong:false
+ --+|Max HP Reset to [*S:origMaxHP]
+ --!a:[*S:character_id]|origMaxHP: **
+ --X|
+ 
+ --:Noaid|
+  --+Status: |[*S:t-name] does not have Aid active!
+  --X|
+}}

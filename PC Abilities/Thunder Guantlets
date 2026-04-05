@@ -1,0 +1,213 @@
+!scriptcards {{
+  +++5Elib;snlib;Farsidelib+++	
+  
+  --/|Script Name : Thunder Gauntlets
+  --/|Version     : 1.0
+  --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
+  --/|Author      : 
+  --/|Modified By : Farsidegallery
+  --/|
+  --/|  Script prompts user of target and type of attack roll. Script rolls attack, compares to target's AC, and determines if spell hits.
+  --/|  Script finds Caster's level, scales and calculates damage, determines damage modifier (resistant, immune), and applies damage. 
+  --/|  If target dies due to damgae, the "Dead" token marker is applied.
+  --/|
+  
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+      
+   --&AttackName|Thunder Gauntlets
+   
+   --&damageType|thunder
+   
+   --&hpBar|1
+   --&tempHPbar|4
+   
+   --/|Put the name of your check if custom crit damage will be applied.
+   --&CustomCritCheck|far_CustomCritCheck
+   
+   --/|Define your custom crit damage dice roll modifier, roll type, roll modifier, and extra damage modifier
+   --/|ex 1: 2d8+8 is -1 dicemodifier (making 2d8), d dicerolltype, blank rollmodifier, and with +8 damagemodifier
+   --/|ex 2: 3d8 keep highest one is blank dicemodifier, with d dicerolltype, kh1 for rollmodifier, and blank for damagemodifier
+   --/|ex 3: 3d8 max all dice is blank dicemodifier, m dicerolltype, blank rollmodifier, and blank damagemodifier
+   --&CritDamageDiceModifier|-1
+   --&CritDamageDiceRollType|d
+   --&CritDamageRollModifier|
+   --=CritDamageModifier|+8
+   
+   --/|Are you using the matching Bardic Inspiration Script from FarsideGallery? (Default is No using 0. Change to 1 if using the script.)
+   --=Scriptcheck|1
+  
+   --/|Enter the Token Markers you use for each condition
+   --&BardicMarker|BardicInspiration::7409920
+   --&BlessedMarker|angel-outfit
+   --&InspirationMarker|Inspiration::7409921
+   --&BaneMarker|Hexed3::7409911
+   --&HexMarker|Hexed::7409913
+   --&HexBladebladeMarker|Hexed2::7409912
+   --&DeathMarker|dead
+   --&DisadvantageMarker|Disadvantage::7409922
+  
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&At|@
+  
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|token_id}
+  --#whisper|self,gm
+  
+  -->far_FindFeat|[*S:character_id];Armor Model;ModelFlag
+  
+  --#title|[&AttackName]
+  --#leftsub|1 Action
+  --#rightsub|Guardian Armor
+  
+  --?[$ModelFlag] -ne 1 -and "[*S:race]" -ninc "Warforged"|>far_FatalError;Feat or Race Not Found;ERROR;Could not find a feat named Armor Model or the race of Warforged.
+  
+  -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&InspirationMarker];InspiredFlag;InspiredCount
+  -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&BardicMarker];BardicFlag;BardicCount
+  -->far_FIND_ACTIVE_GLOBAL_ATTACK_MODS|[*S:character_id];GlobalAttack
+  -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
+  -->far_FindFeat|[*S:character_id];"Hexblade's Curse";HexBladeFlag
+  
+  --&DamageDice|1
+  -->GetAttrib|
+  
+  --+Target|[rbutton]Click this button to select your target.::TargetInfo;&#64;{target|token_id}[/rbutton]
+   --X|
+  
+  --:TargetInfo|
+   --#targettoken|[&reentryval]
+   --#emoteText|[*S:t-name] attacks [*T:t-name]!
+   --=TargetHP|[*T:t-bar1_value]
+   --?[*T:npc] -eq 1|=TargetAC;[*T:npc_ac]|=TargetAC;[*T:ac]
+   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;1;0;0
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexMarker];HexMarkerFlag;HexMarkerCount
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];HexBladeMarkerFlag;HexBladeMarkerCount
+   
+   --+|[c]Choose Attack Type:[/c]
+   --+|[c][rbutton]Advantage::AttackType;2d20kh1[/rbutton][rbutton]Normal::AttackType;1d20[/rbutton][rbutton]Disadvantage::AttackType;2d20kl1[/rbutton][/c]
+   --X|
+   
+  --:AttackType|
+   --&AttackDice|[&reentryval]
+   --?[&InspiredFlag] -ne 0 |>far_Inspiration;[*S:character_id];[&InspirationMarker];[&AttackDice];AttackDice
+   
+   --=AttackDiceBase|[&AttackDice]
+   --+Rolling [&AttackDice]: |[$AttackDiceBase]
+   --+|[br]
+   --=AttackRollMod|[$AttackDiceBase] + [$AttribScore] [[&Attrib] Modifier] +[*S:pb] [Proficiency Bonus]
+   
+   --?[&BardicFlag] -eq 1|>far_Bardic;[*S:t-id];[&BardicMarker];[$Scriptcheck];[$AttackDiceBase];[$AttackRollMod];BardRoll
+   --?[&BaneMarkerFlag] -eq 1|&Baneroll;+ - 1d4 [Bane] |&Baneroll;
+   
+   --=AttackRoll|[$AttackDiceBase] + [$AttribScore] [[&Attrib] Modifier] +[*S:pb] [Proficiency Bonus] [&GlobalAttack] [&Baneroll] [&BardRoll]
+   
+   --+Total Attack Roll |[b]#[$Shot][/b]: [$AttackRoll]
+   --+|[br]
+
+   --?[$AttackDiceBase] -eq 20|>Crit
+   --?[$AttackDiceBase] -eq 1|>Fumble
+   --?[$AttackRoll] -ge [$TargetAC.Total] -and [$AttackDiceBase] -nei 20|>Hit
+   --?[$AttackRoll] -lt [$TargetAC.Total] -and [$AttackDiceBase] -nei 1|>Miss
+   --X|
+
+  --/| ____________________ Procedures_______________________________________________________________________________________
+  
+
+  --:GetAttrib|
+   --~AttribScore|math;max;[*S:strength_mod];[*S:dexterity_mod]
+   --~AttribScore|math;max;[$AttribScore];[*S:intelligence_mod]
+   --?[$AttribScore] -eq [*S:strength_mod]|&Attrib;Strength
+   --?[$AttribScore] -eq [*S:dexterity_mod]|&Attrib;Dexterity
+   --?[$AttribScore] -eq [*S:intelligence_mod]|&Attrib;Intelligence
+   --<|
+  
+  --:Crit|
+   --#whisper|
+   -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;1   
+   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex;+ + 1d6 [Hex] |&Hex;
+   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade;
+   -->[&CustomCritCheck]|CustomCritFlag
+   --?[&CustomCritFlag] -eq 1|[
+	--=CritDice|1 + [&CritDamageDiceModifier]
+    --&CritDamage|[$CritDice][&CritDamageDiceRollType]8[&CritDamageRollModifier] + [$CritDamageModifier]
+    --=Damage|[&DamageDice]d8 [Hit] + [&CritDamage] [Crit] [&HexBlade] [&Hex] [&GlobalDamage][&damageMod]
+	--+|[br]
+	--]|[
+	--=Damage|[&DamageDice]d8 [Hit] + [&DamageDice]d8 [Crit] [&HexBlade] [&Hex] [&GlobalDamage][&damageMod]
+	--+|[br]
+	--]|
+   --+[b]Critical Hit!!![/b] |The attack did [$Damage] points of [&damageType] damage.
+   --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$Damage];0;0;1
+   -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
+   --?[*T:t-bar1_value] -le 0|>Died
+   -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DisadvantageMarker]
+   --!a:[*T:t-id]|rtype:[&At]{advantagetoggle}
+   --!a:[*T:t-id]|advantagetoggle:[&brace][&brace]query=1[&cbrace][&cbrace] [&brace][&brace]disadvantage=1[&cbrace][&cbrace] [&brace][&brace]r2=[[[&At]{d20}
+   --+|[br]
+   --+|[*T:t-name] is [b]Disadvantaged[/b] on it's next attack against targets other than [*S:t-name] until your next turn!
+   -->Output|
+   --X|
+
+  --:Hit|
+   --#whisper|
+   -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0
+   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex;+ + 1d6 [Hex] |&Hex;
+   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade;
+   --=Damage|[&DamageDice]d8 [&HexBlade] [&Hex][&GlobalDamage][&damageMod]
+   --+[b]Hit![/b] |The attack did [$Damage] points of [&damageType] damage.
+   --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$Damage];0;0;1
+   -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
+   --?[*T:t-bar1_value] -le 0|>Died
+   -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DisadvantageMarker]
+   --!a:[*T:t-id]|rtype:[&At]{advantagetoggle}
+   --!a:[*T:t-id]|advantagetoggle:[&brace][&brace]query=1[&cbrace][&cbrace] [&brace][&brace]disadvantage=1[&cbrace][&cbrace] [&brace][&brace]r2=[[[&At]{d20}
+   --+|[br]
+   --+|[*T:t-name] is [b]Disadvantaged[/b] on it's next attack against targets other than [*S:t-name] until [*S:t-name]'s next turn!
+   -->Output|
+   --X|
+
+  --:Miss|
+   --#whisper|
+   --+[b]Missed![/b] |So close but they ducked just in time. Better luck next time (if there is a next time).
+   -->Output|
+   --X|
+
+  --:Fumble|
+   --#whisper|
+   --+[b]Fumble![/b] |The attack went horribly wrong.
+   --=Fail|[T#Damage-Melee-Fail]
+   --&failText|[$Fail.tableEntryText]
+   --?"[&failText]" -inc "[&obrac][&obrac]"|[
+	--~failText1|string;before;[&obrac][&obrac];[&failText]
+	--~failText2|string;after;[&cbrac][&cbrac];[&failText]
+	--~roll|string;before;[&cbrac][&cbrac];[&failText]
+	--~roll|string;after;[&obrac][&obrac];[&roll]
+	--=failRoll|[&roll]
+	--&failText|[&failText1][$failRoll][&failText2]
+	--]|
+   --+|[br]
+   --+|[&failText]
+   --?"[&failText]" -inc "Roll for damage"|[
+    --=Damage|[&DamageDice]
+	--+|[br]
+	--+Damage: |[$Damage]
+	--]|
+   -->Output|
+   --X|   
+
+  --:Died|
+   -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DeathMarker]
+   --<|
+  
+  --:Output|
+   --+|[br]
+   --+Desc: |Each of the armor's gauntlets counts as a simple melee weapon while you aren't holding anything in it, and it deals 1d8 thunder damage on a hit. A creature hit by the gauntlet has disadvantage on attack rolls against targets other than you until the start of your next turn, as the armor magically emits a distracting pulse when the creature attacks someone else.
+   --X| End Script
+}}

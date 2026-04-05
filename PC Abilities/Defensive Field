@@ -1,0 +1,64 @@
+!scriptcards {{
+  +++5Elib;snlib;Farsidelib+++	
+  
+  --/|Script Name : Defensive Field
+  --/|Version     : 1.0
+  --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
+  --/|Author      : 
+  --/|Modified By : Farsidegallery
+  --/|
+  --/|  Script prompts user of target and type of attack roll. Script rolls attack, compares to target's AC, and determines if spell hits.
+  --/|  Script finds Caster's level, scales and calculates damage, determines damage modifier (resistant, immune), and applies damage. 
+  --/|  If target dies due to damgae, the "Dead" token marker is applied.
+  --/|
+  
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+      
+  --&ActionName|Defensive Field
+  
+  --/|What resource name is used for Defensive Field?
+  --&Resource|Defensive Field [l]
+  
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|token_id}
+
+  -->far_FindFeat|[*S:character_id];Armor Model;ModelFlag
+ 
+  --#title|[&ActionName]
+  --#leftsub|1 Bonus Action
+  --#rightsub|Guardian Armor
+  --#emoteText|[*S:t-name] uses Defensive Field!
+  
+  --?[$ModelFlag] -ne 1 -and "[*S:race]" -ninc "Warforged"|>far_FatalError;Feat or Race Not Found;ERROR;Could not find a feat named Armor Model or the race of Warforged.
+
+  -->Lib5E_FIND_RESOURCE|[*S:character_id];[&Resource];Resourcename;ResourceAmmo
+  --?[&ResourceAmmo] -eq 0|NoResource 
+  -->far_FIND_CLASS_LEVEL|[*S:character_id];Artificer;ALevel
+  --=Healing|[&ALevel]
+  --+Healing:|[*S:t-name] now has [$Healing] temporary hit points!
+  -->SetAttribs|
+  --X| Done
+
+ --:SetAttribs|   
+   --!a:[*S:character_id]|!hp_temp:[$Healing]
+   --=FinalResource|[$ResourceAmmo] - 1 
+   --!a:[*S:character_id]|[&ResourceAmmo]:[$FinalResource]
+   --+|[br]
+   --+Uses Remaining: |[*S:t-name] has [$FinalResource] uses remaining.
+   --<|
+
+  --:NoResource|
+   --#emoteText|[*S:t-name] tries to to use Defensive Field, but needs to take a long rest first.
+   --+|[*S:t-name] has no Defensive Field uses available.
+   --X| DONE
+}}

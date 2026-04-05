@@ -1,0 +1,236 @@
+!script {{
+  +++5Elib;snlib;Farsidelib+++
+  --&brace|{
+  --&cbrace|}
+  
+  --/|Script Name : Dragonborn Breath Weapon
+  --/|Version     : 1.0
+  --/|Requires SC : SmartAOE, ScriptCards Library snlib/Farsidelib
+  --/|Author      : Farsidegallery
+  --/|SmartAOE Code : David M.
+  --/|  
+  --/|  Script checks for Dragonborn Ancestry color, selects correct damage (amount and type), builds SmartAOE script, and executes program.
+  --/|
+  
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+    
+  --/|What resource name is used for the Breath Weapon?
+  --&BreathResource|Breath Weapon
+   
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --#hidecard|1
+  --#sourcetoken|@{selected|token_id}
+
+  --:FindResource|
+   -->Lib5E_FIND_RESOURCE|[*S:id];[&BreathResource];BreathName;BreathAmmo
+   --?[$BreathAmmo] -eq 0|>NoResource
+   --=FinalAmmo|[$BreathAmmo]-1
+   --!a:[*S:character_id]|[&BreathAmmo]:[$FinalAmmo]
+
+   --=dc|8 + [*S:constitution_mod] [CON mod] + [*S:pb] [Proficiency Bonus]
+  
+   --=level|[*S:level]
+   --?[$level] -ge 17|&damageFormula1;<<4d10>>
+   --?[$level] -ge 11 -and [$level] -lt 17|&damageFormula1;<<3d10>>
+   --?[$level] -ge 5 -and [$level] -lt 11|&damageFormula1;<<2d10>>
+   --?[$level] -lt 5|&damageFormula1;<<1d10>>
+
+   --Rfind|[*S:id];[&BreathResource];repeating_traits;name;traitname
+   --?"[*R:traitname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a trait named [&BreathResource].
+   --&desc|[*R:description]
+   --&color|[*R:description]
+   --~color|string;before;draconic;[&color]
+   --~color|string;after;Your;[&color]
+   --~color|string;trim;[&color]
+   --~color|string;totitlecase;[&color]
+   --+Color: |[&color]
+
+   --?"[&color]" -inc "black" -or "[&color]" -inc "copper"|>acid
+   --?"[&color]" -inc "white" -or "[&color]" -inc "silver"|>cold
+   --?"[&color]" -inc "red" -or "[&color]" -inc "gold"|>fire
+   --?"[&color]" -inc "blue" -or "[&color]" -inc "bronze"|>lightning
+   --?"[&color]" -inc "green"|>poison
+   --?"[&color]" -inc "brass"|>brass_fire
+   --?"[&color]" -inc "amethyst"|>force
+   --?"[&color]" -inc "crystal"|>radiant
+   --?"[&color]" -inc "emerald"|>psychic
+   --?"[&color]" -inc "sapphire"|>thunder
+   --?"[&color]" -inc "topaz"|>necrotic
+
+  --:acid|
+   --&damageType1|acid
+   --&aoeColor|#00ff0050
+   --&aoeOutlineColor|#00ff00
+   --&subtitlefontcolor|#000000
+   --&fx|burn-acid
+   --&titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/261004638/sSCZDmBZmes3V1Ewlbv-Cg/max.jpg?1639962320');background-size: 100% 100%; background-repeat: no-repeat
+   --&shape|5eLine
+   --&distance|30ft
+   --&save|5eDex
+   --&savedesc|Dexterity
+   -->BuildAOE|
+   
+  --:cold|
+   --&damageType1|acid
+   --&aoeColor|#00ffff50
+   --&aoeOutlineColor|#00ffff
+   --&subtitlefontcolor|#000000
+   --&fx|burn-frost
+   --&titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/261004637/4EFuFHt5OlXpSJy7ZfeA2Q/max.jpg?1639962320');background-size: 100% 100%; background-repeat: no-repeat
+   --&shape|5eCone
+   --&distance|15ft
+   --&save|5eCon
+   --&savedesc|Constitution
+   -->BuildAOE|
+
+  --:fire|
+   --&damageType1|fire
+   --&aoeColor|#ff000050
+   --&aoeOutlineColor|#ff0000
+   --&subtitlefontcolor|#000000
+   --&fx|burn-fire
+   --&titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/253615223/QhQiZxJ2ufS_ry8uXVYPLQ/max.png?1635890238');background-size: 100% 100%; background-repeat: no-repeat
+   --&shape|5eCone
+   --&distance|15ft
+   --&save|5eDex
+   --&savedesc|Dexterity
+   -->BuildAOE|
+
+  --:brass_fire|
+   --&damageType1|fire
+   --&aoeColor|#ff000050
+   --&aoeOutlineColor|#ff0000
+   --&subtitlefontcolor|#000000
+   --&fx|burn-fire
+   --&titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/253615223/QhQiZxJ2ufS_ry8uXVYPLQ/max.png?1635890238');background-size: 100% 100%; background-repeat: no-repeat
+   --&shape|5eLine
+   --&distance|30ft
+   --&save|5eDex
+   --&savedesc|Dexterity
+   -->BuildAOE|
+
+  --:lightning|
+   --&damageType1|lightning
+   --&aoeColor|#4a86e850
+   --&aoeOutlineColor|#4a86e8
+   --&subtitlefontcolor|#000000
+   --&fx|burn-frost
+   --&titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/261004639/m2UaTAp9gpMAFGX32BgySQ/max.jpg?1639962320');background-size: 100% 100%; background-repeat: no-repeat
+   --&shape|5eLine
+   --&distance|30ft
+   --&save|5eDex
+   --&savedesc|Dexterity
+   -->BuildAOE|
+
+  --:poison|
+   --&damageType1|poison
+   --&aoeColor|#20872850
+   --&aoeOutlineColor|#208728
+   --&subtitlefontcolor|#ffffff
+   --&fx|burn-acid
+   --&titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/261004636/pbs4ElLQsK4cTfYlr4gg1g/max.jpg?1639962320');background-size: 100% 100%; background-repeat: no-repeat
+   --&shape|5eCone
+   --&distance|15ft
+   --&save|5eCon
+   --&savedesc|Constitution
+   -->BuildAOE|
+   
+  --:force|
+   --&damageType1|force
+   --&aoeColor|#ffffff60
+   --&aoeOutlineColor|#ffffff
+   --&subtitlefontcolor|#ffffff
+   --&fx|burn-magic
+   --&titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/256379607/PTVgGkwvV0OpEWYw6JOcXQ/max.png?1637346097');background-size: 100% 100%; background-repeat: no-repeat
+   --&shape|5eCone
+   --&distance|15ft
+   --&save|5eDex
+   --&savedesc|Dexterity
+   -->BuildAOE|
+  
+  --:radiant|
+   --&damageType1|radiant
+   --&aoeColor|#9fc5e850
+   --&aoeOutlineColor|#6d9eeb
+   --&subtitlefontcolor|#ffffff
+   --&fx|burn-holy
+   --&titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/248538196/c9xft1A2jWNqOkBsxQwyLQ/max.jpg?1633278017');background-size: 100% 100%; background-repeat: no-repeat
+   --&shape|5eCone
+   --&distance|15ft
+   --&save|5eDex
+   --&savedesc|Dexterity
+   -->BuildAOE|
+  
+  --:psychic|
+   --&damageType1|psychic
+   --&aoeColor|#8066FF50
+   --&aoeOutlineColor|#80066FF
+   --&subtitlefontcolor|#ffffff
+   --&fx|glow-magic
+   --&titlecardbackground|linear-gradient(purple, #99CCFF)
+   --&shape|5eCone
+   --&distance|15ft
+   --&save|5eDex
+   --&savedesc|Dexterity
+   -->BuildAOE|
+  
+  --:thunder|
+   --&damageType1|thunder
+   --&aoeColor|#88888850
+   --&aoeOutlineColor|#ffffff
+   --&subtitlefontcolor|#ffffff
+   --&fx|burn-smoke
+   --&titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/253624290/aHQ8iSGWD1gYyR94kocxOg/max.png?1635893578');background-size: 100% 100%; background-repeat: no-repeat
+   --&shape|5eCone
+   --&distance|15ft
+   --&save|5eDex
+   --&savedesc|Dexterity
+   -->BuildAOE|
+   
+  --:necrotic|
+   --&damageType1|necrotic
+   --&aoeColor|#434343
+   --&aoeOutlineColor|#000000
+   --&subtitlefontcolor|#ffffff
+   --&fx|burn-death
+   --&titlecardbackground|linear-gradient(black, #9900ff)
+   --&shape|5eCone
+   --&distance|15ft
+   --&save|5eDex
+   --&savedesc|Dexterity
+   -->BuildAOE|
+
+  --:BuildAOE|
+   --@forselected|smartaoe [&brace][&brace]
+    _title|Dragonborn Breath Weapon
+    _leftsub|[&color] Ancestry
+    _rightsub|DC [$dc] 
+    _subtitlefontcolor|[&subtitlefontcolor]
+    _titlecardbackground|[&titlecardbackground]
+    _aoeType|[&shape]
+    _radius|[&distance]
+    _origin|nearest, face
+    _minGridArea|0.25
+    _minTokArea|0.25
+    _fx|[&fx]
+    _dc|[$dc]
+    _saveFormula|[&save]
+    _aoeColor|[&aoeColor]
+    _aoeOutlineColor|[&aoeOutlineColor]
+    _damageFormula1|[&damageFormula1]
+    _damageType1|[&damageType1]
+    _instant|1
+    _autoApply|1
+    _bar|1
+    _zeroHPmarker|dead
+    _desc|[&desc]
+    [&cbrace][&cbrace]
+
+  --X|End Macro
+
+ --:NoResource|
+  --#hidecard|0 
+  --+|[*S:t-name] has no breath weapon charges available.
+  --X|
+}}

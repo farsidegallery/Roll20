@@ -1,0 +1,36 @@
+!scriptcard {{
+  +++5Elib;snlib;Farsidelib+++
+  --#overridetemplate|wizard  
+  
+  --#title|Favored By The Gods
+  --#sourceToken|@{selected|token_id}
+  --#leftsub|Healing
+  --#rightsub|Fighting Spirit
+  
+  --/|Script Name : Favored By The Gods
+  --/|Version     : 1.0
+  --/|Requires SC : ScriptCards Library 5Elib
+  --/|Author      : Farsidegallery
+  --/|  
+  --/|  Script checks for resource availability, udpdates target character sheet, places token marker, and deducts a resource slot.
+  --/|
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+      
+  --/|What resource name is used for Favored By The Gods?
+  --&FavoredResource|Favored By The Gods
+   
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  -->Lib5E_FIND_RESOURCE|[*S:character_id];[&FavoredResource];Favorname;FavorAmmo
+  --?[&FavorAmmo] -eq 0|NoFavor
+  --!a:[*S:character_id]|[&FavorAmmo]:0
+  --=DieRoll|2d4
+  --+|
+  --+Die Roll:|You rolled a [$DieRoll].
+  --X| Done
+
+  --:NoFavor|
+   --#emoteText|[*S:t-name] tries to to use Favored By The Gods, but needs to take a long rest first.
+   --+|[*S:t-name] has no Favored By The Gods uses available.
+   --X| DONE
+}}

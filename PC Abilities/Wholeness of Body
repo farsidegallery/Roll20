@@ -1,0 +1,46 @@
+!scriptcard {{
+  +++5Elib;snlib+++
+  --#overridetemplate|wizard
+  
+  --#title|Wholeness of Body
+  --#sourceToken|@{selected|token_id}
+  --#leftsub|Healing
+  --#rightsub|Resource Pool
+  
+  --/|Script Name : Second Wind
+  --/|Version     : 1.5
+  --/|Requires SC : ScriptCards Library 5Elib/snlib
+  --/|Author      : Farsidegallery
+  --/|
+  --/|  Script checks for resource availability, udpdates target character sheet, places token marker, and deducts a resource slot.
+  --/|
+  
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+      
+   --/|What resource name is used for Wholeness of Body?
+   --&WholeResource|Wholeness of Body
+  
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+  
+  --#emoteText|[*S:t-name] uses Wholeness of Body.
+
+  --=Level|@{selected|level}
+  -->Lib5E_FIND_RESOURCE|[*S:character_id];[&WholeResource];Wholename;WholeAmmo
+  --?[$WholeAmmo] -eq 0|NoBody
+  -->Finish|[$Level]
+  --X| Done
+
+  --:Finish|FinalAmount
+   --=Healing|[$Level]*3
+   --=Missing|[*S:hp^] - [*S:hp]
+   --?[$Healing] -gt [$Missing]|=DisplayAmount;[$Missing]|=DisplayAmount;[$Healing]
+   -->LibSN_APPLY_DAMAGE_OR_HEALING|[*S:t-id];1;[$Healing];0;0
+   --+Healing:|[*S:t-name] regains [$DisplayAmount] hit points.
+   --!a:[*S:character_id]|[&WholeAmmo]:0
+   --X| Done
+
+  --:NoBody|
+   --#emoteText|[*S:t-name] tries to to use Wholeness of Body but needs to take a long rest first.
+   --+|[*S:t-name] does not have Wholeness of Body available.
+   --X| DONE
+}}

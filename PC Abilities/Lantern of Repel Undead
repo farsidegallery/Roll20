@@ -1,0 +1,76 @@
+!script {{
+  +++5Elib;snlib+++
+
+  --#sourceToken|@{selected|token_id}
+  --#emoteText|[*S:t-name] opens the shutter all the way
+  --#title|making the lantern burst out a bright RADIANT LIGHT
+  
+  --&DeathMarker|dead
+  
+  --:(0) CREATE AN ANIMATED WAVEFRONT WITH RADAR SCRIPT| uses SelectManager to retain selected token
+  --@forselected|radar_range|15ft _pinglife|0 _wavedelay|20 _wavespacing|10 _silent|true
+  
+  --:(2) GET ALL TOKENS INTO THE "allTokens" ARRAY| will have blank 1st element to be removed later
+  --~|array;pagetokens;allTokens;@{selected|token_id}
+
+  --:(3) CREATE THE "inRange" ARRAY TO HOLD TOKENS IN RANGE|
+  --~|array;define;inRange;
+
+  --:(4) PREP ARRAY FOR LOOP| if no array elements then end macro
+  --~tokenid|array;getfirst;allTokens
+  --?[&tokenid] -eq ArrayError|endOutput
+
+  --:(5) FIND ALL TOKENS IN RANGE|
+  --:RangeLoop|
+          --:TOKEN MUST BE ON OBJECTS OR GMLAYER AND TYPE MUST INCLUDE UNDEAD|
+          --?[*[&tokenid]:t-layer] -ne objects -and [*[&tokenid]:t-layer] -ne gmlayer|NextToken
+          --?"[*[&tokenid]:npc_type]" -ninc "undead"|NextToken
+          
+          --:CHECK DISTANCE IN UNITS. 15ft is 2.5UNITS|
+          --~dist|euclideandistance;@{selected|token_id};[&tokenid]
+          --?[$dist] -gt 2.5|NextToken
+          
+          --:ADD TO THE "inRange" ARRAY|
+          --~|array;add;inRange;[&tokenid]
+
+          --:NextToken|
+          --~tokenid|array;getnext;allTokens
+          --?[&tokenid] -ne ArrayError|RangeLoop
+
+  --:(6) REMOVE DUMMY FIRST ITEM IN inRange ARRAY|
+  --~|array;removeat;inRange;0
+  --~tokenid|array;getfirst;inRange
+  --?[&tokenid] -eq ArrayError|NoUndead
+  
+  --=Damage|2d6
+  --&damageType|radiant
+  --+Base Damage: |[$Damage]
+  --+|[br]
+  --+|[t border=3 width=100%][tr][td style="width:100px"][c]Target[/c][/td][td style="width:100px"][c]Damage[/c][/td][/tr]
+  
+  --:(7) Apply Damage|
+  --%loop|foreach;inRange
+   --&damageMod|
+   -->far_CheckDamageModifiers|[&loop];[&damageType];damageMod;1;0;0
+   --=FinalDamage|[$Damage][&damageMod]
+   --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[&loop];1;-[$FinalDamage];0;0;0
+   -->far_DamageTokenmod|[&loop];1;4;-[$FinalDamage];0;0;1
+   --?[*T:t-bar1_value] -le 0|>Died
+   --vtoken|[&loop] burst-magic
+   --+|[t border=3 width=100%][tr][td style="width:100px"][c][*[&loop]:t-name][/c][/td][td style="width:100px"][c][$FinalDamage][/c][/td][/tr]
+  --%|
+  --/|+|[br]
+  --/|+|All undead within 15 ft of the lantern take [$FinalDamage] points of [&damageType] damage
+  --X| End Script 
+  
+  --:Died|
+   -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DeathMarker]
+   --<|
+  
+  --:NoUndead|
+   --+|There are no undead within range!
+   --X|
+  
+  --:endOutput|
+   --X|
+}}

@@ -1,0 +1,297 @@
+!scriptcard {{ 
+  +++5Elib;snlib;Farsidelib+++ 
+
+  --#title|Unstable Backlash
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|token_id}
+  --#leftsub|1 Reaction
+  --#rightsub|Random Effect
+  --#whisper|self,gm
+  
+  --/|Script Name : Unstable Backlash
+  --/|Version     : 1.0
+  --/|Requires SC : TokenMod, Chatsetattr, ScriptCards Library 5Elib
+  --/|Author      : Farsidegallery
+  --/|
+  --/|  Script checks for resource availability, udpdates target character sheet, places token marker, and deducts a resource slot.
+  --/|
+  
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+      
+   --&FeatName|Unstable Backlash
+   
+   --/|What resource name is used for Bolstering Magic?
+   --&Resource|Bolstering Magic
+   
+   --/|What is the name you want used for the 1d3?
+   --&D3Name|Wild Magic Rage
+  
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+  
+  -->far_FindFeat|[*S:t-id];[&FeatName];FeatFlag
+  --?[$FeatFlag] -ne 1|>far_FatalError;Feat Not Found;ERROR;Could not find feat [&FeatName]
+  
+  --#emoteText|[*S:t-name] uses [&FeatName].
+
+  -->Lib5E_FIND_CLASS_LEVEL|[*S:character_id];Barbarian;Level
+  --?[&Level] -lt 10|>NoResource;level
+  
+  --=DC|8 + [*S:pb] + [*S:constitution_mod]
+  
+  --+Unstable Backlash: |When you are imperiled during your rage, the magic within you can lash out; immediately after you take damage or fail a saving throw while raging, you can use your reaction to roll on the Wild Magic table and immediately produce the effect rolled. This effect replaces your current Wild Magic effect.
+  --+|[br]
+  --+|Do you want to roll on the Wild Magic table?
+  --+|[c][rbutton]Yes::SurgeRoll[/rbutton][rbutton]No::End[/rbutton][/c]
+  --X|
+  
+  --:OutputPrep|
+   --+|[br]
+   --+Click to display results: |[c][rbutton]Continue::WildDisplayEntry[/rbutton][/c]
+   --X|
+
+  --:WildDisplayEntry|
+      
+   --#whisper|
+    --+Wild Surge: |The magical energy roiling inside you sometimes erupts from you. When you enter your rage, roll on the Wild Magic table to determine the magical effect produced.
+	--+|If the effect requires a saving throw, the DC equals [$DC] (8 + your proficiency bonus + your Constitution modifier).
+	--+|[br]
+	--]|
+
+   --C[$SurgeRoll]|1:>Roll1Effect|2:>Roll2Effect|3:>Roll3Effect|4:>Roll4Effect|5:>Roll5Effect|6:>Roll6Effect|7:>Roll7Effect|8:>Roll8Effect
+    
+  --:End| 
+   --X|  
+
+--/| ____________________ Procedures_______________________________________________________________________________________
+
+  --:SurgeRoll|
+   --=SurgeFlag|1
+   --?[&Level] -ge 14|>RollTwice |=SurgeRoll;1d8
+   --+|You rolled a [$SurgeRoll]
+   
+  --:SurgeEntry|
+   --!a:[*S:character_id]|!SurgeRoll:[$SurgeRoll]
+   --+|[br]
+   --?[$SurgeRoll] -eq 1| >Roll_1
+   --?[$SurgeRoll] -eq 2| >Roll_2
+   --?[$SurgeRoll] -eq 3| >Roll_3
+   --?[$SurgeRoll] -eq 4| >Roll_4
+   --?[$SurgeRoll] -eq 5| >Roll_5
+   --?[$SurgeRoll] -eq 6| >Roll_6
+   --?[$SurgeRoll] -eq 7| >Roll_7
+   --?[$SurgeRoll] -eq 8| >Roll_8
+   -->OutputPrep|
+  
+  --:RollTwice|
+   --=SurgeRoll1|1d8
+   --=SurgeRoll2|1d8
+   --+Controlled Surge: |Whenever you roll on the Wild Magic table, you can roll the die twice and choose which of the two effects to unleash. If you roll the same number on both dice, you can ignore the number and choose any effect on the table.
+   --+|[br]
+   --?[$SurgeRoll1] -eq [$SurgeRoll2]|[
+    --+Result: |You rolled a [$SurgeRoll1] and a [$SurgeRoll2].
+	--+|[br]
+	--+|[c][b]Please Choose Between:[/b][/c]
+	--+|[rbutton]Shadow Tendrils::RollEntry;1[/rbutton][rbutton]Teleport::RollEntry;2[/rbutton][rbutton]Intangible Spirit::RollEntry;3[/rbutton]
+	--+|[rbutton]Force Weapon::RollEntry;4[/rbutton][rbutton]Retributive Strike::RollEntry;5[/rbutton][rbutton]Protective Aura::RollEntry;6[/rbutton]
+	--+|[rbutton]Entangling Aura::RollEntry;7[/rbutton][rbutton]Radiant Bolt::RollEntry;8[/rbutton]
+	--X|
+	--]|[
+	--+Result: |You rolled a [$SurgeRoll1] and a [$SurgeRoll2].
+	--+|[br]
+	--C[$SurgeRoll1]|1:&Roll1Effect;Shadow Tendrils|2:&Roll1Effect;Teleport|3:&Roll1Effect;Intangible Spirit|4:&Roll1Effect;Force Weapon|5:&Roll1Effect;Retributive Strike|6:&Roll1Effect;Protective Aura|7:&Roll1Effect;Entangling Aura|8:&Roll1Effect;Radiant Bolt
+	--C[$SurgeRoll2]|1:&Roll2Effect;Shadow Tendrils|2:&Roll2Effect;Teleport|3:&Roll2Effect;Intangible Spirit|4:&Roll2Effect;Force Weapon|5:&Roll2Effect;Retributive Strike|6:&Roll2Effect;Protective Aura|7:&Roll2Effect;Entangling Aura|8:&Roll2Effect;Radiant Bolt
+	--+|[c][b]Please Choose Between:[/b][/c]
+	--+|[c][rbutton][&Roll1Effect]::RollEntry;[$SurgeRoll1][/rbutton][rbutton][&Roll2Effect]::RollEntry;[$SurgeRoll2][/rbutton][/c]
+	--X|
+	--]|
+  
+  --:RollEntry|
+   --=SurgeRoll|[&reentryval]
+   --C[$SurgeRoll]|1:&RollEffect;Shadow Tendrils|2:&RollEffect;Teleport|3:&RollEffect;Intangible Spirit|4:&RollEffect;Force Weapon|5:&RollEffect;Retributive Strike|6:&RollEffect;Protective Aura|7:&RollEffect;Entangling Aura|8:&RollEffect;Radiant Bolt
+   --+|You chose [b][&RollEffect][/b]!
+   --+|[br]
+   -->SurgeEntry|
+  
+  --:Roll_1|
+	  --=TempHP|1d12
+      --+[c][#030bfc]**~~Shadow Tendrils~~|**[/#][/c]
+      --+|Shadowy tendrils lash around you. 
+      --+|[j]Each creature of your choice that you can see within 30 feet of you must succeed on a **[#990000]Constitution saving throw[/#]** or take 1d12 necrotic damage.[/j]
+      --+|You also gain [$TempHP] temporary hit points.
+	  --!a:[*S:character_id]|!hp_temp:[$TempHP]
+      
+	  --@forselected+|smartaoe [&brace][&brace] 
+	   _title|Shadow Tendrils 
+	   _titlecardbackground|linear-gradient(gray, black)
+	   _titlefontcolor|white
+	   _subtitlefontcolor|white
+	   _leftsub|Rage Wild Magic 
+	   _rightsub|DC [$DC] CON
+	   _chatAvatarsEnabled|false 
+	   _aoeType|circle, float 
+	   _forceIntersection|0 
+	   _radius|30ft 
+	   _fx|burst-death 
+	   _dc|[$DC] 
+	   _saveFormula|5eCON 
+	   _damagesaverule|*0
+	   _damageFormula1|[[1d12]]
+	   _damageType1|necrotic
+	   _ignore|SmartAoE_Ignore,1
+	   _autoApply|1 
+	   _bar|1 
+	   _instant|1 
+	   _zeroHPmarker|dead 
+	   _desc|Each creature of your choice that you can see within 30 feet of you must succeed on a Constitution saving throw or take 1d12 necrotic damage.
+	   [&cbrace][&cbrace]
+	  
+	  --<|
+
+  --:Roll_2|
+      --+[c][#030bfc]**~~Teleport~~|**[/#][/c]
+      --+|[j]**You teleport up to 30 feet** to an unoccupied space you can see.[/j]
+      --+Ongoing Effect: |[j]Until your rage ends, you can use this effect again on each of your turns as a bonus action.[/j]
+	  --+|[br]
+	  --+Ability: |Use the [b]WM Teleport[/b] script in your attacks area for this ability.
+      --<|
+  
+  --:Roll_3|
+      --+[c][#030bfc]**~~Intangible Spirit~~|**[/#][/c]
+      --+|[j]An intangible spirit, which looks like a **flumph** or a **pixie** (your choice), appears within 5 feet of one creature of your choice that you can see within 30 feet of you.[/j]
+      --+|[j]At the end of the current turn, the spirit explodes, and each creature within 5 feet of it must succeed on a **[#990000]Dexterity saving throw[/#]** or take 1d6 force damage.[/j] 
+      --+|[br]
+	  --+Ongoing Effect: |[j]Until your rage ends, you can use this effect again, summoning another spirit, on each of your turns as a bonus action.[/j]
+	  --+|[br]
+	  --+Ability: |Use the [b]WM Intangible Spirit[/b] script in your attacks area for this ability.
+      --<|
+  
+  --:Roll_4|
+      --+[c][#030bfc]**~~Force Weapon~~|**[/#][/c]
+      --+|[j]Magic infuses one weapon of your choice that you are holding.[/j]
+      --+|[j]Until your rage ends, the **weapon's damage type changes to force, and it gains the light and thrown properties**, with a normal range of 20 feet and a long range of 60 feet.[/j]
+      --+|[j]If the weapon leaves your hand, the weapon reappears in your hand at the end of the current turn.[/j]
+      --<|
+  
+  --:Roll_5|
+      --=Retribution|1d6
+	  --+[c][#030bfc]**~~Retributive Strike~~|**[/#][/c]
+      --+Ongoing Effect: |[j]Whenever a creature hits you with an attack roll before your rage ends, that creature takes **[#990000]1d6 force damage[/#]**, as magic lashes out in retribution.[/j]
+      --<|
+  
+  --:Roll_6|
+      --+[c][#030bfc]**~~Protective Aura~~|**[/#][/c]
+      --+Ongoing Effect: |[j]Until your rage ends, you are surrounded by multi colored, protective lights. You gain a **[#990000]+1 bonus to AC[/#]**, and while within 10 feet of you, your allies gain the same bonus.[/j]
+      -->far_Check_GLOBAL_MOD_EXISTS|[*S:t-id]; ac; Protective Aura; ACModExists
+	  --?[&ACModExists] -eq 1|>SetAura |>CreateAura
+	  --<|
+  
+  --:Roll_7|
+      --+[c][#030bfc]**~~Entangling Aura~~|**[/#][/c]
+      --+|[j]Flowers and vines temporarily grow around you.[/j]
+      --+Ongoing Effect: |[j]Until your rage ends, the ground within 15 feet of you is **[#990000]difficult terrain[/#]** for your enemies.[/j]
+      --<|
+  
+  --:Roll_8|
+	  --=BoltFlag|1
+      --+[c][#030bfc]**~~Radiant Bolt~~|**[/#][/c]
+      --+|[j]A bolt of light shoots from your chest.[/j]
+      --+|[j]Another creature of your choice that you can see within 30 feet of you must succeed on a **[#990000]Constitution saving throw[/#]** or take [$RadiantDam] radiant damage and be blinded until the start of your next turn.[/j]
+      --+|[br]
+	  --+Ongoing Effect: |[j]Until your rage ends, you can use this effect again on each of your turns as a bonus action.[/j]
+	  --+|[br]
+	  --+Ability: |Use the [b]WM Radiant Bolt[/b] script in your attacks area for this ability.
+	  --<|
+  
+  --:Roll1Effect|
+   --+[c][#030bfc]**~~Shadow Tendrils~~|**[/#][/c]
+   --+|Shadowy tendrils lash around you. 
+   --+|[j]Each creature of your choice that you can see within 30 feet of you must succeed on a **[#990000]Constitution saving throw)[/#]** or take [$NecroDam] necrotic damage.[/j]
+   --+|You also gain [$TempHP] temporary hit points.
+   --+|[br]
+   --<|
+
+  --:Roll2Effect|
+   --+[c][#030bfc]**~~Teleport~~|**[/#][/c]
+   --+|[j]**You teleport up to 30 feet** to an unoccupied space you can see.[/j]
+   --+|[br]
+   --+Ongoing Effect: |[j]Until your rage ends, you can use this effect again on each of your turns as a bonus action.[/j]
+   --+|[br]
+   --<|
+
+  --:Roll3Effect|
+   --+[c][#030bfc]**~~Intangible Spirit~~|**[/#][/c]
+   --+|[j]An intangible spirit, which looks like a **flumph** or a **pixie** (your choice), appears within 5 feet of one creature of your choice that you can see within 30 feet of you.[/j]
+   --+|[j]At the end of the current turn, the spirit explodes, and each creature within 5 feet of it must succeed on a **[#990000]Dexterity saving throw)[/#]** or take [$ForceDam] (1d6) force damage.[/j] 
+   --+|[br]
+   --+Ongoing Effect: |[j]Until your rage ends, you can use this effect again, summoning another spirit, on each of your turns as a bonus action.[/j]
+   --+|[br]
+   --<|
+
+  --:Roll4Effect|
+   --+[c][#030bfc]**~~Force Weapon~~|**[/#][/c]
+   --+|[j]Magic infuses one weapon of your choice that you are holding.[/j]
+   --+|[j]Until your rage ends, the **weapon's damage type changes to force, and it gains the light and thrown properties**, with a normal range of 20 feet and a long range of 60 feet.[/j]
+   --+|[j]If the weapon leaves your hand, the weapon reappears in your hand at the end of the current turn.[/j]
+   --+|[br]
+   --<|
+
+  --:Roll5Effect|
+   --+[c][#030bfc]**~~Retributive Strike~~|**[/#][/c]
+   --+Ongoing Effect: |[j]Whenever a creature hits you with an attack roll before your rage ends, that creature takes **[#990000][$Retribution] (1d6) force damage[/#]**, as magic lashes out in retribution.[/j]
+   --+|[br]
+   --<|
+
+  --:Roll6Effect|
+   --+[c][#030bfc]**~~Protective Aura~~|**[/#][/c]
+   --+Ongoing Effect: |[j]Until your rage ends, you are surrounded by multi colored, protective lights. You gain a **[#990000]+1 bonus to AC[/#]**, and while within 10 feet of you, your allies gain the same bonus.[/j]
+   --+|[br]
+   --<|
+
+  --:Roll7Effect|
+   --+[c][#030bfc]**~~Entangling Aura~~|**[/#][/c]
+   --+|[j]Flowers and vines temporarily grow around you.[/j]
+   --+|[br]
+   --+Ongoing Effect: |[j]Until your rage ends, the ground within 15 feet of you is **[#990000]difficult terrain[/#]** for your enemies.[/j]
+   --+|[br]
+   --<|
+  
+  --:Roll8Effect|
+   --+[c][#030bfc]**~~Radiant Bolt~~|**[/#][/c]
+   --+|[j]A bolt of light shoots from your chest.[/j]
+   --+|[j]Another creature of your choice that you can see within 30 feet of you must succeed on a **[#990000]Constitution saving throw[/#]** or take 1d6 radiant damage and be blinded until the start of your next turn.[/j]
+   --+|[br]
+   --+Ongoing Effect: |[j]Until your rage ends, you can use this effect again on each of your turns as a bonus action.[/j]
+   --+|[br]
+   --<|
+  
+  --:CreateAura| 
+    --!a:[*S:character_id]|global_ac_mod_flag:1
+    --!or:[*S:character_id]:acmod|
+	global_ac_name:Protective Aura|
+	global_ac_val:1|
+	global_ac_active_flag:1|
+	options-flag:0
+	--<|
+  
+  --:SetAura|  
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*S:character_id];ac;Protective Aura;1
+   --<|
+  
+  --:NoResource|
+   --?"[%1%]" -eq "Level"|[
+    --#emoteText|[*S:t-name] needs more XP!
+    --+|[*S:t-name] but is not a high enough level for this ability.
+	--]
+
+   --X| DONE
+}}

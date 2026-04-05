@@ -1,0 +1,19 @@
+!scriptcards {{
+  +++5Elib;snlib;Farsidelib+++	
+  
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  
+  --/|Script Name : Lantern of Magic Revealing
+  --/|Version     : 1.0
+  --/|Requires SC : SelectManager, Radar, ScriptCards Library 5Elib/snlib/Farsidelib
+  --/|Author      : Farsidegallery
+  --/|  
+  --/|  Script automatically creates radar wave to detect appropriate magic tokens and deducts spell slot from caster.
+  --/|
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+
+  --:RadarWave|
+   --@forselected|radar _range|30 ft _pinglife|4000 _wavedelay|50 _wavespacing|35 _wavelife|200 _layers|gm,token,map _tokfilter|    gmnotes: abjuration#800080, conjuration#ffa500, divination#green, enchantment#yellow, evocation#ff0000, illusion#00ffff, necromancy#000000, transmutation#blue, wild#ffffff, dead#808080 _title|Detect Magic _silent|no gm _units|u, 5e _graphoptions|grid circle _output|graph table _LOS|yes
+  --X|
+}}

@@ -1,0 +1,24 @@
+!script  {{
+ 
+  --/|Script Name : Mirror Image Attack Script
+  --/|Version     : 1.5
+  --/|Requires SC : SuperNotes (for template override only), ScriptCards Library snlib
+  --/|Author      : Nick O. (YouTube)
+  --/|Modified By : Farsidegallery
+ 
+ --#title|Mirror Image
+ --#sourceToken|@{selected|token_id}
+ --~dummy|array;selectedtokens;myarray {&select Mirror Image*}
+ --~count|array;getcount;myarray
+ --=DieRoll|1d20
+ --=ImageAC|10+[*S:dexterity_mod]
+ --#leftsub|[&count] mirror image(s)
+ --#rightsub|Image AC [$ImageAC]
+ --c[&count]|3:=Target;6|2:=Target;8|1:=Target;11
+ --+Roll|You rolled [$DieRoll] vs a target of [$Target]!
+ --?[$DieRoll] -ge [$Target] | [
+ --+Target|The attack targets a mirror image!
+ --]|[
+ --+Target|The attack targets you!
+ --]|
+}}

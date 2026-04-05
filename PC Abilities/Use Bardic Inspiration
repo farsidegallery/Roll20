@@ -1,0 +1,46 @@
+!script {{
+  +++5Elib;snlib+++ 
+  --#overridetemplate|wizard
+ 
+  --/|Script Name : Use Bardic Inspiration
+  --/|Version     : 1.5
+  --/|Requires SC : ScriptCards Library 5Elib & snlib
+  --/|Author      : Nick O. (YouTube)
+  --/|Modified By : Farsidegallery
+  --/|  
+  --/|  Script checks for resource availability, udpdates target character sheet, places token marker, and deducts a resource slot.
+  --/|
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+      
+   --/|Enter the Token Markers you use for each condition
+   --&BardicMarker|BardicInspiration::7409920
+   
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+ --#title|Bardic Inspiration
+ --#sourceToken|@{selected|token_id}
+ 
+ --?[*S:InspireByTID] -inc "**" |>NoInspire
+ 
+ --&BardName|[*S:InspireByName]
+ --&Bardtoken|[*S:InspireByTID]
+ --+|[c][&BardName] has inspired you![/c]
+ -->FindBardLevel|[&Bardtoken]
+ -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&BardicMarker]
+ --!a:[*S:character_id]|InspireByName: ** |InspireByTID: **
+ --X|
+ 
+ --:FindBardLevel|BardTID
+  -->Lib5E_FIND_CLASS_LEVEL|[%1%];Bard;BLevel
+  --=BardLevel|[&BLevel]
+  --?[$BardLevel] -ge 15 |=BardicRoll;1d12
+  --?[$BardLevel] -lt 15 |=BardicRoll;1d10
+  --?[$BardLevel] -lt 10 |=BardicRoll;1d8
+  --?[$BardLevel] -lt 5 |=BardicRoll;1d6
+  --+[br]Bardic Inspiration: |You rolled a [$BardicRoll] for Bardic Inspiration.
+  --<|
+ 
+ --:NoInspire|
+  --+|[c]You do not have Bardic Inspiration![/c]
+  --X|
+}}

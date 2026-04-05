@@ -1,0 +1,94 @@
+!scriptcard {{
+  +++5Elib;snlib;Farsidelib+++
+
+  --#buttonwidth|25%
+  --#buttonPadding|4px
+  --#sourceToken|@{selected|token_id}
+  --#whisper|self,gm
+  --#title|[*S:t-name] Resource Recovery
+  --&CharID|[*S:character_id]
+
+  --/|Create array of all resources
+  --~|array;define;Resources;[*S:class_resource_name]
+  --?"[*S:other_resource_name]" -ne ""|[
+	--~|array;add;Resources;[*S:other_resource_name]
+	--]|
+  --?"[*S:class_resource_name]" -eqi ""|[
+   --~|array;removeat;Resources;0
+   --]|
+  --Rfirst|[*S:character_id];repeating_resource
+  --:ResourceArray_Loop|
+   --?"[*R:resource_left_name]" -eq "NoRepeatingAttributeLoaded"|ExitLoop
+   --~|array;add;Resources;[*R:resource_left_name]
+   --?"[*R:resource_right_name]" -ne ""|[
+	--~|array;add;Resources;[*R:resource_right_name]
+	--]|
+  --Rnext|
+  --?"[*R:resource_left_name]" -ne "NoRepeatingAttributeLoaded"|ResourceArray_Loop
+  --:ExitLoop|
+  
+  --/|Output array into button format
+  --:RepeatEntry|
+  --&ResMsg|
+  --+|[c][b]What resource is being recovered?[/b][/c]
+  --%loop|foreach;Resources
+   --&ResMsg|+ [rbutton][&loop]::ResourceSelect;[&loop][/rbutton]
+   --%|
+  --+|[c][&ResMsg][/c]
+  --X|
+  
+  --:ResourceSelect|
+   --&AmmoName|[&reentryval]
+   --iEnter Recovery Formula. ;Continue|q;input;What is the recovery formula (use negative number to subtract)?
+   --=RecoverAmt|[&input]
+   -->Lib5E_FIND_RESOURCE|[&CharID];[&AmmoName];ResName;ResValue
+   --?"[&ResName]" -eq "NotFound"|>Create |>Exists
+
+  --:Exists| 
+   -->FIND_RESOURCE|[&CharID];[&AmmoName];ResName1;ResValue1;ResMax
+   --=CurrentAmt|[$ResValue1]
+   --=MaxAmt|[$ResMax]
+   --=MissingAmt|[$MaxAmt] - [$CurrentAmt]
+   --=TotalAmt|[$CurrentAmt] + [$RecoverAmt]
+   --?[$MaxAmt] -eqi 0|>Recover
+   --?[$TotalAmt] -gt [$MaxAmt]|[
+    --=TotalAmt|[$MaxAmt]
+	--=RecoverAmt|[$MaxAmt] - [$CurrentAmt]
+	--]|
+   -->Recover|
+   -->End|
+
+  --:Recover|
+   --!a:[&CharID]|[&ResValue1]:[$TotalAmt]
+   -->Lib5E_FIND_RESOURCE|[&CharID];[&AmmoName];ResName1;ResValue1
+   --+Ammo: |Added [$RecoverAmt] [&AmmoName]. (New Total: [$ResValue1])
+   -->End| 
+
+  --:FIND_RESOURCE|character_id;resourceName;resourceReturnNameStringVariable;ResourceReturnValueStringVariable;ResourceMaxReturnValueStringVariable
+   --C[%2%]|[*[%1%]:class_resource_name]:Is_ResourceClass|[*[%1%]:other_resource_name]:Is_ResourceOther
+   --?"[%2%]" -eq "[*[%1%]:class_resource_name]"|Is_ResourceClass
+   --?"[%2%]" -eq "[*[%1%]:other_resource_name]"|Is_ResourceOther
+   --Rfirst|[%1%];repeating_resource
+   --:Resource_Loop|
+   --?"[*R:resource_left_name]" -eq "[%2%]"|Is_ResourceLeft
+   --?"[*R:resource_right_name]" -eq "[%2%]"|Is_ResourceRight
+   --Rnext|
+   --?"[*R:resource_left_name]" -ne "NoRepeatingAttributeLoaded"|Resource_Loop
+   --&[%3%]|NotFound --&[%4%]|NotFound --$[%4%]|0 --$[%5%]|0
+   --<|
+   --:Is_ResourceClass| --&[%3%]|class_resource_name --&[%4%]|class_resource --=[%4%]|[*[%1%]:class_resource] --&[%5%]|class_resource_max --=[%5%]|[*[%1%]:class_resource^] --<|
+   --:Is_ResourceOther| --&[%3%]|other_resource_name --&[%4%]|other_resource --=[%4%]|[*[%1%]:other_resource] --&[%5%]|other_resource_max --=[%5%]|[*[%1%]:other_resource^] --<|
+   --:Is_ResourceLeft| --&[%3%]|[*R>resource_left_name] --&[%4%]|[*R>resource_left] --=[%4%]|[*R:resource_left] --=[%5%]|[*R:resource_left_max] --<|
+   --:Is_ResourceRight| --&[%3%]|[*R>resource_right_name] --&[%4%]|[*R>resource_right] --=[%4%]|[*R:resource_right] --=[%5%]|[*R:resource_right_max] --<|
+   --<|
+  
+  --:End|
+   --+|[br]
+   --+|[b][c]Do you want to recover another resource?[/c][/b]
+   --+|[c][rbutton]Yes::RepeatEntry[/rbutton][rbutton]No::Final[/rbutton][/c]
+   --X|
+   
+  --:Final|
+   --+|Resource Recovery Complete.
+   --X| End Script
+}}

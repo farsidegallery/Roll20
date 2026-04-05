@@ -1,0 +1,141 @@
+!scriptcard {{
+  +++5Elib;snlib;Farsidelib+++
+
+  --#title|Lay on Hands
+  --#sourceToken|@{selected|token_id}
+  --#targetToken|@{target|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#leftsub|Healing
+  --#rightsub|Resource Pool
+  --#whisper|self,gm
+  
+  --/|Script Name : Lay on Hands
+  --/|Version     : 2.0
+  --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
+  --/|Author      : Farsidegallery
+  --/|
+  --/|  Script prompts user for to choose between healing and condition removal. For both functions it checks to ensure character has enough pool points
+  --/|  and deducts the amount used. For healing, it automatically adds the hp to the target. For condition removal it looks for and removes the token markers.
+  --/|
+  
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+      
+   --/|What resource name is used for Lay on Hands?
+   --&HealingResource|Lay on Hands
+   
+   --/|What token marker is used for Poisoned?
+   --&PoisonMarker|Poisoned::7409939
+   
+   --/|What token marker is used for Diseased?
+   --&DiseaseMarker|Nauseated::7409894
+  
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+  
+  --#emoteText|[*S:t-name] uses Lay on Hands on [*T:t-name].
+  -->Lib5E_FIND_RESOURCE|[*S:character_id];[&HealingResource];Handname;HandAmmo
+  --?[$HandAmmo] -eq 0|NoSlotsLeft
+  --+|[c]Choose Healing Type:[/c]
+  --+|[c][rbutton]Healing::Heal[/rbutton][rbutton]Remove Condition::RemoveChoice[/rbutton][/c]
+  --x| 
+ 
+  --:RemoveChoice|
+   --+|[c][b]Remove what condition?[/b][/c]
+    --&condMsg|[rbutton]Poison::RemoveSingle;[&PoisonMarker][/rbutton] [rbutton]Disease::RemoveSingle;[&DiseaseMarker][/rbutton] [rbutton]Both::RemoveAll[/rbutton]
+   --+|[c][&condMsg][/c]
+  --X|
+   
+  --:RemoveSingle|
+   --&CurrentCondition|[&reentryval]
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&CurrentCondition];Exists;Counter
+   --?[&Exists] -ne 1|[
+    --+[*T:t-name] does not have that condition!
+	--X|
+	--]|
+   --=ConditionCount|1
+   --=Points|5
+   --?[$Points] -gt [$HandAmmo]|[
+    --+|You do not have enough resources to remove a condition.
+	--X|
+	--]|
+   -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&CurrentCondition]
+   -->RemoveFinal|
+   --X|
+   
+  --:RemoveAll|
+   --=ConditionCount|
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&PoisonMarker];PoisonExists;PCounter
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&DiseaseMarker];DiseaseExists;DCounter
+   --?[&PoisonExists] -eqi 1|[
+    --=ConditionCount|[$ConditionCount]+1
+	--]|[
+    --+|[*T:t-name] is not Poisoned!
+	--]|
+   --?[&DiseaseExists] -eqi 1|[
+    --=ConditionCount|[$ConditionCount]+1
+	--]|[
+    --+|[*T:t-name] is not Diseased!
+	--]|
+   --=Points|5 * [$ConditionCount]
+   --?[$Points] -gt [$HandAmmo]|[
+    --+|You do not have enough resources to remove them all. Please select which condition to remove.
+	-->RemoveBuild|
+	--]|
+   -->LibSN_REMOVE_STATUS_MARKER_SET|[*T:t-id];[&PoisonMarker];[&DiseaseMarker]
+   -->RemoveFinal|
+	
+  --:RemoveFinal|
+   --+Conditions: |You remove [$ConditionCount] conditions from [*T:t-name] costing [$Points] points.
+   -->DeductPoolSlot|[$Points]
+   --X|
+
+  --:Heal|
+   --=Missing|[*T:t-bar1_max] - [*T:t-bar1_value]
+   --iClick to continue.;Continue|q;input;How many of the [*S:class_resource] points of your healing pool do you want to use?
+   --=Points|[&input]
+   --?[$Points] -gt [$HandAmmo]|UsedTooMany
+   --?[$Points] -le [$Missing]|GoodtoGo
+   --?[$Points] -gt [$Missing]|HealOnly
+   --<|
+	
+  --:UsedTooMany|
+   --=Healed|[$HandAmmo] 
+   --=Points|[$HandAmmo]
+   -->LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;[$Healed];0;0
+   --+Healing: |You healed [*T:t-name] for [$Points] hp.
+   -->DeductPoolSlot|[$Points]
+   --X|
+   
+  --:GoodtoGo|
+   --=Healed|[$Points] 
+   -->LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;[$Healed];0;0
+   --+Healing: |You healed [*T:t-name] for [$Points] hp.
+   -->DeductPoolSlot|[$Points]
+   --X|
+  
+  --:HealOnly|
+   --=Healed|[$Missing] 
+   --=Points|[$Missing]
+   -->LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;[$Healed];0;0
+   --+Healing: |You healed [*T:t-name] for [$Points] hp.
+   -->DeductPoolSlot|[$Points]
+   --X|
+
+  --:GetAndCheckSlotInformation|
+   --=PointsTotal|0
+   --=PointsExpended|[*S:class_resource]
+   --?[$PointsExpended.Raw] -eq [$PointsTotal.Raw]|NoSlotsLeft
+   --<|
+
+  --:DeductPoolSlot|
+   --#whisper|
+   --=PointsRemaining|[$HandAmmo] - [%1%]
+   --!a:[*S:character_id]|[&HandAmmo]:[$PointsRemaining]
+   --+|Lay on Hands Points Left: [$PointsRemaining] 
+   --X|Full Stop
+
+  --:NoSlotsLeft|
+   --#whisper|
+   --+|[*S:t-name] has no healing pool points available.
+   --#emoteText|[*S:t-name] tries to to use Lay on Hands, but has no pool points left and needs to take a long rest.
+   --X|NoSlotsLeftStop 
+}}

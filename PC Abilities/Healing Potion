@@ -1,0 +1,103 @@
+!script {{
+  +++5Elib;snlib;Farsidelib+++
+  
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+  
+  --/|Script Name : Healing Potion
+  --/|Version     : 2.0
+  --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
+  --/|Author      : Farsidegallery
+  --/|  
+  --/|  Script checks for resource availability, udpdates target character sheet, places token marker, and deducts a resource slot.
+  --/|
+  
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --=NumPotions|
+  
+  --#title|[*S:t-name] uses a Potion of Healing!
+  --+|[c]Who are you healing with this potion?[/c]
+  --+|[c][rbutton]Self::FindLevel;[*S:t-id][/rbutton][rbutton]Companion::FindLevel;[target|token_id}[/rbutton][/c]
+  --X|
+  
+  --:FindLevel|
+   --&Target|[&reentryval]
+   --+|[c]What type of Healing Potion are you using?[/c]
+   --/|+|[c][rbutton]Standard Potion::Heal;Standard[/rbutton][rbutton]Greater Potion::Heal;Greater[/rbutton][rbutton]Superior Potion::Heal;Superior[/rbutton][rbutton]Supreme Potion::Heal;Supreme[/rbutton][/c]
+   --~|array;fullrepeatingsection;Inventory;[*S:character_id];repeating_inventory;itemname:itemcount;♦
+   --~|array;sort;Inventory
+   --~Inventory|array;getfirst;Inventory
+   -->ItemConvert|
+
+   --?"[&Itemname]" -ninc "Potion" -and "[&Itemname]" -ninc "Healing"|Itemfindstart
+   --Rfind|[*S:character_id];[&Itemnamewcost];repeating_inventory;itemname
+   --?[*R:equipped] -eq 0|Itemfindstart
+   --+|[t border=0 width=100%][tr][td style"width=30px"][c][&Itemcount][/c][/td][td][&Itemname][/td]
+    [td style"width=60px"][r][&Itemcostd][/r][/td]
+    [td style"width=15px"][rbutton:#ffffff:#9727b0:10px]Use::Heal;[&Itemname][/rbutton][/td][/t][/tr]
+
+  --:Itemfindstart|
+   --~Inventory|array;getnext;Inventory
+   -->ItemConvert|
+   --?"[&Itemname]" -ninc Potion -and "[&Itemname]" -ninc Healing -and "[&Itemname]" -ninc ArrayError|Itemfindstart
+   --?"[&Inventory]" -eq ArrayError|Itemfinddone
+
+
+   --Rfind|[*S:character_id];[&Itemnamewcost];repeating_inventory;itemname
+   --?[*R:equipped] -eq 0|Itemfindstart
+   --+|[t border=0 width=100%][tr][td style"width=30px"][c][&Itemcount][/c][/td][td][&Itemname][/td]
+    [td style"width=60px"][r][&Itemcostd][/r][/td]
+    [td style"width=15px"][rbutton:#ffffff:#9727b0:10px]Use::Heal;[&Itemname][/rbutton][/td][/t][/tr]
+	--=NumPotions|[$NumPotions]+1
+   --^Itemfindstart|
+   
+  --:Itemfinddone|
+   --?[$NumPotions] -eq 0|>NoInventory
+   --X|
+  
+  --:NoInventory|
+   --+|[c][b][*S:t-name] has no Healing Potion Available![/b][/c]
+   --X|
+  
+  --:Heal|
+   --&PotionLevel|[&reentryval]
+   --Rfind|[*S:character_id];[&PotionLevel];repeating_inventory;itemname
+   --?"[*R:itemname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Potion not found!;ERROR;Could not find a [&PotionLevel] in your inventory.
+   --?[*R:itemcount] -le 0|>NoPotion
+   --~PotionType|string;before;Healing;[&PotionLevel]
+   --~PotionType|string;after;of;[&PotionType]
+   --~PotionType|string;trim;[&PotionType]
+   --?"[&PotionType]" -eqi ""|&PotionType;Standard
+   --~PotionType|string;totitlecase;[&PotionType]
+   --C[&PotionType]|Standard:&HealDice;2d4+2|Greater:&HealDice;4d4+4|Superior:&HealDice;8d4+8|Supreme:&HealDice;10d4+20
+   --#emotetext|[*S:t-name] uses a [&PotionType] Healing Potion on [*[&Target]:t-name]!
+   -->Apply|
+   --=newPotionCount|[*R:itemcount]-1
+   --!a:[*s:character_id]|![*R>itemcount]:[$newPotionCount]
+   --?[$newPotionCount] -le 0|[
+    --!a:[*s:character_id]|![*R>equipped]:0
+	--]|
+   --X| End Script
+
+------------------------------------------------------------------- Procedures --------------------------------------------------------------------------------------------    
+	
+  --:NoPotion|
+   --#whisper|
+   --+Error: |[*S:t-name] has 0 [&PotionLevel] available.
+   --X| End Script
+
+  --:Apply|
+   --#whisper|
+   --=Healed|[&HealDice]
+   -->LibSN_APPLY_DAMAGE_OR_HEALING|[&Target];1;[$Healed];0;0
+   --+Healing: |[*[&Target]:t-name] healed for [$Healed] hp.
+   --<|
+  
+  --:ItemConvert|
+   --&Itemnamewcost|[&Inventory(before,♦)]
+   --&Itemname|[&Itemnamewcost(before,-)]
+   --&Itemcount|[&Inventory(after,♦)]
+   --<|
+}}
