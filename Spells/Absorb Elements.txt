@@ -1,0 +1,163 @@
+!script{{
+  +++5Elib;snlib;Farsidelib+++	
+ 
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+
+  --/|Script Name : Absorb Elements
+  --/|Version     : 1.0
+  --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
+  --/|Author      : Farsidegallery
+  --/|  
+  --/|  Script prompts for spell level, checks availability, and deducts a spell slot. User is prompted to select the damage type. Script checks for the existance of
+  --/|  the damage mod and updates if need. Script saves and updates npc_resistances as appropriate. All settings restored to original values with Dismiss.
+  --/|
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+	  
+   --&SpellName|Absorb Elements
+   --&MinimumSpellLevel|1
+   
+   --/| What is the name of the Damage Mod for Absorb Elements?
+   --&ModName|Absorbed Element
+
+   --/|Enter name for Reaction Used Character.
+   --&CharName|Reaction Used
+    
+   --/|Use ScriptCards (1) or SpawnDefaultToken (2) to place the Reaction Used Character on the VTT?
+   --&SpawnScript|1
+   
+   --&link1|https://files.d20.io/images/476457994/FdbUAgAk_G-
+   --&link2|-2d1MaQ9g4w/med.webm?1771472165
+   --&URLlink|[&link1][&link2]
+   
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+
+  --&TokenName|[*S:t-name] [&CharName]
+  
+  --+Choose Function: |[rbutton]New Cast::New[/rbutton][rbutton]Dismiss::Remove[/rbutton]
+  --X|
+  
+  --:New|
+   --#title|[&SpellName]
+   --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+   --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+   -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+   --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+ 
+   --+|[c][b]Cast At What Level?[/b][/c]
+	--&splvlMsg|
+	--%splvl|foreach;SpellCastLevel
+	 --&splvlMsg|+ [rbutton][&splvl]::ChooseType;[&splvl][/rbutton]
+	--%|
+   --+|[c][&splvlMsg][/c]
+   --X|
+  
+  --:ChooseType|
+   --=SpellLevel|[&reentryval]
+   --&SpellLevel|[&reentryval]
+   
+   --#leftsub|1 Reaction
+   --#rightsub|[*R:spellrange]
+   --&desc|[*R:spelldescription]
+   --&higher|[*R:spellathigherlevels]
+   
+   --+|[c]Choose Damage Element:[/c]
+   --+|[c][rbutton]Acid::DAMAGE_TYPE;acid[/rbutton][rbutton]Cold::DAMAGE_TYPE;cold[/rbutton][rbutton]Fire::DAMAGE_TYPE;fire[/rbutton][rbutton]Lightning::DAMAGE_TYPE;lightning[/rbutton][rbutton]Thunder::DAMAGE_TYPE;thunder[/rbutton][/c]
+   --X|
+   
+  --:DAMAGE_TYPE| 
+   --&element|[&reentryval]
+   -->Resistances|[&element]
+   -->far_Check_GLOBAL_MOD_EXISTS|[*S:t-id]; damage; [&ModName]; Exists
+   --?[&Exists] -eq 1|>SetElementalMod |>CreateElementalMod
+   
+   --c[&element]|Acid:&vfx;acid |Cold:&vfx;frost |Fire:&vfx;fire |Lightning:&vfx;magic |Thunder:&vfx;smoke
+   -->far_PlayEffects|[*S:t-id];;burst-[&vfx];;; 
+   
+   -->GetCharID|[&CharName];ReactID
+   
+   --:SpawnToken|
+	--?[&SpawnScript] -eq 2|[
+	 --@forselected+|Spawn _name|[&CharName] _qty|1 _offset|0,0 _force|yes _size|3 _tokenProps|name:[&TokenName],showname:true,showplayers_name:true _order|toBack _bar1|KeepLink _fx|nova-magic _expand|15,30 {^&select @{selected|token_id}}
+	 --]|
+	 
+	--?[&SpawnScript] -eq 1|[
+	 --!ot:ReactTID|name:"[&TokenName]"|left:[*S:t-left]|top:[*S:t-top]|width:[=[*S:t-width]*3]|height:[=[*S:t-height]*3]|imgsrc:"[&URLlink]"|bar1_value:1|represents:[&ReactID]|showname:0
+	 --z:graphic:[&ReactTID]|toback
+	 --@CARRY_TOKENS_CARRY_BELOW|[*S:t-id] [&ReactTID]
+	 --]|
+	 
+   --#whisper| 
+   --+Aborbed! |[*S:t-name] has absorbed some of the [&element(totitlecase)] damage.
+   --+|[br]
+   --+Resistant: |[*S:t-name] is resistant to [&element(totitlecase)] damage until [*S:t-name] hits with a melee attack or the start of their next turn.
+   --+|[br]
+   --+Desc: |[&desc]
+   --+At Higher Levels: |[&higher]
+   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+   --X| End Script
+   
+  --/| ____________________ Procedures_______________________________________________________________________________________  
+   
+  --:GetCharID|CharacterName;StringVariableForCharID
+   --~|array;objects:character;SpiritCharArr;[%1%]
+   --?[@SpiritCharArr(length)] -ne 1|>far_LogFatalError;Could not find character named [%1%]
+   --&[%2%]|[@SpiritCharArr(0)]
+   --<|
+  
+  --:Resistances|NewResistances
+   --&Resist|[%1%]
+   --!a:[*S:character_id]|!OrigResist:[*S:npc_resistances]
+   --&NewResist|[*S:npc_resistances][&Resist]
+   --!a:[*S:character_id]|!npc_resistances:[&NewResist]
+   --<|
+  
+  --:CreateElementalMod| 
+   -->FindElementalDamage|
+   --!a:[*S:character_id]|global_damage_mod_flag:1
+   --!or:[*S:character_id]:damagemod|
+	global_damage_name:[&ModName]|
+	global_damage_damage:[&elementalDamage(tolowercase)]|
+	global_damage_type:[&element(tolowercase)]|
+	global_damage_active_flag:1|
+	options-flag:0
+   --<|
+  
+  --:FindElementalDamage|
+   --&elementalDamage|[&SpellLevel]d6
+   --<|
+  
+  --:SetElementalMod|  
+   -->FindElementalDamage|
+   --?"[*R:global_damage_damage]" -nei "[&elementalDamage]"|[
+    --*Error: |Damage is not the same! Damage amount updated.
+	--!a:[*S:character_id]|![*R>global_damage_damage]:[&elementalDamage]
+	--]|
+   --?"[*R:global_damage_type]" -nei "[&element]"|[
+    --*Error: |Damage element is not the same! Damage element updated.
+	--!a:[*S:character_id]|![*R>global_damage_type]:[&element]
+	--]|
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*S:character_id];damage;[&ModName];1
+   --<|
+  
+  --:Remove|
+   --#whisper|
+   -->far_Check_GLOBAL_MOD_EXISTS|[*S:t-id]; damage; [&ModName]; Exists
+   --&absorbedelement|[*R:global_damage_type]
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*S:character_id];damage;[&ModName];0
+   --!a:[*S:character_id]|npc_resistances:[*S:OrigResist]
+   --!a:[*S:character_id]|OrigResist:**
+   --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&TokenName]
+   --~|object;token;delete;[@tokens(0)]
+   --+Resistance: |[*S:t-name] is no longer resistant to [&absorbedelement] damage.
+   --X| End Script
+}}
