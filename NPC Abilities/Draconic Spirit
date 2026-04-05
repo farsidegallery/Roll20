@@ -1,0 +1,131 @@
+!script {{
+  +++Farsidelib+++
+  --&brace|{
+  --&cbrace|}
+  
+  --/|****************************************************************************************************************************
+  --/|  5e Dragon's Breath with Scriptcards
+  --/|      Author: David M.
+  --/|      Prereq's: SmartAoE, Scriptcards with Farsidelib, and ChatSetAttr scripts.
+  --/|      Notes: The followng is an example of how to call SmartAoE with scriptcards, after applying some conditionals to modify the script commands. 
+  --/|              It also checks for remaining spell slots and decrements the slot used
+  --/|****************************************************************************************************************************
+
+  --#title|Draconic Spirit Breath
+  --#sourcetoken|@{selected|token_id}
+  --#whisper|gm,self
+
+  --&caster|[*O:[*S:t-represents]:character:controlledby]
+  --&resistance|[*S:npc_resistances]
+  --~options|string;split;,;[&resistance]
+  
+  --:ChooseBreath|
+   --+|[b][c]Breath Weapon Type?[/c][/b]
+   --+|[c][rbutton][&options1]::SetVariables;[&options1][/rbutton][rbutton][&options2]::SetVariables;[&options2][/rbutton][rbutton][&options3]::SetVariables;[&options3][/rbutton][/c] {&skip}
+   --+|[c][rbutton][&options4]::SetVariables;[&options4][/rbutton][rbutton][&options5]::SetVariables;[&options5][/rbutton][/c] {&skip}
+   --X|
+  
+  --:SetVariables|
+   --&damageFormula1|<<2d6>>
+   --&damageType1|[&reentryval]
+
+  --:CHANGE COLORS AND OUTPUT BY DAMAGE TYPE
+  --?[&damageType1] -eq acid|[
+      --&aoeColor|#00ff0050
+      --&aoeOutlineColor|#00ff00
+      --&subtitlefontcolor|#000000
+      --&fx|burn-acid
+      --&titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/261004638/sSCZDmBZmes3V1Ewlbv-Cg/max.jpg?1639962320');background-size: 100% 100%; background-repeat: no-repeat
+  --]|
+  --?[&damageType1] -eq cold|[
+      --&aoeColor|#00ffff50
+      --&aoeOutlineColor|#00ffff
+      --&subtitlefontcolor|#000000
+      --&fx|burn-frost
+      --&titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/261004637/4EFuFHt5OlXpSJy7ZfeA2Q/max.jpg?1639962320');background-size: 100% 100%; background-repeat: no-repeat
+  --]|
+  --?[&damageType1] -eq fire|[
+      --&aoeColor|#ff000050
+      --&aoeOutlineColor|#ff0000
+      --&subtitlefontcolor|#000000
+      --&fx|burn-fire
+      --&titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/253615223/QhQiZxJ2ufS_ry8uXVYPLQ/max.png?1635890238');background-size: 100% 100%; background-repeat: no-repeat
+  --]|
+  --?[&damageType1] -eq lightning|[
+      --&aoeColor|#4a86e850
+      --&aoeOutlineColor|#4a86e8
+      --&subtitlefontcolor|#000000
+      --&fx|burn-frost
+      --&titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/261004639/m2UaTAp9gpMAFGX32BgySQ/max.jpg?1639962320');background-size: 100% 100%; background-repeat: no-repeat
+  --]|
+  --?[&damageType1] -eq poison|[
+      --&aoeColor|#20872850
+      --&aoeOutlineColor|#208728
+      --&subtitlefontcolor|#ffffff
+      --&fx|burn-acid
+      --&titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/261004636/pbs4ElLQsK4cTfYlr4gg1g/max.jpg?1639962320');background-size: 100% 100%; background-repeat: no-repeat
+  --]|
+    --?[&damageType1] -eq force|[
+      --&aoeColor|#00ff0050
+      --&aoeOutlineColor|#00ff00
+      --&subtitlefontcolor|#000000
+      --&fx|burn-magic
+      --&titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/261004638/sSCZDmBZmes3V1Ewlbv-Cg/max.jpg?1639962320');background-size: 100% 100%; background-repeat: no-repeat
+  --]|
+  --?[&damageType1] -eq necrotic|[
+      --&aoeColor|#00ffff50
+      --&aoeOutlineColor|#00ffff
+      --&subtitlefontcolor|#000000
+      --&fx|burn-death
+      --&titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/261004637/4EFuFHt5OlXpSJy7ZfeA2Q/max.jpg?1639962320');background-size: 100% 100%; background-repeat: no-repeat
+  --]|
+  --?[&damageType1] -eq psychic|[
+      --&aoeColor|#ff000050
+      --&aoeOutlineColor|#ff0000
+      --&subtitlefontcolor|#000000
+      --&fx|burn-charm
+      --&titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/253615223/QhQiZxJ2ufS_ry8uXVYPLQ/max.png?1635890238');background-size: 100% 100%; background-repeat: no-repeat
+  --]|
+  --?[&damageType1] -eq radiant|[
+      --&aoeColor|#4a86e850
+      --&aoeOutlineColor|#4a86e8
+      --&subtitlefontcolor|#000000
+      --&fx|burn-holy
+      --&titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/261004639/m2UaTAp9gpMAFGX32BgySQ/max.jpg?1639962320');background-size: 100% 100%; background-repeat: no-repeat
+  --]|
+  --?[&damageType1] -eq thunder|[
+      --&aoeColor|#20872850
+      --&aoeOutlineColor|#208728
+      --&subtitlefontcolor|#ffffff
+      --&fx|burn-magic
+      --&titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/261004636/pbs4ElLQsK4cTfYlr4gg1g/max.jpg?1639962320');background-size: 100% 100%; background-repeat: no-repeat
+  --]|
+
+  --:BUILD SMARTAOE MACRO AND TRIGGER
+  --@forselected|smartaoe [&brace][&brace]
+             _title|Dragon's Breath
+             _leftsub|Slot level [&level]
+             _rightsub|DC [*[&caster]:spell_save_dc] DEX 
+             _subtitlefontcolor|[&subtitlefontcolor]
+             _titlecardbackground|[&titlecardbackground]
+             _aoeType|5econe
+             _radius|30ft
+             _origin|nearest, face
+             _minGridArea|0.25
+             _minTokArea|0.25
+             _fx|[&fx]
+             _dc|[*[&caster]:spell_save_dc]
+             _saveFormula|5eDEX
+             _aoeColor|[&aoeColor]
+             _aoeOutlineColor|[&aoeOutlineColor]
+             _damageFormula1|[&damageFormula1]
+             _damageType1|[&damageType1]
+             _instant|1
+             _autoApply|1
+             _bar|1
+             _zeroHPmarker|dead
+             _desc|The Draconic Spirit uses it's breath weapon in a 30 ft cone. Each creature in that area must make a Dexterity saving throw, taking 2d6 damage of the chosen type on a failed save, or half as much damage on a successful one.
+          [&cbrace][&cbrace]
+
+  --X|End Macro
+}}

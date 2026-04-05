@@ -1,0 +1,526 @@
+!script {{
+  +++5Elib;snlib+++
+  
+  --/|Script Name : Dragon Breath Weapon
+  --/|Version     : 1.0
+  --/|Requires SC : SmartAOE, ScriptCards Library
+  --/|Author      : Farsidegallery
+  --/|SmartAOE Code : David M.
+  --/|  
+  --/|  Script checks for Dragon age and color, selects correct damage (amount and type), builds SmartAOE script, and executes program.
+  --/|
+  
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+    
+  --/| Enter the token status markers that you use for the following:
+  
+  --/|Paralyzed
+  --&Paralyzed|Paralyzed::7409941
+  
+  --/|Repulsed - Used to show tokens that are pushed away by the force breath attack
+  --&Repulsed|Staggered::7409884
+  
+  --/|Sleep
+  --&Sleep|Helpless::7409885
+  
+  --/|Slowed
+  --&Slowed|Slow::7409900
+  
+  --/|Weak
+  --&Weak|Disadvantage::7409922
+   
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --#hidecard|0
+  --#whisper|self,gm
+  --#sourcetoken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+  
+  --&age|[*S:character_name]
+  --?"[&age]" -inc "Wyrmling"|>Wyrmling |>Other
+
+  --:Wyrmling|
+   --&age|Wyrmling
+   --&color|[*S:character_name]
+   --~color|string;before;Dragon;[&color]
+   --~color|string;trim;[&color]
+   --~color|string;totitlecase;[&color]
+   -->type|
+  
+  --:Other|
+   --&age|[*S:character_name]
+   --~age|string;before;[&SPACE];[&age]
+   --~age|string;trim;[&age]
+   --~age|string;totitlecase;[&age]
+   
+   --&color|[*S:character_name]
+   --~color|string;before;Dragon;[&color]
+   --~color|string;after;[&age];[&color]
+   --~color|string;trim;[&color]
+   --~color|string;totitlecase;[&color]
+   -->type|   
+
+   --:type|
+    --?"[&color]" -inc "black"|>acid
+    --?"[&color]" -inc "white"|>cold
+    --?"[&color]" -inc "red"|>fire
+    --?"[&color]" -inc "blue"|>lightning
+    --?"[&color]" -inc "green"|>poison
+    --?"[&color]" -inc "amethyst"|>force
+    --?"[&color]" -inc "crystal"|>radiant
+    --?"[&color]" -inc "emerald"|>psychic
+    --?"[&color]" -inc "sapphire"|>thunder
+    --?"[&color]" -inc "topaz"|>necrotic
+	--?"[&color]" -inc "gold" |>metallic;Fire;Weakening
+	--?"[&color]" -inc "silver"|>metallic;Cold;Paralyzing
+	--?"[&color]" -inc "bronze"|>metallic;Lightning;Repulsion
+	--?"[&color]" -inc "brass"|>metallic;Fire;Sleep
+	--?"[&color]" -inc "copper"|>metallic;Acid;Slowing
+	--X|
+
+  --:FindAttack|
+   --Rfind|[*S:character_id];[%1%];repeating_npcaction;name
+   --?"[*R:name]" -eq "NoRepeatingAttributeLoaded"|>FatalError;Attack Not Found;ERROR;Could not find an attack named [%1%].
+   --&desc|[*R:description]
+   --?"[&desc]" -inc "[&obrac][&obrac]"|[
+	--~desc1|string;before;[&obrac][&obrac];[&desc]
+	--~desc2|string;after;[&cbrac][&cbrac];[&desc]
+	--&desc|[&desc1][&desc2]
+	--]|
+   --<|
+  
+  --:metallic|
+   --+|[c]Which version of [&color] Breath Weapon?[/c]
+   --+|[c][rbutton][%1%] Breath::[&color];[%1%][/rbutton][rbutton][%2%] Breath::[&color];[%2%][/rbutton][/c]
+   --X|
+  
+  --:acid|
+   --&damageType1|Acid
+   --&AttackName|[&damageType1] Breath (Recharge 5-6)
+   -->FindAttack|[&AttackName]
+   --c[&age]|Wyrmling:&damageFormula1;<<5d8>>|Young:&damageFormula1;<<11d8>>|Young Adult:&damageFormula1;<<12d8>>|Adult:&damageFormula1;<<12d8>>|Old:&damageFormula1;<<14d8>>|Ancient:&damageFormula1;<<15d8>>
+   --&aoeColor|#00ff0050
+   --&aoeOutlineColor|#00ff00
+   --&subtitlefontcolor|#000000
+   --&fx|burn-acid
+   --&titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/261004638/sSCZDmBZmes3V1Ewlbv-Cg/max.jpg?1639962320');background-size: 100% 100%; background-repeat: no-repeat
+   --&shape|5eLine
+   --c[&age]|Wyrmling:&distance;15ft|Young:&distance;30ft|Young Adult:&distance;60ft|Adult:&distance;60ft|Old:&distance;90ft|Ancient:&distance;90ft
+   --c[&age]|Wyrmling:=dc;11|Young:=dc;14|Young Adult:=dc;16|Adult:=dc;18|Old:=dc;20|Ancient:=dc;22
+   --&save|5eDex
+   -->BuildAOE|
+   
+  --:cold|
+   --&damageType1|Cold
+   --&AttackName|[&damageType1] Breath (Recharge 5-6)
+   -->FindAttack|[&AttackName]
+   --c[&age]|Wyrmling:&damageFormula1;<<5d8>>|Young:&damageFormula1;<<10d8>>|Young Adult:&damageFormula1;<<11d8>>|Adult:&damageFormula1;<<12d8>>|Old:&damageFormula1;<<14d8>>|Ancient:&damageFormula1;<<16d8>>
+   --&aoeColor|#00ffff50
+   --&aoeOutlineColor|#00ffff
+   --&subtitlefontcolor|#000000
+   --&fx|burn-frost
+   --&titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/261004637/4EFuFHt5OlXpSJy7ZfeA2Q/max.jpg?1639962320');background-size: 100% 100%; background-repeat: no-repeat
+   --&shape|5eCone
+   --c[&age]|Wyrmling:&distance;30ft|Young:&distance;30ft|Young Adult:&distance;60ft|Adult:&distance;60ft|Old:&distance;90ft|Ancient:&distance;90ft
+   --c[&age]|Wyrmling:=dc;12|Young:=dc;15|Young Adult:=dc;17|Adult:=dc;19|Old:=dc;21|Ancient:=dc;22
+   --&save|5eCon
+   -->BuildAOE|
+
+  --:fire|
+   --&damageType1|Fire
+   --&AttackName|[&damageType1] Breath (Recharge 5-6)
+   -->FindAttack|[&AttackName]
+   --c[&age]|Wyrmling:&damageFormula1;<<7d6>>|Young:&damageFormula1;<<16d6>>|Young Adult:&damageFormula1;<<17d6>>|Adult:&damageFormula1;<<18d6>>|Old:&damageFormula1;<<22d6>>|Ancient:&damageFormula1;<<26d6>>
+   --&aoeColor|#ff000050
+   --&aoeOutlineColor|#ff0000
+   --&subtitlefontcolor|#000000
+   --&fx|burn-fire
+   --&titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/253615223/QhQiZxJ2ufS_ry8uXVYPLQ/max.png?1635890238');background-size: 100% 100%; background-repeat: no-repeat
+   --&shape|5eCone
+   --c[&age]|Wyrmling:&distance;15ft|Young:&distance;30ft|Young Adult:&distance;60ft|Adult:&distance;60ft|Old:&distance;90ft|Ancient:&distance;90ft
+   --c[&age]|Wyrmling:=dc;13|Young:=dc;17|Young Adult:=dc;18|Adult:=dc;21|Old:=dc;23|Ancient:=dc;24
+   --&save|5eDex
+   -->BuildAOE|
+
+  --:lightning|
+   --&damageType1|Lightning
+   --&AttackName|[&damageType1] Breath (Recharge 5-6)
+   -->FindAttack|[&AttackName]
+   --c[&age]|Wyrmling:&damageFormula1;<<4d10>>|Young:&damageFormula1;<<10d10>>|Young Adult:&damageFormula1;<<11d10>>|Adult:&damageFormula1;<<12d10>>|Old:&damageFormula1;<<14d10>>|Ancient:&damageFormula1;<<16d10>>
+   --&aoeColor|#4a86e850
+   --&aoeOutlineColor|#4a86e8
+   --&subtitlefontcolor|#000000
+   --&fx|burn-frost
+   --&titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/261004639/m2UaTAp9gpMAFGX32BgySQ/max.jpg?1639962320');background-size: 100% 100%; background-repeat: no-repeat
+   --&shape|5eLine
+   --c[&age]|Wyrmling:&distance;30ft|Young:&distance;60ft|Young Adult:&distance;90ft|Adult:&distance;90ft|Old:&distance;120ft|Ancient:&distance;120ft
+   --c[&age]|Wyrmling:=dc;12|Young:=dc;16|Young Adult:=dc;17|Adult:=dc;19|Old:=dc;21|Ancient:=dc;23
+   --&save|5eDex
+   -->BuildAOE|
+
+  --:poison|
+   --&damageType1|Poison
+   --&AttackName|[&damageType1] Breath (Recharge 5-6)
+   -->FindAttack|[&AttackName]
+   --c[&age]|Wyrmling:&damageFormula1;<<6d6>>|Young:&damageFormula1;<<12d6>>|Young Adult:&damageFormula1;<<14d6>>|Adult:&damageFormula1;<<16d6>>|Old:&damageFormula1;<<19d6>>|Ancient:&damageFormula1;<<22d6>>
+   --&aoeColor|#20872850
+   --&aoeOutlineColor|#208728
+   --&subtitlefontcolor|#ffffff
+   --&fx|burn-acid
+   --&titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/261004636/pbs4ElLQsK4cTfYlr4gg1g/max.jpg?1639962320');background-size: 100% 100%; background-repeat: no-repeat
+   --&shape|5eCone
+   --c[&age]|Wyrmling:&distance;15ft|Young:&distance;30ft|Young Adult:&distance;60ft|Adult:&distance;60ft|Old:&distance;90ft|Ancient:&distance;90ft
+   --c[&age]|Wyrmling:=dc;11|Young:=dc;14|Young Adult:=dc;16|Adult:=dc;18|Old:=dc;20|Ancient:=dc;22
+   --&save|5eCon
+   -->BuildAOE|
+   
+  --:force|
+   --&damageType1|Force
+   --&AttackName|Singularity Breath (Recharge 5-6)
+   -->FindAttack|[&AttackName]
+   --c[&age]|Wyrmling:&damageFormula1;<<5d8>>|Young:&damageFormula1;<<8d8>>|Adult:&damageFormula1;<<10d8>>|Ancient:&damageFormula1;<<14d8>>
+   --&aoeColor|#ffffff60
+   --&aoeOutlineColor|#ffffff
+   --&subtitlefontcolor|#ffffff
+   --&fx|burn-magic
+   --&titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/256379607/PTVgGkwvV0OpEWYw6JOcXQ/max.png?1637346097');background-size: 100% 100%; background-repeat: no-repeat
+   --&shape|5eCone
+   --c[&age]|Wyrmling:&distance;15ft|Young:&distance;30ft|Adult:&distance;60ft|Ancient:&distance;90ft
+   --c[&age]|Wyrmling:=dc;13|Young:=dc;17|Adult:=dc;20|Ancient:=dc;23
+   --&fail|Restrained::243676
+   --&save|5eSTR
+   -->BuildAOE_Condition|
+  
+  --:radiant|
+   --&damageType1|Radiant
+   --&AttackName|Scintillating Breath (Recharge 5-6)
+   -->FindAttack|[&AttackName]
+   --c[&age]|Wyrmling:&damageFormula1;<<4d8>>|Young:&damageFormula1;<<6d8>>|Adult:&damageFormula1;<<9d8>>|Ancient:&damageFormula1;<<11d8>>
+   --&aoeColor|#9fc5e850
+   --&aoeOutlineColor|#6d9eeb
+   --&subtitlefontcolor|#ffffff
+   --&fx|burn-holy
+   --&titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/248538196/c9xft1A2jWNqOkBsxQwyLQ/max.jpg?1633278017');background-size: 100% 100%; background-repeat: no-repeat
+   --&shape|5eCone
+   --c[&age]|Wyrmling:&distance;15ft|Young:&distance;30ft|Adult:&distance;60ft|Ancient:&distance;90ft
+   --c[&age]|Wyrmling:=dc;12|Young:=dc;15|Adult:=dc;17|Ancient:=dc;22
+   --&save|5eCon
+   -->BuildAOE|
+  
+  --:psychic|
+   --&damageType1|Psychic
+   --&AttackName|Disorienting Breath (Recharge 5-6)
+   -->FindAttack|[&AttackName]
+   --c[&age]|Wyrmling:&damageFormula1;<<5d6>>|Young:&damageFormula1;<<9d6>>|Adult:&damageFormula1;<<12d6>>|Ancient:&damageFormula1;<<16d6>>
+   --&aoeColor|#8066FF50
+   --&aoeOutlineColor|#80066FF
+   --&subtitlefontcolor|#ffffff
+   --&fx|glow-magic
+   --&titlecardbackground|linear-gradient(purple, #99CCFF)
+   --&shape|5eCone
+   --c[&age]|Wyrmling:&distance;15ft|Young:&distance;30ft|Adult:&distance;60ft|Ancient:&distance;90ft
+   --c[&age]|Wyrmling:=dc;12|Young:=dc;15|Adult:=dc;18|Ancient:=dc;22
+   --&save|5eInt
+   -->BuildAOE|
+  
+  --:thunder|
+   --&damageType1|Thunder
+   --&AttackName|Debilitating Breath (Recharge 5–6)
+   -->FindAttack|[&AttackName]
+   --c[&age]|Wyrmling:&damageFormula1;<<4d10>>|Young:&damageFormula1;<<6d10>>|Adult:&damageFormula1;<<8d10>>|Ancient:&damageFormula1;<<10d10>>
+   --&aoeColor|#88888850
+   --&aoeOutlineColor|#ffffff
+   --&subtitlefontcolor|#ffffff
+   --&fx|burn-smoke
+   --&titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/253624290/aHQ8iSGWD1gYyR94kocxOg/max.png?1635893578');background-size: 100% 100%; background-repeat: no-repeat
+   --&shape|5eCone
+   --c[&age]|Wyrmling:&distance;15ft|Young:&distance;30ft|Adult:&distance;60ft|Ancient:&distance;90ft
+   --c[&age]|Wyrmling:=dc;13|Young:=dc;17|Adult:=dc;19|Ancient:=dc;23
+   --&fail|Incapacitated::243691
+   --&save|5eDex
+   -->BuildAOE_Condition|
+   
+  --:necrotic|
+   --&damageType1|Necrotic
+   --&AttackName|Dessicating Breath (Recharge 5-6)
+   -->FindAttack|[&AttackName]
+   --c[&age]|Wyrmling:&damageFormula1;<<6d6>>|Young:&damageFormula1;<<8d6>>|Adult:&damageFormula1;<<10d6>>|Ancient:&damageFormula1;<<14d6>>
+   --&aoeColor|#434343
+   --&aoeOutlineColor|#000000
+   --&subtitlefontcolor|#ffffff
+   --&fx|burn-death
+   --&titlecardbackground|linear-gradient(black, #9900ff)
+   --&shape|5eCone
+   --c[&age]|Wyrmling:&distance;15ft|Young:&distance;30ft|Adult:&distance;60ft|Ancient:&distance;90ft
+   --c[&age]|Wyrmling:=dc;11|Young:=dc;13|Adult:=dc;17|Ancient:=dc;20
+   --&fail|Staggered::7409884
+   --&save|5eCon
+   -->BuildAOE_Condition|
+
+  --:Gold|
+   --&attack|[&reentryval]
+   --?[&attack] -eq Fire|[
+    --&damageType1|Fire
+    --&AttackName|Breath Weapons (Recharge 5-6)
+    -->FindAttack|[&AttackName]
+    --c[&age]|Wyrmling:&damageFormula1;<<4d10>>|Young:&damageFormula1;<<10d10>>|Young Adult:&damageFormula1;<<17d6>>|Adult:&damageFormula1;<<12d10>>|Old:&damageFormula1;<<22d6>>|Ancient:&damageFormula1;<<13d10>>
+    --&aoeColor|#ff000050
+    --&aoeOutlineColor|#ff0000
+    --&subtitlefontcolor|#000000
+    --&fx|burn-fire
+    --&titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/253615223/QhQiZxJ2ufS_ry8uXVYPLQ/max.png?1635890238');background-size: 100% 100%; background-repeat: no-repeat
+    --&shape|5eCone
+    --c[&age]|Wyrmling:&distance;15ft|Young:&distance;30ft|Young Adult:&distance;60ft|Adult:&distance;60ft|Old:&distance;90ft|Ancient:&distance;90ft
+    --c[&age]|Wyrmling:=dc;13|Young:=dc;17|Young Adult:=dc;18|Adult:=dc;21|Old:=dc;23|Ancient:=dc;24
+    --&save|5eDex
+    -->BuildAOE|
+	--]|
+   --?[&attack] -eq Weakening|[
+    --&AttackName|Breath Weapons (Recharge 5-6)
+    -->FindAttack|[&AttackName]
+    --&aoeColor|#ff000050
+    --&aoeOutlineColor|#ff0000
+    --&subtitlefontcolor|#000000
+    --&fx|burn-magic
+    --&titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/253615223/QhQiZxJ2ufS_ry8uXVYPLQ/max.png?1635890238');background-size: 100% 100%; background-repeat: no-repeat
+    --&shape|5eCone
+    --c[&age]|Wyrmling:&distance;15ft|Young:&distance;30ft|Young Adult:&distance;60ft|Adult:&distance;60ft|Old:&distance;90ft|Ancient:&distance;90ft
+    --c[&age]|Wyrmling:=dc;13|Young:=dc;17|Young Adult:=dc;18|Adult:=dc;21|Old:=dc;23|Ancient:=dc;24
+    --&fail|[&Weak]
+	--&save|5eStr
+    -->BuildAOE_Metallic|
+	--]|
+  
+  --:Silver|
+   --&attack|[&reentryval]
+   --?[&attack] -eq Cold|[
+    --&damageType1|Cold
+    --&AttackName|[&damageType1] Breath
+    -->FindAttack|[&AttackName]
+    --c[&age]|Wyrmling:&damageFormula1;<<4d8>>|Young:&damageFormula1;<<12d8>>|Young Adult:&damageFormula1;<<11d8>>|Adult:&damageFormula1;<<13d8>>|Old:&damageFormula1;<<14d8>>|Ancient:&damageFormula1;<<15d8>>
+    --&aoeColor|#00ffff50
+    --&aoeOutlineColor|#00ffff
+    --&subtitlefontcolor|#000000
+    --&fx|burn-frost
+    --&titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/261004637/4EFuFHt5OlXpSJy7ZfeA2Q/max.jpg?1639962320');background-size: 100% 100%; background-repeat: no-repeat
+    --&shape|5eCone
+    --c[&age]|Wyrmling:&distance;15ft|Young:&distance;30ft|Young Adult:&distance;60ft|Adult:&distance;60ft|Old:&distance;90ft|Ancient:&distance;90ft
+    --c[&age]|Wyrmling:=dc;13|Young:=dc;17|Young Adult:=dc;17|Adult:=dc;20|Old:=dc;21|Ancient:=dc;24
+    --&save|5eCon
+    -->BuildAOE|
+	--]|[
+     --&AttackName|[&attack] Breath)
+     -->FindAttack|[&AttackName]
+     --&aoeColor|#00ffff50
+	 --&aoeOutlineColor|#00ffff
+	 --&subtitlefontcolor|#000000
+	 --&fx|burn-magic
+	 --&titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/261004637/4EFuFHt5OlXpSJy7ZfeA2Q/max.jpg?1639962320');background-size: 100% 100%; background-repeat: no-repeat
+	 --&shape|5eCone
+     --c[&age]|Wyrmling:&distance;15ft|Young:&distance;30ft|Young Adult:&distance;60ft|Adult:&distance;60ft|Old:&distance;90ft|Ancient:&distance;90ft
+     --c[&age]|Wyrmling:=dc;13|Young:=dc;17|Young Adult:=dc;17|Adult:=dc;20|Old:=dc;21|Ancient:=dc;24
+     --&fail|[&Paralyzed]
+	 --&save|5eCon
+     -->BuildAOE_Metallic|
+	 --]|
+  
+  --:Bronze|
+   --&attack|[&reentryval]
+   --?[&attack] -eq Lightning|[
+    --&damageType1|Lightning
+    --&AttackName|[&damageType1] Breath
+    -->FindAttack|[&AttackName]
+    --c[&age]|Wyrmling:&damageFormula1;<<4d6>>|Young:&damageFormula1;<<12d6>>|Young Adult:&damageFormula1;<<12d6>>|Adult:&damageFormula1;<<13d6>>|Old:&damageFormula1;<<15d6>>|Ancient:&damageFormula1;<<16d6>>
+    --&aoeColor|#4a86e850
+    --&aoeOutlineColor|#4a86e8
+    --&subtitlefontcolor|#000000
+    --&fx|burn-frost
+    --&titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/261004639/m2UaTAp9gpMAFGX32BgySQ/max.jpg?1639962320');background-size: 100% 100%; background-repeat: no-repeat
+    --&shape|5eLine
+    --c[&age]|Wyrmling:&distance;20ft|Young:&distance;40ft|Young Adult:&distance;60ft|Adult:&distance;60ft|Old:&distance;90ft|Ancient:&distance;90ft
+    --c[&age]|Wyrmling:=dc;11|Young:=dc;14|Young Adult:=dc;17|Adult:=dc;18|Old:=dc;20|Ancient:=dc;21
+    --&save|5eDex
+    -->BuildAOE|
+	--]|[
+     --&AttackName|[&attack] Breath
+     -->FindAttack|[&AttackName]
+     --&aoeColor|#ff000050
+     --&aoeOutlineColor|#ff0000
+     --&subtitlefontcolor|#000000
+     --&fx|burn-magic
+     --&titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/253615223/QhQiZxJ2ufS_ry8uXVYPLQ/max.png?1635890238');background-size: 100% 100%; background-repeat: no-repeat
+	 --&shape|5eCone
+     --c[&age]|Wyrmling:&distance;15ft|Young:&distance;30ft|Young Adult:&distance;60ft|Adult:&distance;60ft|Old:&distance;90ft|Ancient:&distance;90ft
+     --c[&age]|Wyrmling:=dc;11|Young:=dc;14|Young Adult:=dc;17|Adult:=dc;18|Old:=dc;20|Ancient:=dc;21
+     --&fail|[&Repulsed]
+	 --&save|5eCon
+     -->BuildAOE_Metallic|
+	 --]|  
+
+  --:Brass|
+   --&attack|[&reentryval]
+   --?[&attack] -eq Fire|[
+    --&damageType1|Fire
+    --&AttackName|[&damageType1] Breath
+    -->FindAttack|[&AttackName]
+    --c[&age]|Wyrmling:&damageFormula1;<<4d10>>|Young:&damageFormula1;<<10d10>>|Young Adult:&damageFormula1;<<17d6>>|Adult:&damageFormula1;<<12d10>>|Old:&damageFormula1;<<22d6>>|Ancient:&damageFormula1;<<13d10>>
+    --&aoeColor|#ff000050
+    --&aoeOutlineColor|#ff0000
+    --&subtitlefontcolor|#000000
+    --&fx|burn-fire
+    --&titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/253615223/QhQiZxJ2ufS_ry8uXVYPLQ/max.png?1635890238');background-size: 100% 100%; background-repeat: no-repeat
+    --&shape|5eCone
+    --c[&age]|Wyrmling:&distance;15ft|Young:&distance;30ft|Young Adult:&distance;60ft|Adult:&distance;60ft|Old:&distance;90ft|Ancient:&distance;90ft
+    --c[&age]|Wyrmling:=dc;13|Young:=dc;17|Young Adult:=dc;18|Adult:=dc;21|Old:=dc;23|Ancient:=dc;24
+    --&save|5eDex
+    -->BuildAOE|
+	--]|[
+     --&AttackName|[&attack] Breath
+     -->FindAttack|[&AttackName]
+     --&aoeColor|#ff000050
+     --&aoeOutlineColor|#ff0000
+     --&subtitlefontcolor|#000000
+     --&fx|burn-magic
+     --&titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/253615223/QhQiZxJ2ufS_ry8uXVYPLQ/max.png?1635890238');background-size: 100% 100%; background-repeat: no-repeat
+     --&shape|5eCone
+     --c[&age]|Wyrmling:&distance;15ft|Young:&distance;30ft|Young Adult:&distance;60ft|Adult:&distance;60ft|Old:&distance;90ft|Ancient:&distance;90ft
+     --c[&age]|Wyrmling:=dc;13|Young:=dc;17|Young Adult:=dc;18|Adult:=dc;21|Old:=dc;23|Ancient:=dc;24
+     --&fail|[&Sleep]
+	 --&save|5eCon
+     -->BuildAOE_Metallic|
+	 --]|
+
+  --:Copper|
+   --&attack|[&reentryval]
+   --?[&attack] -eq Acid|[
+    --&damageType1|Acid
+    --&AttackName|[&damageType1] Breath
+    -->FindAttack|[&AttackName]
+    --c[&age]|Wyrmling:&damageFormula1;<<4d8>>|Young:&damageFormula1;<<9d8>>|Young Adult:&damageFormula1;<<11d8>>|Adult:&damageFormula1;<<12d8>>|Old:&damageFormula1;<<13d8>>|Ancient:&damageFormula1;<<14d8>>
+    --&aoeColor|#00ff0050
+	--&aoeOutlineColor|#00ff00
+	--&subtitlefontcolor|#000000
+	--&fx|burn-acid
+	--&titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/261004638/sSCZDmBZmes3V1Ewlbv-Cg/max.jpg?1639962320');background-size: 100% 100%; background-repeat: no-repeat
+	--&shape|5eLine
+    --c[&age]|Wyrmling:&distance;20ft|Young:&distance;40ft|Young Adult:&distance;60ft|Adult:&distance;60ft|Old:&distance;90ft|Ancient:&distance;90ft
+    --c[&age]|Wyrmling:=dc;11|Young:=dc;14|Young Adult:=dc;17|Adult:=dc;18|Old:=dc;21|Ancient:=dc;22
+    --&save|5eDex
+    -->BuildAOE|
+	--]|[
+     --&AttackName|[&attack] Breath
+     -->FindAttack|[&AttackName]
+     --&aoeColor|#00ff0050
+	 --&aoeOutlineColor|#00ff00
+	 --&subtitlefontcolor|#000000
+	 --&fx|burn-acid
+	 --&titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/261004638/sSCZDmBZmes3V1Ewlbv-Cg/max.jpg?1639962320');background-size: 100% 100%; background-repeat: no-repeat
+	 --&shape|5eCone
+     --c[&age]|Wyrmling:&distance;15ft|Young:&distance;30ft|Young Adult:&distance;60ft|Adult:&distance;60ft|Old:&distance;90ft|Ancient:&distance;90ft
+     --c[&age]|Wyrmling:=dc;11|Young:=dc;14|Young Adult:=dc;17|Adult:=dc;18|Old:=dc;21|Ancient:=dc;22
+     --&fail|[&Slowed]
+	 --&save|5eCon
+     -->BuildAOE_Metallic|
+	 --]|
+  
+  --:FatalError|EmoteText;ErrorHeader;ErrorMessage
+   --#emoteText|[%1%]
+   --+[%2%]|[%3%]
+   --X| 
+  
+  --:BuildAOE|
+   --#whisper|
+   --@forselected|smartaoe [&brace][&brace]
+    _title|Dragon Breath Weapon
+    _leftsub|[&age] [&color] Dragon
+    _rightsub|DC [$dc] 
+    _subtitlefontcolor|[&subtitlefontcolor]
+    _titlecardbackground|[&titlecardbackground]
+	_chatAvatarsEnabled|false
+    _aoeType|[&shape]
+    _radius|[&distance]
+    _origin|nearest, face
+    _minGridArea|0.25
+    _minTokArea|0.25
+    _fx|[&fx]
+    _dc|[$dc]
+    _saveFormula|[&save]
+    _aoeColor|[&aoeColor]
+    _aoeOutlineColor|[&aoeOutlineColor]
+    _damageFormula1|[&damageFormula1]
+    _damageType1|[&damageType1]
+    _instant|1
+    _autoApply|1
+    _bar|1
+    _zeroHPmarker|dead
+    _desc|[&desc]
+    [&cbrace][&cbrace]
+
+  --X|End Macro
+  
+ --:BuildAOE_Condition|
+   --#whisper|
+   --@forselected|smartaoe [&brace][&brace]
+    _title|Dragon Breath Weapon
+    _leftsub|[&age] [&color] Dragon
+    _rightsub|DC [$dc] 
+    _subtitlefontcolor|[&subtitlefontcolor]
+    _titlecardbackground|[&titlecardbackground]
+	_chatAvatarsEnabled|false
+    _aoeType|[&shape]
+    _radius|[&distance]
+    _origin|nearest, face
+    _minGridArea|0.25
+    _minTokArea|0.25
+    _fx|[&fx]
+    _dc|[$dc]
+    _saveFormula|[&save]  _conditionFail|[&fail]
+    _aoeColor|[&aoeColor]
+    _aoeOutlineColor|[&aoeOutlineColor]
+    _damageFormula1|[&damageFormula1]
+    _damageType1|[&damageType1]
+    _instant|1
+    _autoApply|1
+    _bar|1
+    _zeroHPmarker|dead
+    _desc|[&desc]
+    [&cbrace][&cbrace]
+
+  --X|End Macro
+
+ --:BuildAOE_Metallic|
+   --#whisper|
+   --@forselected|smartaoe [&brace][&brace]
+    _title|Dragon Breath Weapon
+    _leftsub|[&age] [&color] Dragon
+    _rightsub|DC [$dc] 
+    _subtitlefontcolor|[&subtitlefontcolor]
+    _titlecardbackground|[&titlecardbackground]
+	_chatAvatarsEnabled|false
+    _aoeType|[&shape]
+    _radius|[&distance]
+    _origin|nearest, face
+    _minGridArea|0.25
+    _minTokArea|0.25
+    _fx|[&fx]
+    _dc|[$dc]
+    _saveFormula|[&save]
+    _aoeColor|[&aoeColor]
+    _aoeOutlineColor|[&aoeOutlineColor]
+    _damageFormula1|0  _conditionFail|[&fail]
+    _instant|1
+    _autoApply|1
+    _bar|1
+    _zeroHPmarker|dead
+    _desc|[&desc]
+    [&cbrace][&cbrace]
+
+  --X|End Macro 
+}}

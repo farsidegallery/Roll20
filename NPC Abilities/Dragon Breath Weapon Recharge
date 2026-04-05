@@ -1,0 +1,1 @@
+&{template:npcaction} {{attack=1}}{{name=Breath Weapon Recharge}}{{normal=1}}{{r1=[[1d6]]}}

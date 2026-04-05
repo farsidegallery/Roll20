@@ -1,0 +1,32 @@
+!smartaoe {{
+  --title|Mind Blast
+  --rightsub|DC 15 INT
+  --titlecardbackground|linear-gradient(blue, cyan)
+  --oddrowbackground|#00ccff
+  --evenrowbackground|#edfcfc
+  --oddrowfontcolor|#000000
+  --tablebgcolor|#edfcfc
+  --chatAvatarsEnabled|false
+ 
+  --aoeColor|#00ccff50
+  --aoeOutlineColor|#0099ff
+  --gridColor|#99999900
+  --aoeType|5econe
+  --radius|60ft
+  --origin|nearest, face
+  --minGridArea|0.25
+  --minTokArea|0.25
+  --fx|burn-frost
+  --dc|15
+  --saveFormula|5eInt
+  --damagesaverule|*0
+  --damageFormula1|[[4d8+4]]
+  --damageType1|Psychic 
+  --conditionFail|Stunned::7409936@1
+  --instant|1
+
+  --autoApply|1
+  --bar|1
+  --zeroHPmarker|dead
+  --desc|The mind flayer magically emits psychic energy in a 60-foot cone. Each creature in that area must succeed on a DC 15 Intelligence saving throw or take 4d8 + 4 psychic damage and be stunned for 1 minute. A creature can repeat the saving throw at the end of each of its turns, ending the effect on itself on a success.
+}}

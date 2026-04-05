@@ -1,0 +1,1 @@
+&{template:npcaction} {{attack=1}}{{name=Mind-Blast-Recharge}}{{normal=1}}{{r1=[[1d6]]}}
