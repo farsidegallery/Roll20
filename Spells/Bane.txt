@@ -1,0 +1,132 @@
+!scriptcard {{ 
+  +++5Elib;snlib;Farsidelib+++
+  
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+  
+  --/|Script Name : Bane
+  --/|Version     : 2.0
+  --/|Requires SC : TokenMod, ScriptCards Library snlib/Farsidelib
+  --/|Author      : Gunther
+  --/|Modified By : Farsidegallery
+  --/|  
+  --/|  Script prompts user for spell level used and then calculates the number of targets and prompts user to select the targets. Spell desciption specifies that a target can only be selected one time. Script verifies
+  --/|  target is not already selected before adding to the target list. Duplicate target entries will be ignored (to allow for target availability being less that number of targets allowed). Script then rolls 
+  --/|  saving throw for each target, marks those that fail with token marker, and creates visual effects on the VTT.
+  --/|
+  
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+      
+  --&SpellName|Bane
+  --&MinimumSpellLevel|1
+  
+  --&attrib|charisma
+  
+  --/|Enter the Token Markers you use for each condition
+  --&BlessedMarker|angel-outfit
+  --&BaneMarker|Hexed3::7409911
+  --&ConcentrationMarker|Concentrating::7409928
+   
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+  
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+  
+  --~shortattrib|string;left;3;[&attrib]
+  --~Displayattrib|string;touppercase;[&shortattrib]
+  
+  --#title|[&SpellName]
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+  --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+  
+  --+|[c][b]Cast At What Level?[/b][/c]
+    --&splvlMsg|
+    --%splvl|foreach;SpellCastLevel
+     --&splvlMsg|+ [rbutton][&splvl]::ChooseType;[&splvl][/rbutton]
+    --%|
+  --+|[c][&splvlMsg][/c]
+  --X|
+  
+  --:ChooseType|
+   --=SpellLevel|[&reentryval]
+   --&SpellLevel|[&reentryval]
+   --=DC|[*S:spell_save_dc]
+   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+   --&desc|[*R:spelldescription]
+   --&higherdesc|[*R:spellathigherlevels]
+   -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
+   --=BlessCount|[$SpellLevel] + 2
+   -->far_BuildTargetList|[$BlessCount.Total]
+   --=DisplayCount|1
+
+   --#leftsub|CHA DC: [$DC]
+   --#rightsub|[*R:spellrange]
+   --#emotetext|[*S:character_name] casts [&SpellName] at [&SpellLevel]!
+   --!a:[*S:character_id]|!ConcentrationSpell:[&SpellName]
+   -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];10
+
+  --:BlessLoop|
+   -->FireMissile|[$DisplayCount.Total]
+   --=DisplayCount|[$DisplayCount] + 1
+   --?[$DisplayCount] -le [$BlessCount]|BlessLoop
+   --#whisper|
+   --+|[br]
+   --+Duration: |[&duration]
+   --+Desc: |[&desc]
+   --+At Higher Levels: |[&higherdesc]
+   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel] 
+   --X|
+
+  --:FireMissile|
+   --&ThisTarget|[&target[%1%]]
+   
+   --&BlessFlag|
+   --&BaneMarkerFlag|
+   --&GlobalSave|
+   --&GlobalSkill|
+   
+   --&saveDice|1d20
+   
+   --?"X[*[&ThisTarget]:race]" -ne "X"|[
+    -->far_Check_GLOBAL_MOD_EXISTS|[*[&ThisTarget]:character_id]; save; [&damageType]; damageSave
+    -->far_Check_GLOBAL_MOD_EXISTS|[*[&ThisTarget]:character_id]; save; [&Displayattrib]; attribSaveRoll
+    --?[&damageSave] -eq 1 -or [&attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "1d20"|&saveDice;2d20kh1
+    --?[&damageSave] -eq 1 -or [&attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "2d20kl1"|&saveDice;1d20
+    
+    -->far_FIND_ACTIVE_GLOBAL_SAVE_MODS|[*[&ThisTarget]:character_id];GlobalSave
+    -->far_FIND_ACTIVE_GLOBAL_SKILL_MODS|[*[&ThisTarget]:character_id];GlobalSkill
+	--]|
+   
+   -->LibSN_CHECK_STATUS_MARKER|[*[&ThisTarget]:t-id];[&BlessedMarker];BlessFlag;BlessCount
+   -->LibSN_CHECK_STATUS_MARKER|[*[&ThisTarget]:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
+
+   --?[&BaneMarkerFlag] -eq 1|&Baneroll;+ - 1d4 [Bane] |&Baneroll;
+   
+   --=SavingThrow|[&saveDice] + [*[&ThisTarget]:[&attrib]_save_bonus] [&obrac][&Displayattrib][&cbrac] [&GlobalSave] [&GlobalSkill] [&Baneroll]
+
+   --+[*[&ThisTarget]:t-name] [&Displayattrib] Saving Throw: |[$SavingThrow].
+   --?[$SavingThrow] -lt [$DC]|Hit
+   --+Saves! |[*[&ThisTarget]:t-name]'s charm and good looks overpowered [*S:t-name]'s attempt to cast bane.
+   --+|[br]
+   --^moveOn|
+
+  --:Hit|
+   --+Fails! |[*[&ThisTarget]:t-name] has Bane.
+   --+|[br]
+   -->LibSN_ADD_STATUS_MARKER|[*[&ThisTarget]:t-id];[&BaneMarker]
+   -->far_PlayEffects|[*S:t-id];[*[&ThisTarget]:t-id];none;none;none;shrink
+   --^moveOn|   
+
+  --:moveOn|
+   --<|
+}}
