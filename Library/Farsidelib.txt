@@ -1,0 +1,429 @@
+--/|ScriptCards Library: Farsidelib
+--/|
+--/|   far_CustomCritCheck|ReturnStringName
+--/|     Are you using a custom critical damage game? 0 = no and 1 = yes
+--/| 
+--/|   far_PCConcenCheck|PCRollReturnString;BardScriptReturnString
+--/|     Used with Concentration Trigger.
+--/|     Do you want your players to hit a button for the Concentration Check? (0 = fully automated and 1 = Player will be prompted with a button)
+--/|     Are you using FarsideGallery's Bardic Inspiration script? (0 = no and 1 = yes)
+--/|
+--/|   far_GetAndCheckSlotInformation|tokenid;SpellLevel
+--/|     Accepts token-id and spell slot level to verify the spell caster has the desired spell slot available.
+--/|
+--/|   far_NoSlotsLeft|SpellLevel
+--/|      Accepts spell slot level, outputs message to chat explaining there are no spell slots available, and terminates the script.
+--/|      
+--/|   far_DeductSpellSlot|tokenid;SpellLevel   
+--/|      Accepts token-id and spell slot level to deduct a "used" slot from the available slots. Displays output message
+--/|      with number of available spell slots remaining.
+--/|
+--/|   far_GetAvailableSpellLevels|CharacterID;MinimumSpellLevel;ArrayNameToSet
+--/|      Builds array of spell level slots avaialble for casting of spell. Accounts for Warlock spell slot as well.
+--/|     
+--/|   far_FindFeat|tokenid;FeatName;FeatFlag   
+--/|      Accepts a token-id to search for the desired FeatName and returns a 1 if present or a 0 if not in the FeatFlag.
+--/| 
+--/|   far_BuildTargetList|NumberOfTargets;ReturnStringName
+--/|      Accepts a number variable defining how many targets will be added to the return target string.
+--/| 
+--/|   far_AddSeparator|
+--/|      Subfunction called by far_BuildTargetList to add delimiter in target string.
+--/|
+--/|   far_BuildTargetArray|ArrayName;Number of Loops;String Containing target token-ids
+--/|      Given a target string (ideally from far_BuildTargetList) creates and populates an array of targets using the  
+--/|      supplied array name. Loop building the array will cycle to the number provided. Array will consist of unique 
+--/|      (no repeats) target token-ids.
+--/|
+--/|   far_CheckDamageModifiers|characterid;damageType;damageVariableName;isMagical(0 or 1);IsSilver (0 or 1);IsAdamantine (0 or 1)
+--/|      Checks npc (characterid) and looks for resistant, vulnerable, or immue on (damagetype) damage and returns the result in
+--/|      (damageVariableName), which is a string that can be added to the end of a roll assignment to modify the damage as appropriate   
+--/|
+--/|   far_Check_GLOBAL_MOD_EXISTS|characterid; Category; name; returnstring (0=does not exist, 1=exists)
+--/|      Checks to see if the specified Global Mod exists
+--/|
+--/|   far_PlayEffects|Parameters are : sourcetoken; targettoken; source effect; target effect; line effect; sound effect
+--/|      Used to display vfx in one referencing call
+--/| 
+--/|   far_HexHeal|characterid; token-id
+--/|      If creature dies while under effects of HexBlade's Curse AND to the Warlock who cast the curse, heals the Warlock
+--/|  
+--/|   far_Inspiration|token-id;tokenmarker;attackstring;attackstringreturn
+--/|      Used if PC character has Inspiration to alter base roll.
+--/|   
+--/|   far_InspirationRoll
+--/|     Subfunction called by far_InspirationRoll
+--/|   
+--/|   far_AnswerNo
+--/|     Used to return to calling script if player does not want to use Inspiration or Bardic Inspiration at this time.
+--/|   
+--/|   far_Bardic|token-id;tokenmarker;Scriptcheck;baseroll;adjustedroll;rollreturn
+--/|     Used if PC character has Bardic Inspiration to add at the end of the roll. Also routes to appropriate
+--/|     subfunction if using FarsideGallery's Bardic scripts or not.
+--/|   
+--/|   far_ChooseBard|AttackRoll
+--/|     Used to choose the Bard character (token) if not using FarsideGallery's Bardic scripts
+--/|   
+--/|   far_ScriptBardEntry|token-id;BardicMarker;rollreturn
+--/|     Used when using FarsideGallery's Bardic scripts
+--/|   
+--/|   far_FindBardLevel|Bardtoken;rollreturn
+--/|     Subfunction called to determine Bard's level and therefore the dice size added to the referencing roll
+--/|   
+--/|   far_FIND_CLASS_LEVEL|characterid;class;Return String Var
+--/|      Given a (class) name (ie, wizard, warlock, fighter, etc.) will return (Return String Var) with the class level for the 
+--/|      character indicated by (characterid). If the character has no levels in that class, the return value will be 0
+--/|
+--/|   far_DamageTokenmod|tokenid;bar#;tempHP bar#;amount;display (0 or 1);Allow Overhealing (0 or 1); Allow negative hp (0 or 1)
+--/|      Applies damage (negative number) or healing (positive number) to (tokenid)'s (bar#) token bar.
+--/|
+--/|   far_LogFatalError|EmoteText;ErrorHeader;ErrorMessage
+--/|
+--/|   far_Lib5E_FIND_ACTIVE_GLOBAL_ATTACK_MODS|character_id;StringVariableToSet
+--/|   far_Lib5E_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|character_id;StringVariableToSet
+--/|   far_Lib5E_FIND_ACTIVE_GLOBAL_SAVE_MODS|character_id;StringVariableToSet
+--/|   far_Lib5E_FIND_ACTIVE_GLOBAL_AC_MODS|character_id;StringVariableToSet
+--/|   far_Lib5E_FIND_ACTIVE_GLOBAL_SKILL_MODS|character_id;StringVariableToSet
+--/|     All of these functions perform similar tasks, so they are grouped here. In each case, supply a Character ID and 
+--/|     the name of a string value to be set. The function will read the global mods for the given category and return a string
+--/|     representing what to add to a roll expression to account for the mod(s). Dice rolls in mods (ie, 1d4 for guidance) will
+--/|     include a # after the expression to keep it from being counted in the Crit/Fumble check.
+--/|
+
+--/| =============================== BEGIN LIBRARY CODE ===============================================
+
+ 
+ --:far_CustomCritCheck|ReturnStringName
+  --&[%1%]|1
+  --<| 
+ 
+ --:far_PCConcenCheck|PCRollReturnString;BardScriptReturnString
+  --&[%1%]|0
+  --&[%2%]|1
+  --<|
+ 
+ --:far_GetAndCheckSlotInformation|tokenid;SpellLevel;SpellLevelReturnString
+  --=Slotlevel|[%2%]
+  -->far_FIND_CLASS_LEVEL|[%1%];Warlock;WarLevel
+  --?[&WarLevel] -ge 1|[
+   --?[&WarLevel] -ge 9 |=Slotlevel;5
+   --?[&WarLevel] -eqi 7 -or [&WarLevel] -eqi 8|=Slotlevel;4
+   --?[&WarLevel] -eqi 5 -or [&WarLevel] -eqi 6 |=Slotlevel;3
+   --?[&WarLevel] -eqi 3 -or [&WarLevel] -eqi 4 |=Slotlevel;2
+   --?[&WarLevel] -lt 2 |=Slotlevel;1
+   --]|
+  --=SlotsExpended|[*[%1%]:lvl[$Slotlevel]_slots_expended]
+  --?[$SlotsExpended.Total] -eq 0|>far_NoSlotsLeft;[%1%];[$Slotlevel]
+  --&[%3%]|[$Slotlevel] 
+  --<|
+   
+ --:far_NoSlotsLeft|tokenid;SpellLevel
+  --+|[b][*[%1%]:character_name] has no level [%2%] spell slots available.[/b]
+  --X|NoSlotsLeftStop
+   
+ --:far_DeductSpellSlot|tokenid;SpellLevel
+  --=_Lib5ESlotsExpended|[*[%1%]:lvl[%2%]_slots_expended] - 1
+  --@setattr|_charid [*[%1%]:character_id] _lvl[%2%]_slots_expended|[$_Lib5ESlotsExpended] _silent
+  --+|[*[%1%]:character_name] has [$_Lib5ESlotsExpended] Level [%2%] Slots Left. 
+  --<|
+
+ --:far_GetAvailableSpellLevels|CharacterID;MinimumSpellLevel;ArrayNameToSet
+  --~|array;define;[%3%]
+  --%SpellLvlLoop|[%2%];9;1
+   --?[*[%1%]:lvl[&SpellLvlLoop]_slots_total] -le 0|%
+   --?[*[%1%]:lvl[&SpellLvlLoop]_slots_expended] -le 0|%
+   --~|array;add;[%3%];[&SpellLvlLoop]
+   --%|
+  --<|
+ 
+ --:far_FatalError|EmoteText;ErrorHeader;ErrorMessage
+  --#emoteText|[%1%]
+  --+[%2%]|[%3%]
+  --X|  
+ 
+ --:far_FindFeat|tokenid;FeatName;FeatFlag
+  --~|array;fromrepeatingsection;Traits;[*[%1%]:character_id];repeating_traits;name
+  --~testvar|array;indexof;Traits;[%2%]
+  --?[&testvar] -eq ArrayError |=[%3%];0 |=[%3%];1
+  --<|
+
+ --:far_BuildTargetList|Targets
+  --&TargetString|
+  --=targetCount|1
+  
+ --:far_TargetLoop|
+  --&TargetString|+t;target[$targetCount.Raw];Target [$targetCount.Raw] 
+  --=targetCount|[$targetCount.Raw] + 1
+  --?[$targetCount] -le [%1%]|>far_AddSeparator
+  --?[$targetCount] -le [%1%]|far_TargetLoop
+  --iPlease click the button below to select characters to target. The same target cannot be selected multiple times. ;Select [%1%] Targets|[&TargetString]
+  --/|
+  --<|
+
+ --:far_AddSeparator|
+  --&TargetString|+||
+  --<| 
+
+ --:far_BuildTargetArray|ArrayName;LoopMax;TargetString;AllowMulti
+  --~|array;define;[%1%];[&target1]
+  --%LoopCounter|2;[%2%];1
+   --&ThisTarget|[&target[&LoopCounter]]
+   --?"X[&ThisTarget]" -eq "X"|BottomLoop
+   --?[%4%] -eq 1|[
+    --~|array;add;[%1%];[&ThisTarget]
+    --^BottomLoop|
+    --]|
+   --~testvar|array;indexof;[%1%];[&ThisTarget]
+   --?"[&testvar]" -eq "ArrayError" |[
+    --~|array;add;[%1%];[&ThisTarget]
+	--]|
+   --:BottomLoop|
+   --%|
+  --<|
+
+ --:far_CheckDamageModifiers|characterid;damageType;damageVariableName;isMagical(0 or 1);IsSilver (0 or 1);IsAdamantine (0 or 1)
+  --&[%2%]|
+  --#parameterdelimiter|!!
+  --~Vulns|string!!split!!;!![*[%1%]:npc_vulnerabilities]
+  --~Resists|string!!split!!;!![*[%1%]:npc_resistances]
+  --~Immunes|string!!split!!;!![*[%1%]:npc_immunities]
+  --#parameterdelimiter|;
+  --%VulnLoop|1;[$VulnsCount]
+    --&hasModifier|0
+    --?"[&Vulns[&VulnLoop]]" -inc "silver" -or "[&Vulns[&VulnLoop]]" -inc "adamantine" -or "[&Vulns[&VulnLoop]]" -inc "magical"|&hasModifier;1
+    --?"[&Vulns[&VulnLoop]]" -inc "[%2%]" -and "[&Vulns[&VulnLoop]]" -inc "adamantine" -and [%6%] -eq 1|>IsVulnerable;[%3%]
+    --?"[&Vulns[&VulnLoop]]" -inc "[%2%]" -and "[&Vulns[&VulnLoop]]" -inc "silver" -and [%5%] -eq 1|>IsVulnerable;[%3%]
+    --?"[&Vulns[&VulnLoop]]" -inc "[%2%]" -and "[&Vulns[&VulnLoop]]" -inc "magical" -and [%4%] -eq 1|>IsVulnerable;[%3%]
+    --?"[&Vulns[&VulnLoop]]" -inc "[%2%]" -and [&hasModifier] -eq 0|>IsVulnerable;[%3%]
+  --%|
+  --:SKIP_VULN_CHECK|
+  --%ResistLoop|1;[$ResistsCount]
+    --&hasModifier|0
+    --?"[&Resists[&ResistLoop]]" -inc "silver" -or "[&Resists[&ResistLoop]]" -inc "adamantine" -or "[&Resists[&ResistLoop]]" -inc "magical"|&hasModifier;1
+    --?"[&Resists[&ResistLoop]]" -inc "[%2%]" -and [&hasModifier] -eq 0|>IsResistant;[%3%]
+    --?"[&Resists[&ResistLoop]]" -inc "[%2%]" -and [&hasModifier] -eq 0|FINISH_RESIST_CHECK   
+    --?"[&Resists[&ResistLoop]]" -inc "[%2%]" -and "[&Resists[&ResistLoop]]" -inc "adamantine" -and [%6%] -eq 1|FINISH_RESIST_CHECK
+    --?"[&Resists[&ResistLoop]]" -inc "[%2%]" -and "[&Resists[&ResistLoop]]" -inc "silver" -and [%5%] -eq 1|FINISH_RESIST_CHECK
+    --?"[&Resists[&ResistLoop]]" -inc "[%2%]" -and "[&Resists[&ResistLoop]]" -inc "magical" -and [%4%] -eq 1|FINISH_RESIST_CHECK
+    --?"[&Resists[&ResistLoop]]" -inc "[%2%]"|>IsResistant;[%3%]
+    --:FINISH_RESIST_CHECK|
+  --%|
+  --:SKIP_RESIST_CHECK|
+  --%ImmuneLoop|1;[$ImmunesCount]
+    --&hasModifier|0
+    --?"[&Immunes[&ImmuneLoop]]" -inc "silver" -or "[&Immunes[&ImmuneLoop]]" -inc "adamantine" -or "[&Immunes[&ImmuneLoop]]" -inc "magical"|&hasModifier;1
+    --?"[&Immunes[&ImmuneLoop]]" -inc "[%2%]" -and [&hasModifier] -eq 0|>IsImmune;[%3%]
+    --?"[&Immunes[&ImmuneLoop]]" -inc "[%2%]" -and [&hasModifier] -eq 0|FINISH_IMMUNE_CHECK
+    --?"[&Immunes[&ImmuneLoop]]" -inc "[%2%]" -and [&hasModifier] -eq 1 -and "[&Immunes[&ImmuneLoop]]" -inc "adamantine" -and [%6%] -eq 1|FINISH_IMMUNE_CHECK
+    --?"[&Immunes[&ImmuneLoop]]" -inc "[%2%]" -and [&hasModifier] -eq 1 -and "[&Immunes[&ImmuneLoop]]" -inc "silver" -and [%5%] -eq 1|>FINISH_IMMUNE_CHECK;[%3%]
+    --?"[&Immunes[&ImmuneLoop]]" -inc "[%2%]" -and [&hasModifier] -eq 1 -and "[&Immunes[&ImmuneLoop]]" -inc "magical" -and [%4%] -eq 1|>FINISH_IMMUNE_CHECK;[%3%]
+    --?"[&Immunes[&ImmuneLoop]]" -inc "[%2%]"|>IsImmune;[%3%]
+    --:FINISH_IMMUNE_CHECK|
+  --%|
+  --:SKIP_IMMUNE_CHECK|
+  --<|
+  --:IsVulnerable| --&[%1%]| * 2 [Vulnerable] --<|
+  --:IsResistant| --&[%1%]| \ 2 [Resistant] --<|
+  --:IsImmune| --&[%1%]| * 0 [Immune] --<|
+ 
+ --:far_Check_GLOBAL_MOD_EXISTS|characterid; Category; name; returnstring (0=does not exist, 1=exists)
+  --&[%1%]|0
+  --&_Lib5E_WHICH_GM|
+  --&_Lib5E_Search_Field|
+  --&_Lib5E_Temp|[%2%]
+  --C[&_Lib5E_Temp(tolowercase)]|attack:&_Lib5E_WHICH_GM;tohitmod|tohit:&_Lib5E_WHICH_GM;tohitmod|ac:&_Lib5E_WHICH_GM;acmod|save:&_Lib5E_WHICH_GM;savemod|damage:&_Lib5E_WHICH_GM;damagemod|skill:&_Lib5E_WHICH_GM;skillmod
+  --C[&_Lib5E_Temp(tolowercase)]|attack:&_Lib5E_Search_Field;attack|tohit:&_Lib5E_Search_Field;attack|ac:&_Lib5E_Search_Field;ac|save:&_Lib5E_Search_Field;save|damage:&_Lib5E_Search_Field;damage|skill:&_Lib5E_Search_Field;skill
+  --?"[&_Lib5E_WHICH_GM]" -eq ""|>_Lib5E_THROW_ERROR;Global Modifier type [%2%] not recognized
+  --Rfind|[*[%1%]:character_id];[%3%];repeating_[&_Lib5E_WHICH_GM];global_[&_Lib5E_Search_Field]_name
+  --?"[*R:global_attack_name]" -eq "NoRepeatingAttributeLoaded"|[
+    -->_Lib5E_THROW_ERROR|Global [%2%] Modifier [%3%] not found on character [*[%1%]:character_name]
+	--&[%4%]|0
+	--<|
+	--]|
+  --?"[*R:global_attack_active_flag]" -eq "1" -or "[*R:global_attack_active_flag]" -eq "0"|&[%4%];1|&[%4%];0
+  --<|
+ 
+ --:far_PlayEffects|Parameters are : sourcetoken; targettoken; source effect; target effect; line effect; sound effect
+  --vtoken|[%1%] [%3%]
+  --vtoken|[%2%] [%4%]
+  --vbetweentokens|[%1%] [%2%] [%5%]
+  --<|
+  
+ --:far_HexHeal|characterid; token-id
+  -->Lib5E_FIND_CLASS_LEVEL|[%1%];Warlock;WarlockLevel
+  --=WarlockHeal|[&WarlockLevel][Level] + [*[%1%]:charisma_mod] [Cha Mod]
+  -->LibSN_APPLY_DAMAGE_OR_HEALING|[%2%];1;[$WarlockHeal];0;0;0
+  --+[br]Hex Heal: |[*[%1%]:character_name] heals for [$WarlockHeal] hp.
+  --<|
+  
+ --:far_Inspiration|token-id;tokenmarker;attackstring;attackstringreturn
+  --?"[*S:inspiration]" -nei "1" -or "[%3%]" -nei "2d20kh1"|[
+   --+|[c][b]Do you want to use your inspiration?[/b][/c]
+   --+|[rbutton]Yes::far_InspirationRoll[/rbutton]  [rbutton]No::far_AnswerNo[/rbutton]
+   --X|
+   --]|
+  --<|
+
+ --:far_InspirationRoll|
+  --?"[%3%]" -inc "1d20"|&[%4%];2d20kh1
+  --?"[%3%]" -inc "2d20kl1"|&[%4%];1d20
+  --!a:[*[%1%]:character_id]|inspiration:0
+  -->LibSN_REMOVE_STATUS_MARKER|[%1%];[%2%]
+  --<|
+  
+ --:far_AnswerNo|
+  --<|
+ 
+ --:far_Bardic|token-id;tokenmarker;Scriptcheck;baseroll;adjustedroll;rollreturn
+  --=BaseRoll|[%4%]
+  --=AdjustedRoll|[%5%]
+  --&BardRoll|
+  --?[$Scriptcheck] -nei 1|&BardPath;far_ChooseBard |&BardPath;far_ScriptBardEntry
+  --+Dice Roll|You rolled a [$BaseRoll] for a total of [$AdjustedRoll].  
+  --+Do you want to use Bardic Inspiration?|[rbutton]Yes::[&BardPath][/rbutton][rbutton]No::far_AnswerNo[/rbutton]
+  --X|
+  --<|
+   
+ --:far_ChooseBard|AttackRoll;
+  --+Click this button to select your Bard: |[rbutton]Click Here::BardEntry;&#64;{target|token_id};[%2%];[%6%][/rbutton]
+  --X|
+   
+ --:far_ScriptBardEntry|token-id;BardicMarker;rollreturn
+  --&Bardtoken|[*[%1%]:InspireByTID]
+  -->far_FindBardLevel|[&Bardtoken]
+  --&[%6%]|[&BardRoll]
+  -->LibSN_REMOVE_STATUS_MARKER|[*[%1%]:t-id];[&BardicMarker]
+  --!a:[*[%1%]:character_id]|InspireByName: ** |InspireByTID: **
+  --<|
+
+ --:far_BardEntry|token-id;BardicMarker;rollreturn
+  --&Bardtoken|[&reentryval]
+  -->far_FindBardLevel|[&Bardtoken];[%6%]
+  --&[%6%]|[&BardRoll]
+  -->LibSN_REMOVE_STATUS_MARKER|[*[%1%]:t-id];[&BardicMarker]
+  --<|
+
+ --:far_FindBardLevel|Bardtoken;rollreturn
+  -->far_FIND_CLASS_LEVEL|[&Bardtoken];Bard;BardLevel
+  --?[&BardLevel] -ge 15 |&BardRoll;+ + 1d12 [Bardic Inspiration]
+  --?[&BardLevel] -lt 15 -and [&BardLevel] -ge 10|&BardRoll;+ + 1d10 [Bardic Inspiration]
+  --?[&BardLevel] -lt 10 -and [&BardLevel] -ge 5|&BardRoll;+ + 1d8 [Bardic Inspiration]
+  --?[&BardLevel] -lt 5 |&BardRoll;+ + 1d6 [Bardic Inspiration]
+  --<|
+  
+ --:far_FIND_CLASS_LEVEL|characetrid;class;Return String Var
+  --&[%3%]|0
+  --&_Lib5E_TEMP_CLASS|[%2%]
+  --?"[*[%1%]:class]" -eq "[&_Lib5E_TEMP_CLASS(totitlecase)]"|&[%3%];[*[%1%]:base_level]
+  --?[*[%1%]:multiclass1_flag] -eq 1 -and "[*[%1%]:multiclass1]" -eq "[&_Lib5E_TEMP_CLASS(totitlecase)]"|&[%3%];[*[%1%]:multiclass1_lvl]
+  --?[*[%1%]:multiclass2_flag] -eq 1 -and "[*[%1%]:multiclass2]" -eq "[&_Lib5E_TEMP_CLASS(totitlecase)]"|&[%3%];[*[%1%]:multiclass2_lvl]
+  --?[*[%1%]:multiclass3_flag] -eq 1 -and "[*[%1%]:multiclass3]" -eq "[&_Lib5E_TEMP_CLASS(totitlecase)]"|&[%3%];[*[%1%]:multiclass3_lvl]
+  --?[*[%1%]:multiclass4_flag] -eq 1 -and "[*[%1%]:multiclass4]" -eq "[&_Lib5E_TEMP_CLASS(totitlecase)]"|&[%3%];[*[%1%]:multiclass4_lvl]
+  --<|
+
+ --:far_DamageTokenmod|tokenid;bar#;tempHPbar;amount;display (0 or 1);allow overheal (0 or 1);allow negative hp (0 or 1)
+  --=_applyValue|[%4%]
+  --=TempHP|[*[%1%]:hp_temp]
+  --~damageValue|math;abs;[$_applyValue]
+  --?"X[$TempHP]" -nei "X" -and [$TempHP] -gt 0 -and [$TempHP] -ge [$damageValue]|[
+   --=newTempHP|[$TempHP]-[$damageValue]
+   --@token-mod|_ignore-selected _ids [%1%] _set bar[%3%]_value|[$newTempHP.Raw]
+   --w2:!a:[*[%1%]:character_id]|!hp_temp:[$newTempHP.Raw]
+   --<|
+   --]|
+  --?"X[$TempHP]" -nei "X" -and [$TempHP] -gt 0 -and [$TempHP] -lt [$damageValue]|[
+   --=_applyValue|[$_applyValue]+[$TempHP]
+   --@token-mod|_ignore-selected _ids [%1%] _set bar[%3%]_value|0
+   --w2:!a:[*[%1%]:character_id]|!hp_temp:0
+   --]|
+  --=_newValue|[*[%1%]:t-bar[%2%]_value] + [$_applyValue]
+  --?[$_newValue] -lt 0 -and "X[%7%]" -ne "X1"|=_newValue;0
+  --?"X[%6%]" -ne "X1" -and [$_newValue] -gt [*[%1%]:t-bar[%2%]_max]|=_newValue;[*[%1%]:t-bar[%2%]_max]
+  --?"X[%5%]" -eq "X1"|+Applying;[%4%] HP to [*[%1%]:t-name]
+  --?[$_newValue] -lt 0|[
+   --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|=[$_newValue.Raw]
+   --]|[
+   --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[$_newValue.Raw]
+   --]|
+  --<| 
+ 
+ --:far_LogFatalError|EmoteText;ErrorHeader;ErrorMessage
+   --#emoteText|[%1%]
+   --+[%2%]|[%3%]
+   --X|
+
+--:far_FIND_ACTIVE_GLOBAL_ATTACK_MODS|character_id;StringVariableToSet
+  --&_obrac|[ --&_cbrac|]
+  --&_GAM_Temp| 
+  --Rfirst|[%1%];repeating_tohitmod
+  --:far_GAM_Loop|
+  --?"[*R:global_attack_name]" -ne "Bardic Inspiration" -and "[*R:global_attack_active_flag]" -eq "1"|>far_AddGAM;[*R:global_attack_name];[*R:global_attack_roll]
+  --Rnext|  
+  --?"[*R:global_attack_name]" -ne "NoRepeatingAttributeLoaded"|far_GAM_Loop
+  --&[%2%]|[&_GAM_Temp] 
+  --<|
+  
+  --:far_AddGAM| 
+  --&_GAM_Temp|+ + [%2%]# [&_obrac][%1%][&_cbrac] 
+  --<|
+
+  --:far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|character_id;StringVariableToSet;isCrit(1=true)
+  --&_obrac|[ --&_cbrac|]
+  --&_GDM_Temp| 
+  --Rfirst|[%1%];repeating_damagemod
+  --:far_GDM_Loop|
+  --?"[*R:global_damage_active_flag]" -eq "1"|>far_AddGDM;[*R:global_damage_name];[*R:global_damage_damage];[%3%];[*R:global_damage_critical_damage]
+  --Rnext| 
+  --?"[*R:global_damage_name]" -ne "NoRepeatingAttributeLoaded"|far_GDM_Loop
+  --&[%2%]|[&_GDM_Temp] 
+  --<|
+  
+  --:far_AddGDM| 
+  --&_GDM_Temp|+ + [%2%]# [&_obrac][%1%][&_cbrac] 
+  --?"[%3%]" -eq "1"|&_GDM_Temp;+ + [%4%]  [ CRIT [%1%] ]
+  --<|
+
+  --:far_FIND_ACTIVE_GLOBAL_SAVE_MODS|character_id;StringVariableToSet
+  --&_obrac|[ --&_cbrac|]
+  --&_GSM_Temp| 
+  --Rfirst|[%1%];repeating_savemod
+  --:far_GSM_Loop|
+  --?"[*R:global_save_name]" -ne "Bardic Inspiration" -and "[*R:global_save_active_flag]" -eq "1"|>far_AddGSM;[*R:global_save_name];[*R:global_save_roll]
+  --Rnext| 
+  --?"[*R:global_save_name]" -ne "NoRepeatingAttributeLoaded"|far_GSM_Loop
+  --&[%2%]|[&_GSM_Temp] 
+  --<|
+
+  --:far_AddGSM| 
+  --&_GSM_Temp|+ + [%2%]# [&_obrac][%1%][&_cbrac] 
+  --<|
+
+  --:far_FIND_ACTIVE_GLOBAL_AC_MODS|character_id;StringVariableToSet
+  --&_obrac|[ --&_cbrac|]
+  --&_GACM_Temp| 
+  --Rfirst|[%1%];repeating_acmod
+  --:far_GACM_Loop|
+  --?"[*R:global_ac_active_flag]" -eq "1"|>far_AddGACM;[*R:global_ac_name];[*R:global_ac_val]
+  --Rnext| 
+  --?"[*R:global_ac_name]" -ne "NoRepeatingAttributeLoaded"|far_GACM_Loop
+  --&[%2%]|[&_GACM_Temp] 
+  --<|
+
+  --:far_AddGACM| 
+  --&_GACM_Temp|+ + [%2%]# [&_obrac][%1%][&_cbrac] 
+  --<|
+
+  --:far_FIND_ACTIVE_GLOBAL_SKILL_MODS|character_id;StringVariableToSet
+  --&_obrac|[ --&_cbrac|]
+  --&_GSKM_Temp| 
+  --Rfirst|[%1%];repeating_skillmod
+  --:far_GSKM_Loop|
+  --?"[*R:global_skill_name]" -ne "Bardic Inspiration" -and "[*R:global_skill_active_flag]" -eq "1"|>far_AddGSKM;[*R:global_skill_name];[*R:global_skill_roll]
+  --Rnext| 
+  --?"[*R:global_skill_name]" -ne "NoRepeatingAttributeLoaded"|far_GSKM_Loop
+  --&[%2%]|[&_GSKM_Temp] 
+  --<|
+
+  --:far_AddGSKM| 
+  --&_GSKM_Temp|+ + [%2%]# [&_obrac][%1%][&_cbrac] 
+  --<|
