@@ -1,20 +1,22 @@
 The follow APIs are needed to make all of the spells work:
 
-ScriptCards (with 5E, System Neutral (SN), and my5thEd libraries)
+ScriptCards (with 5E, System Neutral (SN), and Farsidelib libraries)
 
-SmartAOE
+    SmartAOE
 
-TokenMod
+    TokenMod
 
-Bump
+    Bump
 
-ChatSetAttr
+    ChatSetAttr
 
-Radar
+    Radar
 
-SelectManager
+    SelectManager
+  
+    SpawnDefaultToken
 
-SpawnDefaultToken
+
 
 
 Any Spell with "Token" at the end is meant to go on the spell's token as an ability,  with the "Show as Token Action" box checked.
