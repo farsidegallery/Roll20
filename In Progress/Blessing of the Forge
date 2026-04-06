@@ -1,0 +1,130 @@
+!script {{
+  +++5Elib;snlib;Farsidelib+++
+
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|@{selected|character_id}
+  --#whisper|self,gm
+
+  --/|Script Name : Blessing of the Forge[l]
+  --/|Version     : 1.0
+  --/|Requires SC : ScriptCards Library snlib
+  --/|Author      : Arak Stoneboulder
+  --/|Modified By : Farsidegallery
+  --/|
+  --/|  Script checks for resource availability, udpdates target character sheet, and deducts a resource slot.
+  --/|
+  --/| __ Begin Global User Variables -Update the variables below to your game settings. __
+
+   --/|Enter the resource name for Blessing of the Forge[l]
+   --&BlessingResource|Blessing of the Forge[l]
+
+  --/|What is the name of the Global Ac Mod used for Blessing of the Forge?
+  --&BlessingAc|Blessing of the Forge
+  
+  --/|What is the name of the Global Attack Mod used for Blessing of the Forge?
+  --&BlessingAttack|Blessing of the Forge
+
+  --/|What is the name of the Global Damage Mod used for Blessing of the Forge?
+  --&BlessingDamage|Blessing of the Forge
+
+
+  --/| __ End Global User Variables ___
+
+  -->Lib5E_FIND_RESOURCE|[*S:character_id];[&BlessingResource];Blessingname;BlessingAmmo
+  --?[$BlessingAmmo] -le 0|NoBlessing
+  --=FinalAmmo|[$BlessingAmmo]-1
+  --!a:[*S:character_id]|[&BlessingAmmo]:[$FinalAmmo]
+  --+[*S:t-name] can use this ability [$FinalAmmo] more times today.|
+
+  --:ChooseFunction|
+   --+Choose Function: |[rbutton]New Cast::ChooseItem[/rbutton][rbutton]Dismiss::Remove[/rbutton]
+  --X|
+   
+  --:ChooseItem|
+   --+Choose Item: |[rbutton]Weapon::Weapon[/rbutton][rbutton]Armor::Armor[/rbutton]
+
+   --#emoteText|[*S:t-name] uses Blessing of the Forge
+   --#title|and calls upon his god to imbue his armor with magic!
+   --X|
+  
+  --:Armor|
+   -->far_Check_GLOBAL_MOD_EXISTS|[*S:character_id]; tohit; [&BlessingAc]; AcExists
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*S:character_id];ac;[&BlessingAc];1
+  -->Output|
+
+  --:Weapon|
+   --~|array;fullrepeatingsection;Inventory;[*S:character_id];repeating_inventory;itemname:hasattack;♦
+   --~|array;sort;Inventory
+   --~Inventory|array;getfirst;Inventory
+   -->ItemConvert|
+   --=NumWeapons|0
+
+   --?"X[&ItemhasAttack]" -ne "X1" -and "[&Itemname]" -ninc "+" |Itemfindstart
+   --Rfind|[*S:character_id];[&Itemnamewcost];repeating_inventory;itemname
+   --?"X[*R:equipped]" -ne "X1"|Itemfindstart
+   --+|[t border=0 width=100%][tr][td style"width=30px"][c][&Itemcount][/c][/td][td][&Itemname][/td]
+    [td style"width=60px"][r][&Itemcostd][/r][/td]
+    [td style"width=15px"][rbutton:#ffffff:#9727b0:10px]Enchant::Enchant;[&Itemname][/rbutton][/td][/t][/tr]
+
+  --:Itemfindstart|
+   --~Inventory|array;getnext;Inventory
+   -->ItemConvert|
+   --?"X[&ItemhasAttack]" -ne "X1" -and "[&Itemname]" -ninc ArrayError|Itemfindstart
+   --?"[&Itemname]" -inc "+" |Itemfindstart
+   --?"[&Inventory]" -eq ArrayError|Itemfinddone
+
+   --Rfind|[*S:character_id];[&Itemnamewcost];repeating_inventory;itemname
+   --?[*R:equipped] -eq 0|Itemfindstart
+   --+|[t border=0 width=100%][tr][td style"width=30px"][c][&Itemcount][/c][/td][td][&Itemname][/td]
+    [td style"width=60px"][r][&Itemcostd][/r][/td]
+    [td style"width=15px"][rbutton:#ffffff:#9727b0:10px]Enchant::Enchant;[&Itemname][/rbutton][/td][/t][/tr]
+   --=NumWeapons|[$NumWeapons]+1
+   --^Itemfindstart|
+   
+  --:Itemfinddone|
+   --?[$NumWeapons] -eq 0|>NoInventory  
+   --X|
+  
+  --:NoInventory|
+   --+|[c][b][*S:t-name] has no basic weapons to enchant![/b][/c]
+   --X|
+
+  --:Output|
+   --#whisper|
+   --+|At 1st level, you gain the ability to imbue magic into a weapon or armor. At the end of a long rest, you can touch one nonmagical object that is a suit of armor or a simple or martial weapon. 
+   --+|Until the end of your next long rest or until you die, the object becomes a magic item, granting a +1 bonus to AC if it's armor or a +1 bonus to attack and damage rolls if it's a weapon.
+   --+|Once you use this feature, you can't use it again until you finish a long rest.
+   --X|
+  
+  --:Remove|
+   --#whisper|self,gm
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*S:character_id];ac;[&BlessingAc];0
+   --#title|[*S:t-name]'s god has removed his blessing!
+   --+[*S:character_name]'s armor is no longer magical!|
+   --X|
+
+  --:NoBlessing|
+   --#emoteText|[*S:character_name] tries to to use Blessing of the Forge, but needs to take a long rest first.
+   --+[*S:character_name] has no Blessing of the Forge uses available.|
+
+   --X| DONE
+   
+  --:ItemConvert|
+   --&Itemnamewcost|[&Inventory(before,♦)]
+   --&Itemname|[&Itemnamewcost(before,-)]
+   --&ItemhasAttack|[&Inventory(after,♦)]
+   --<|
+  
+  --:Enchant|
+   --&weapon|[&reentryval]
+   --Rfind|[*S:character_id];[&weapon];repeating_inventory;itemname
+   --&oldmodifiers|[*R:itemmodifiers]
+   --&newmodifiers|[*R:itemmodifiers], Melee Attacks +1, Melee Damage +1
+   --/|!a:[*s:character_id]|!ForgeOldMods:[&oldmodifiers]
+   --/|!a:[*s:character_id]|![*R>itemmodifiers]:[&newmodifiers]    
+   --+|[c][b][*S:t-name] calls on their God's power to enchant a weapon! [/b][/c]  
+   --+|[br]
+   --+|[c][b][*S:t-name]'s God causes the [&weapon] to be magical until then end of the next long rest! [/b][/c]
+   --+|[br]
+   -->Output|
+}}
