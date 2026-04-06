@@ -1,6 +1,6 @@
 The follow APIs are needed to make all of the spells work:
 
-ScriptCards (with 5E, System Neutral (SN), and Farsidelib libraries)
+    ScriptCards (with 5E, System Neutral (SN), and Farsidelib libraries)
 
     SmartAOE
 
