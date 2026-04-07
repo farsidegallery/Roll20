@@ -70,7 +70,7 @@
   --/| ____________________ End Global User Variables ___________________________________________________________________________________________
   
   --/|TRIGGER_REPLACEMENTS
-  +++5Elib;snlib;ActionMenuAddons;my5thEDlib+++
+  +++5Elib;snlib;Farsidelib+++
   
   --#reentrant|My Cool Script [*[&GraphicOld_id]:character_id]
   --&hitPointBar|1
