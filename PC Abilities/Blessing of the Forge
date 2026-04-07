@@ -41,7 +41,7 @@
 
   -->Lib5E_FIND_RESOURCE|[*S:character_id];[&BlessingResource];Blessingname;BlessingAmmo
   
-  --?"X[$BlessingAmmo]" -eq "X"|>far_FatalError;Feat or Race Not Found;ERROR;Could not find a resource named [&BlessingResource].
+  --/|?"X[$BlessingAmmo]" -eq "X"|>far_FatalError;Feat or Race Not Found;ERROR;Could not find a resource named [&BlessingResource].
   
   --?[$BlessingAmmo] -le 0|NoBlessing
   --=FinalAmmo|[$BlessingAmmo]-1
@@ -128,7 +128,7 @@
    --Rfind|[*S:character_id];[&weapon];repeating_inventory;itemname
    --&ItemModi|[*R:itemmodifiers]
    
-   --?"[&ItemModi]" -inc "Alt"|=AltFlag:1
+   --?"[&ItemModi]" -inc "Alternate"|=AltFlag;1
 
    --?"X[$AltFlag]" -ne "X1"|[
     --Rfind|[*S:character_id];[&weapon];repeating_attack;atkname
@@ -188,11 +188,11 @@
 	--&forgeTwoHand|Forge Blessed [&twoHand]
 	
 	--Rfind|[*S:character_id];[&forgeOneHand];repeating_attack;atkname
-	--!a:[*S:character_id]|![*R>atkname]:[&weapon]
+	--!a:[*S:character_id]|![*R>atkname]:[&oneHand]
 	--!a:[*S:character_id]|![*R>atkmagic]:0
 	
 	--Rfind|[*S:character_id];[&forgeTwoHand];repeating_attack;atkname
-	--!a:[*S:character_id]|![*R>atkname]:[&weapon]
+	--!a:[*S:character_id]|![*R>atkname]:[&twoHand]
 	--!a:[*S:character_id]|![*R>atkmagic]:0
 	--]|
 	
