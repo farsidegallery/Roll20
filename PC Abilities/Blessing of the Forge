@@ -11,7 +11,18 @@
   --/|Author      : Arak Stoneboulder
   --/|Modified By : Farsidegallery
   --/|
-  --/|  Script checks for resource availability, udpdates target character sheet, and deducts a resource slot.
+  --/| Script checks for resource availability, udpdates target character sheet, and deducts a resource slot. Script has player choose new
+  --/| cast or dismiss (undo last cast). If new, player is  prompted to choose to enchant weapon or armor. If weapon, script looks in the 
+  --/| selected character's inventory for all items that have an attack (weapons) and do not have a "+" in its name (basic weapon). A choice 
+  --/| list will be presented to the player (whispered) to select one weapon. Script will look at the properies in the inventory to determine
+  --/| if the word "Alternate" is present indicating weapon as one and two handed attacks. Script will then locate the attack matching the 
+  --/| selected weapon's name and change the value of the "Magic" setting for that attack (or attacks if one and two handed are available) to 1.
+  --/| If Armor is selected, script will look for Global AC Mod name from variables below. If found, mod will be set active. If not found, mod
+  --/| will be created and then set as active.
+  --/|
+  ==/| Dismiss will deactivate Armor Mod and Weapon settings. 
+  --/|
+  --/| Due to looking at inventory properies, it is HIGHLY SUGGESTED that Roll20 compendium drag and drop be used for inventory!
   --/|
   --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
 
