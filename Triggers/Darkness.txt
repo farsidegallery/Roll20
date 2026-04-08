@@ -8,7 +8,7 @@
   +++snlib+++
   
   --~count|array;pagetokens;tokens;[&GraphicOld_id];tprop:name~=Darkness
-  --?[@tokens(0)] -eq ArrayError|Skip
+  --?"X[@tokens(0)]" -eq "XArrayError"|Skip
   
   -->LibSN_CHECK_TOKEN_OVERLAP|[@tokens(0)];[&GraphicOld_id];OLap
   --?[&OLap] -eq 0 -and [*[&GraphicOld_id]:darkness] -ne 1|Skip
