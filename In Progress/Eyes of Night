@@ -1,0 +1,118 @@
+!script{{
+  +++5Elib;snlib+++	
+ 
+  --#sourceToken|@{selected|token_id}
+  --#whisper|self,gm
+
+  --/|Script Name : Eyes of Night
+  --/|Version     : 1.0
+  --/|Requires SC : ScriptCards Library 5Elib/snlib
+  --/|Author      : Arak Stoneboulder
+  --/|Modified By : FarsideGallery
+  --/|  
+  --/|  Script checks resource availability, and deducts resouce. 
+  --/|
+  --/|
+  --/|
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+   
+   --/|Enter the resource name for Eyes of Night
+   --&Resource|Eyes of Night[l]
+   
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+
+  -->Lib5E_FIND_RESOURCE|[*S:character_id];[&Resource];Sensename;EyesAmmo
+  --?[$EyesAmmo] -le 0|NoEyes
+  --=FinalAmmo|[$EyesAmmo]-1
+  --!a:[*S:character_id]|[&EyesAmmo]:[$FinalAmmo]
+  --+|[*S:character_name] can use this ability [$FinalAmmo] more times
+
+  --/| Determiine how many are getting this ability (using "trust" method for distance from caster)
+  --:FindCompanionCount|
+   --~|array;define;Count;1;2;3;4 
+   --+[*S:t-name] how many companions are you giving this ability to? They all MUST be within 10ft of you.|
+    --&splvlMsg|
+    --%splvl|foreach;Count
+     --&splvlMsg|+ [rbutton][&splvl]::CompanionIdentity;[&splvl][/rbutton]
+    --%|
+   --+|[c][&splvlMsg][/c]
+   --X|
+  
+  --/| Select the tokens that are getting this ability.
+  --:CompanionIdentity|   
+   --=CompanionCount|[&reentryval]
+   --=CompanionFlag|1
+   -->5thED_BuildTargetList|[$CompanionCount.Total]
+   -->5thED_BuildTargetArray|Companions;[$CompanionCount];TargetString
+
+  --#emoteText|[*S:t-name] points to each of you
+  --#title|and grants you eyes of the night
+  
+  --%loop|foreach;Companions
+   -->Eyes|[&loop]
+  --%|  
+
+  --X| End Script
+  
+  --/| ____________________ Procedures_______________________________________________________________________________________
+  
+  --:GetCharID|CharacterName;StringVariableForCharID
+   --~|array;objects:character;CharArr;[%1%]
+   --?[@CharArr(length)] -ne 1|>LogFatalError;Could not find character named [%1%]
+   --&[%2%]|[@CharArr(0)]
+   --<|
+  
+  --:5thED_BuildTargetList|Targets
+   --&TargetString|
+   --=targetCount|1
+   -->5thED_TargetLoop|[%1%]
+   --<|
+  
+  --:5thED_TargetLoop|
+   --&TargetString|+t;target[$targetCount.Raw];Target [$targetCount.Raw] 
+   --=targetCount|[$targetCount.Raw] + 1
+   --?[$targetCount] -le [%1%]|>5thED_AddSeparator
+   --?[$targetCount] -le [%1%]|5thED_TargetLoop
+   --iPlease click the button below to select characters to target. The same target cannot be selected multiple times.;Select [%1%] Targets|[&TargetString]
+   --/|
+   --<|
+
+  --:5thED_AddSeparator|
+   --&TargetString|+||
+   --<|
+  
+  --:5thED_BuildTargetArray|ArrayName;LoopMax;TargetString
+  --~|array;define;[%1%];[&target1]
+  --%LoopCounter|2;[%2%];1
+   --&ThisTarget|[&target[&LoopCounter]]
+   --~testvar|array;indexof;[%1%];[&ThisTarget]
+   --?[&testvar] -eq ArrayError | [
+    --~|array;add;[%1%];[&ThisTarget]
+	--]|
+   --%|
+  --<|
+   
+
+ --:Eyes|
+  --&ThisTarget|[%1%]
+  --@token-mod| _ignore-selected _ids [&ThisTarget] _set night_vision|on
+  --@token-mod| _ignore-selected _ids [&ThisTarget] _set night_vision_distance|300
+  --+[*[&ThisTarget]:t-name] can now see in the dark up to 300ft for 1 hour|
+  --<|
+
+  --:NoEyes|
+   --#emoteText|[*S:character_name] tries to to use Eyes of Night, but needs to take a long rest first.
+   --+|[*S:character_name] has no Eyes of Night uses available.
+   --X| DONE
+
+}}
