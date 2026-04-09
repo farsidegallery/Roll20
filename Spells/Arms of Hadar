@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 !smartaoe {{
   --title|Arms of Hadar
   --rightsub|DC @{selected|spell_save_dc} STR
@@ -32,39 +31,4 @@
   
   --desc|You invoke the power of Hadar, the Dark Hunger. Tendrils of dark energy erupt from you and batter all creatures within 10 feet of you. Each creature in that area must make a Strength saving throw. On a failed save, a target takes 2d6 necrotic damage and can’t take reactions until its next turn. On a successful save, the creature takes half damage, but suffers no other effect. 
 At Higher Levels. When you cast this spell using a spell slot of 2nd level or higher, the damage increases by 1d6 for each slot level above 1st.
-=======
-!smartaoe {{
-  --title|Arms of Hadar
-  --rightsub|DC @{selected|spell_save_dc} STR
-  --titlecardbackground|linear-gradient(black, #9900ff)
-  --chatAvatarsEnabled|false
-  --oddrowbackground|#666666
-  --evenrowbackground|#edfcfc
-  --oddrowfontcolor|#000000
-  --tablebgcolor|#edfcfc
-  --chatAvatarsEnabled|false
-  
-  --aoeColor|#434343
-  --aoeOutlineColor|#000000
-  --aoeType|circle
-  --radius|10ft
-  --minGridArea|0.25
-  --minTokArea|0.25
-  
-  --fx|burst-death
-  --dc|@{selected|spell_save_dc}
-  --saveFormula|5eSTR
-  
-  --damageformula1|[[(1+?{Cast at what level? |1,1|2,2|3,3|4,4|5,5|6,6|7,7|8,8|9,9})d6]]
-  --damageType|Necrotic
-  --instant|1
-  --resource|lvl?{Cast at what level?}_slots_expended,1,Level ?{Cast at what level?} Slots
-  
-  --autoApply|yes
-  --bar|1
-  --zeroHPmarker|dead
-  
-  --desc|You invoke the power of Hadar, the Dark Hunger. Tendrils of dark energy erupt from you and batter all creatures within 10 feet of you. Each creature in that area must make a Strength saving throw. On a failed save, a target takes 2d6 necrotic damage and can’t take reactions until its next turn. On a successful save, the creature takes half damage, but suffers no other effect. 
-At Higher Levels. When you cast this spell using a spell slot of 2nd level or higher, the damage increases by 1d6 for each slot level above 1st.
->>>>>>> 47d4f9aa17018975656769c47c1cf299d3e6027d
 }}
