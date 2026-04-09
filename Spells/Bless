@@ -1,0 +1,181 @@
+!scriptcard {{
+  +++5Elib;snlib;Farsidelib+++
+  
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+  
+  --/|Script Name : Bless
+  --/|Version     : 2.5
+  --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
+  --/|Author      : Farsidegallery
+  --/|  
+  --/|  Script prompts user for spell level used and then calculates the number of targets and prompts user to select the targets. Spell desciption specifies that a target can only be selected one time. Script verifies
+  --/|  target is not already selected before adding to the target list. Duplicate target entries will be ignored (to allow for target availability being less that number of targets allowed). Script then applies bless 
+  --/|  marker, sets global mods on character sheet, and creates visual effects on the VTT.
+  --/|
+  
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+    
+  --/|What token marker is used for Bless?
+  --&BlessMarker|angel-outfit
+  
+  --/|What token marker is used for Concentration?
+  --&ConcentrationMarker|Concentrating::7409928
+  
+  --/|What is the name of the Global Attack Mod used for Bless?
+  --&BlessAttack|Bless
+  
+  --/|What is the name of the Global Save Mod used for Bless?
+  --&BlessSave|Bless
+  
+  --&SpellName|Bless
+  --&MinimumSpellLevel|1
+  
+  --/|Enter name for Bless Character.
+  --&CharName|Bless
+  
+  --/|Use ScriptCards (1) or SpawnDefaultToken (2) to place the Bless Character on the VTT?
+  --&SpawnScript|1
+  
+  --&URLlink|https://files.d20.io/images/475381324/mHNLooaBaYW5rHImoh0y-A/med.webm?1770770191
+  
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+	
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+  
+  --#title|[&SpellName]
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  --&TokenName|[*S:t-name] [&SpellName]
+  -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+  --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+  --+Choose Function: |[rbutton]New Cast::New[/rbutton][rbutton]Dismiss::Remove[/rbutton]
+  --X|
+  
+  --:New|
+   --+|[c][b]Cast At What Level?[/b][/c]
+    --&splvlMsg|
+    --%splvl|foreach;SpellCastLevel
+     --&splvlMsg|+ [rbutton][&splvl]::ChooseType;[&splvl][/rbutton]
+    --%|
+   --+|[c][&splvlMsg][/c]
+   --X|
+  
+  --:ChooseType|
+   --=SpellLevel|[&reentryval]
+   --&SpellLevel|[&reentryval]
+   --=BlessCount|[$SpellLevel] + 2
+   -->far_BuildTargetList|[$BlessCount.Total]
+   -->far_BuildTargetArray|Bless;[$BlessCount];TargetString
+   --=DisplayCount|1
+   --#leftsub|[*R:spellcastingtime]
+   --#rightsub|[*R:spellrange]
+   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+   --&spelldesc|[*R:spelldescription]
+   --&spellhigherdesc|[*R:spellathigherlevels]
+   --#emotetext|[*S:character_name] casts [&SpellName] at [&SpellLevel]!
+  
+   --!a:[*S:character_id]|!ConcentrationSpell:[&SpellName]
+   -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];9
+   -->GetCharID|[&CharName];BlessID
+  
+  --:BlessLoop|
+   --%loop|foreach;Bless
+    -->FireMissile|[&loop]
+
+   --:SpawnToken|
+	--?[&SpawnScript] -eq 2|[
+	 --@forselected+|Spawn _name|[&CharName] _qty|1 _targets|1,FX Spawn Selection _offset|0,0 _force|yes _size|3 _tokenProps|name:[&TokenName],showname:false,showplayers_name:false _order|toBack _bar1|KeepLink _fx|nova-magic _expand|15,30 {^&select [&loop]}
+	 --]|
+	 
+	--?[&SpawnScript] -eq 1|[
+	 --!ot:BlessTID|name:"[&TokenName]"|left:[*[&loop]:t-left]|top:[*[&loop]:t-top]|width:[=[*[&loop]:t-width]*3]|height:[=[*[&loop]:t-height]*3]|imgsrc:"[&URLlink]"|bar1_value:1|represents:[&BlessID]|showname:0
+	 --z:graphic:[&BlessTID]|toback
+	 --@CARRY_TOKENS_CARRY_BELOW|[&loop] [&BlessTID]
+	 --]|
+   --%|
+   --+|[br]
+   --+Duration: |[&duration]
+   --+Desc: |[&spelldesc]
+   --+At Higher Levels: |[&spellhigherdesc]
+   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+   --X|
+
+--/| ____________________ Procedures_______________________________________________________________________________________
+  
+  --:FireMissile|
+   --#whisper|
+   --+|[*[%1%]:t-name] is Blessed.
+   --!a:[*[%1%]:character_id]|!Cleric_Bless:[*S:character_id]
+   -->far_PlayEffects|[*S:t-id];[%1%];none;frost;burn;bless
+   -->far_Check_GLOBAL_MOD_EXISTS|[*[%1%]:character_id]; save; [&BlessSave]; SaveExists
+   -->far_Check_GLOBAL_MOD_EXISTS|[*[%1%]:character_id]; tohit; [&BlessAttack]; AttackExists
+   --?[&SaveExists] -eq 1 -and [&AttackExists] -eq 1|>SetMod;[&ThisTarget]
+   --?[&SaveExists] -eq 0|>CreateMod;[%1%];save;save;[&BlessSave];1d4
+   --?[&AttackExists] -eq 0|>CreateMod;[%1%];attack;tohit;[&BlessAttack];1d4
+   -->SetMod|[%1%]
+   --<|
+    
+  --:CreateMod|target-id;GlobalModName;RepeatingName;AbilityName;RollValue
+   --!or:[*[%1%]:character_id]:[%3%]mod|
+	 global_[%2%]_name:[%4%]|
+	 global_[%2%]_roll:[%5%]|
+	 options-flag:0
+   --<|
+   
+  --:SetMod| 
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*[%1%]:character_id];save;[&BlessSave];1
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*[%1%]:character_id];attack;[&BlessAttack];1
+   --!a:[*[%1%]:character_id]|global_save_mod_flag:1
+   --!a:[*[%1%]:character_id]|global_attack_mod_flag:1
+   -->LibSN_ADD_STATUS_MARKER|[*[%1%]:t-id];[&BlessMarker];9
+   --<|
+  
+  --:TurnOffMod| 
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*[%1%]:character_id];save;[&BlessSave];0
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*[%1%]:character_id];attack;[&BlessAttack];0
+   --<|
+  
+  --:GetCharID|CharacterName;StringVariableForCharID
+   --~|array;objects:character;SpiritCharArr;[%1%]
+   --?[@SpiritCharArr(length)] -ne 1|>far_LogFatalError;Could not find character named [%1%]
+   --&[%2%]|[@SpiritCharArr(0)]
+   --<|
+  
+  --:Remove|
+   --#emotetext|[*S:character_name] dismisses Bless!
+   --#whisper|
+   --~|array;pagetokens;alltokens;[*S:t-id]
+   --~|array;define;Blessed
+   --%loop|foreach;alltokens
+    -->LibSN_CHECK_STATUS_MARKER|[*[&loop]:t-id];[&BlessMarker];BFlag;BCount
+    --?[&BFlag] -eq 1 -and "[*[&loop]:Cleric_Bless]" -inc "[*S:character_id]"|[
+    --&Blessed([@Blessed(length)])|[*[&loop]:t-id]
+    --]|
+    --%|
+ 
+   --%loop|foreach;Blessed
+    -->LibSN_REMOVE_STATUS_MARKER|[*[&loop]:t-id];[&BlessMarker]                                                                                                                                                                                                                                                                                                                                                                                                                                                         
+	-->TurnOffMod|[*[&loop]:t-id]
+	--!a:[*[&loop]:character_id]|Cleric_Bless:**
+    --+|[*[&loop]:t-name] is no longer Blessed.
+    --%|
+   
+   --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&TokenName]
+   --%loop|foreach;tokens
+	--~|object;token;delete;[*[&loop]:t-id]
+	--%|
+   
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker]
+   --!a:[*S:character_id]|ConcentrationSpell:** 
+  --X| 
+}}
