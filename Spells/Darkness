@@ -80,6 +80,7 @@
 	 --!ot:CloudTID|name:"[&TokenName]"|left:[*T:t-left]|top:[*T:t-top]|width:[=[*T:t-width]*7]|height:[=[*T:t-height]*7]|imgsrc:"[&Darklink]"|bar1_value:1|represents:[&SummonID]|showname:false
 	 --@token-mod| _ids [&CloudTID] _off fadeOnOverlap _set layer|foreground
 	 --]|
+    -->SetDarkAbility|
     -->Output|
     --X|
    
@@ -135,5 +136,10 @@
 	--!ability:[@AbilityArr(1)]|istokenaction:False
 	--!ability:[@AbilityArr(2)]|istokenaction:False
 	--!ability:[@AbilityArr(3)]|istokenaction:False
+   --<|
+   
+  --:SetDarkAbility|
+   --~|array;objects:ability;AbilityArr;;[&SummonID]
+    --!ability:[@AbilityArr(0)]|istokenaction:False
    --<|
 }}
