@@ -265,3 +265,4 @@
    -->far_PlayEffects|[*S:t-id];[*T:t-id];burn-magic;burst-lightning;beam-lightning
    --?[$NewCastSpell] -eq 1|>far_DeductSpellSlot;[*S:t-id];[$SpellLevel]
    --X|
+}}
