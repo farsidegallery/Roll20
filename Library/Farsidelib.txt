@@ -98,8 +98,11 @@
   --<| 
  
  --:far_PCConcenCheck|PCRollReturnString;BardScriptReturnString
-  --&[%1%]|0
-  --&[%2%]|1
+  --&PlayerPrompt|0
+  --&FarsideBardic|1
+
+  --&[%1%]|[&PlayerPrompt]
+  --&[%2%]|[&FarsideBardic]
   --<|
  
  --:far_GetAndCheckSlotInformation|tokenid;SpellLevel;SpellLevelReturnString
