@@ -44,6 +44,7 @@
   --&HexMarker|Hexed::7409913
   --&HexBladeMarker|Hexed2::7409912
   --&DeathMarker|dead
+  --&ConcentrationMarker|Concentrating::7409928
    
   --/| ____________________ End Global User Variables ___________________________________________________________________________________________
  
@@ -71,7 +72,8 @@
   -->ChooseFunction|
   
   --:ChooseFunction|
-   --+Choose Function: |[rbutton]New Cast::NewCast[/rbutton][rbutton]Attack::Attack[/rbutton][rbutton]Dismiss::Remove[/rbutton]
+   --+|[c]Choose Function:[/c]
+   --+|[c][rbutton]New Cast::NewCast[/rbutton][rbutton]Attack::Attack[/rbutton][rbutton]Dismiss::Remove[/rbutton][/c]
    --X|
   
   --:NewCast|
