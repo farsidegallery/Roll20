@@ -40,8 +40,11 @@
 --/|      (damageVariableName), which is a string that can be added to the end of a roll assignment to modify the damage as appropriate   
 --/|
 --/|   far_Check_GLOBAL_MOD_EXISTS|characterid; Category; name; returnstring (0=does not exist, 1=exists)
---/|      Checks to see if the specified Global Mod exists
+--/|      Checks to see if the specified Global Mod exists and returns string variable
 --/|
+--/|   far_Check_GLOBAL_ATTRIB_SAVE_EXISTS|characterid; attributename; returnval (0=does not exist, 1=exists)
+--/|      Checks to see if a Global Save Mod exists in any variation of the attribute provided and returns numeric flag
+--/|   
 --/|   far_PlayEffects|Parameters are : sourcetoken; targettoken; source effect; target effect; line effect; sound effect
 --/|      Used to display vfx in one referencing call
 --/| 
@@ -244,6 +247,34 @@
 	--<|
 	--]|
   --?"[*R:global_attack_active_flag]" -eq "1" -or "[*R:global_attack_active_flag]" -eq "0"|&[%4%];1|&[%4%];0
+  --<|
+
+ --:far_Check_GLOBAL_ATTRIB_SAVE_EXISTS|characterid; attributename; returnval (0=does not exist, 1=exists)
+  --&[%1%]|0
+  --&_Lib5E_Temp|[%2%]
+  
+  --~FullUpperAttrib|string;touppercase;[%2%]
+  --~FullLowerAttrib|string;tolowercase;[%2%]
+  --~FullTitleAttrib|string;totitlecase;[%2%]  
+  --~shortattrib|string;left;3;[%2%]
+  --~UpperShortattrib|string;touppercase;[&shortattrib]
+  --~LowerShortattrib|string;tolowercase;[&shortattrib]
+  --~TitleShortattrib|string;totitlecase;[&shortattrib]
+  
+  --~|array;define;Variations;[&FullUpperAttrib];[&FullLowerAttrib];[&FullTitleAttrib];[&UpperShortattrib];[&LowerShortattrib];[&TitleShortattrib]
+  
+  --%loop|foreach;Variations
+   --Rfind|[*[%1%]:character_id];[&loop];repeating_savemod;global_save_name
+   --?"[*R:global_save_name]" -ne "NoRepeatingAttributeLoaded"|[
+	--=[%3%]|1
+	--<| 
+	--]|
+   --%|
+   
+  --?"[*R:global_save_name]" -eq "NoRepeatingAttributeLoaded"|[
+   --=[%3%]|0
+   -->_Lib5E_THROW_ERROR|Global Save Modifier [%2%] not found on character [*[%1%]:t-name]
+   --]|   
   --<|
  
  --:far_PlayEffects|Parameters are : sourcetoken; targettoken; source effect; target effect; line effect; sound effect
