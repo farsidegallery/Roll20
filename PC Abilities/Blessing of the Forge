@@ -50,9 +50,11 @@
   --&oparen|(
   --&cparen|)
 
-  -->Lib5E_FIND_RESOURCE|[*S:character_id];[&BlessingResource];Blessingname;BlessingAmmo
+  -->far_FindFeat|[*S:character_id];Blessing of the Forge;ForgeFlag
+  --?[$ForgeFlag] -ne 1|>far_FatalError;Feat Not Found;ERROR;Could not find a feat named Blessing of the Forge.
   
-  --?"X[$BlessingAmmo]" -eq "X"|>far_FatalError;Feat or Race Not Found;ERROR;Could not find a resource named [&BlessingResource].
+  -->Lib5E_FIND_RESOURCE|[*S:character_id];[&BlessingResource];Blessingname;BlessingAmmo
+  --?"X[$BlessingAmmo]" -eq "X"|>far_FatalError;Resource Not Found;ERROR;Could not find a resource named [&BlessingResource].
   
   --?[$BlessingAmmo] -le 0|NoBlessing
   --=FinalAmmo|[$BlessingAmmo]-1

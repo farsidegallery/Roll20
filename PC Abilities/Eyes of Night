@@ -32,6 +32,9 @@
   --&oparen|(
   --&cparen|)
 
+  -->far_FindFeat|[*S:character_id];Eyes of Night;NightFlag
+  --?[$NightFlag] -ne 1|>far_FatalError;Feat Not Found;ERROR;Could not find a feat named Eyes of Night.
+  
   --+Choose Function: |[rbutton]Grant Sight::New[/rbutton][rbutton]Dismiss::Remove[/rbutton]
   --X|
   
