@@ -124,7 +124,7 @@
   --:PC| 
    --&saveDice|[&reentryval]
    -->far_Check_GLOBAL_MOD_EXISTS|[*T:character_id]; save; [&damageType]; damageSave
-   -->far_Check_GLOBAL_MOD_EXISTS|[*T:character_id]; save; [&Displayattrib]; attribSaveRoll
+   -->far_Check_GLOBAL_ATTRIB_SAVE_EXISTS|[*T:character_id]; [&attrib]; attribSaveRoll
    --?[&damageSave] -eq 1 -or [&attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "1d20"|&saveDice;2d20kh1
    --?[&damageSave] -eq 1 -or [&attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "2d20kl1"|&saveDice;1d20
    
