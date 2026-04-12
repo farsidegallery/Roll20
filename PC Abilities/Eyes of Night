@@ -1,0 +1,123 @@
+!script{{
+  +++5Elib;snlib;Farsidelib+++
+ 
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+
+  --/|Script Name : Eyes of Night
+  --/|Version     : 1.0
+  --/|Requires SC : ScriptCards Library 5Elib/snlib
+  --/|Author      : Arak Stoneboulder
+  --/|Modified By : Farsidegallery
+  --/|  
+  --/|  Script checks resource availability and prompts if new use or dismiss. Script asks for number of creatures affected, prompts player
+  --/|  to select creatures, stores original sight settings, updates to new sight settings, and deducts resource. Script allows origingal 
+  --/|  sight settings to be restored by the dismiss function.
+  --/|
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+   
+   --/|Enter the resource name for Eyes of Night
+   --&Resource|Eyes of Night[l]
+   
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+
+  --+Choose Function: |[rbutton]Grant Sight::New[/rbutton][rbutton]Dismiss::Remove[/rbutton]
+  --X|
+  
+  --:New|
+   -->Lib5E_FIND_RESOURCE|[*S:character_id];[&Resource];Sensename;EyesAmmo
+   --?[$EyesAmmo] -le 0|NoEyes
+   --=FinalAmmo|[$EyesAmmo]-1
+
+  --/| Determiine how many are getting this ability (using "trust" method for distance from caster)
+  --:FindCompanionCount|
+   --=MaxCount|[*S:wisdom_mod]
+   --?[$MaxCount] -eq 0|=MaxCount;1
+   --~|array;define;Count;1
+      
+   --?[$MaxCount] -gt 1|[
+    --%i|2;[$MaxCount];1
+     --~|array;add;Count;[&i]
+	 --%|
+	--]|
+   
+   --+|[c][b]Select number of companions. Each MUST be within 10ft of you.[/b][/c]
+    --&splvlMsg|
+    --%splvl|foreach;Count
+     --&splvlMsg|+ [rbutton][&splvl]::CompanionIdentity;[&splvl][/rbutton]
+    --%|
+   --+|[c][&splvlMsg][/c]
+   --X|
+  
+  --/| Select the tokens that are getting this ability.
+  --:CompanionIdentity|   
+   --#whisper|
+   --=CompanionCount|[&reentryval]
+   -->far_BuildTargetList|[$CompanionCount.Total]
+   -->far_BuildTargetArray|Companions;[$CompanionCount];TargetString;
+
+   --#emoteText|[*S:t-name] points to each of you and grants you Eyes of the Night!
+   --#title|Eyes of the Night
+   --#leftsub|Duration: 1 hr
+   --#rightsub|Twilight Domain
+
+   --%loop|foreach;Companions
+	-->Eyes|[&loop]
+   --%|  
+
+   --~TargetIDString|array;stringify;Companions;!@!
+   --!a:[*S:character_id]|!NightEyesTargets:[&TargetIDString]
+   --!a:[*S:character_id]|[&EyesAmmo]:[$FinalAmmo]
+   --+|[*S:t-name] can use this ability [$FinalAmmo] more times!
+   --X| End Script
+  
+  --/| ____________________ Procedures_______________________________________________________________________________________
+  
+  --:GetCharID|CharacterName;StringVariableForCharID
+   --~|array;objects:character;CharArr;[%1%]
+   --?[@CharArr(length)] -ne 1|>LogFatalError;Could not find character named [%1%]
+   --&[%2%]|[@CharArr(0)]
+   --<|
+   
+  --:Eyes|
+   --&ThisTarget|[%1%]
+   --&CurrentSight|[*[&ThisTarget]:t-has_bright_light_vision]!@![*[&ThisTarget]:t-has_night_vision]!@![*[&ThisTarget]:t-night_vision_distance]!@![*[&ThisTarget]:t-night_vision_tint]!@![*[&ThisTarget]:t-night_vision_effect]
+   --!a:[*[&ThisTarget]:character_id]|!OldVision:[&CurrentSight]
+   --!t:[&ThisTarget]|has_bright_light_vision:true|has_night_vision:true|night_vision_distance:300|night_vision_tint:transparent|night_vision_effect:Nocturnal
+   --+|[b][*[&ThisTarget]:t-name][/b] can now see in the dark up to 300ft.
+   --+|[br]
+   --<|
+
+  --:NoEyes|
+   --#emoteText|[*S:t-name] tries to to use Eyes of Night, but needs to take a long rest first.
+   --+|[*S:t-name] has no Eyes of Night uses available.
+   --X| DONE
+  
+  --:Remove|
+   --#whisper|
+   --#emoteText|[*S:t-name] removes Eyes of Night!
+   --#title|Eyes of Night
+   --&Saved|[*S:NightEyesTargets]
+   --~|array;fromstring;Companions;!@!;[&Saved]
+   --%loop|foreach;Companions
+    --~newstring|string;split;!@!;[*[&loop]:OldVision]
+	--!t:[&loop]|has_bright_light_vision:[&newstring1]|has_night_vision:[&newstring2]|night_vision_distance:[&newstring3]|night_vision_tint:[&newstring4]|night_vision_effect:[&newstring5]
+	--!a:[*[&loop]:character_id]|!OldVision:**
+	--+|[b][*[&loop]:t-name][/b]'s sight returned to normal.
+	--+|[br]
+	--%|
+   
+   --!a:[*S:character_id]|!NightEyesTargets:**
+   --X| End Script
+}}
