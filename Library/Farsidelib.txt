@@ -129,7 +129,7 @@
    
  --:far_DeductSpellSlot|tokenid;SpellLevel
   --=_Lib5ESlotsExpended|[*[%1%]:lvl[%2%]_slots_expended] - 1
-  --@setattr|_charid [*[%1%]:character_id] _lvl[%2%]_slots_expended|[$_Lib5ESlotsExpended] _silent
+  --!a:[%1%]|lvl[%2%]_slots_expended:[$_Lib5ESlotsExpended]
   --+|[*[%1%]:character_name] has [$_Lib5ESlotsExpended] Level [%2%] Slots Left. 
   --<|
 
