@@ -93,7 +93,7 @@
    --&damageroll|[$damagedice]d6
    
    -->far_FindFeat|[*T:character_id];"Thought Shield";ThoughtFlag
-   -->far_CheckDamageModifiers|[*T:t-id];[&damagetype];damagemod;1;0;0
+   -->far_CheckDamageModifiers|[*T:t-id];[&damageType];damagemod;1;0;0
    --?"[*T:npc]" -ne "1"|PCRoll |NPCRoll
    
   --:PCRoll|

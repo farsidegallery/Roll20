@@ -17,7 +17,7 @@
     
    --&SpellName|Disintegrate
    --&MinimumSpellLevel|6
-   --&damagetype|force
+   --&damageType|force
    
    --&hpBar|1
    --&tempHPbar|4
@@ -86,7 +86,7 @@
   --:ChooseAttackRoll|
    --#targetToken|[&reentryval]
    --&damageroll|[$DamageDice]d6 + 40
-   -->far_CheckDamageModifiers|[*T:t-id];[&damagetype];damagemod;1;0;0
+   -->far_CheckDamageModifiers|[*T:t-id];[&damageType];damagemod;1;0;0
    --?"[*T:npc]" -ne "1"|PCRoll |NPCRoll
    
   --:PCRoll|

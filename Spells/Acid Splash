@@ -17,7 +17,7 @@
     
    --&SpellName|Acid Splash
    --&MinimumSpellLevel|cantrip
-   --&damagetype|acid
+   --&damageType|acid
    
    --&attrib|dexterity
    

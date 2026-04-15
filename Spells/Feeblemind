@@ -16,7 +16,7 @@
    --&SpellName|Feeblemind
    --&MinimumSpellLevel|8
    
-   --&damagetype|psychic
+   --&damageType|psychic
    
    --&hpBar|1
    --&tempHPbar|4

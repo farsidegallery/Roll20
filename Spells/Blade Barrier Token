@@ -18,7 +18,7 @@
   
   --&SpellName|Blade Barrier
   --&MinimumSpellLevel|6
-  --&damagetype|slashing
+  --&damageType|slashing
   
   --&attrib|charisma
   
@@ -46,7 +46,7 @@
   --:TargetInfo|
    --#targettoken|[&reentryval]
    --#emoteText|Blade Barrier attacks [*T:t-name]!
-   -->far_CheckDamageModifiers|[*T:character_id];[&damagetype];damageMod;0;0;0
+   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;0;0;0
    --&DamageDice|6d10
    --#whisper|
    -->CheckSave|
@@ -94,7 +94,7 @@
 	--/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$damage];0;0;1
 	-->far_DamageTokenmod|[*T:t-id];1;4;-[$damage];0;0;1
 	--?"[&damageMod]" -inc "Immune"|[
-	 --+Immune! |[*T:t-name] is [b]IMMUNE[/b] to [&damagetype] damage!
+	 --+Immune! |[*T:t-name] is [b]IMMUNE[/b] to [&damageType] damage!
 	 --]|
 	--]|
 	--=FinalHP|[*T:t-bar[&hpBar]_value]+[*T:t-bar[&tempHPbar]_value]-[$Damage]

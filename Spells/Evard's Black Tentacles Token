@@ -18,7 +18,7 @@
   
   --&SpellName|Evard's Black Tentacles Attack
   --&MinimumSpellLevel|4
-  --&damagetype|bludgeoning
+  --&damageType|bludgeoning
   
   --&hpBar|1
   --&tempHPbar|4
@@ -63,14 +63,14 @@
   --/| ____________________ Procedures_______________________________________________________________________________________
   
   --:Restrained|
-   -->far_CheckDamageModifiers|[*T:character_id];[&damagetype];damageMod;0;0;0
+   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;0;0;0
    --=damage|[&DamageDice] [&damageMod]
    --+Damage: |[*T:character_name] is already restrained and continues to be pummeled. [*T:character_name] takes [$damage] damage.
    --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$damage];0;0;1
    -->far_DamageTokenmod|[*T:t-id];1;4;-[$Damage];0;0;1
    --?"[&damageMod]" -inc "Immune"|[
     --+|[br]
-    --+Immune! |[*T:character_name] is [b]IMMUNE[/b] to [&damagetype] damage!
+    --+Immune! |[*T:character_name] is [b]IMMUNE[/b] to [&damageType] damage!
 	--]|
    --=FinalHP|[*T:t-bar[&hpBar]_value]+[*T:t-bar[&tempHPbar]_value]-[$Damage]
    --?[$FinalHP] -le 0|>Died
@@ -162,7 +162,7 @@
    -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$Damage];0;0;0
    --?"[&damageMod]" -inc "Immune"|[
     --+|[br]
-    --+Immune! |[*T:character_name] is [b]IMMUNE[/b] to [&damagetype] damage!
+    --+Immune! |[*T:character_name] is [b]IMMUNE[/b] to [&damageType] damage!
 	--]|
    -->Output|
   
