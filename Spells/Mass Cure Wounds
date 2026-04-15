@@ -63,15 +63,27 @@
    -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
    -->far_FindFeat|[*S:t-id];Disciple of Life;LifeFlag
    -->far_FindFeat|[*S:t-id];Blessed Healer;HealerFlag
-   --=Targets|6
-   -->far_BuildTargetList|[$Targets.Raw]
-   -->far_BuildTargetArray|Healed;6;[&TargetString]
+   
+   --~|array;define;Count;1;2;3;4;5;6
+   
+   --+|[c][b]Select number of companions.[/b][/c]
+   --+|[c][b]Each MUST be within 30ft of you.[/b][/c]
+    --&splvlMsg|
+    --%splvl|foreach;Count
+     --&splvlMsg|+ [rbutton][&splvl]::CompanionIdentity;[&splvl][/rbutton]
+    --%|
+   --+|[c][&splvlMsg][/c]
+   --X|
+
+  --:CompanionIdentity|
+   --=Count|[&reentryval]
+	 -->far_BuildTargetList|[$Count.Total]
+   -->far_BuildTargetArray|Healed;[$Count];TargetString
    -->FindHopeBeacon|[*S:t-id]
    -->AbilityAssign|[*S:spellcasting_ability]
    --X|
 
-
---:PROCEDURES|
+ --/| ____________________ Procedures_______________________________________________________________________________________
 
   --:FindHopeBeacon|TargetID
    --/|Check Global Setting if Beacon of Hope has a Token Marker
@@ -107,7 +119,7 @@
    --%loop|foreach;Healed
     --=Missing|[*[&loop]:hp^] - [*[&loop]:hp]
     --?[$HPRecovered.Total] -gt [$Missing]|=HealAmount;[$Missing]|=HealAmount;[$HPRecovered.Total]
-	--+|[t border=3 width=100%][tr][td style="width:150px"][c][*[&loop]:character_name][/c][/td][td style="width:100px"][c][$HealAmount][/c][/td][/tr]
+	--+|[t border=3 width=100%][tr][td style="width:150px"][c][*[&loop]:t-name][/c][/td][td style="width:100px"][c][$HealAmount][/c][/td][/tr]
     -->far_PlayEffects|[*S:t-id]; [&loop]; ; burst-holy; ; 
     -->LibSN_APPLY_DAMAGE_OR_HEALING|[&loop];1;[$HealAmount];0
 	--%|
@@ -122,7 +134,7 @@
    --=BlessedHeal|2 + [$SpellLevel]
    --=SelfMissing|[*S:hp^] - [*S:hp]
    --?[$BlessedHeal.Total] -gt [$SelfMissing]|=BlessedHeal;[$SelfMissing] [Blessed Healer]|=BlessedHeal;[$BlessedHeal.Total] [Blessed Healer]
-   --+|[t border=3 width=100%][tr][td style="width:150px"][c][*S:character_name][/c][/td][td style="width:100px"][c][$BlessedHeal][/c][/td][/tr]
+   --+|[t border=3 width=100%][tr][td style="width:150px"][c][*S:t-name] (Blessed Healer)[/c][/td][td style="width:100px"][c][$BlessedHeal][/c][/td][/tr]
    -->LibSN_APPLY_DAMAGE_OR_HEALING|[*S:t-id];1;[$BlessedHeal];0
    --<|
   
