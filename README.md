@@ -12,4 +12,4 @@ or delete if requested.
 All items in this respository are free to use.
 
 
-If you wish to tip or donate (I have been asked several times), please contact me on Discord or by email and I will provide the options. They are always welcome but NEVER required or needed.
+If you wish to tip or donate (I have been asked several times), please contact me on Discord (Farsidegallery) or by email and I will provide the options. They are always welcome but NEVER required or needed.
