@@ -55,7 +55,8 @@
 	 --%|
 	--]|
    
-   --+|[c][b]Select number of companions. Each MUST be within 10ft of you.[/b][/c]
+   --+|[c][b]Select number of companions.[/b][/c]
+   --+|[c][b]Each MUST be within 10ft of you.[/b][/c]
     --&splvlMsg|
     --%splvl|foreach;Count
      --&splvlMsg|+ [rbutton][&splvl]::CompanionIdentity;[&splvl][/rbutton]
