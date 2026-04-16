@@ -62,7 +62,7 @@
   --&perc|%
   
   --#title|[&SpellName]
-  --#emoteText|[*S:character_name] Casts [&SpellName]!
+  --#emoteText|[*S:t-name] Casts [&SpellName]!
   --&TFColor|#FFFFFF
   --&STFColor|#000000
   --&FColor1|#000000
@@ -199,7 +199,7 @@
   --/|PROCEDURES
 
   --:FUMBLE|
-    --+&#x1F613;Ray #[$DisplayCount.Raw] Fumbles! |[*S:character_name] rolls [$AttackDiceBase] to attack [*T:t-name] and something went horribly wrong.
+    --+&#x1F613;Ray #[$DisplayCount.Raw] Fumbles! |[*S:t-name] rolls [$AttackDiceBase] to attack [*T:t-name] and something went horribly wrong.
 	--=Fail|[T#Damage-Spell-Fail]
    --&failText|[$Fail.tableEntryText]
    --?"[&failText]" -inc "[&obrac][&obrac]"|[
@@ -226,7 +226,7 @@
   --^MissileLoop|
 
   --:MISS|
-      --+&#x274C;Ray #[$DisplayCount.Raw] Misses! |[*S:character_name] rolls [$AttackRoll] to attack [*T:t-name] and missed.
+      --+&#x274C;Ray #[$DisplayCount.Raw] Misses! |[*S:t-name] rolls [$AttackRoll] to attack [*T:t-name] and missed.
   --^MissileLoop|
 
   --:HIT| pass Damage string 
@@ -260,7 +260,7 @@
 	--=Damage|[$MissileDamage.Raw] [Hit] + [$MissileDamage.Raw] [Crit] [&HexBlade] [&Hex] [&GlobalDamage] [&damageMod]
 	--+|[br]
 	--]|
-   --+&#x2757;&#x2757;&#x2757;Crits!|[*S:character_name] rolls [$AttackRoll] to attack and CRITS [*T:t-name] for [$Damage] [&DamageType] damage.
+   --+&#x2757;&#x2757;&#x2757;Crits!|[*S:t-name] rolls [$AttackRoll] to attack and CRITS [*T:t-name] for [$Damage] [&DamageType] damage.
    -->ApplyDamage|
    --^MissileLoop|
 
@@ -273,10 +273,10 @@
     --?[$CurrentHP.Raw] -gt [$Damage.Raw]|ALIVE|DEAD
 
     --:ALIVE|
-      --/+|[*T:character_name] is still alive and kicking!
+      --/+|[*T:t-name] is still alive and kicking!
       --<|
     --:DEAD|
-      --+Congrats|You managed to kill [*T:character_name]
+      --+Congrats|You managed to kill [*T:t-name]
       -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DeathMarker]
       --?[$HexBladeFlag] -eq 1 -and [&HexBladeMarkerFlag] -eq 1|>HexHeal     
       --<|
