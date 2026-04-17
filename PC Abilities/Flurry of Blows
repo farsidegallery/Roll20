@@ -2,7 +2,7 @@
   +++5Elib;snlib;Farsidelib+++
   
   --#sourceToken|@{selected|token_id}
-  --#reentrant|@{selected|character_id}
+  --#reentrant|My Cool Script @{selected|character_id}
   --#whisper|self,gm
 
  --/|Script Name : Flurry of Blows
@@ -43,6 +43,13 @@
    --/|Put the name of your check if custom crit damage will be applied.
    --&CustomCritCheck|far_CustomCritCheck
    
+   --/|Enter name for Reaction Used Character.
+   --&ReactName|Reaction Used
+   
+   --&link1|https://files.d20.io/images/476457994/FdbUAgAk_G-
+   --&link2|-2d1MaQ9g4w/med.webm?1771472165
+   --&Reactlink|[&link1][&link2]
+      
    --/|Define your custom crit damage dice roll modifier, roll type, roll modifier, and extra damage modifier
    --/|ex 1: 2d8+8 is -1 dicemodifier (making 2d8), d dicerolltype, blank rollmodifier, and with +8 damagemodifier
    --/|ex 2: 3d8 keep highest one is blank dicemodifier, with d dicerolltype, kh1 for rollmodifier, and blank for damagemodifier
@@ -106,7 +113,7 @@
    --#targettoken|[&reentryval]
    --&Target[$DisplayCount]|[*T:t-name]
    --?[*T:npc] -eq 1|=TargetAC;[*T:npc_ac]|=TargetAC;[*T:ac]
-   -->far_CheckDamageModifiers|[*T:character_id];[&damageType1];damageMod;1;0;0
+   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;1;0;0
    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexMarker];HexMarkerFlag;HexMarkerCount
    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];HexBladeMarkerFlag;HexBladeMarkerCount
    -->Lib5E_FIND_RESOURCE|[*S:character_id];Clockwork Amulet;Amuletname;AmuletAmmo
@@ -117,66 +124,64 @@
    --X|
 
   --:MeleeAttack|
-   --&AttackDice|[&reentryval]
-   -->CheckFlags|
-   
-  --:CheckFlags|
-   -->far_FindFeat|[*S:t-id];Open Hand Technique;OpenHandFlag
-   -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&InspirationMarker];InspiredFlag;InspiredCount
-   -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&BardicMarker];BardicFlag;BardicCount
-   -->far_FIND_ACTIVE_GLOBAL_ATTACK_MODS|[*S:character_id];GlobalAttack
-   -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
-   -->far_FindFeat|[*S:character_id];"Hexblade's Curse";HexBladeFlag
-   -->Prompts|
-   
-  --:Prompts|   
-   --?[$ClockFlag] -ne 1 -and [&InspiredFlag] -ne 0 |>far_Inspiration;[*S:character_id];[&InspirationMarker];[&AttackDice];AttackDice |=InspireOutFlag[$DisplayCount];0
-   
-   --=AttackDiceBase|[&AttackDice]
-   --+Rolling [&AttackDice]: |[$AttackDiceBase]
-   --+|[br]
-   --=AttackRollMod|[$AttackDiceBase] + [*S:dexterity_mod] [DEX Mod] + [*S:pb] [Proficiency Bonus]
-   
-   --?[&BardicFlag] -eq 1|>far_Bardic;[*S:t-id];[&BardicMarker];[$Scriptcheck];[$AttackDiceBase];[$AttackRollMod];BardRoll
-   --?[&BaneMarkerFlag] -eq 1|&Baneroll;+ - 1d4 [Bane] |&Baneroll;
-   
-   --=AttackRoll|[$AttackDiceBase] + [*S:dexterity_mod] [DEX Mod] + [*S:pb] [Proficiency Bonus] [&GlobalAttack] [&Baneroll] [&BardRoll]
-   
-   --+Total Attack Roll |[b]#[$Shot][/b]: [$AttackRoll]
-   --+|[br]
+    --&AttackDice|[&reentryval]
+    -->far_FindFeat|[*S:t-id];Open Hand Technique;OpenHandFlag
+    -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&InspirationMarker];InspiredFlag;InspiredCount
+    -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&BardicMarker];BardicFlag;BardicCount
+    -->far_FIND_ACTIVE_GLOBAL_ATTACK_MODS|[*S:character_id];GlobalAttack
+    -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
+    -->far_FindFeat|[*S:character_id];"Hexblade's Curse";HexBladeFlag
+ 
+    --?"X[$ClockFlag]" -ne "X1" -and "X[&InspiredFlag]" -ne "X0" |>far_Inspiration;[*S:t-id];[&InspirationMarker];[&AttackDice];AttackDice
+    --c[&AttackDice]|2d20kh1:&DisplayDice;Advantage|1d20:&DisplayDice;1d20|2d20kl1:&DisplayDice;Disadvantage
 
-   --?[$AttackDiceBase] -eq 20|>Crit
-   --?[$AttackDiceBase] -eq 1|>Fumble
-   --?[$AttackRoll] -ge [$TargetAC.Total] -and [$AttackDiceBase] -nei 20|>Hit
-   --?[$AttackRoll] -lt [$TargetAC.Total] -and [$AttackDiceBase] -nei 1|>Miss
-   --X|
+    --=AttackDiceBase|[&AttackDice]
+    --+Rolling [&DisplayDice]: |[$AttackDiceBase]
+    --+|[br]
+    --=AttackRollMod|[$AttackDiceBase] + [*S:dexterity_mod] [DEX Mod] + [*S:pb] [Proficiency Bonus]
+   
+    --?[&BardicFlag] -eq 1|>far_Bardic;[*S:t-id];[&BardicMarker];[$Scriptcheck];[$AttackDiceBase];[$AttackRollMod];BardRoll
+    --?[&BaneMarkerFlag] -eq 1|&Baneroll;+ - 1d4 [Bane] |&Baneroll;
+   
+    --=AttackRoll|[$AttackDiceBase] + [*S:dexterity_mod] [DEX Mod] + [*S:pb] [Proficiency Bonus] [&GlobalAttack] [&Baneroll] [&BardRoll]
+    --&AttackOutTitle[$DisplayCount]|Attack Roll
+    --&AttackOutText[$DisplayCount]|You rolled a [$AttackRoll].
+   
+    --+Total Attack Roll: |[$AttackRoll]
+    --+|[br]
+
+    --?[$AttackDiceBase] -eq 20|>Crit
+    --?[$AttackDiceBase] -eq 1|>Fumble
+    --?[$AttackRoll] -ge [$TargetAC.Total] -and [$AttackDiceBase] -nei 20|>Hit
+    --?[$AttackRoll] -lt [$TargetAC.Total] -and [$AttackDiceBase] -nei 1|>Miss
+    --X|
 
   --:Final| 
    --#whisper|
    --%LoopCounter|1;2;1
     --+Target [&LoopCounter]: | Attacking [b][&Target[&LoopCounter]][/b]!
 	--?[$ClockOutFlag[&LoopCounter]] -eq 1|[
-	 --+[&ClockOutTitle[&LoopCounter]]: |[&ClockOutText[&LoopCounter]]
+     --+[&ClockOutTitle[&LoopCounter]]: |[&ClockOutText[&LoopCounter]]
+     --+|[br]
 	 --]|
-	--?[$InspireOutFlag[&LoopCounter]] -eq 1|[
-	 --+[&InspireOutTitle[&LoopCounter]]: |[&InspireOutText[&LoopCounter]]
-	 --]|
-	--?[$BardicOutFlag[&LoopCounter]] -eq 1|[
-	 --+[&BardicOutTitle[&LoopCounter]]: |[&BardicOutText[&LoopCounter]]
-	 --]|
-	--+[&AttackOutTitle[&LoopCounter]]: |[&AttackOutText[&LoopCounter]]
-	--+[&ResultOutTitle[&LoopCounter]]: |[&ResultOutText[&LoopCounter]]
-	--?"[&ResultOutTitle[&LoopCounter]]" -inc "Fumble"|>FailTable	
+    --+[&AttackOutTitle[&LoopCounter]]: |[&AttackOutText[&LoopCounter]]
+	--+|[br]
+    --+[&ResultOutTitle[&LoopCounter]]: |[&ResultOutText[&LoopCounter]]
+    --?"[&ResultOutTitle[&LoopCounter]]" -inc "Fumble"|>FailTable	
 	--?[$DeadOutFlag[&LoopCounter]] -eq 1|[
-	 --+[&DeadOutTitle[&LoopCounter]]: |[&DeadOutText[&LoopCounter]]
+	 --+|[br]
+     --+[&DeadOutTitle[&LoopCounter]]: |[&DeadOutText[&LoopCounter]]
 	 --]|
 	--?[$OpenOutFlag[&LoopCounter]] -eq 1|[
-	 --+[&OpenOutTitle[&LoopCounter]]: |[&OpenOutText[&LoopCounter]]
+	 --+|[br]
+     --+[&OpenOutTitle[&LoopCounter]]: |[&OpenOutText[&LoopCounter]]
 	 --]|
 	--?[$StunOutFlag[&LoopCounter]] -eq 1|[
-	 --+[&StunOutTitle[&LoopCounter]]: |[&StunOutText[&LoopCounter]]
+	 --+|[br]
+     --+[&StunOutTitle[&LoopCounter]]: |[&StunOutText[&LoopCounter]]
 	 --]|
 	--+[br]|
+    --+[br]|
 	--%|
    --=FinalKi|[$KiAmmo] - [$UsedKi]
    --!a:[*S:character_id]|[&KiAmmo]:[$FinalKi]
@@ -205,61 +210,6 @@
    --&ClockOutTitle[$DisplayCount]|Clockwork Amulet
    --&ClockOutText[$DisplayCount]|[*S:t-name] uses the Clockwork Amulet to roll a 10.
    --+Clockwork Amulet: |[*S:t-name] uses the Clockwork Amulet to roll a 10.
-   -->CheckFlags|
-
-  --:Inspiration|
-   --?[*S:inspiration] -nei 1 -or "[&AttackRoll]" -nei "2d20kh1"|[
-    --+Do you want to use your inspiration?|[rbutton]Yes::InspirationRoll[/rbutton][rbutton]No::AnswerNo;[/rbutton]
-    --X|
-    --]|
-	--+Inspiration: |You cannot use Inspiration on this attack.
-	--+[br]|
-   --<|
-
-  --:InspirationRoll|
-   --?[&AttackDice] -inc "1d20"|&AttackDice; 2d20kh1
-   --?[&AttackDice] -inc "2d20kl1"|&AttackDice; 1d20
-   --!a:[*S:character_id]|inspiration:0
-   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&InspirationMarker]
-   --=InspireOutFlag[$DisplayCount]|1
-   --&InspireOutTitle[$DisplayCount]|Inspiration
-   --&InspireOutText[$DisplayCount]|[*S:t-name] uses Inspiration!
-   --<|
-
-  --:Bardic|
-   --?[$Scriptcheck] -nei 1|&BardPath;ChooseBard |&BardPath;ScriptBardEntry
-   --+AttackRoll|You rolled a [$AttackRoll.Base] for attack for a total of [$AttackRoll].  
-   --+Do you want to use Bardic Inspiration?|[rbutton]Yes::[&BardPath][/rbutton][rbutton]No::AnswerNo[/rbutton]
-   --X|
-   
-  --:ChooseBard| 
-   --#whisper|self,gm
-   --+Bard|[rbutton]Click this button to select your Bard.::BardEntry;[&TB]target|token_id}[/rbutton]
-   --X|
-   
-  --:ScriptBardEntry| 
-    --&Bardtoken|[*S:InspireByTID]
-    -->FindBardLevel|[&Bardtoken]
-   --<|
-
-  --:BardEntry|
-   --&Bardtoken|[&reentryval]
-   -->FindBardLevel|[&Bardtoken]
-   --<|
-
-  --:FindBardLevel|BardTID
-   -->Lib5E_FIND_CLASS_LEVEL|[*[%1%]:character_id];Bard;BardLevel
-   --?[&BardLevel] -ge 15 |=BardicRoll;1d12
-   --?[&BardLevel] -lt 15 |=BardicRoll;1d10
-   --?[&BardLevel] -lt 10 |=BardicRoll;1d8
-   --?[&BardLevel] -lt 5 |=BardicRoll;1d6
-   --=AttackRoll|[$AttackRoll]+[$BardicRoll] [Bardic Inspiration]
-   --=BardicOutFlag[$DisplayCount]|1
-   --&BardicOutTitle[$DisplayCount]|Bardic Inspiration
-   --&BardicOutText[$DisplayCount]|You rolled [$BardicRoll] for Bardic Inspiration for a total attack roll of [$AttackRoll].
-   --+Bardic Inspiration: |You rolled [$BardicRoll] for Bardic Inspiration for a total attack roll of [$AttackRoll].
-   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&BardicMarker]
-   --!a:[*S:character_id]|InspireByName: ** |InspireByTID: **
    --<|
 
   --:AnswerNo|
@@ -267,9 +217,6 @@
 
   --:Hit|
    --#whisper|self,gm
-   --+Attack Roll: |You rolled a [$AttackRoll].
-   --&AttackOutTitle[$DisplayCount]|Attack Roll
-   --&AttackOutText[$DisplayCount]|You rolled a [$AttackRoll].
    -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0
    --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex;+ + 1d6 [Hex] |&Hex;
    --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade;
@@ -288,9 +235,6 @@
 
   --:Crit|
    --#whisper|self,gm
-   --+Attack Roll: |You rolled a [$AttackRoll].
-   --&AttackOutTitle[$DisplayCount]|Attack Roll
-   --&AttackOutText[$DisplayCount]|You rolled a [$AttackRoll].
    -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;1   
    --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex;+ + 1d6 [Hex] |&Hex;
    --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade;
@@ -301,7 +245,7 @@
     --=Damage|1d[&DamageDice] [Hit] + [&CritDamage] [Crit] + [*S:dexterity_mod] [DEX Mod] [&HexBlade] [&Hex] [&GlobalDamage][&damageMod]
 	--+|[br]
 	--]|[
-	--=Damage|1d[&DamageDice] [Hit] + 1d[&DamageDice] [Crit][&damageMod] + [*S:dexterity_mod] [DEX Mod]  [&HexBlade] [&Hex] [&GlobalDamage][&damageMod]
+	--=Damage|1d[&DamageDice] [Hit] + 1d[&DamageDice] [Crit] + [*S:dexterity_mod] [DEX Mod]  [&HexBlade] [&Hex] [&GlobalDamage][&damageMod]
 	--+|[br]
 	--]|
    --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$Damage];0;0;1
@@ -318,9 +262,6 @@
 
   --:Miss|
    --#whisper|self,gm
-   --+Attack Roll: |You rolled a [$AttackRoll].
-   --&AttackOutTitle[$DisplayCount]|Attack Roll
-   --&AttackOutText[$DisplayCount]|You rolled a [$AttackRoll].
    --+Missed! |So close but [*T:t-name] dodged your attack. Better luck next time (if there is a next time).
    --&ResultOutTitle[$DisplayCount]|Missed!
    --&ResultOutText[$DisplayCount]|So close but [*T:t-name] dodged your attack. Better luck next time (if there is a next time).
@@ -334,6 +275,7 @@
   --:Fumble|
    --#whisper|self,gm
    --+Attack Roll: |You rolled a NAT [$AttackRoll.Base].
+   --+|[br]
    --&AttackOutTitle[$DisplayCount]|Attack Roll
    --&AttackOutText[$DisplayCount]|You rolled a NAT [$AttackRoll.Base].
    --+Fumble! |The attack went horribly wrong!
@@ -383,6 +325,7 @@
 
   --:OpenHand|
    --=OpenOutFlag[$DisplayCount]|1
+   --+|[br]
    --+|[c]Do you want to knock it down, back, or remove its reaction?[/c]
    --+|[c][rbutton]Down::Down[/rbutton][rbutton]Back::Back[/rbutton][rbutton]Remove Reaction::Reaction[/rbutton][/c]
    --X|
@@ -470,18 +413,21 @@
    --+|[*T:t-name] has no reaction until the start of [*S:t-name]'s next turn.
    --&OpenOutTitle[$DisplayCount]|Reaction Removed!
    --&OpenOutText[$DisplayCount]|[*T:t-name] has no reaction until the start of [*S:t-name]'s next turn.
-   --*Reaction Used: |Put out the reaction used token and carry underneath.
+   --!ot:ReactTID|name:"[&ReactName]"|left:[*T:t-left]|top:[*T:t-top]|width:[=[*T:t-width]*3]|height:[=[*T:t-height]*3]|imgsrc:"[&Reactlink]"|bar1_value:1|represents:[&ReactID]|showname:0
+	--z:graphic:[&ReactTID]|toback
+	--@CARRY_TOKENS_CARRY_BELOW|[*T:t-id] [&ReactTID]
    --<|
 
   --:Stunning|
+   --+|[br]
    --+Stunning Strike: |Do you want to spend a Ki Point to attempt to stun your target?
-   --+|[rbutton]Yes::StrikeCond[/rbutton][rbutton]No::AnswerNo[/rbutton]
+   --+|[c][rbutton]Yes::StrikeCond[/rbutton][rbutton]No::AnswerNo[/rbutton][/c]
    --X|
 
   --:StrikeCond|   
    --=StunOutFlag[$DisplayCount]|1
-   --+Saving Throw: |Ask the DM if the target is making a saving throw at advantage, disadvantage, or standard.
-   --+|[rbutton]Advantage::StrikeSave;2d20kh1[/rbutton][rbutton]Standard::StrikeSave;1d20[/rbutton][rbutton]Disadvantage::StrikeSave;2d20kl1[/rbutton]
+   --+Saving Throw: |Ask the DM if the target is making a saving throw at advantage, normal, or disadvantage.
+   --+|[c][rbutton]Advantage::StrikeSave;2d20kh1[/rbutton][rbutton]Normal::StrikeSave;1d20[/rbutton][rbutton]Disadvantage::StrikeSave;2d20kl1[/rbutton][/c]
    --X|
 
   --:StrikeSave|
