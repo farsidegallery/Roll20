@@ -291,9 +291,9 @@
   --<|
   
  --:far_Inspiration|token-id;tokenmarker;attackstring;attackstringreturn
-  --?"[*S:inspiration]" -nei "1" -or "[%3%]" -nei "2d20kh1"|[
+  --?"[%3%]" -nei "2d20kh1"|[
    --+|[c][b]Do you want to use your inspiration?[/b][/c]
-   --+|[rbutton]Yes::far_InspirationRoll[/rbutton]  [rbutton]No::far_AnswerNo[/rbutton]
+   --+|[c][rbutton]Yes::far_InspirationRoll[/rbutton]  [rbutton]No::far_AnswerNo[/rbutton][/c]
    --X|
    --]|
   --<|
@@ -302,7 +302,7 @@
   --?"[%3%]" -inc "1d20"|&[%4%];2d20kh1
   --?"[%3%]" -inc "2d20kl1"|&[%4%];1d20
   --!a:[*[%1%]:character_id]|inspiration:0
-  -->LibSN_REMOVE_STATUS_MARKER|[%1%];[%2%]
+  -->LibSN_REMOVE_STATUS_MARKER|[%1%];[&InspirationMarker]
   --<|
   
  --:far_AnswerNo|
