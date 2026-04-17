@@ -169,7 +169,7 @@
 	--&DamageResistNote|
 	--#whisper|
 	-->far_PlayEffects|[*S:t-id];[&ThisTarget];none;burst-smoke;beam-magic	
-	--?[&InspiredFlag] -ne 0 |>far_Inspiration;[*S:character_id];[&InspirationMarker];[&AttackDice];AttackDice
+	--?[&InspiredFlag] -ne 0 |>far_Inspiration;[*S:t-id];[&InspirationMarker];[&AttackDice];AttackDice
    
     --#whisper|
     --=AttackDiceBase|[&AttackDice]

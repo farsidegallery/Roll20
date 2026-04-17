@@ -115,7 +115,7 @@
    
   --:AttackType|
    --&AttackDice|[&reentryval]
-   --?[&InspiredFlag] -ne 0 |>far_Inspiration;[*S:character_id];[&InspirationMarker];[&AttackDice];AttackDice
+   --?[&InspiredFlag] -ne 0 |>far_Inspiration;[*S:t-id];[&InspirationMarker];[&AttackDice];AttackDice
    
    --=AttackDiceBase|[&AttackDice]
    --+Rolling [&AttackDice]: |[$AttackDiceBase]
