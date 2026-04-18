@@ -209,15 +209,19 @@
 --&Weight|[*R:itemweight]
 --&Resource|[*R:useasresource]
 --&ItemProp|[*R:itemproperties] 
-  --&ItemModi|[*R:itemmodifiers] 
-  --&ItemDescr|[*R:itemcontent]
-  --&hasatk|[*R:hasattack]
+--&ItemModi|[*R:itemmodifiers] 
+--&ItemDescr|[*R:itemcontent]
+--&ItemDisplayDescr|[*R:itemcontent]
+ --?[&ItemDisplayDescr] -inc !!|[
+  --~ItemDisplayDescr|string;after;!!;[&ItemDisplayDescr]
+  --]|
+--&hasatk|[*R:hasattack]
   
 --:Itemcardreturn|
 
 --?[&View] -eq 1|[
   --+Item Properties:|[&ItemProp] 
-  --+Item Description:|[&ItemDescr]
+  --+Item Description:|[&ItemDisplayDescr]
   --^Enddesc|
 --]|
 	--#oddRowBackground|#733a1e
@@ -229,7 +233,7 @@
   --+Item Properties:|[&ItemProp] 
   --+Item Modifiers:|[br][&ItemModi(replace,Item Type:,)] 
   --?"[&ItemDescr(length)]" -gt "15"|[
-  --+Item Description:|[&ItemDescr]
+  --+Item Description:|[&ItemDisplayDescr]
   --]|
 --X|
 
@@ -257,7 +261,7 @@
 --&ItemDescr|[*R:itemcontent]
 --&hasatk|[*R:hasattack]
 --?"[&ItemDescr]" -inc !!|[
---?[*R:itemcount] -lt [&Amount]|Nostock
+ --?[*R:itemcount] -lt [&Amount]|Nostock
 --]|
 -->reselect|
 --#sourcetoken|[&STokenID]
@@ -301,6 +305,12 @@
 --!a:[&ShopID]|![*R>itemcount]:-=[&Amount]
 --&ItemDescr|[&ItemDescr(replace,!!,)]
 --]|
+
+--=StockRemaining|[*R:itemcount]-[&Amount]
+--?[$StockRemaining] -le 0|[
+ --!a:[&ShopID]|![*R>equipped]:0
+ --]|
+
 --?"[&ItemDescr]" -inc "noinvt"|[
 --=Itemcostd|[$Itemcost]
 --e[&Shopname]|[*S:character_name] paid [$Itemcostd.Text] [&Coinused] for [&Amount] [&name].
