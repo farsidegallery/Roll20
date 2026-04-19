@@ -118,9 +118,9 @@
    --:RangeLoop|
    --:/|TOKEN MUST BE ON OBJECTS OR GMLAYER AND TEMPLATE MUST OVERLAP AoE
    --?[*[&tokenid]:t-layer] -ne objects -and [*[&tokenid]:t-layer] -ne gmlayer|NextToken
-   --?[&tokenid] -eq [&CloudTID]|NextToken   
+   --?[&tokenid] -eq [&NewTID]|NextToken   
    --?"X[*[&tokenid]:race]" -eq "X" -and "[*[&tokenid]:npc]" -ninc "1"|NextToken
-   -->LibSN_CHECK_TOKEN_OVERLAP|[&CloudTID];[&tokenid];OLap
+   -->LibSN_CHECK_TOKEN_OVERLAP|[&NewTID];[&tokenid];OLap
    --?[&OLap] -eq 0|NextToken
    
    --/|ADD TO THE "inRange" ARRAY
