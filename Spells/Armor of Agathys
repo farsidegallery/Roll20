@@ -78,7 +78,7 @@
    --#whisper|
    --#targettoken|[&reentryval]
    --#emoteText|[*S:t-name] attacks [*T:t-name]!
-   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;1;0;0
+   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;0;0;0
    --=Damage|[*S:TotalPoints][&damageMod]
    --+Retaliation: |Armor of Agathys hits [*T:t-name] in response for [$Damage] points of [&damageType] damage.
    --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$Damage];0;0;1

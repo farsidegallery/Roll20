@@ -76,7 +76,7 @@
   --:ChooseAttackRoll|
    --#targetToken|[&reentryval]
    --#emoteText|[*S:t-name] attacks [*T:t-name] with [&SpellName]!
-   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;1;0;0
+   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;0;0;0
    --?"[*T:npc]" -ne "1"|PCRoll |NPCRoll
    
   --:PCRoll|
@@ -126,7 +126,8 @@
    -->far_FIND_ACTIVE_GLOBAL_SKILL_MODS|[*T:character_id];GlobalSkill
    
    --=InitSave|[&saveDice]
-   --+Rolling [&saveDice]: |[$InitSave]
+   --c[&saveDice]|2d20kh1:&DisplayDice;Advantage|1d20:&DisplayDice;1d20|2d20kl1:&DisplayDice;Disadvantage
+   --+Rolling [&DisplayDice]: |[$InitSave]
    --+|[br]
    --?[$InitSave.Base] -eq 20|>Crit
    

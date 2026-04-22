@@ -75,7 +75,7 @@
    
    --#targetToken|[&reentryval]
    --#emotetext|[*S:t-name] casts [&SpellName] on [*T:t-name]!
-   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;1;0;0
+   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;0;0;0
    --?"[*T:npc]" -ne "1"|PCRoll |NPCRoll
    
   --:PCRoll|
@@ -125,7 +125,8 @@
    -->far_FIND_ACTIVE_GLOBAL_SKILL_MODS|[*T:character_id];GlobalSkill
    
    --=InitSave|[&saveDice]
-   --+Rolling [&saveDice]: |[$InitSave]
+   --c[&saveDice]|2d20kh1:&DisplayDice;Advantage|1d20:&DisplayDice;1d20|2d20kl1:&DisplayDice;Disadvantage
+   --+Rolling [&DisplayDice]: |[$InitSave]
    --+|[br]
    --?[$InitSave.Base] -eq 20|>Crit
    
@@ -139,8 +140,7 @@
    --?[$Save] -ge [$DC]|>Pass |>Fail
   
   --:Crit|
-   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];DmgMod;1;0;0
-   -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0   
+   -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;1 
    --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex;+ + 1d6 [Hex] |&Hex;
    --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade;
    --=Damage|[&DamageDice] [&HexBlade] [&Hex] [&GlobalDamage] [&damageMod]
@@ -156,7 +156,6 @@
    -->Output|
   
   --:Pass|
-   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];DmgMod;1;0;0
    -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0   
    --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex;+ + 1d6 [Hex] |&Hex;
    --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade;
@@ -173,7 +172,6 @@
    -->Output|
    
   --:Fail|
-   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];DmgMod;1;0;0
    -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0  
    --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex;+ + 1d6 [Hex] |&Hex;
    --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade;

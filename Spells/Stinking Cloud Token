@@ -62,7 +62,7 @@
   --:TargetInfo|
    --#targettoken|[&reentryval]
    --#emoteText|[*T:character_name] starts their turn inside the Stinking Cloud!
-   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;1;0;0
+   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;0;0;0
    --#whisper|
    -->SaveLoop|
    
@@ -70,7 +70,6 @@
    
   --:SaveLoop|
    --#whisper|
-   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;1;0;0
    --?"[&damageMod]" -inc "Immune"|[
 	--+Immune! |[*T:t-name] is [b]IMMUNE[/b] to poison and unaffected by Stinking Cloud!
 	-->Output|
@@ -124,7 +123,8 @@
    -->far_FIND_ACTIVE_GLOBAL_SKILL_MODS|[*T:character_id];GlobalSkill
    
    --=InitSave|[&saveDice]
-   --+Rolling [&saveDice]: |[$InitSave]
+   --c[&saveDice]|2d20kh1:&DisplayDice;Advantage|1d20:&DisplayDice;1d20|2d20kl1:&DisplayDice;Disadvantage
+   --+Rolling [&DisplayDice]: |[$InitSave]
    --+|[br]
    --?[$InitSave.Base] -eq 20|>Crit
    

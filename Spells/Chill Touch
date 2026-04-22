@@ -92,6 +92,7 @@
    --?[*T:npc] -eq 1|=TargetAC;[*T:npc_ac]|=TargetAC;[*T:ac]
    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexMarker];HexMarkerFlag;HexMarkerCount
    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];HexBladeMarkerFlag;HexBladeMarkerCount
+   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;0;0;0
    
    --+|[c]Choose Attack Type:[/c]
    --+|[c][rbutton]Advantage::AttackType;2d20kh1[/rbutton][rbutton]Normal::AttackType;1d20[/rbutton][rbutton]Disadvantage::AttackType;2d20kl1[/rbutton][/c]
@@ -100,9 +101,10 @@
   --:AttackType|
    --&AttackDice|[&reentryval]
    --?[&InspiredFlag] -ne 0 |>far_Inspiration;[*S:t-id];[&InspirationMarker];[&AttackDice];AttackDice
-   
+   --c[&AttackDice]|2d20kh1:&DisplayDice;Advantage|1d20:&DisplayDice;1d20|2d20kl1:&DisplayDice;Disadvantage
+
    --=AttackDiceBase|[&AttackDice]
-   --+Rolling [&AttackDice]: |[$AttackDiceBase]
+   --+Rolling [&DisplayDice]: |[$AttackDiceBase]
    --+|[br]
    --=AttackRollMod|[$AttackDiceBase] + [*S:spell_attack_bonus] [Spell Attack Bonus]
    
@@ -215,7 +217,6 @@
    --?[*S:level] -lt 17 -and [*S:level] -ge 11 |&DamageDice;3
    --?[*S:level] -lt 11 -and [*S:level] -ge 5 |&DamageDice;2
    --?[*S:level] -lt 5 |&DamageDice;1
-   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod
    --<|
 
   --:Output|

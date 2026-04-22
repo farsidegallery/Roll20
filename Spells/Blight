@@ -84,7 +84,7 @@
   --:ActionSpell|
    --=damagedice|[$SpellLevel]+4
    --&damageroll|[$damagedice]d8
-   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;1;0;0
+   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;0;0;0
    --?"[*T:npc]" -ne "1"|PCRoll |NPCRoll
    
   --:PCRoll|
@@ -109,7 +109,8 @@
    --?"[*T:npc_type]" -inc "plant"|&saveDice;2d20kl1
    --?[*T:npc] -eq 1 -and [*T:npc_[&shortattrib]_save_flag] -gt 0|&Save;npc_[&shortattrib]_save |&Save;[&attrib]_mod
    --=InitSave|[&saveDice]
-   --+Rolling [&saveDice]: |[$InitSave]
+   --c[&saveDice]|2d20kh1:&DisplayDice;Advantage|1d20:&DisplayDice;1d20|2d20kl1:&DisplayDice;Disadvantage
+   --+Rolling [&DisplayDice]: |[$InitSave]
    --+|[br]
    --?[$InitSave.Base] -eq 20|>Crit
    --=TargetSave|[$InitSave] + [*T:[&attrib]_save_bonus] [&obrac][&Displayattrib][&cbrac]
@@ -134,7 +135,8 @@
    -->far_FIND_ACTIVE_GLOBAL_SKILL_MODS|[*T:character_id];GlobalSkill
    
    --=InitSave|[&saveDice]
-   --+Rolling [&saveDice]: |[$InitSave]
+   --c[&saveDice]|2d20kh1:&DisplayDice;Advantage|1d20:&DisplayDice;1d20|2d20kl1:&DisplayDice;Disadvantage
+   --+Rolling [&DisplayDice]: |[$InitSave]
    --+|[br]
    --?[$InitSave.Base] -eq 20|>Crit
    

@@ -191,7 +191,7 @@
     --&GlobalSave|
     --&GlobalSkill|
     
-	-->far_CheckDamageModifiers|[*[&loop]:character_id];[&damageType];damageMod;1;0;0
+	-->far_CheckDamageModifiers|[*[&loop]:character_id];[&damageType];damageMod;0;0;0
 	
     --&saveDice|1d20
    

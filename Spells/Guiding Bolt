@@ -95,7 +95,7 @@
    -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
    -->far_FindFeat|[*S:character_id];"Hexblade's Curse";HexBladeFlag
    --?[*T:npc] -eq 1|=TargetAC;[*T:npc_ac]|=TargetAC;[*T:ac]
-   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;1;0;0
+   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;0;0;0
    
    --=TargetHP|[*T:t-bar1_value]
    --?[*T:npc] -eq 1|=TargetAC;[*T:npc_ac]|=TargetAC;[*T:ac]
@@ -109,9 +109,10 @@
   --:AttackType|
    --&AttackDice|[&reentryval]
    --?[&InspiredFlag] -ne 0 |>far_Inspiration;[*S:t-id];[&InspirationMarker];[&AttackDice];AttackDice
-   
+   --c[&AttackDice]|2d20kh1:&DisplayDice;Advantage|1d20:&DisplayDice;1d20|2d20kl1:&DisplayDice;Disadvantage
+
    --=AttackDiceBase|[&AttackDice]
-   --+Rolling [&AttackDice]: |[$AttackDiceBase]
+   --+Rolling [&DisplayDice]: |[$AttackDiceBase]
    --+|[br]
    --=AttackRollMod|[$AttackDiceBase] + [*S:spell_attack_bonus] [Spell Attack Bonus]
    

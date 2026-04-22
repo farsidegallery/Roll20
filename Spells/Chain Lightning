@@ -131,7 +131,7 @@
 	  --&FontColor|990000
 	  --&MidDamage|[$SpellDamage]
 	 --]|  
-	-->far_CheckDamageModifiers|[&loop];[&damageType];DamageMod;1;0;0
+	-->far_CheckDamageModifiers|[&loop];[&damageType];DamageMod;0;0;0
 	-->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0   
     --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*[&loop]:t-id]"|&Hex;+ + 1d6 [Hex] |&Hex;
     --?"X[&HexBladeMarkerFlag]" -eq 1 -and "X[*S:CurseTarget]" -eq "X[*[&loop]:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade;

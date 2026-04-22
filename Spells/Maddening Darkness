@@ -230,7 +230,7 @@
    
     --=TargetSave|[&saveDice] + [*[&loop]:[&attrib]_save_bonus] [&obrac][&Displayattrib][&cbrac] [&GlobalSave] [&GlobalSkill] [&Baneroll]
 		
-	-->far_CheckDamageModifiers|[*[&loop]:character_id];[&damageType];damageMod;1;0;0
+	-->far_CheckDamageModifiers|[*[&loop]:character_id];[&damageType];damageMod;0;0;0
 	-->far_FindFeat|[*[&loop]:character_id];"Thought Shield";ThoughtFlag
 	-->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0
 	

@@ -83,7 +83,7 @@
    --#emoteText|[*S:character_name] attacks [*T:character_name]!
    --=TargetHP|[*T:t-bar1_value]
    --?[*T:npc] -eq 1|=TargetAC;[*T:npc_ac]|=TargetAC;[*T:ac]
-   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;1;0;0
+   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;0;0;0
    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexMarker];HexMarkerFlag;HexMarkerCount
    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];HexBladeMarkerFlag;HexBladeMarkerCount
    
@@ -108,9 +108,10 @@
    --&AttackMetalDice|[%2%]
    --?[&AttackMetalFlag] -eq 1|&AttackDice;[&AttackMetalDice]|&AttackDice;[&AttackChoice]
    --?[&InspiredFlag] -ne 0 |>far_Inspiration;[*S:t-id];[&InspirationMarker];[&AttackDice];AttackDice
-   
+   --c[&AttackDice]|2d20kh1:&DisplayDice;Advantage|1d20:&DisplayDice;1d20|2d20kl1:&DisplayDice;Disadvantage
+
    --=AttackDiceBase|[&AttackDice]
-   --+Rolling [&AttackDice]: |[$AttackDiceBase]
+   --+Rolling [&DisplayDice]: |[$AttackDiceBase]
    --+|[br]
    --=AttackRollMod|[$AttackDiceBase] + [*S:spell_attack_bonus] [Spell Attack Bonus]
    
@@ -207,7 +208,7 @@
    --?[*S:level] -lt 17 -and [*S:level] -ge 11 |&DamageDice;3
    --?[*S:level] -lt 11 -and [*S:level] -ge 5 |&DamageDice;2
    --?[*S:level] -lt 5 |&DamageDice;1
-   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;1;0;0
+   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;0;0;0
    --<|
 
   --:Output|

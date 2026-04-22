@@ -125,7 +125,7 @@
     -->far_FIND_ACTIVE_GLOBAL_ATTACK_MODS|[*S:character_id];GlobalAttack
     -->far_FindFeat|[*S:character_id];"Hexblade's Curse";HexBladeFlag
     --?[*T:npc] -eq 1|=TargetAC;[*T:npc_ac]|=TargetAC;[*T:ac]
-    -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;1;0;0
+    -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;0;0;0
 	-->GetAttackType|
 	
 	--:GetAttackType|
@@ -141,7 +141,8 @@
    
     --#whisper|
     --=AttackDiceBase|[&AttackDice]
-    --+Rolling [&AttackDice]: |[$AttackDiceBase]
+    --c[&AttackDice]|2d20kh1:&DisplayDice;Advantage|1d20:&DisplayDice;1d20|2d20kl1:&DisplayDice;Disadvantage
+    --+Rolling [&DisplayDice]: |[$AttackDiceBase]
     --=AttackRollMod|[$AttackDiceBase] + [*S:spell_attack_bonus] [Spell Attack Bonus]
    
     --?[&BardicFlag] -eq 1|>far_Bardic;[*S:t-id];[&BardicMarker];[$Scriptcheck];[$AttackDiceBase];[$AttackRollMod];BardRoll

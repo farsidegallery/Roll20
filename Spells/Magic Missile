@@ -133,7 +133,7 @@
 	--]|
    
    -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0
-   -->far_CheckDamageModifiers|[&ThisTarget];[&damageType];damageMod;1;0;0
+   -->far_CheckDamageModifiers|[&ThisTarget];[&damageType];damageMod;0;0;0
    
    --=ResultantDamage|[$ThisMissile.Raw][&GlobalDamage] [&damageMod]
    --=TotalDamage|[$TotalDamage] + [$ResultantDamage]   

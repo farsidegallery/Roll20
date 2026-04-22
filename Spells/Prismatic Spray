@@ -72,7 +72,6 @@
   --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
   
   -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
-  -->far_CheckDamageModifiers|[*T:character_id];[&damageType];DmgMod;1;0;0
   
   --=DC|[*S:spell_save_DC]
   
@@ -164,7 +163,7 @@
    
    -->LibSN_CHECK_STATUS_MARKER|[*[%1%]:t-id];[&BlessedMarker];BlessFlag;BlessCount
    -->LibSN_CHECK_STATUS_MARKER|[*[%1%]:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
-   -->far_CheckDamageModifiers|[%1%];[%3%];DamageMod;1;0;0
+   -->far_CheckDamageModifiers|[%1%];[%3%];damageMod;0;0;0
 
    --?[&BaneMarkerFlag] -eq 1|&Baneroll;+ - 1d4 [Bane] |&Baneroll;
    
@@ -205,7 +204,7 @@
    
    -->LibSN_CHECK_STATUS_MARKER|[*[%1%]:t-id];[&BlessedMarker];BlessFlag;BlessCount
    -->LibSN_CHECK_STATUS_MARKER|[*[%1%]:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
-   -->far_CheckDamageModifiers|[%1%];[%3%];DamageMod;1;0;0
+   -->far_CheckDamageModifiers|[%1%];[%3%];damageMod;0;0;0
 
    --?[&BaneMarkerFlag] -eq 1|&Baneroll;+ - 1d4 [Bane] |&Baneroll;
    

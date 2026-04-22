@@ -89,7 +89,7 @@
 
   --:DAMAGE_TYPE|
    --&damageType|[&reentryval]
-   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;1;0;0
+   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;0;0;0
    
    --+|[c]Choose Attack Type:[/c]
    --+|[c][rbutton]Advantage::ChooseAttackType;2d20kh1[/rbutton][rbutton]Normal::ChooseAttackType;1d20[/rbutton][rbutton]Disadvantage::ChooseAttackType;2d20kl1[/rbutton][/c]
@@ -101,9 +101,10 @@
    
    --&AttackDice|[&reentryval]
    --?[&InspiredFlag] -ne 0 |>far_Inspiration;[*S:t-id];[&InspirationMarker];[&AttackDice];AttackDice
-   
+   --c[&AttackDice]|2d20kh1:&DisplayDice;Advantage|1d20:&DisplayDice;1d20|2d20kl1:&DisplayDice;Disadvantage
+
    --=AttackDiceBase|[&AttackDice]
-   --+Rolling [&AttackDice]: |[$AttackDiceBase]
+   --+Rolling [&DisplayDice]: |[$AttackDiceBase]
    --+|[br]
    --=AttackRollMod|[$AttackDiceBase] + [*S:spell_attack_bonus] [Spell Attack Bonus]
    
