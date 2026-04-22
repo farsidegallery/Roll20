@@ -34,7 +34,20 @@
   --/|only have a single damage die roll applied to each missile.
   --&damageMode|0  
   
+  --/|What is the name of the Global AC Mod used for Shield.
   --&ModName|Shield Spell
+  
+  --/|Enter name for Shield Character.
+  --&CharName|Shield Spell
+  
+  --/|Enter name for Reaction Used Character.
+  --&ReactName|Reaction Used
+  
+  --&URLlink|https://files.d20.io/images/466430946/7DPjXj0n0IMCLlbLg50mPg/med.webm?1764787074
+  
+  --&link1|https://files.d20.io/images/476457994/FdbUAgAk_G-
+  --&link2|-2d1MaQ9g4w/med.webm?1771472165
+  --&Reactlink|[&link1][&link2]
    
   --/|Are you using the matching Bardic Inspiration Script from FarsideGallery? (Default is No using 0. Change to 1 if using the script.)
   --=Scriptcheck|1
@@ -88,7 +101,15 @@
    -->far_BuildTargetList|[$MissileCount.Total]
    -->far_BuildTargetArray|Targets;[$MissileCount];TargetString;1
    -->BuildUnique|
-   
+    
+   --%loop|foreach;Targets
+    -->far_Check_GLOBAL_MOD_EXISTS|[*[&loop]:t-id]; ac; [&ModName]; Exists
+    --?[&Exists] -eq 1|>ShieldPrompt
+    --Rfind|[*[&loop]:character_id];Shield;repeating_spell-1;spellname
+    --?"X[*R:spellname]" -ne "XNoRepeatingAttributeLoaded"|>ShieldPrompt
+    --:ShieldReturn|
+    --%|
+  
    --=OneMissileDamage|1d4+1
    --?[&damageMode] -eq 0|[
     --+Damage per dart: |[$OneMissileDamage]
@@ -105,14 +126,15 @@
    --#whisper|
    --%loop|foreach;Targets
     -->FireMissile|[&loop]
+    --=DisplayCount|[$DisplayCount]+1
 	--%|
    --+|Total damage is [$TotalDamage]
-   
+  
    --%loopTarget|foreach;Unique
     -->far_DamageTokenmod|[&loopTarget];[&hpBar];[&tempHPbar];-[$Damage[&loopTarget]];0;0;1
 	--/|>LibSN_APPLY_DAMAGE_OR_HEALING|[&loopTarget];[&hitPointsBar];-[$Damage[&loopTarget]];0;0;1
 	--%|
-   
+  
    --+|[br]
    --+Desc: |[&desc]
    --+At Higher Levels: |[&higher]
@@ -121,6 +143,7 @@
 
   --:FireMissile|
    --&ThisTarget|[%1%]
+   --&damageMod|
    --?[&damageMode] -eq 1|=ThisMissile;1d4+1|=ThisMissile;[$OneMissileDamage]
    -->far_PlayEffects|[*S:t-id];[&ThisTarget];none;burst-smoke;beam-magic
    -->Lib5E_GET_GLOBAL_MOD_STATUS|[*[&ThisTarget]:character_id]; ac; [&ModName]; ShieldFlag
@@ -145,15 +168,90 @@
    --<|
   
   --:BuildUnique|
-  --~|array;define;Unique;[@Targets(0)]
-  --%loop|foreach;Targets
-   --&ThisTarget|[&loop]
-   --?"X[&ThisTarget]" -eq "X"|BottomUniqueLoop
-   --~testvar|array;indexof;Unique;[&ThisTarget]
-   --?"[&testvar]" -eq "ArrayError" | [
-    --~|array;add;Unique;[&ThisTarget]
+   --~|array;define;Unique;[@Targets(0)]
+   --%loop|foreach;Targets
+    --&ThisTarget|[&loop]
+    --?"X[&ThisTarget]" -eq "X"|BottomUniqueLoop
+    --~testvar|array;indexof;Unique;[&ThisTarget]
+    --?"[&testvar]" -eq "ArrayError" | [
+     --~|array;add;Unique;[&ThisTarget]
+	 --]|
+    --:BottomUniqueLoop|
+    --%|
+   --<|
+
+  --:ShieldPrompt|
+   --&control|[*O:[*[&loop]:t-represents]:character:controlledby]
+   --&playername|[*O:[&control]:player:displayname]
+   --?"X[&playername]" -eq "X"|[
+    --#whisper|gm
+	--]|[
+    --#whisper|[&playername],gm
 	--]|
-   --:BottomUniqueLoop|
-   --%|
-  --<|
+   -->Lib5E_GET_GLOBAL_MOD_STATUS|[*[&loop]:character_id]; ac; [&ModName]; InitalShieldFlag
+   --?"X[&InitalShieldFlag]" -eq "X1"|ShieldReturn
+   -->GetAndCheckSlotInformation|[*[&loop]:t-id];1;shieldSpellLevel[&loop]
+   --+[*[&loop]:t-name]: |You are being targeted by Magic Missile and can cast Shield.
+   --+Do you want to cast Shield? |[c][rbutton]Yes::CheckMod[/rbutton][rbutton]No::No[/rbutton][/c]
+   --X|
+   
+  --:No|
+   --^ShieldReturn|
+   
+  --:CheckMod|
+   --&TokenName|[*[&loop]:character_name] Shield
+   --&ReactName|[*[&loop]:character_name] [&ReactName]
+   -->far_Check_GLOBAL_MOD_EXISTS|[*[&loop]:t-id]; ac; [&ModName]; Exists
+   --?[&Exists] -eq 1|>SetMod |>CreateMod
+   --=TargetTokenSpellSlot|[&shieldSpellLevel[&loop]]
+   -->far_DeductSpellSlot|[*[&loop]:t-id];[$TargetTokenSpellSlot]
+   -->TargetSpellContinue|
+  
+  --:CreateMod| 
+    --!a:[*[&loop]:character_id]|global_ac_mod_flag:1
+	--!or:[*[&loop]:character_id]:acmod|
+	  global_ac_name:[&ModName]|
+	  global_ac_val:5|
+	  global_ac_active_flag:1|
+	  options-flag:0
+	-->far_PlayEffects|[*[&loop]:t-id];;;burn-holy
+    -->SpawnToken|
+   --<|
+  
+  --:SetMod|  
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*[&loop]:character_id];ac;[&ModName];1
+   -->far_PlayEffects|[*[&loop]:t-id];;;burn-holy
+   -->SpawnToken|
+   --<|
+
+  --:SpawnToken|
+	--!ot:ReactTID|name:"[&ReactName]"|left:[*[&loop]:t-left]|top:[*[&loop]:t-top]|width:[=[*[&loop]:t-width]*3]|height:[=[*[&loop]:t-height]*3]|imgsrc:"[&Reactlink]"|bar1_value:1|represents:[&ReactID]|showname:0
+	--z:graphic:[&ReactTID]|toback
+	--@CARRY_TOKENS_CARRY_BELOW|[*[&loop]:t-id] [&ReactTID]
+	 
+	--!ot:ShieldTID|name:"[&TokenName]"|left:[*[&loop]:t-left]|top:[*[&loop]:t-top]|width:[=[*[&loop]:t-width]*3]|height:[=[*[&loop]:t-height]*3]|imgsrc:"[&URLlink]"|bar1_value:1|represents:[&ShieldID]|showname:0
+	--z:graphic:[&ShieldTID]|toback
+	--@CARRY_TOKENS_CARRY_BELOW|[*[&loop]:t-id] [&ShieldTID]
+   --<|
+
+  --:GetAndCheckSlotInformation|tokenid;SpellLevel;SpellLevelReturnString
+   --=Slotlevel|[%2%]
+   -->far_FIND_CLASS_LEVEL|[%1%];Warlock;WarLevel
+   --?[&WarLevel] -ge 1|[
+    --?[&WarLevel] -ge 9 |=Slotlevel;5
+    --?[&WarLevel] -eqi 7 -or [&WarLevel] -eqi 8|=Slotlevel;4
+    --?[&WarLevel] -eqi 5 -or [&WarLevel] -eqi 6 |=Slotlevel;3
+    --?[&WarLevel] -eqi 3 -or [&WarLevel] -eqi 4 |=Slotlevel;2
+    --?[&WarLevel] -lt 2 |=Slotlevel;1
+    --]|
+   --=SlotsExpended|[*[%1%]:lvl[$Slotlevel]_slots_expended]
+   --?[$SlotsExpended.Total] -le 0|[
+    --^ShieldReturn|
+    --]|
+   --&[%3%]|[$Slotlevel] 
+   --<|
+   
+  --:TargetSpellContinue|
+   --+Press to Continue: |[c][rbutton]Continue::ShieldReturn[/rbutton][/c]
+   --X|
 }}
