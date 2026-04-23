@@ -154,7 +154,7 @@
    
   --:Fail|
    -->DamageRoll|
-   --=Damage|[&DamageDice] [&DmgMod]
+   --=Damage|[&DamageDice] [&damageMod]
    --+Save: |[*T:t-name] rolled a [$Save] vs a DC [$DC] and failed the saving throw. 
    --+|[br]
    --+Result: |[*S:t-name] was able to pierce [*T:t-name]'s mental defenses inflicting [$Damage] hp of [&damageType] damage!
