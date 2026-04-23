@@ -1,31 +1,182 @@
-!smartaoe {{
-  --title|@{selected|token_name} Casts Infestation
-  --leftsub|caster level ?{Cast at what level?|1,1|5,2|11,3|17,4}
-  --rightsub|DC @{selected|spell_save_dc} CON
-  --titlecardbackground|linear-gradient(blue, cyan)
-  --oddrowbackground|#00ccff
-  --evenrowbackground|#edfcfc
-  --oddrowfontcolor|#000000
-  --tablebgcolor|#edfcfc
-  --chatAvatarsEnabled|false
- 
-  --aoeColor|#00ccff50
-  --aoeOutlineColor|#0099ff
-  --gridColor|#99999900
-  --aoeType|square, float
-  --radius|2.5ft
-  --minGridArea|0.25
-  --minTokArea|0.25
-  --fx|bubble-poison
-  --dc|@{selected|spell_save_dc}
-  --saveFormula|5eCON
-  --damageFormula1|[[(?{Cast at what level?}+0)d6]]
-  --damageType|poison
-  --damagesaverule|*0
-  --instant|1
+!scriptcard  {{
+  +++5Elib;snlib;Farsidelib+++
+  
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
 
-  --autoApply|1
-  --bar|1
-  --zeroHPmarker|dead
-  --desc|You cause a cloud of mites, fleas, and other parasites to appear momentarily on one creature you can see within range. The target must succeed on a Constitution saving throw, or it takes 1d6 poison damage and moves 5 feet in a random direction if it can move and its speed is at least 5 feet. Roll a d4 for the direction: 1, north; 2, south; 3, east; or 4, west. This movement doesn’t provoke opportunity attacks, and if the direction rolled is blocked, the target doesn't move. The spell’s damage increases by 1d6 when you reach 5th level (2d6), 11th level (3d6), and 17th level (4d6).
+  --/|Script Name : Infestation
+  --/|Version     : 1.0
+  --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
+  --/|Author      : Farsidegallery
+  --/|  
+  --/|  Script rolls saving throw, compares to caster's DC, and determines if spell hits. Script finds Caster's level, scales and calculates damage,
+  --/|  determines damage modifier (resistant, immune), and applies damage. If target dies due to damgae, the "Dead" token marker is applied.
+  --/|
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+    
+   --&SpellName|Infestation
+   --&MinimumSpellLevel|cantrip
+   --&damageType|poison
+   
+   --/| Bar used for HP
+   --&bar|1
+   --&tempBar|4
+   
+   --&attrib|constitution
+   
+   --/|Are you using the matching Bardic Inspiration Script from FarsideGallery? (Default is No using 0. Change to 1 if using the script.)
+   --=Scriptcheck|1
+  
+   --/|Enter the Token Markers you use for each condition
+   --&DisAdvanMarker|Disadvantage::7409922
+   --&BardicMarker|BardicInspiration::7409920
+   --&BlessedMarker|angel-outfit
+   --&InspirationMarker|Inspiration::7409921
+   --&DeathMarker|dead
+   
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+ 
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+  
+  --~shortattrib|string;left;3;[&attrib]
+  --~Displayattrib|string;touppercase;[&shortattrib]
+  
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  
+  --#title|[&SpellName]
+  --~MinimumSpellLevel|string;totitlecase;[&MinimumSpellLevel]
+  --#leftsub|Range: [*R:spellrange]
+  --&range|[*R:spellrange]
+  --&desc|[*R:spelldescription]
+  --=DC|[*S:spell_save_DC]
+  
+  --+Target: |[rbutton]Click this button to select your target.::TargetInfo;[&TB]target|token_id}[/rbutton]
+  --X|
+  
+  --:TargetInfo|
+   --#targettoken|[&reentryval]
+   --#rightsub|[&Displayattrib] Save DC: [$DC]
+   --#emoteText|[*S:t-name] attacks [*T:t-name]!
+   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;0;0;0
+   --=Top|[*T:t-top]
+   --=Left|[*T:t-left]
+   --?"[*T:npc]" -ne "1"|PCRoll |NPCRoll
+   
+  --:PCRoll|
+   --&control|[*O:[*T:t-represents]:character:controlledby]
+   --&playername|[*O:[&control]:player:displayname]
+   --?"X[&playername]" -eq "X"|[
+    --#whisper|gm
+	--]|[
+    --#whisper|[&playername],gm
+	--]|
+   -->ChooseRoll|PC
+  
+  --:NPCRoll|
+   --#whisper|gm
+   -->ChooseRoll|NPC
+  
+  --:ChooseRoll| 
+   --&function|[%1%]
+   --+|[c]Choose Saving Throw Type:[/c]
+   --+|[c][rbutton]Advantage::[&function];2d20kh1[/rbutton][rbutton]Normal::[&function];1d20[/rbutton][rbutton]Disadvantage::[&function];2d20kl1[/rbutton][/c]
+   --X|
+  
+  --:NPC|
+   --&saveDice|[&reentryval]
+   --?[*T:npc] -eq 1 -and [*T:npc_[&shortattrib]_save_flag] -gt 0|&Save;npc_[&shortattrib]_save |&Save;[&attrib]_mod
+   --=Save|[&saveDice] + [*T:[&Save]] [&obrac][&Displayattrib][&cbrac]
+   --#whisper|
+   --?[$Save.Base] -eq 20|>Crit
+   --?[$Save] -ge [$DC]|>Pass |>Fail   
+   
+  --:PC| 
+   --&saveDice|[&reentryval]
+   -->far_Check_GLOBAL_MOD_EXISTS|[*T:character_id]; save; [&damageType]; damageSave
+   -->far_Check_GLOBAL_ATTRIB_SAVE_EXISTS|[*T:character_id]; [&attrib]; attribSaveRoll
+   --?[&damageSave] -eq 1 -or [$attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "1d20"|&saveDice;2d20kh1
+   --?[&damageSave] -eq 1 -or [$attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "2d20kl1"|&saveDice;1d20
+   
+  
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&InspirationMarker];InspiredFlag;InspiredCount
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BardicMarker];BardicFlag;BardicCount
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexMarker];HexMarkerFlag;HexMarkerCount
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];HexBladeMarkerFlag;HexBladeMarkerCount
+   -->far_FindFeat|[*T:character_id];"Thought Shield";ThoughtFlag 
+   
+   --?[&InspiredFlag] -ne 0 |>far_Inspiration;[*T:t-id];[&InspirationMarker];[&saveDice];saveDice
+   -->far_FIND_ACTIVE_GLOBAL_SAVE_MODS|[*T:character_id];GlobalSave
+   -->far_FIND_ACTIVE_GLOBAL_SKILL_MODS|[*T:character_id];GlobalSkill
+   
+   --=InitSave|[&saveDice]
+   --c[&saveDice]|2d20kh1:&DisplayDice;Advantage|1d20:&DisplayDice;1d20|2d20kl1:&DisplayDice;Disadvantage
+   --+Rolling [&DisplayDice]: |[$InitSave]
+   --+|[br]
+   --?[$InitSave.Base] -eq 20|>Crit
+   
+   --=midSaveRoll|[$InitSave] + [*T:[&attrib]_save_bonus] [&Displayattrib]
+   --?[&BardicFlag] -eq 1|>far_Bardic;[*T:t-id];[&BardicMarker];[$Scriptcheck];[$InitSave.Base];[$midSaveRoll];BardRoll
+   --?[&BaneMarkerFlag] -eq 1|&Baneroll;+ - 1d4 [Bane] |&Baneroll;
+   
+   --=Save|[$InitSave] + [*T:[&attrib]_save_bonus] [&obrac][&Displayattrib][&cbrac] [&GlobalSave] [&GlobalSkill] [&Baneroll] [&BardRoll]
+
+   --#whisper|
+   --?[$Save] -ge [$DC]|>Pass |>Fail
+  
+  --:DamageRoll|
+   --?[*S:level] -ge 17 |&DamageDice;4d6
+   --?[*S:level] -lt 17 -and [*S:level] -ge 11 |&DamageDice;3d6
+   --?[*S:level] -lt 11 -and [*S:level] -ge 5 |&DamageDice;2d6
+   --?[*S:level] -lt 5 |&DamageDice;1d6
+   --<|
+  
+  --:Crit|
+   --+Save: |[*T:t-name] rolled a [$Save] vs a DC [$DC] and cannot fail the saving throw. 
+   --+|[br]
+   --+Result: |[*S:t-name] ignores the poison, taking no damage!
+   -->Output|
+  
+  --:Pass|
+   --+Save: |[*T:t-name] rolled a [$Save] vs a DC [$DC] and passed the saving throw. 
+   --+|[br]
+   --+Result: |[*T:t-name] sucessfully fights off the poison, taking no damage!
+   -->Output|
+   
+  --:Fail|
+   -->DamageRoll|
+   --=Damage|[&DamageDice] [&damageMod]
+   --+Save: |[*T:t-name] rolled a [$Save] vs a DC [$DC] and failed the saving throw. 
+   --=direction|1d4
+   --c[$direction]|1:&DispDirection;North|2:&DispDirection;South|3:&DispDirection;East|4:&DispDirection;West
+   --c[$direction]|1:=Top;[$Top]-70|2:=Top;[$Top]+70|3:=Left;[$Left]+70|4:=Left;[$Left]-70
+   --!t:[*T:t-id]|top:[$Top]|left:[$Left]
+   --+|[br]
+   --+Result: |[*T:t-name] takes [$Damage] hp of [&damageType] damage and is thrown 5 ft to the [&DispDirection]!
+   -->far_DamageTokenmod|[*T:t-id];[&bar];[&tempBar];-[$Damage];0;0;1
+   
+   --?[$ThoughtFlag] -eq 1|[
+    --+|[br]
+    --+Additonal Result: |[*S:t-name] takes [$Damage] hp of [&damageType] damage due to [*T:t-name]'s mental defenses.
+    -->far_DamageTokenmod|[*S:t-id];[&bar];[&tempBar];-[$Damage];0;0;1
+   --]|
+   -->Output|
+  
+  --:Output|
+   --#leftsub|Spell Level: [&MinimumSpellLevel]
+   --#rightsub|Range: [&range]
+   --+|[br]
+   --+Desc: |[&desc]
+   -->far_PlayEffects|[*S:t-id];[*T:t-id];burn-magic;burst-slime;
+   --X|
 }}
