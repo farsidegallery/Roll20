@@ -162,7 +162,7 @@
    --c[$direction]|1:=Top;[$Top]-70|2:=Top;[$Top]+70|3:=Left;[$Left]+70|4:=Left;[$Left]-70
    --!t:[*T:t-id]|top:[$Top]|left:[$Left]
    --+|[br]
-   --+Result: |[*T:t-name] takes [$Damage] hp of [&damageType] damage and is thrown 5 ft to the [&DispDirection]!
+   --+Result: |[*T:t-name] takes [$Damage] hp of [&damageType] damage and is thrown 5 ft to the [&DispDirection] (1d4: [$direction])!
    -->far_DamageTokenmod|[*T:t-id];[&bar];[&tempBar];-[$Damage];0;0;1
    
    --?[$ThoughtFlag] -eq 1|[
