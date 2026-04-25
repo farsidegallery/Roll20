@@ -207,6 +207,7 @@
    --+Duration: |[&duration]
    --+Desc: |[&desc]
    --+At Higher Levels: |[&higherdesc]
+   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
    -->far_PlayEffects|[*S:t-id];[*T:t-id];burn-magic;burst-fire;
    --X|
 }}
