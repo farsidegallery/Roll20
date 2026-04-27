@@ -40,10 +40,7 @@
   --&zephyr|108-Range-Long::5818054
   
   --/| Global Mods
-  --/|Hunter's Mark Damage
   --&Hunter|Hunter's Mark
-  
-  --/|Zephyr's Strike
   --&zephyrstrike|Zephyr-Strike
       
   --/|Enter name for Hunter's Mark Character.
@@ -78,7 +75,7 @@
   --&spelldesc|[*R:spelldescription]
   --&spellhigherdesc|[*R:spellathigherlevels]
   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
-  --&HunterName|[*S:character_name] Hunter's Mark
+  --&HunterName|[*S:t-name] Hunter's Mark
   -->GetSpiritID|"[&CharName]";CharNameID
   -->CheckCastInformation|
   -->HuntMark|  
@@ -147,15 +144,15 @@
    --<|
 
   --:TurnOffEnsStrk|
-   --+Ensnaring Srike|[*S:character_name] loses focus ensnaring strike.
+   --+Ensnaring Srike: |[*S:t-name] loses focus ensnaring strike.
    -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker]
    --!a:[*S:character_id]|EnsStr:0
    --*|Get rid of the turn tracker for ensnaring strike.
    --<|
 
   --:TurnOffZeph|
-   --+Concentration:|You are no longer concentrating on Zephyr Strike.
-   --+Speed:|Your speed returns to normal.
+   --+Concentration: |You are no longer concentrating on Zephyr Strike.
+   --+Speed: |Your speed returns to normal.
    --!a:[*S:character_id]| Zephyr:0
    -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&zephyr]
    -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker]
@@ -163,7 +160,7 @@
    --<|
    
   --:TurnOffMagicWeapon|
-   --+Magic Weapon|[*S:character_name]'s [*S:MagicWeapon] is no longer magical.
+   --+Magic Weapon: |[*S:t-name]'s [*S:MagicWeapon] is no longer magical.
    -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker]
    --!a:[*S:character_id]|MagicWeapLVL:0 
    --!a:[*S:character_id]|MagicWeapon:0
@@ -178,7 +175,7 @@
    -->Lib5E_SET_GLOBAL_MOD_STATUS|[*S:t-id]; damage; "[&Hunter]"; 0
    -->LibSN_REMOVE_STATUS_MARKER|[&OffMark];[&Marked];0
    --!a:[*S:character_id]|!ConcentrationSpell:**
-   --!a:[*S:character_id]|!marked:0
+   --!a:[*S:character_id]|!marked:**
    --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&HunterName]
    --~|object;token;delete;[@tokens(0)]
    --X|
