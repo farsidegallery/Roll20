@@ -17,13 +17,18 @@
    --&SpellName|Zephyr Strike
    --&MinimumSpellLevel|1
    
-   --/|Enter marker used for Concentration.
-   --&ConcentrationMarker|Concentrating::7409928
-   
-   --/|Zephyr Strike
+   --/|Enter the Token Markers you use for each condition
+   --&BardicMarker|BardicInspiration::7409920
+   --&BlessedMarker|angel-outfit
+   --&InspirationMarker|Inspiration::7409921
+   --&BaneMarker|Hexed3::7409911
+   --&HexMarker|Hexed::7409913
+   --&HexBladeMarker|Hexed2::7409912
+   --&DeathMarker|dead
    --&zephyr|108-Range-Long::5818054
+   --&Marked|Marked::7409918
    
-   --/|Zephyr's Strike
+   --/|Zephyr's Strike Global Damage Mode
    --&zephyrstrike|Zephyr-Strike
   
   --/| ____________________ End Global User Variables ___________________________________________________________________________________________
@@ -41,6 +46,8 @@
   --#title|[&SpellName]
   --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
   --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  --&spelldesc|[*R:spelldescription]
+  --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
   
   --?[*S:Zephyr] -ne 0|>TurnOff
   --?[*S:HunterMark] -ne 0|>TurnOffHunt
@@ -62,9 +69,7 @@
    -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
    --#leftsub|[*R:spellcastingtime]
    --#rightsub|[*R:spellrange]
-   --#emotetext|[*S:character_name] casts [&SpellName] at level [&SpellLevel]!
-   --&spelldesc|[*R:spelldescription]
-   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+   --#emotetext|[*S:t-name] casts [&SpellName] at level [&SpellLevel]!
   
    --=ForceDamage| 1d8 [Force Damage]
    --!a:[*S:character_id]|!Zephyr:1
@@ -87,13 +92,22 @@
    --X| End Script
   
   --:TurnOffHunt|
+   --&HunterName|[*S:t-name] Hunter's Mark
    --+Concentration: |You are no longer concentrating on Hunter's Mark.
+   --+|[br]
+   --&OffMark|[*S:marked]
    --!a:[*S:character_id]| HunterMark:0
-   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];Concentrating::7409928;0
-   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*S:t-id]; damage; Hunter Mark; 0
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];0
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*S:t-id]; damage; "[&Hunter]"; 0
+   -->LibSN_REMOVE_STATUS_MARKER|[&OffMark];[&Marked];0
+   --!a:[*S:character_id]|!ConcentrationSpell:**
+   --!a:[*S:character_id]|!marked:**
+   --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&HunterName]
+   --~|object;token;delete;[@tokens(0)]
    --<|
   
   --:TurnOff|
+   --#whisper|
    --+Speed: |Your speed returns to normal.
    --+Concentration: |You are no longer concentrating.
    --!a:[*S:character_id]| Zephyr:0
