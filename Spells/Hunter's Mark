@@ -29,9 +29,14 @@
  
   --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
     
-  --/| Token Markers
-  --/|Concentration
-  --&ConcentrationMarker|Concentrating::7409928
+   --/|Enter the Token Markers you use for each condition
+   --&BardicMarker|BardicInspiration::7409920
+   --&BlessedMarker|angel-outfit
+   --&InspirationMarker|Inspiration::7409921
+   --&BaneMarker|Hexed3::7409911
+   --&HexMarker|Hexed::7409913
+   --&HexBladeMarker|Hexed2::7409912
+   --&DeathMarker|dead
   
   --/|Hunter's Mark
   --&Marked|Marked::7409918
