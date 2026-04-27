@@ -27,6 +27,7 @@
    --&DeathMarker|dead
    --&zephyr|108-Range-Long::5818054
    --&Marked|Marked::7409918
+   --&ConcentrationMarker|Concentrating::7409928
    
    --/|Zephyr's Strike Global Damage Mode
    --&zephyrstrike|Zephyr-Strike
@@ -76,7 +77,7 @@
   
    -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&zephyr];9
    --!a:[*S:character_id]|!ConcentrationSpell:[&SpellName]
-   -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];10
+   -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];9
    -->Lib5E_SET_GLOBAL_MOD_STATUS|[*S:t-id]; damage; [&zephyrstrike]; 1
    -->Results|
    
@@ -97,7 +98,7 @@
    --+|[br]
    --&OffMark|[*S:marked]
    --!a:[*S:character_id]| HunterMark:0
-   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];0
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker]
    -->Lib5E_SET_GLOBAL_MOD_STATUS|[*S:t-id]; damage; "[&Hunter]"; 0
    -->LibSN_REMOVE_STATUS_MARKER|[&OffMark];[&Marked];0
    --!a:[*S:character_id]|!ConcentrationSpell:**
@@ -109,7 +110,7 @@
   --:TurnOff|
    --#whisper|
    --+Speed: |Your speed returns to normal.
-   --+Concentration: |You are no longer concentrating.
+   --+Concentration: |You are no longer concentrating on Zephyr Strike.
    --!a:[*S:character_id]| Zephyr:0
    --!a:[*S:character_id]|!ConcentrationSpell:**
    -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&zephyr]
