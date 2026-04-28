@@ -13,7 +13,6 @@
   --/|  Script prompts user for spell level used and makes sure the slot is available.  and spawn the designated token to the VTT. Script calculates
   --/|  It will deduct 1 spell slot from the appropriate level
   --/|
-  
   --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
   
   --&SpellName|Blight
@@ -90,7 +89,11 @@
   --:PCRoll|
    --&control|[*O:[*T:t-represents]:character:controlledby]
    --&playername|[*O:[&control]:player:displayname]
-   --#whisper|[&playername],gm
+   --?"X[&playername]" -eq "X"|[
+    --#whisper|gm
+	--]|[
+    --#whisper|[&playername],gm
+	--]|
    -->ChooseRoll|PC
   
   --:NPCRoll|
@@ -149,11 +152,21 @@
    --#whisper|
    --?[$TargetSave] -ge [$DC]|>Pass |>Fail
    
+  --:Crit|
+   -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0
+   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex;+ + 1d6 [Hex] |&Hex;
+   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade;
+   --=Damage|[&damageroll] [&HexBlade] [&Hex][&GlobalDamage][&damageMod]\2
+   -->far_DamageTokenmod|[*T:t-id];1;4;-[$Damage];0;0;1
+   --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$Damage];0;0;1
+   --+Save: |[*T:t-name] rolled a [$Save] vs a DC [$DC] and cannot fail the saving throw. [*T:t-name] takes [$Damage] damage.
+   -->Output|
+  
   --:Pass|
    -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0
    --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex;+ + 1d6 [Hex] |&Hex;
    --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade;
-   --=Damage|[&damageroll] [&HexBlade] [&Hex][&GlobalDamage][&damageMod]
+   --=Damage|[&damageroll] [&HexBlade] [&Hex][&GlobalDamage][&damageMod]\2
    -->far_DamageTokenmod|[*T:t-id];1;4;-[$Damage];0;0;1
    --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$Damage];0;0;1
    --+Save: |[*T:t-name] rolled a [$TargetSave] vs a DC [$DC] and passed the saving throw. [*T:t-name] takes [$Damage] damage.
