@@ -181,7 +181,10 @@
    --=Damage|[&damageroll] [&HexBlade] [&Hex][&GlobalDamage][&damageMod]
    -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
    --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$Damage];0;0;1
+   -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&IncapMarker];9
    --+Save: |[*T:t-name] rolled a [$TargetSave] vs a DC [$DC] and failed the saving throw. [*T:t-name] takes [$Damage] damage.
+   --+|[br]
+   --+Incapacitated! |[*T:t-name] is also Incapacitated until the start of [*S:t-name]'s next turn!
    -->Output|
    
   --:Output|
