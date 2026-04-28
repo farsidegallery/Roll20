@@ -49,7 +49,7 @@
   --~Displayattrib|string;touppercase;[&shortattrib]
   
   --#title|[&SpellName]
-  --=SaveDC|[*S:spell_save_dc]
+  --=DC|[*S:spell_save_dc]
   
   --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
   --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
