@@ -6,7 +6,7 @@
   --#whisper|self,gm
 
   --/|Script Name : Melf's Acid Arrow
-  --/|Version     : 1.0
+  --/|Version     : 1.0.1
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|  
@@ -150,7 +150,7 @@
    --+|[br]
    --+Follow On Damage: |[*T:character_name] takes [$FollowDamage] damage at the end of it's next turn.
    --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$Damage];0;0;1
-   -->far_DamageTokenmod|[*T:t-id];1;4;-[$Damage];0;0;1
+   -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
    --=FinalHP|[*T:t-bar[&hpBar]_value]+[*T:t-bar[&tempHPbar]_value]-[$Damage]
    --?[$FinalHP] -le 0|>Died
    -->Output|
@@ -167,7 +167,7 @@
    --+|[br]
    --+Follow On Damage: |[*T:character_name] takes [$FollowDamage] damage at the end of it's next turn.
    --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$Damage];0;0;1
-   -->far_DamageTokenmod|[*T:t-id];1;4;-[$Damage];0;0;1
+   -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
    --=FinalHP|[*T:t-bar[&hpBar]_value]+[*T:t-bar[&tempHPbar]_value]-[$Damage]
    --?[$FinalHP] -le 0|>Died
    -->Output|
@@ -179,7 +179,7 @@
    --=FollowDamage|[&FollowDamageDice][&damageMod]
    --+[b]Missed![/b] |So close but [*T:character_name] ducked just in time. [*T:character_name] still takes [$FollowDamage] from the splash.
    --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$FollowDamage];0;0;1
-   -->far_DamageTokenmod|[*T:t-id];1;4;-[$FollowDamage];0;0;1
+   -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$FollowDamage];0;0;1
    -->Output|
    --X|
 
