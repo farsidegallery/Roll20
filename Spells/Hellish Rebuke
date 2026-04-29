@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Hellish Rebuke
-  --/|Version     : 1.0
+  --/|Version     : 1.0.1
   --/|Modified By : Farsidegallery
   --/|  
   --/|  Script prompts user for spell level used and makes sure the slot is available.  and spawn the designated token to the VTT. Script calculates
