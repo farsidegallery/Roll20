@@ -6,7 +6,7 @@
   --#whisper|self,gm
 
   --/|Script Name : Chromatic Orb
-  --/|Version     : 1.0
+  --/|Version     : 1.0.1
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|  
@@ -19,6 +19,9 @@
       
    --&SpellName|Chromatic Orb
    --&MinimumSpellLevel|1
+
+   --&hpBar|1
+   --&tempHPbar|4
    
    --/|Put the name of your check if custom crit damage will be applied.
    --&CustomCritCheck|far_CustomCritCheck
@@ -149,7 +152,7 @@
 	--]|
    --+[b]Critical Hit!!![/b] |The bolt did [$Damage] points of [&damageType] damage.
    --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$Damage];0;0;1
-   -->far_DamageTokenmod|[*T:t-id];1;4;-[$Damage];0;0;1
+   -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
    -->Output|
 
   --:Hit|
@@ -160,7 +163,7 @@
    --=Damage|[$DamageDice]d8 [&HexBlade] [&Hex][&GlobalDamage][&damageMod]
    --+[b]Hit![/b] |The bolt did [$Damage] points of [&damageType] damage.
    --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$Damage];0;0;1
-   -->far_DamageTokenmod|[*T:t-id];1;4;-[$Damage];0;0;1
+   -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
    -->Output|
 
   --:Miss|
