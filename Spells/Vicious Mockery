@@ -12,7 +12,7 @@
   --#whisper|self,gm
 
   --/|Script Name : Vicious Mockery
-  --/|Version     : 1.0
+  --/|Version     : 1.0.1
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Arak Stoneboulder
   --/|Modified By : Farsidegallery
@@ -27,7 +27,7 @@
    --&damageType|psychic
    
    --/| Bar used for HP
-   --&bar|1
+   --&hpBar|1
    --&tempBar|4
    
    --&attrib|constitution
@@ -169,12 +169,12 @@
    --+Save: |[*T:t-name] rolled a [$Save] vs a DC [$DC] and failed the saving throw. 
    --+|[br]
    --+Result: |The insults really hit home on [*T:t-name]! [*T:t-name] takes [$Damage] hp of [&damageType] damage and has disadvantage on their next attack roll.
-   -->far_DamageTokenmod|[*T:t-id];[&bar];[&tempBar];-[$Damage];0;0;1
+   -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
    
    --?[$ThoughtFlag] -eq 1|[
     --+|[br]
     --+Additonal Result: |[*S:t-name] takes [$Damage] hp of [&damageType] damage due to [*T:t-name]'s mental defenses.
-    -->far_DamageTokenmod|[*S:t-id];[&bar];[&tempBar];-[$Damage];0;0;1
+    -->far_DamageTokenmod|[*S:t-id];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
    --]|
    -->Output|
   
