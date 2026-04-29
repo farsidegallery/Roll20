@@ -5,7 +5,7 @@
   --#reentrant|My Cool Script @{selected|character_id}
   
   --/|Script Name : Feeblemind
-  --/|Version     : 1.0
+  --/|Version     : 1.0.1
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|  
@@ -151,7 +151,7 @@
    --?[$ThoughtFlag] -eq 1|[
     --+|[br]
     --+Additonal Result: |[*S:t-name] takes [$Damage] hp of [&damageType] damage due to [*T:t-name]'s mental defenses.
-    -->far_DamageTokenmod|[*S:t-id];[&bar];[&tempBar];-[$Damage];0;0;1
+    -->far_DamageTokenmod|[*S:t-id];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
    --]|
    -->Output|
   
@@ -167,7 +167,7 @@
    --?[$ThoughtFlag] -eq 1|[
     --+|[br]
     --+Additonal Result: |[*S:t-name] takes [$Damage] hp of [&damageType] damage due to [*T:t-name]'s mental defenses.
-    -->far_DamageTokenmod|[*S:t-id];[&bar];[&tempBar];-[$Damage];0;0;1
+    -->far_DamageTokenmod|[*S:t-id];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
    --]|
    -->Output|
    
@@ -184,7 +184,7 @@
    --?[$ThoughtFlag] -eq 1|[
     --+|[br]
     --+Additonal Result: |[*S:t-name] takes [$Damage] hp of [&damageType] damage due to [*T:t-name]'s mental defenses.
-    -->far_DamageTokenmod|[*S:t-id];[&bar];[&tempBar];-[$Damage];0;0;1
+    -->far_DamageTokenmod|[*S:t-id];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
    --]|
    -->ChangeInt|
    -->Output|
