@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Create Bonfire
-  --/|Version     : 1.0
+  --/|Version     : 1.0.1
   --/|Modified By : Farsidegallery
   --/|  
   --/|  Script prompts user for spell level used and makes sure the slot is available and spawn the designated token to the VTT.
@@ -226,7 +226,7 @@
 	 -->DamageDie|
 	 --=FinalDamage|[&DamageDice] [&HexBlade] [&Hex] [&GlobalDamage] [&damageMod]
 	 --+|[t border=3 width=100%][tr][td style="width:100px"][*[&loop]:character_name][/td][td style="width:50px"][c][$TargetSave][/c][/td][td style="width:50px"][#[&FontColor]][b][c]F[/c][/b][/#][/td][td style="width:50px"][c][$FinalDamage][/c][/td][/tr]
-	 -->far_DamageTokenmod|[*[&loop]:t-id];1;4;-[$FinalDamage];0;0;1
+	 -->far_DamageTokenmod|[*[&loop]:t-id];[&hpBar];[&tempHPbar];-[$FinalDamage];0;0;1
 	 --]|
 	 
 	--?[$TargetSave] -ge [*S:spell_save_dc]|[
