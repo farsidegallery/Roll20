@@ -2,7 +2,7 @@
  +++5Elib;snlib;Farsidelib+++	
  
  --/|Script Name : Chain Lightning
- --/|Version     : 2.0
+ --/|Version     : 2.0.1
  --/|Requires SC : TokenMod, SuperNotes (for template override only), ScriptCards Library 5Elib/snlib/Farsidelib
  --/|Author      : Farsidegallery
  --/|  
@@ -140,7 +140,7 @@
     
 	--+|[t border=3 width=100%][tr][td style="width:100px"][c][*[&loop]:t-name][/c][/td][td style="width:50px"][c][$TargetSave][/c][/td][td style="width:50px"][#[&FontColor]][b][c][&DexSave][/c][/b][/#][/td][td style="width:50px"][c][$FinalDamage][/c][/td][/tr]
     --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[&loop];1;-[$FinalDamage];0;0;1
-    -->far_DamageTokenmod|[&loop];1;4;-[$FinalDamage];0;0;1
+    -->far_DamageTokenmod|[&loop];[&hpBar];[&tempHPbar];-[$FinalDamage];0;0;1
     --=FinalHP|[*[&loop]:t-bar1_value]-[$Finalamage]
     --?[$FinalHP] -le 0|[
 	 -->LibSN_ADD_STATUS_MARKER|[*[&loop]:t-id];dead
