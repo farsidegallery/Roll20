@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Scorching Ray
-  --/|Version     : 1.0
+  --/|Version     : 1.0.1
   --/|Requires SC : 1.3.7+, TokenMod
   --/|Author      : Will M.
   --/|Modified By : Farsidegallery
@@ -268,7 +268,7 @@
   --:ApplyDamage|
     --=CurrentHP|[*T:t-bar1_value]
     --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$Damage.Raw];0;0;1
-	-->far_DamageTokenmod|[*T:t-id];1;4;-[$Damage.Raw];0;0;1
+	-->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$Damage.Raw];0;0;1
 
     --/|Did that kill them?
     --?[$CurrentHP.Raw] -gt [$Damage.Raw]|ALIVE|DEAD
