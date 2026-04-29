@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Armor of Agathys
-  --/|Version     : 1.0
+  --/|Version     : 1.0.1
   --/|Modified By : Farsidegallery
   --/|  
   --/|  Script checks for spell level used and makes sure the slot is available. Script will check for existence of global mod and create if necessary.

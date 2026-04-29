@@ -2,7 +2,7 @@
   +++5Elib;snlib;Farsidelib+++	
   
   --/|Script Name : Chill Touch
-  --/|Version     : 1.0
+  --/|Version     : 1.0.1
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : 
   --/|Modified By : Farsidegallery
@@ -141,7 +141,7 @@
 	--]|
    --+[b]Critical Hit!!![/b] |The attack did [$Damage] points of [&damageType] damage.
    --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$Damage];0;0;1
-   -->far_DamageTokenmod|[*T:t-id];1;4;-[$Damage];0;0;1
+   -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
    --=FinalHP|[*T:t-bar[&hpBar]_value]+[*T:t-bar[&tempHPbar]_value]-[$Damage]
    --?[$FinalHP] -le 0|>Died
    
@@ -161,7 +161,7 @@
    --=Damage|[&DamageDice] [&HexBlade] [&Hex][&GlobalDamage][&damageMod]
    --+[b]Hit![/b] |The attack did [$Damage] points of [&damageType] damage.
    --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$Damage];0;0;1
-   -->far_DamageTokenmod|[*T:t-id];1;4;-[$Damage];0;0;1
+   -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
    --=FinalHP|[*T:t-bar[&hpBar]_value]+[*T:t-bar[&tempHPbar]_value]-[$Damage]
    --?[$FinalHP] -le 0|>Died
    
