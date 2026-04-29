@@ -6,7 +6,7 @@
   --#whisper|self,gm  
   
   --/|Script Name : Prismatic Spray
-  --/|Version     : 2.0
+  --/|Version     : 2.0.1
   --/|Requires SC : TokenMod, SuperNotes (for template override only), ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|Base Code   : Base code taken from Matt M.'s Cone of Cold. That was in turn based on Kurt's Burning Hands script.
