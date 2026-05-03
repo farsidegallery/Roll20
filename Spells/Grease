@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Grease
-  --/|Version     : 1.0
+  --/|Version     : 1.0.1
   --/|Modified By : Farsidegallery
   --/|  
   --/|  Script prompts user for spell level used and makes sure the slot is available and spawn the designated token to the VTT.
@@ -149,9 +149,9 @@
    --:RangeLoop|
    --:/|TOKEN MUST BE ON OBJECTS OR GMLAYER AND TEMPLATE MUST OVERLAP AoE
    --?[*[&tokenid]:t-layer] -ne objects -and [*[&tokenid]:t-layer] -ne gmlayer|NextToken
-   --?[&tokenid] -eq [&CloudTID]|NextToken   
+   --?[&tokenid] -eq [&GreaseTID]|NextToken   
    --?"X[*[&tokenid]:race]" -eq "X" -and "[*[&tokenid]:npc]" -ninc "1"|NextToken
-   -->LibSN_CHECK_TOKEN_OVERLAP|[&CloudTID];[&tokenid];OLap
+   -->LibSN_CHECK_TOKEN_OVERLAP|[&GreaseTID];[&tokenid];OLap
    --?[&OLap] -eq 0|NextToken
    
    --/|ADD TO THE "inRange" ARRAY
