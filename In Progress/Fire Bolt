@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Fire Bolt
-  --/|Version     : 2.0
+  --/|Version     : 1.0
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : 
   --/|Modified By : Farsidegallery
@@ -76,11 +76,10 @@
   -->far_FindFeat|[*S:character_id];"Hexblade's Curse";HexBladeFlag
   
   -->far_FIND_CLASS_LEVEL|[*S:character_id];Sorcerer;SLevel
-  --?"X[&SLevel]" -ne "X0"|[
-   -->far_FindFeat|[*S:character_id];"Metamagic: Twinned Spell";TwinFeatFlag
-   -->far_FindFeat|[*S:character_id];"Metamagic: Empowered Spell";EmpowerFeatFlag
+  --?"X[&SLevel]" -eq "X0"|Target
+  -->far_FindFeat|[*S:character_id];"Metamagic: Twinned Spell";TwinFeatFlag
+  -->far_FindFeat|[*S:character_id];"Metamagic: Empowered Spell";EmpowerFeatFlag
    --?"X[$TwinFeatFlag]" -eq "X1" -and "[&MinimumSpellLevel(toLowerCase)]" -eq "cantrip"|=SorceryPoints;1 |=SorceryPoints;[$SpellLevel]
-   --]|
    
   -->Lib5E_FIND_RESOURCE|[*S:character_id];Sorcerer Points;Pointsname;PointsAmmo
   --?"X[$PointsAmmo]" -eq "X0" -or "[&Pointsname]" -eq "Not Found" -or [$PointsAmmo] -lt [$SorceryPoints]|Target
@@ -90,7 +89,7 @@
   --X|
   
   --:BuildTwinArray|
-   --=LoopFlag|0
+   --=TwinFlag|1
    -->far_BuildTargetList|2
    -->far_BuildTargetArray|Targets;2;TargetString
    -->TargetInfo|
@@ -101,11 +100,13 @@
   
   --:TargetInfo|
    --#targettoken|[&reentryval]
-   --?"X[$TwinFeatFlag]" -eq "X1"|[
+   
+   --?"X[$TwinFlag]" -eq "X1"|[
     --%loop|foreach;Targets
      --#targettoken|[&loop]
      --#whisper|self,gm
     --]|
+   
    --#emoteText|[*S:t-name] attacks [*T:t-name]!
    --=TargetHP|[*T:t-bar1_value]
    --?[*T:npc] -eq 1|=TargetAC;[*T:npc_ac]|=TargetAC;[*T:ac]
@@ -118,13 +119,25 @@
    --X|
    
   --:AttackType|
-   --&AttackDice|[&reentryval]
+   --&AttackDice[*T:t-id]|[&reentryval]
+   --?"X[$TwinFlag]" -eq "X1"|[
+    --%|
+    --]|
+   
+   --?"X[$TwinFlag]" -eq "X1"|[
+    --%loop|foreach;Targets
+     --#targettoken|[&loop]
+     --]|
+   
+   --?"X[$TwinFlag]" -eq "X1"|[  
+     --+Target: |[*T:t-name]
+     --]|
+   
    --?[&InspiredFlag] -ne 0 |>far_Inspiration;[*S:t-id];[&InspirationMarker];[&AttackDice];AttackDice
-   --c[&AttackDice]|2d20kh1:&DisplayDice;Advantage|1d20:&DisplayDice;1d20|2d20kl1:&DisplayDice;Disadvantage
+   --c[&AttackDice[*T:t-id]]|2d20kh1:&DisplayDice;Advantage|1d20:&DisplayDice;1d20|2d20kl1:&DisplayDice;Disadvantage
 
-   --=AttackDiceBase|[&AttackDice]
+   --=AttackDiceBase|[&AttackDice[*T:t-id]]
    --+Rolling [&DisplayDice]: |[$AttackDiceBase]
-   --+|[br]
    --=AttackRollMod|[$AttackDiceBase] + [*S:spell_attack_bonus] [Spell Attack Bonus]
    
    --?[&BardicFlag] -eq 1|>far_Bardic;[*S:t-id];[&BardicMarker];[$Scriptcheck];[$AttackDiceBase];[$AttackRollMod];BardRoll
@@ -228,24 +241,17 @@
    --?[*S:level] -lt 5 |&DamageDice;1
    -->far_CheckDamageModifiers|[*T:character_id];[&damageType1];damageMod;0;0;0
    --<|
-
-  --:Continue|
-   --+|[c]Click to move to next Target.[/c]
-   --+|[c][rbutton]Continue::LoopContinue[/rbutton][/c]
-   --X|
-  
-  --:LoopContinue|
-   --=LoopFlag|1
-   --%|
   
   --:Output|
+   --?"X[$TwinFlag]" -eq "X1"|[
+    --+|[br]
+    --%|
+    --#targettoken|
+    --#emoteText|Divine Sorcerer attacks multiple targets using Twinned Spell!
+    --]|
    --#whisper|
    --+|[br]
    --+Desc: |[&desc]
    -->far_PlayEffects|[*S:t-id];[*T:t-id];burn-magic;burst-fire;
-   --?"X[$TwinFeatFlag]" -eq "X1" -and "X[$LoopFlag]" -eq "X0"|[
-    --+|[br]
-    -->Continue|
-    --]|
    --X|
 }}
