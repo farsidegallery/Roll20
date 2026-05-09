@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Fire Bolt
-  --/|Version     : 1.0
+  --/|Version     : 2.0.1
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : 
   --/|Modified By : Farsidegallery
@@ -184,8 +184,14 @@
    -->DamageRoll|
    -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0
    --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex;+ + 1d6 [Hex] |&Hex;
-   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade;
+   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade; 
    --=Damage|[&DamageDice]d10 [&HexBlade] [&Hex][&GlobalDamage][&damageMod]
+   --?"X[$EmpowerFeatFlag]" -eq "X1"|[
+    --~|array;fromrollvar;rolledDice;Damage;rolled
+    --%loop|foreach;rolledDice
+     --+Rolled|[&loop]
+    --%|
+    --]|
    --+[b]Hit![/b] |The bolt did [$Damage] points of [&damageType1] damage.
    --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$Damage];0;0;1
    -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
