@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Fire Bolt
-  --/|Version     : 2.0.1
+  --/|Version     : 1.0
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : 
   --/|Modified By : Farsidegallery
@@ -36,7 +36,7 @@
    --&CritDamageDiceModifier|-1
    --&CritDamageDiceRollType|d
    --&CritDamageRollModifier|
-   --=CritDamageModifier|+8
+   --=CritDamageModifier|+10
    
    --/|Are you using the matching Bardic Inspiration Script from FarsideGallery? (Default is No using 0. Change to 1 if using the script.)
    --=Scriptcheck|1
@@ -79,12 +79,14 @@
   --?"X[&SLevel]" -eq "X0"|Target
   -->far_FindFeat|[*S:character_id];"Metamagic: Twinned Spell";TwinFeatFlag
   -->far_FindFeat|[*S:character_id];"Metamagic: Empowered Spell";EmpowerFeatFlag
-   --?"X[$TwinFeatFlag]" -eq "X1" -and "[&MinimumSpellLevel(toLowerCase)]" -eq "cantrip"|=SorceryPoints;1 |=SorceryPoints;[$SpellLevel]
+  --=EmpowerDice|[*S:charisma_mod]
+  --=ChangeCount|0
+  --?"X[$TwinFeatFlag]" -eq "X1" -and "[&MinimumSpellLevel(toLowerCase)]" -eq "cantrip"|=SorceryPoints;1 |=SorceryPoints;[$SpellLevel]
    
   -->Lib5E_FIND_RESOURCE|[*S:character_id];Sorcerer Points;Pointsname;PointsAmmo
   --?"X[$PointsAmmo]" -eq "X0" -or "[&Pointsname]" -eq "Not Found" -or [$PointsAmmo] -lt [$SorceryPoints]|Target
   
-  --+|[c]Do you want to Twin the spell?[/c]
+  --+|[c]Do you want spend a Sorcery Point to Twin the spell?[/c]
   --+|[c][rbutton]Yes::BuildTwinArray[/rbutton]  [rbutton]No::Target[/rbutton][/c]
   --X|
   
@@ -187,10 +189,16 @@
    --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade; 
    --=Damage|[&DamageDice]d10 [&HexBlade] [&Hex][&GlobalDamage][&damageMod]
    --?"X[$EmpowerFeatFlag]" -eq "X1"|[
+    --~|array;define;changedIndex;
     --~|array;fromrollvar;rolledDice;Damage;rolled
+    -->EmpowerSelect|
+    --]|
+   --:ExitLoop|
+   --?"X[$DamageChangedFlag]" -eq "X1"|[
     --%loop|foreach;rolledDice
-     --+Rolled|[&loop]
-    --%|
+     --=ChangedDamage|[$ChangedDamage]+[&loop]
+     --%|
+     --=Damage|[$ChangedDamage] [&HexBlade] [&Hex][&GlobalDamage][&damageMod]
     --]|
    --+[b]Hit![/b] |The bolt did [$Damage] points of [&damageType1] damage.
    --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$Damage];0;0;1
@@ -239,6 +247,66 @@
    -->far_HexHeal|[*S:character_id];[*S:t-id]
    -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexBladebladeMarker]
    --<|
+  
+  --:EmpowerSelect|
+   --#whisper|self,gm
+   --?"X[$ChangeCount]" -eq "X[$EmpowerDice]"|ExitLoop
+   --+|You rolled the following for Damage Dice:
+   --+|[br]
+   --%loop|foreach;rolledDice
+    --&DieInformMsg|+  [&loop]
+   --%|
+   --+|[c][&DieInformMsg][/c]
+   --+|[br]
+   --+|[c]Do you want to spend a Sorcery Point to change a roll?[/c]
+   --+|[c][rbutton]Yes::EmpowerYes[/rbutton]  [rbutton]No::ExitLoop[/rbutton][/c]
+   --X|
+   
+   
+  --:EmpowerYes|
+   --&DieRollMsg|
+   --=DisplayCount|
+   --=KeptDieNum|1
+   --=DisplayCount|[$EmpowerDice]-[$ChangeCount]
+   --+|You can reroll a damage dice [$DisplayCount] more times (one time per dice only).
+   --+|[br]
+   --+|[c]Choose a Damage Dice to reroll:[/c]
+   --%loop|foreach;rolledDice
+    --&DieRollMsg|+ [rbutton][&loop]::DieSelect;[&loop][/rbutton]
+   --%|
+   --+|[c][&DieRollMsg][/c]
+   --+|[c]When you are done rerolling click here: [/c]
+   --+|[c][rbutton]Continue::ExitLoop[/rbutton][/c]
+   --X|
+   --]|
+   --<|
+  
+  --:DieSelect|
+   --&OrigValue|[&reentryval]
+   --=rolledDiceLength|[&DamageDice]-1
+   --%counter|0;[$rolledDiceLength];1
+    --?"X[&OrigValue]" -eq "X[@rolledDice([&counter])]"|>CheckChangedArray;[&counter]
+    --%|
+   --^EmpowerYes|
+  
+  --:CheckChangedArray|
+   --~testvar|array;indexof;changedIndex;[%1%]
+   --?"[&testvar]" -eq "ArrayError" |[
+    --~|array;add;changedIndex;[%1%]
+    --=ChangeCount|[$ChangeCount] + 1
+    --=DamageChangedFlag|1
+    --&RollText|[$Damage.RollText]
+    --~DieSize|string;after;d;[&RollText]
+    --=NewDamage|1d[&DieSize]
+    --+New Damage Roll: |[$NewDamage]
+    --+|[br]
+    --~|array;setatindex;rolledDice;[%1%];[$NewDamage]    
+    --^EmpowerYes|
+    --]|[
+    --+Value [@rolledDice([&counter])]: |You have already changed this dice roll and cannot do so again!
+    --+|[br]
+    --]|
+    --<|
   
   --:DamageRoll|
    --?[*S:level] -ge 17 |&DamageDice;4
