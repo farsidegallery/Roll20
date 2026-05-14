@@ -26,6 +26,9 @@
    --&hpBar|1
    --&tempHPbar|4
    
+   --/|What resource name is used for Sorcerer Points?
+   --&SorcererResource|Sorcery Points
+   
    --/|Put the name of your check if custom crit damage will be applied.
    --&CustomCritCheck|far_CustomCritCheck
    
@@ -82,8 +85,8 @@
   --=EmpowerDice|[*S:charisma_mod]
   --=ChangeCount|0
    
-  -->Lib5E_FIND_RESOURCE|[*S:character_id];Sorcerer Points;Pointsname;PointsAmmo
-  --?"X[$PointsAmmo]" -eq "X0" -or "[&Pointsname]" -eq "Not Found" -or [$PointsAmmo] -lt [$SorceryPoints]|Target
+  -->Lib5E_FIND_RESOURCE|[*S:character_id];[&SorcererResource];Pointsname;PointsAmmo
+  --?"X[$PointsAmmo]" -le "X0" -or "[&Pointsname]" -eq "Not Found" -or [$PointsAmmo] -lt [$SorceryPoints]|Target
   
   --+|[c]Do you want spend a Sorcery Point to Twin the spell?[/c]
   --+|[c][rbutton]Yes::BuildTwinArray[/rbutton]  [rbutton]No::Target[/rbutton][/c]
@@ -259,6 +262,7 @@
   --:EmpowerSelect|
    --#whisper|self,gm
    --&function|[%1%]
+   --?[$PointsAmmo] -le [$SorceryPoints]|>EmpowerNo
    --?"X[$ChangeCount]" -eq "X[$EmpowerDice]"|>EmpowerNo
    --~DamageString|array;stringify;rolledDice;!@!
    --~|array;fromstring;DamageDiceRolls;!@!;[&DamageString]
@@ -360,7 +364,7 @@
     --=FinalPointsAmmo|[$PointsAmmo]-[$SorceryPoints]
     --!a:[*S:character_id]|[&PointsAmmo]:[$FinalPointsAmmo]
     --+|[br]
-	--+Sorcery Points: |Used: [$SorceryPoints] / Remaining: [$FinalPointsAmmo]
+	--+[&SorcererResource]: |Used: [$SorceryPoints] / Remaining: [$FinalPointsAmmo]
     --]|
    --X|
    --X|
