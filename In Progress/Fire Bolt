@@ -36,7 +36,7 @@
    --&CritDamageDiceModifier|-1
    --&CritDamageDiceRollType|d
    --&CritDamageRollModifier|
-   --=CritDamageModifier|+10
+   --=CritDamageModifier|+8
    
    --/|Are you using the matching Bardic Inspiration Script from FarsideGallery? (Default is No using 0. Change to 1 if using the script.)
    --=Scriptcheck|1
@@ -81,7 +81,6 @@
   -->far_FindFeat|[*S:character_id];"Metamagic: Empowered Spell";EmpowerFeatFlag
   --=EmpowerDice|[*S:charisma_mod]
   --=ChangeCount|0
-  --?"X[$TwinFeatFlag]" -eq "X1" -and "[&MinimumSpellLevel(toLowerCase)]" -eq "cantrip"|=SorceryPoints;1 |=SorceryPoints;[$SpellLevel]
    
   -->Lib5E_FIND_RESOURCE|[*S:character_id];Sorcerer Points;Pointsname;PointsAmmo
   --?"X[$PointsAmmo]" -eq "X0" -or "[&Pointsname]" -eq "Not Found" -or [$PointsAmmo] -lt [$SorceryPoints]|Target
@@ -91,30 +90,30 @@
   --X|
   
   --:BuildTwinArray|
+   --?"[&MinimumSpellLevel(toLowerCase)]" -eq "cantrip"|=SorceryPoints;1 |=SorceryPoints;[$SpellLevel]
    --=TwinFlag|1
    -->far_BuildTargetList|2
    -->far_BuildTargetArray|Targets;2;TargetString
    -->TargetInfo|
   
   --:Target|
-   --+Target|[rbutton]Click this button to select your target.::TargetInfo;[&TB]target|token_id}[/rbutton]
+   --+Target|[rbutton]Click this button to select your target.::TargetArray;[&TB]target|token_id}[/rbutton]
    --X|
   
+  --:TargetArray|
+   --&SingleTarget|[&reentryval]
+   --~|array;define;Targets;[&SingleTarget]
+   -->TargetInfo|
+  
   --:TargetInfo|
-   --#targettoken|[&reentryval]
-   
-   --?"X[$TwinFlag]" -eq "X1"|[
-    --%loop|foreach;Targets
-     --#targettoken|[&loop]
-     --#whisper|self,gm
-    --]|
-   
+   --%target|foreach;Targets
+   --#targettoken|[&target]
    --#emoteText|[*S:t-name] attacks [*T:t-name]!
    --=TargetHP|[*T:t-bar1_value]
    --?[*T:npc] -eq 1|=TargetAC;[*T:npc_ac]|=TargetAC;[*T:ac]
-   -->far_CheckDamageModifiers|[*T:character_id];[&damageType1];damageMod;0;0;0
-   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexMarker];HexMarkerFlag;HexMarkerCount
-   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];HexBladeMarkerFlag;HexBladeMarkerCount
+   -->far_CheckDamageModifiers|[*T:character_id];[&damageType1];damageMod[*T:t-id];0;0;0
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexMarker];HexMarkerFlag[*T:t-id];HexMarkerCount
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];HexBladeMarkerFlag[*T:t-id];HexBladeMarkerCount
    
    --+|[c]Choose Attack Type:[/c]
    --+|[c][rbutton]Advantage::AttackType;2d20kh1[/rbutton][rbutton]Normal::AttackType;1d20[/rbutton][rbutton]Disadvantage::AttackType;2d20kl1[/rbutton][/c]
@@ -122,101 +121,103 @@
    
   --:AttackType|
    --&AttackDice[*T:t-id]|[&reentryval]
-   --?"X[$TwinFlag]" -eq "X1"|[
-    --%|
-    --]|
-   
-   --?"X[$TwinFlag]" -eq "X1"|[
-    --%loop|foreach;Targets
-     --#targettoken|[&loop]
-     --]|
-   
-   --?"X[$TwinFlag]" -eq "X1"|[  
-     --+Target: |[*T:t-name]
-     --]|
-   
    --?[&InspiredFlag] -ne 0 |>far_Inspiration;[*S:t-id];[&InspirationMarker];[&AttackDice];AttackDice
-   --c[&AttackDice[*T:t-id]]|2d20kh1:&DisplayDice;Advantage|1d20:&DisplayDice;1d20|2d20kl1:&DisplayDice;Disadvantage
+   --c[&AttackDice]|2d20kh1:&DisplayDice[*T:t-id];Advantage|1d20:&DisplayDice[*T:t-id];1d20|2d20kl1:&DisplayDice[*T:t-id];Disadvantage
 
-   --=AttackDiceBase|[&AttackDice[*T:t-id]]
-   --+Rolling [&DisplayDice]: |[$AttackDiceBase]
-   --=AttackRollMod|[$AttackDiceBase] + [*S:spell_attack_bonus] [Spell Attack Bonus]
+   --=AttackDiceBase[*T:t-id]|[&AttackDice[*T:t-id]]
+   --=AttackRollMod|[$AttackDiceBase[*T:t-id]] + [*S:spell_attack_bonus] [Spell Attack Bonus]
    
-   --?[&BardicFlag] -eq 1|>far_Bardic;[*S:t-id];[&BardicMarker];[$Scriptcheck];[$AttackDiceBase];[$AttackRollMod];BardRoll
+   --?[&BardicFlag] -eq 1|>far_Bardic;[*S:t-id];[&BardicMarker];[$Scriptcheck];[$AttackDiceBase[*T:t-id]];[$AttackRollMod[*T:t-id]];BardRoll
    --?[&BaneMarkerFlag] -eq 1|&Baneroll;+ - 1d4 [Bane] |&Baneroll;
    
-   --=AttackRoll|[$AttackDiceBase] + [*S:spell_attack_bonus] [Spell Attack Bonus] [&GlobalAttack] [&Baneroll] [&BardRoll]
-   
-   --+Total Attack Roll |[b]#[$Shot][/b]: [$AttackRoll]
-   --+|[br]
+   --=AttackRoll[*T:t-id]|[$AttackDiceBase[*T:t-id]] + [*S:spell_attack_bonus] [Spell Attack Bonus] [&GlobalAttack] [&Baneroll] [&BardRoll]
 
-   --?[$AttackDiceBase] -eq 20|>Crit
-   --?[$AttackDiceBase] -eq 1|>Fumble
-   --?[$AttackRoll] -ge [$TargetAC.Total] -and [$AttackDiceBase] -nei 20|>Hit
-   --?[$AttackRoll] -lt [$TargetAC.Total] -and [$AttackDiceBase] -nei 1|>Miss
-   --X|
+   --?[$AttackDiceBase[*T:t-id]] -eq 20|>Crit
+   --?[$AttackDiceBase[*T:t-id]] -eq 1|>Fumble
+   --?[$AttackRoll[*T:t-id]] -ge [$TargetAC.Total] -and [$AttackDiceBase[*T:t-id]] -nei 20|>Hit
+   --?[$AttackRoll[*T:t-id]] -lt [$TargetAC.Total] -and [$AttackDiceBase[*T:t-id]] -nei 1|>Miss
+   
+   --:BottomForEachTarget|
+   --%|
+   -->Output|
 
   --/| ____________________ Procedures_______________________________________________________________________________________
   
 
   --:Crit|
-   --#whisper|
    -->DamageRoll|
    -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;1   
-   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex;+ + 1d6 [Hex] |&Hex;
-   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade;
+   --?"X[&HexMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex[*T:t-id];+ + 1d6 [Hex] |&Hex[*T:t-id];
+   --?"X[&HexBladeMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade[*T:t-id];+ + [*S:pb] [Proficiency Bonus] |&HexBlade[*T:t-id];
    -->[&CustomCritCheck]|CustomCritFlag
-   --?[&CustomCritFlag] -eq 1|[
+    --?[&CustomCritFlag] -eq 1|[
     --=CritDice|[&DamageDice]+[&CritDamageDiceModifier]
     --&CritDamage|[$CritDice][&CritDamageDiceRollType]10[&CritDamageRollModifier] + [$CritDamageModifier]
-    --=Damage|[&DamageDice]d10 [Hit] + [&CritDamage] [Crit] [&HexBlade] [&Hex] [&GlobalDamage][&damageMod]
+    --=Damage[*T:t-id]|[&DamageDice]d10 [Hit] + [&CritDamage] [Crit] [&HexBlade[*T:t-id]] [&Hex[*T:t-id]] [&GlobalDamage][&damageMod[*T:t-id]]
 	--]|[
-	--=Damage|[&DamageDice]d10 [Hit] + [&DamageDice]d8 [Crit] [&HexBlade] [&Hex][&GlobalDamage][&damageMod]
+	--=Damage[*T:t-id]|[&DamageDice]d10 [Hit] + [&DamageDice]d10 [Crit] [&HexBlade[*T:t-id]] [&Hex[*T:t-id]][&GlobalDamage][&damageMod[*T:t-id]]
 	--]|
-   --+[b]Critical Hit!!![/b] |The bolt did [$Damage] points of [&damageType1] damage.
-   --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$Damage];0;0;1
-   -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
-   --=FinalHP|[*T:t-bar[&hpBar]_value]+[*T:t-bar[&tempHPbar]_value]-[$Damage]
-   --?[$FinalHP] -le 0|>Died
-   -->Output|
-   --X|
-
-  --:Hit|
-   --#whisper|
-   -->DamageRoll|
-   -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0
-   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex;+ + 1d6 [Hex] |&Hex;
-   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade; 
-   --=Damage|[&DamageDice]d10 [&HexBlade] [&Hex][&GlobalDamage][&damageMod]
    --?"X[$EmpowerFeatFlag]" -eq "X1"|[
     --~|array;define;changedIndex;
-    --~|array;fromrollvar;rolledDice;Damage;rolled
-    -->EmpowerSelect|
+    --~|array;fromrollvar;rolledDice;Damage[*T:t-id];rolled
+    -->EmpowerSelect|Crit
     --]|
-   --:ExitLoop|
-   --?"X[$DamageChangedFlag]" -eq "X1"|[
-    --%loop|foreach;rolledDice
-     --=ChangedDamage|[$ChangedDamage]+[&loop]
+   --:CritExitLoop|
+   --?"X[$DamageChangedFlag[*T:t-id]]" -eq "X1"|[
+    --=ChangedDamage|
+    --=SorceryPoints|[$SorceryPoints]+1
+    --%damage|foreach;DamageDiceRolls
+     --=ChangedDamage[*T:t-id]|[$ChangedDamage[*T:t-id]]+[&damage]
      --%|
-     --=Damage|[$ChangedDamage] [&HexBlade] [&Hex][&GlobalDamage][&damageMod]
+    --=Damage[*T:t-id]|[$ChangedDamage[*T:t-id]] [&HexBlade[*T:t-id]] [&Hex[*T:t-id]][&GlobalDamage][&damageMod[*T:t-id]]
     --]|
-   --+[b]Hit![/b] |The bolt did [$Damage] points of [&damageType1] damage.
-   --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$Damage];0;0;1
+   --&ResultLabel[*T:t-id]|[b]Critical Hit!!![/b]
+   --&ResultText[*T:t-id]|The bolt did [$Damage[*T:t-id]] points of [&damageType1] damage.
+   --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$Damage[*T:t-id]];0;0;1
    -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
-   --=FinalHP|[*T:t-bar[&hpBar]_value]+[*T:t-bar[&tempHPbar]_value]-[$Damage]
+   --=FinalHP|[*T:t-bar[&hpBar]_value]+[*T:t-bar[&tempHPbar]_value]-[$Damage[*T:t-id]]
    --?[$FinalHP] -le 0|>Died
-   -->Output|
-   --X|
+   --^BottomForEachTarget|
+
+  --:Hit|
+   -->DamageRoll|
+   -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0
+   --?"X[&HexMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex[*T:t-id];+ + 1d6 [Hex] |&Hex[*T:t-id];
+   --?"X[&HexBladeMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade[*T:t-id];+ + [*S:pb] [Proficiency Bonus] |&HexBlade[*T:t-id];
+   --=Damage[*T:t-id]|[&DamageDice]d10 [&HexBlade[*T:t-id]] [&Hex[*T:t-id]][&GlobalDamage][&damageMod[*T:t-id]]
+   --?"X[$EmpowerFeatFlag]" -eq "X1"|[
+    --~|array;define;changedIndex;
+    --~|array;fromrollvar;rolledDice;Damage[*T:t-id];rolled
+    -->EmpowerSelect|Hit
+    --]|
+   --:HitExitLoop|
+   --?"X[$DamageChangedFlag[*T:t-id]]" -eq "X1"|[
+    --=ChangedDamage[*T:t-id]|
+    --=SorceryPoints|[$SorceryPoints]+1
+    --%damage|foreach;DamageDiceRolls
+     --=ChangedDamage[*T:t-id]|[$ChangedDamage[*T:t-id]]+[&damage]
+     --%|
+    --=Damage[*T:t-id]|[$ChangedDamage[*T:t-id]] [&HexBlade[*T:t-id]] [&Hex[*T:t-id]][&GlobalDamage][&damageMod[*T:t-id]]
+    --]|
+   --&ResultLabel[*T:t-id]|[b]Hit![/b]
+   --&ResultText[*T:t-id]|The bolt did [$Damage[*T:t-id]] points of [&damageType1] damage.
+   --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$Damage];0;0;1
+   -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$Damage[*T:t-id]];0;0;1
+   --=FinalHP|[*T:t-bar[&hpBar]_value]+[*T:t-bar[&tempHPbar]_value]-[$Damage[*T:t-id]]
+   --?[$FinalHP] -le 0|>Died
+   --^BottomForEachTarget|
 
   --:Miss|
-   --#whisper|
-   --+[b]Missed![/b] |So close but they ducked just in time. Better luck next time (if there is a next time).
-   -->Output|
-   --X|
+   --&ResultLabel[*T:t-id]|[b]Missed![/b]
+   --&ResultText[*T:t-id]|So close but they ducked just in time. Better luck next time (if there is a next time).
+   --^BottomForEachTarget|
 
   --:Fumble|
-   --#whisper|
-   --+[b]Critical Fail!!![/b] |The attack went horribly wrong.
+   --&ResultLabel[*T:t-id]|[b]Critical Fail!!![/b]
+   --&ResultText[*T:t-id]|The attack went horribly wrong.
+   --^BottomForEachTarget|
+   
+  --:FailTable| 
    --=Fail|[T#Damage-Spell-Fail]
    --&failText|[$Fail.tableEntryText]
    --?"[&failText]" -inc "[&obrac][&obrac]"|[
@@ -235,8 +236,7 @@
 	--+|[br]
 	--+Damage: |[$Damage]
 	--]|
-   -->Output|
-   --X|  
+   --<| 
 
   --:Died|
    -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DeathMarker]
@@ -248,66 +248,6 @@
    -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexBladebladeMarker]
    --<|
   
-  --:EmpowerSelect|
-   --#whisper|self,gm
-   --?"X[$ChangeCount]" -eq "X[$EmpowerDice]"|ExitLoop
-   --+|You rolled the following for Damage Dice:
-   --+|[br]
-   --%loop|foreach;rolledDice
-    --&DieInformMsg|+  [&loop]
-   --%|
-   --+|[c][&DieInformMsg][/c]
-   --+|[br]
-   --+|[c]Do you want to spend a Sorcery Point to change a roll?[/c]
-   --+|[c][rbutton]Yes::EmpowerYes[/rbutton]  [rbutton]No::ExitLoop[/rbutton][/c]
-   --X|
-   
-   
-  --:EmpowerYes|
-   --&DieRollMsg|
-   --=DisplayCount|
-   --=KeptDieNum|1
-   --=DisplayCount|[$EmpowerDice]-[$ChangeCount]
-   --+|You can reroll a damage dice [$DisplayCount] more times (one time per dice only).
-   --+|[br]
-   --+|[c]Choose a Damage Dice to reroll:[/c]
-   --%loop|foreach;rolledDice
-    --&DieRollMsg|+ [rbutton][&loop]::DieSelect;[&loop][/rbutton]
-   --%|
-   --+|[c][&DieRollMsg][/c]
-   --+|[c]When you are done rerolling click here: [/c]
-   --+|[c][rbutton]Continue::ExitLoop[/rbutton][/c]
-   --X|
-   --]|
-   --<|
-  
-  --:DieSelect|
-   --&OrigValue|[&reentryval]
-   --=rolledDiceLength|[&DamageDice]-1
-   --%counter|0;[$rolledDiceLength];1
-    --?"X[&OrigValue]" -eq "X[@rolledDice([&counter])]"|>CheckChangedArray;[&counter]
-    --%|
-   --^EmpowerYes|
-  
-  --:CheckChangedArray|
-   --~testvar|array;indexof;changedIndex;[%1%]
-   --?"[&testvar]" -eq "ArrayError" |[
-    --~|array;add;changedIndex;[%1%]
-    --=ChangeCount|[$ChangeCount] + 1
-    --=DamageChangedFlag|1
-    --&RollText|[$Damage.RollText]
-    --~DieSize|string;after;d;[&RollText]
-    --=NewDamage|1d[&DieSize]
-    --+New Damage Roll: |[$NewDamage]
-    --+|[br]
-    --~|array;setatindex;rolledDice;[%1%];[$NewDamage]    
-    --^EmpowerYes|
-    --]|[
-    --+Value [@rolledDice([&counter])]: |You have already changed this dice roll and cannot do so again!
-    --+|[br]
-    --]|
-    --<|
-  
   --:DamageRoll|
    --?[*S:level] -ge 17 |&DamageDice;4
    --?[*S:level] -lt 17 -and [*S:level] -ge 11 |&DamageDice;3
@@ -315,17 +255,113 @@
    --?[*S:level] -lt 5 |&DamageDice;1
    -->far_CheckDamageModifiers|[*T:character_id];[&damageType1];damageMod;0;0;0
    --<|
+
+  --:EmpowerSelect|
+   --#whisper|self,gm
+   --&function|[%1%]
+   --?"X[$ChangeCount]" -eq "X[$EmpowerDice]"|>EmpowerNo
+   --~DamageString|array;stringify;rolledDice;!@!
+   --~|array;fromstring;DamageDiceRolls;!@!;[&DamageString]
+   --&DieInformMsg|
+   --+|You [&function] [*T:t-name] and rolled the following for Damage Dice:
+   --+|[br]
+   --%DiceMsg|foreach;DamageDiceRolls
+    --&DieInformMsg|+  [&DiceMsg]
+    --%|
+   --+|[c][&DieInformMsg][/c]
+   --+|[br]
+   --+|[c]Do you want to spend a Sorcery Point to change a roll?[/c]
+   --+|[c][rbutton]Yes::EmpowerYes[/rbutton]  [rbutton]No::EmpowerNo[/rbutton][/c]
+   --X|
+   --<|
+   
+  --:EmpowerYes|
+   --&DieRollMsg|
+   --=DisplayCount|
+   --=DisplayCount|[$EmpowerDice]-[$ChangeCount]
+   --+|You can reroll a damage dice [$DisplayCount] more times (one time per dice only).
+   --+|[br]
+   --+|[c]Choose a Damage Dice to reroll:[/c]
+   --%DieRoll|foreach;DamageDiceRolls
+    --&DieRollMsg|+ [rbutton][&DieRoll]::DieSelect;[&DieRoll][/rbutton]
+    --%|
+   --+|[c][&DieRollMsg][/c]
+   --+|[br]
+   --+|[c]When you are done rerolling click here: [/c]
+   --+|[c][rbutton]Continue::EmpowerNo[/rbutton][/c]
+   --X|
+   --]|
+   --<|
+   
+  --:EmpowerNo|
+   --^[&function]ExitLoop|
+  
+  --:DieSelect|
+   --&OrigValue|[&reentryval]
+   --=EmpoweredDamageFlag|1
+   --=DamageChangedFlag[*T:t-id]|1
+   --~Index|array;indexof;DamageDiceRolls;[&OrigValue]
+   --~testvar|array;indexof;changedIndex;[&Index]
+   --?"[&testvar]" -eq "ArrayError" |[
+    --~|array;add;changedIndex;[&Index]
+    --=ChangeCount|[$ChangeCount] + 1
+	-->FindDieSize|
+	--=NewDamage|1d[&DieSize]
+    --+New Damage Roll: |[$NewDamage]
+    --+|[br]
+    --~|array;setatindex;DamageDiceRolls;[&Index];[$NewDamage]
+	--^EmpowerYes|
+    --]|[
+    --+Value [@DamageDiceRolls([&Index])]: |You have already changed this dice roll and cannot do so again!
+    --+|[br]
+    --]|
+   --^EmpowerYes|
+  
+  --:FindDieSize|
+   --&RollText|[$Damage[*T:t-id].RollText]
+   --~DieSize|string;after;d;[&RollText]	
+   
+   --?"[&RollText]" -inc "Resistant"|[
+    --~DieSize|string;before;\;[&RollText]
+	--~DieSize|string;trim;[&DieSize]
+	--~DieSize|string;after;d;[&DieSize]
+	--]|
+
+   --?"[&RollText]" -inc "Vulnerable"|[
+	--~DieSize|string;before;*;[&RollText]
+	--~DieSize|string;trim;[&DieSize]
+	--~DieSize|string;after;d;[&DieSize]
+	--]|
+    
+   --?"[&RollText]" -inc "[Crit]"|[
+	--~DieSize|string;before;[&obrac];[&RollText]
+	--~DieSize|string;trim;[&DieSize]
+	--~DieSize|string;after;d;[&DieSize]
+	--]|
+   --<|
   
   --:Output|
-   --?"X[$TwinFlag]" -eq "X1"|[
-    --+|[br]
-    --%|
-    --#targettoken|
-    --#emoteText|Divine Sorcerer attacks multiple targets using Twinned Spell!
-    --]|
    --#whisper|
+   --%loop|foreach;Targets
+    -->far_PlayEffects|[*S:t-id];[&loop];burn-magic;burst-fire;
+	--+|[c][b]Target: [*[&loop]:t-name][/b][/c]
+	--+Rolling [&DisplayDice[&loop]]: |[$AttackDiceBase[&loop]]
+	--+Total Attack Roll |[b]#[$Shot][/b]: [$AttackRoll[&loop]]
+	--+|[br]
+	--+[&ResultLabel[&loop]] |[&ResultText[&loop]]
+	--+|[br]
+	--?"[&ResultLabel[&loop]]" -inc "Fail"|>FailTable
+    --%|
+   
    --+|[br]
    --+Desc: |[&desc]
-   -->far_PlayEffects|[*S:t-id];[*T:t-id];burn-magic;burst-fire;
+   
+   --?"X[$EmpoweredDamageFlag]" -eq "X1" -or "X[$TwinFlag]" -eq "X1"|[
+    --=FinalPointsAmmo|[$PointsAmmo]-[$SorceryPoints]
+    --!a:[*S:character_id]|[&PointsAmmo]:[$FinalPointsAmmo]
+    --+|[br]
+	--+Sorcery Points: |Used: [$SorceryPoints] / Remaining: [$FinalPointsAmmo]
+    --]|
+   --X|
    --X|
 }}
