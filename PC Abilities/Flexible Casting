@@ -6,7 +6,7 @@
   --#whisper|self,gm
 
   --/|Script Name : Flexible Casting
-  --/|Version     : 1.0.0
+  --/|Version     : 1.0.1
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Arak Stoneboulder
   --/|Modified By : Farsidegallery
@@ -93,15 +93,9 @@
    
   --:Slots|
    -->FIND_RESOURCE|[*S:character_id];[&SorcererResource];ResName1;ResValue1;ResMax
-   --=Missing|[$ResMax] - [$ResValue1]
+   --=Missing|[$ResMax] - [$ResValue1] {MAX:9}
    
-   --?[$Missing] -ge 7 |=SlotLevel;5
-   --?[$Missing] -eq 6 |=SlotLevel;4
-   --?[$Missing] -eq 5 |=SlotLevel;3
-   --?[$Missing] -ge 3 -and [$Missing] -lt 5 |=SlotLevel;2
-   --?[$Missing] -eq 2 |=SlotLevel;1
-   
-   -->GetAvailableSpellLevels|[*S:character_id];1;[$SlotLevel];SpellCastLevel
+   -->GetAvailableSpellLevels|[*S:character_id];1;[$Missing];SpellCastLevel
    --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to convert!
    
    --+|[c][b]Convert what level spell slot?[/b][/c]
@@ -118,11 +112,9 @@
    --#title|Sorcery Point Recovery
    
    -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
-      
-   --c[$SpellLevel]|1:=SorceryPoints;2|2:=SorceryPoints;3|3:=SorceryPoints;5|4:=SorceryPoints;6|5:=SorceryPoints;7
    
    --#whisper|
-   --=FinalPointsAmmo|[$PointsAmmo]+[$SorceryPoints]
+   --=FinalPointsAmmo|[$PointsAmmo]+[$SpellLevel]
    --!a:[*S:character_id]|[&PointsAmmo]:[$FinalPointsAmmo]
    
    --+Sorcery Points Recovery: |[*S:t-name] gains [$SpellLevel] Sorcery Points!
@@ -158,7 +150,7 @@
    --<|
   
   --:NoPoints|
-   --#emoteText|[S:t-name] tries to to use Sorcery Points to.
+   --#emoteText|[*S:t-name] tries to to use Sorcery Points but has none left.
    --#title|Regain a spell slot but needs to take a long rest first.
    --+[*S:t-name] has no sorcery points available.|
    --X| DONE
