@@ -1,0 +1,165 @@
+!scriptcards {{
+  +++5Elib;snlib;Farsidelib+++
+
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|token_id}
+  --#whisper|self,gm
+
+  --/|Script Name : Flexible Casting
+  --/|Version     : 1.0.0
+  --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
+  --/|Author      : Arak Stoneboulder
+  --/|Modified By : Farsidegallery
+  --/|
+  --/|  Script prompts allows user to convert Sorcery Points to Spell Slots and vice versa. Script automatically determines resources
+  --/|  available, provides available converstion levels, and updates both resources.
+  --/|  
+  --/|
+  
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+      
+   --&FeatName|Flexible Casting
+   
+   --/|What resource name is used for Sorcerer Points?
+   --&SorcererResource|Sorcery Points
+   
+   --/|Enter the Token Markers you use for each condition
+   --&BardicMarker|BardicInspiration::7409920
+   --&BlessedMarker|angel-outfit
+   --&InspirationMarker|Inspiration::7409921
+   --&BaneMarker|Hexed3::7409911
+   --&HexMarker|Hexed::7409913
+   --&HexBladebladeMarker|Hexed2::7409912
+   --&DeathMarker|dead
+  
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+  
+  -->far_FindFeat|[*S:character_id];"Flexible Casting";FlexFeatFlag
+  --?[$FlexFeatFlag] -ne 1 |>far_FatalError;Feat Not Found;ERROR;Could not find a feat named [&FeatName].
+  
+  -->Lib5E_FIND_RESOURCE|[*S:character_id];[&SorcererResource];Pointsname;PointsAmmo
+  --?"[&Pointsname]" -eq "Not Found"|>far_FatalError;Resource Not Found;ERROR;Could not find a feat named [&SorcererResource].
+  
+  --+|[c]What do you want to convert?[/c]
+  --+|[c][rbutton]Sorcery Points to Spell Slots::Points[/rbutton]  [rbutton]Spell Slots to Sorcery Points::Slots[/rbutton][/c]
+  --X|
+  
+  --:Points|
+   --?"X[$PointsAmmo]" -le "X0"|>NoPoints
+   
+   --?[$PointsAmmo] -ge 7 |=SlotLevel;5
+   --?[$PointsAmmo] -eq 6 |=SlotLevel;4
+   --?[$PointsAmmo] -eq 5 |=SlotLevel;3
+   --?[$PointsAmmo] -ge 3 -and [$PointsAmmo] -lt 5 |=SlotLevel;2
+   --?[$PointsAmmo] -eq 2 |=SlotLevel;1
+   
+   --+|[c][b]Recover what level Spell Slot?[/b][/c]
+    --&splvlMsg|
+    --%splvl|1;[$SlotLevel];1
+     --&splvlMsg|+ [rbutton][&splvl]::ChooseSlotLevel;[&splvl][/rbutton]
+    --%|
+   --+|[c][&splvlMsg][/c]
+   --X|
+   
+  --:ChooseSlotLevel|
+   --=SpellLevel|[&reentryval]
+   --#emoteText|[*S:t-name] spends sorcery points to regain a Spell Slot!
+   --#title|Spell Slot Recovery
+
+   --=NewSlotsExpended|[*S:lvl[$SpellLevel]_slots_expended] + 1
+   --?[$NewSlotsExpended] -gt [*S:lvl[$SpellLevel]_slots_total] |>far_FatalError;Spell Slots Full;ERROR;[*S:t-name]'s Level [$SpellLevel] Spell Slots are already at full!
+   
+   -->Lib5E_RESTORE_SPELL_SLOT|[*S:character_id];[$SpellLevel]
+   
+   --c[$SpellLevel]|1:=SorceryPoints;2|2:=SorceryPoints;3|3:=SorceryPoints;5|4:=SorceryPoints;6|5:=SorceryPoints;7
+   
+   --#whisper|
+   --=FinalPointsAmmo|[$PointsAmmo]-[$SorceryPoints]
+   --!a:[*S:character_id]|[&PointsAmmo]:[$FinalPointsAmmo]
+   --+Spell Slot Recovery: |[*S:t-name] gains one level [$SpellLevel] Spell Slot!
+   --+|[br]
+   --+Sorcery Points: |Used: [$SorceryPoints]  Remaining: [$FinalPointsAmmo]
+   --X|
+   
+  --:Slots|
+   -->FIND_RESOURCE|[*S:character_id];[&SorcererResource];ResName1;ResValue1;ResMax
+   --=Missing|[$ResMax] - [$ResValue1]
+   
+   --?[$Missing] -ge 7 |=SlotLevel;5
+   --?[$Missing] -eq 6 |=SlotLevel;4
+   --?[$Missing] -eq 5 |=SlotLevel;3
+   --?[$Missing] -ge 3 -and [$Missing] -lt 5 |=SlotLevel;2
+   --?[$Missing] -eq 2 |=SlotLevel;1
+   
+   -->GetAvailableSpellLevels|[*S:character_id];1;[$SlotLevel];SpellCastLevel
+   --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to convert!
+   
+   --+|[c][b]Convert what level spell slot?[/b][/c]
+    --&splvlMsg|
+    --%splvl|foreach;SpellCastLevel
+     --&splvlMsg|+ [rbutton][&splvl]::ConvertSlotLevel;[&splvl][/rbutton]
+    --%|
+   --+|[c][&splvlMsg][/c]
+   --X|
+   
+  --:ConvertSlotLevel| 
+   --=SpellLevel|[&reentryval]
+   --#emoteText|[*S:t-name] spends a Spell Slot to regain a Sorcery Points!
+   --#title|Sorcery Point Recovery
+   
+   -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
+      
+   --c[$SpellLevel]|1:=SorceryPoints;2|2:=SorceryPoints;3|3:=SorceryPoints;5|4:=SorceryPoints;6|5:=SorceryPoints;7
+   
+   --#whisper|
+   --=FinalPointsAmmo|[$PointsAmmo]+[$SorceryPoints]
+   --!a:[*S:character_id]|[&PointsAmmo]:[$FinalPointsAmmo]
+   
+   --+Sorcery Points Recovery: |[*S:t-name] gains [$SpellLevel] Sorcery Points!
+   --+|[br]
+   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+   --X|   
+  
+  --:FIND_RESOURCE|character_id;resourceName;resourceReturnNameStringVariable;ResourceReturnValueStringVariable;ResourceMaxReturnValueStringVariable
+   --C[%2%]|[*[%1%]:class_resource_name]:Is_ResourceClass|[*[%1%]:other_resource_name]:Is_ResourceOther
+   --?"[%2%]" -eq "[*[%1%]:class_resource_name]"|Is_ResourceClass
+   --?"[%2%]" -eq "[*[%1%]:other_resource_name]"|Is_ResourceOther
+   --Rfirst|[%1%];repeating_resource
+   --:Resource_Loop|
+   --?"[*R:resource_left_name]" -eq "[%2%]"|Is_ResourceLeft
+   --?"[*R:resource_right_name]" -eq "[%2%]"|Is_ResourceRight
+   --Rnext|
+   --?"[*R:resource_left_name]" -ne "NoRepeatingAttributeLoaded"|Resource_Loop
+   --&[%3%]|NotFound --&[%4%]|NotFound --$[%4%]|0 --$[%5%]|0
+   --<|
+   --:Is_ResourceClass| --&[%3%]|class_resource_name --&[%4%]|class_resource --=[%4%]|[*[%1%]:class_resource] --&[%5%]|class_resource_max --=[%5%]|[*[%1%]:class_resource^] --<|
+   --:Is_ResourceOther| --&[%3%]|other_resource_name --&[%4%]|other_resource --=[%4%]|[*[%1%]:other_resource] --&[%5%]|other_resource_max --=[%5%]|[*[%1%]:other_resource^] --<|
+   --:Is_ResourceLeft| --&[%3%]|[*R>resource_left_name] --&[%4%]|[*R>resource_left] --=[%4%]|[*R:resource_left] --=[%5%]|[*R:resource_left_max] --<|
+   --:Is_ResourceRight| --&[%3%]|[*R>resource_right_name] --&[%4%]|[*R>resource_right] --=[%4%]|[*R:resource_right] --=[%5%]|[*R:resource_right_max] --<|
+   --<|
+  
+  --:GetAvailableSpellLevels|CharacterID;MinimumSpellLevel;MaxSpellLevel;ArrayNameToSet
+   --~|array;define;[%4%]
+   --%SpellLvlLoop|[%2%];[%3%];1
+    --?[*[%1%]:lvl[&SpellLvlLoop]_slots_total] -le 0|%
+    --?[*[%1%]:lvl[&SpellLvlLoop]_slots_expended] -le 0|%
+    --~|array;add;[%4%];[&SpellLvlLoop]
+    --%|
+   --<|
+  
+  --:NoPoints|
+   --#emoteText|[S:t-name] tries to to use Sorcery Points to.
+   --#title|Regain a spell slot but needs to take a long rest first.
+   --+[*S:t-name] has no sorcery points available.|
+   --X| DONE
+}}
