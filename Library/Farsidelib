@@ -1,4 +1,14 @@
---/|ScriptCards Library: Farsidelib  v1.5.0
+--/|ScriptCards Library: Farsidelib  version 1.0.0
+--/|Provides various utility procedures for Roll20
+
+--/|This library contains a number of functions that are customized to meet the different needs of spell or ability
+--/|scripts that Kurt's library functions did not meet. Some are copied and modified functions from Kurt's libraries
+--/|or written by me to meet specialized script needs. To use this library, paste the contents of this script into a 
+--/|handout with the name "ScriptCards Library Farsidelib" and then use the sequence +++Farsidelib+++ in your script 
+--/|to allow access to the libraryfunctions within your script. Refer to the ScriptCards wiki for additional 
+--/|information on libraries and their use.
+
+--/|Functions Included:
 --/|
 --/|   far_CustomCritCheck|ReturnStringName
 --/|     Are you using a custom critical damage game? 0 = no and 1 = yes
@@ -26,10 +36,8 @@
 --/| 
 --/|   far_BuildTargetList|NumberOfTargets;ReturnStringName
 --/|      Accepts a number variable defining how many targets will be added to the return target string.
---/| 
---/|   far_AddSeparator|
---/|      Subfunction called by far_BuildTargetList to add delimiter in target string.
---/|
+--/|      Subfunctions: far_AddSeparator
+--/|      
 --/|   far_BuildTargetArray|ArrayName;Number of Loops;String Containing target token-ids
 --/|      Given a target string (ideally from far_BuildTargetList) creates and populates an array of targets using the  
 --/|      supplied array name. Loop building the array will cycle to the number provided. Array will consist of unique 
@@ -53,25 +61,12 @@
 --/|  
 --/|   far_Inspiration|token-id;tokenmarker;attackstring;attackstringreturn
 --/|      Used if PC character has Inspiration to alter base roll.
---/|   
---/|   far_InspirationRoll
---/|     Subfunction called by far_InspirationRoll
---/|   
---/|   far_AnswerNo
---/|     Used to return to calling script if player does not want to use Inspiration or Bardic Inspiration at this time.
+--/|      Subfunctions: far_InspirationRoll, far_AnswerNo
 --/|   
 --/|   far_Bardic|token-id;tokenmarker;Scriptcheck;baseroll;adjustedroll;rollreturn
---/|     Used if PC character has Bardic Inspiration to add at the end of the roll. Also routes to appropriate
+--/|     Used if PC character has Bardic Inspiration to add at the end of the roll. Routes to appropriate
 --/|     subfunction if using FarsideGallery's Bardic scripts or not.
---/|   
---/|   far_ChooseBard|AttackRoll
---/|     Used to choose the Bard character (token) if not using FarsideGallery's Bardic scripts
---/|   
---/|   far_ScriptBardEntry|token-id;BardicMarker;rollreturn
---/|     Used when using FarsideGallery's Bardic scripts
---/|   
---/|   far_FindBardLevel|Bardtoken;rollreturn
---/|     Subfunction called to determine Bard's level and therefore the dice size added to the referencing roll
+--/|     Sub-functions: far_ChooseBard, far_ScriptBardEntry, far_FindBardLevel, far_AnswerNo
 --/|   
 --/|   far_FIND_CLASS_LEVEL|characterid;class;Return String Var
 --/|      Given a (class) name (ie, wizard, warlock, fighter, etc.) will return (Return String Var) with the class level for the 
@@ -92,6 +87,11 @@
 --/|     representing what to add to a roll expression to account for the mod(s). Dice rolls in mods (ie, 1d4 for guidance) will
 --/|     include a # after the expression to keep it from being counted in the Crit/Fumble check.
 --/|
+--/|   far_EmpowerSelect|DamageRollVariable;ReturnFunctionNameString
+--/|      Prompts character to use Empower Spell Feat and branches to sub-functions based on choice. If player selects No,
+--/|      sub-function will return to script. If yes is selected, player will be allowed to change each damage die roll one
+--/|      time only.
+--/|      Sub-functions: far_EmpowerYes, far_EmpowerNo, far_DieSelect, far_FindDieSize
 
 --/| =============================== BEGIN LIBRARY CODE ===============================================
 
@@ -386,7 +386,7 @@
    --+[%2%]|[%3%]
    --X|
 
---:far_FIND_ACTIVE_GLOBAL_ATTACK_MODS|character_id;StringVariableToSet
+ --:far_FIND_ACTIVE_GLOBAL_ATTACK_MODS|character_id;StringVariableToSet
   --&_obrac|[ --&_cbrac|]
   --&_GAM_Temp| 
   --Rfirst|[%1%];repeating_tohitmod
@@ -397,11 +397,11 @@
   --&[%2%]|[&_GAM_Temp] 
   --<|
   
-  --:far_AddGAM| 
+ --:far_AddGAM| 
   --&_GAM_Temp|+ + [%2%]# [&_obrac][%1%][&_cbrac] 
   --<|
 
-  --:far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|character_id;StringVariableToSet;isCrit(1=true)
+ --:far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|character_id;StringVariableToSet;isCrit(1=true)
   --&_obrac|[ --&_cbrac|]
   --&_GDM_Temp| 
   --Rfirst|[%1%];repeating_damagemod
@@ -412,12 +412,12 @@
   --&[%2%]|[&_GDM_Temp] 
   --<|
   
-  --:far_AddGDM| 
+ --:far_AddGDM| 
   --&_GDM_Temp|+ + [%2%]# [&_obrac][%1%][&_cbrac] 
   --?"[%3%]" -eq "1"|&_GDM_Temp;+ + [%4%]  [ CRIT [%1%] ]
   --<|
 
-  --:far_FIND_ACTIVE_GLOBAL_SAVE_MODS|character_id;StringVariableToSet
+ --:far_FIND_ACTIVE_GLOBAL_SAVE_MODS|character_id;StringVariableToSet
   --&_obrac|[ --&_cbrac|]
   --&_GSM_Temp| 
   --Rfirst|[%1%];repeating_savemod
@@ -428,11 +428,11 @@
   --&[%2%]|[&_GSM_Temp] 
   --<|
 
-  --:far_AddGSM| 
+ --:far_AddGSM| 
   --&_GSM_Temp|+ + [%2%]# [&_obrac][%1%][&_cbrac] 
   --<|
 
-  --:far_FIND_ACTIVE_GLOBAL_AC_MODS|character_id;StringVariableToSet
+ --:far_FIND_ACTIVE_GLOBAL_AC_MODS|character_id;StringVariableToSet
   --&_obrac|[ --&_cbrac|]
   --&_GACM_Temp| 
   --Rfirst|[%1%];repeating_acmod
@@ -443,11 +443,11 @@
   --&[%2%]|[&_GACM_Temp] 
   --<|
 
-  --:far_AddGACM| 
+ --:far_AddGACM| 
   --&_GACM_Temp|+ + [%2%]# [&_obrac][%1%][&_cbrac] 
   --<|
 
-  --:far_FIND_ACTIVE_GLOBAL_SKILL_MODS|character_id;StringVariableToSet
+ --:far_FIND_ACTIVE_GLOBAL_SKILL_MODS|character_id;StringVariableToSet
   --&_obrac|[ --&_cbrac|]
   --&_GSKM_Temp| 
   --Rfirst|[%1%];repeating_skillmod
@@ -458,6 +458,100 @@
   --&[%2%]|[&_GSKM_Temp] 
   --<|
 
-  --:far_AddGSKM| 
+ --:far_AddGSKM| 
   --&_GSKM_Temp|+ + [%2%]# [&_obrac][%1%][&_cbrac] 
   --<|
+ 
+ --:far_EmpowerSelect|DamageRollVariable;ReturnFunctionNameString;DamageChangeVar;DamageVar
+  --#whisper|self,gm
+  --~|array;define;changedIndex;
+  --~|array;fromrollvar;rolledDice;[%1%];rolled
+  --&function|[%2%]
+  --?[$PointsAmmo] -le [$SorceryPoints]|>EmpowerNo
+  --?"X[$ChangeCount]" -eq "X[$EmpowerDice]"|>EmpowerNo
+  --~DamageString|array;stringify;rolledDice;!@!
+  --~|array;fromstring;DamageDiceRolls;!@!;[&DamageString]
+  --&DieInformMsg|
+  --+|You [&function] [*T:t-name] and rolled the following for Damage Dice:
+  --+|[br]
+  --%DiceMsg|foreach;DamageDiceRolls
+   --&DieInformMsg|+  [&DiceMsg]
+   --%|
+  --+|[c][&DieInformMsg][/c]
+  --+|[br]
+  --+|[c]Do you want to spend a Sorcery Point to change a roll?[/c]
+  --+|[c][rbutton]Yes::far_EmpowerYes[/rbutton]  [rbutton]No::far_EmpowerNo[/rbutton][/c]
+  --X|
+  --<|
+   
+ --:far_EmpowerYes|
+  --&DieRollMsg|
+  --=DisplayCount|
+  --=DisplayCount|[$EmpowerDice]-[$ChangeCount]
+  --+|You can reroll a damage dice [$DisplayCount] more times (one time per dice only).
+  --+|[br]
+  --+|[c]Choose a Damage Dice to reroll:[/c]
+  --%DieRoll|foreach;DamageDiceRolls
+   --&DieRollMsg|+ [rbutton][&DieRoll]::far_DieSelect;[&DieRoll][/rbutton]
+   --%|
+  --+|[c][&DieRollMsg][/c]
+  --+|[br]
+  --+|[c]When you are done rerolling click here: [/c]
+  --+|[c][rbutton]Continue::far_EmpowerNo[/rbutton][/c]
+  --X|
+  --<|
+   
+ --:far_EmpowerNo|
+  --?"X[$ChangeCount]" -gt "X0"|[
+   --=ChangedDamage|
+   --=SorceryPoints|[$SorceryPoints]+1
+   --%damage|foreach;DamageDiceRolls
+    --=ChangedDamage|[$ChangedDamage]+[&damage]
+    --%|
+   --=[%4%]|[$ChangedDamage]
+   --]|
+  --<|
+  
+ --:far_DieSelect|
+  --&OrigValue|[&reentryval]
+  --=[%3%]|1
+  --~Index|array;indexof;DamageDiceRolls;[&OrigValue]
+  --~testvar|array;indexof;changedIndex;[&Index]
+  --?"[&testvar]" -eq "ArrayError" |[
+   --~|array;add;changedIndex;[&Index]
+   --=ChangeCount|[$ChangeCount] + 1
+   -->far_FindDieSize|
+   --=NewDamage|1d[&DieSize]
+   --+New Damage Roll: |[$NewDamage]
+   --+|[br]
+  --~|array;setatindex;DamageDiceRolls;[&Index];[$NewDamage]
+   --^far_EmpowerYes|
+   --]|[
+   --+Value [@DamageDiceRolls([&Index])]: |You have already changed this dice roll and cannot do so again!
+   --+|[br]
+   --]|
+  --^far_EmpowerYes|
+  --<|
+  
+ --:far_FindDieSize|
+  --&RollText|[$Damage[*T:t-id].RollText]
+  --~DieSize|string;after;d;[&RollText]	
+   
+  --?"[&RollText]" -inc "Resistant"|[
+   --~DieSize|string;before;\;[&RollText]
+   --~DieSize|string;trim;[&DieSize]
+   --~DieSize|string;after;d;[&DieSize]
+   --]|
+
+  --?"[&RollText]" -inc "Vulnerable"|[
+   --~DieSize|string;before;*;[&RollText]
+   --~DieSize|string;trim;[&DieSize]
+   --~DieSize|string;after;d;[&DieSize]
+   --]|
+    
+  --?"[&RollText]" -inc "[Crit]"|[
+   --~DieSize|string;before;[&obrac];[&RollText]
+   --~DieSize|string;trim;[&DieSize]
+   --~DieSize|string;after;d;[&DieSize]
+   --]|
+   --<|
