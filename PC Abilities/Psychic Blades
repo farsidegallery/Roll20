@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Psychic Blades
-  --/|Version     : 1.0.1
+  --/|Version     : 1.0.2
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|
@@ -138,9 +138,9 @@
    --?[&CustomCritFlag] -eq 1|[
     --=CritDice|1+[&CritDamageDiceModifier]
     --&CritDamage|[$CritDice][&CritDamageDiceRollType][$SelectedDamage][&CritDamageRollModifier] + [$SelectedDamage]
-    --=Damage|1d[$SelectedDamage] [Hit] + [&CritDamage] [Crit] [&HexBlade] [&Hex] [&GlobalDamage][&damageMod]
+    --=Damage|1d[$SelectedDamage] [Hit] + [&CritDamage] [Crit] + [$AttackMod] [&obrac][&Attrib][&cbrac] [&HexBlade] [&Hex] [&GlobalDamage][&damageMod]
 	--]|[
-	--=Damage|1d[$SelectedDamage] [Hit] + 1d[$SelectedDamage] [Crit] [&HexBlade] [&Hex] [&GlobalDamage][&damageMod]
+	--=Damage|1d[$SelectedDamage] [Hit] + 1d[$SelectedDamage] [Crit] + [$AttackMod] [&obrac][&Attrib][&cbrac] [&HexBlade] [&Hex] [&GlobalDamage][&damageMod]
 	--]|
    --+[b]Critical Hit!!![/b] |The attack did [$Damage] points of [&damageType1] damage.
    --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$Damage];0;0;1
@@ -161,7 +161,7 @@
    -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0
    --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex;+ + 1d6 [Hex] |&Hex;
    --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade;
-   --=Damage|1d[$SelectedDamage] [&HexBlade] [&Hex][&GlobalDamage][&damageMod]
+   --=Damage|1d[$SelectedDamage] + [$AttackMod] [&obrac][&Attrib][&cbrac] [&HexBlade] [&Hex][&GlobalDamage][&damageMod]
    --+[b]Hit![/b] |The attack did [$Damage] points of [&damageType1] damage.
    --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$Damage];0;0;1
    -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
