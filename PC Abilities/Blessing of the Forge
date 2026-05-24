@@ -6,7 +6,7 @@
   --#whisper|self,gm
 
   --/|Script Name : Blessing of the Forge[l]
-  --/|Version     : 1.0
+  --/|Version     : 1.0.1
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Arak Stoneboulder
   --/|Modified By : Farsidegallery
@@ -153,7 +153,7 @@
   
    --?"X[$AltFlag]" -eq "X1"|[
     --&oneHand|[&weapon] [&oparen]One-Handed[&cparen]
-	--&twoHand|[&weapon] [&oparen]Two-Handed[&cparen]
+	 --&twoHand|[&weapon] [&oparen]Two-Handed[&cparen]
 	
 	--Rfind|[*S:character_id];[&oneHand];repeating_attack;atkname
 	--!a:[*S:character_id]|![*R>atkname]:Forge Blessed [&oneHand]
