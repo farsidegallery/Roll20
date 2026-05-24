@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Psychic Blades
-  --/|Version     : 1.0
+  --/|Version     : 1.0.1
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|
@@ -43,6 +43,9 @@
    --&BardicMarker|BardicInspiration::7409920
    --&BlessedMarker|angel-outfit
    --&InspirationMarker|Inspiration::7409921
+   --&BaneMarker|Hexed3::7409911
+   --&HexMarker|Hexed::7409913
+   --&HexBladeMarker|Hexed2::7409912
    --&DeathMarker|dead
   
   --/| ____________________ End Global User Variables ___________________________________________________________________________________________
@@ -98,17 +101,21 @@
    
   --:AttackType|
    --&AttackDice|[&reentryval]
-   --?[&InspiredFlag] -ne 0 |>far_Inspiration;[*S:t-id];[&InspirationMarker];[&AttackDice];AttackDice
+   --~AttackMod|math;max;[*S:strength_mod];[*S:dexterity_mod]
+   --?[$AttackMod] -eq [*S:strength_mod]|&Attrib;STR
+   --?[$AttackMod] -eq [*S:dexterity_mod]|&Attrib;DEX
+   
+   --?"X[&InspiredFlag]" -ne "X0" |>far_Inspiration;[*S:t-id];[&InspirationMarker];[&AttackDice];AttackDice
    
    --=AttackDiceBase|[&AttackDice]
    --+Rolling [&AttackDice]: |[$AttackDiceBase]
    --+|[br]
-   --=AttackRollMod|[$AttackDiceBase] + [*S:spell_attack_bonus] [Spell Attack Bonus]
+   --=AttackRollMod|[$AttackDiceBase] + [$AttackMod] [&obrac][&Attrib][&cbrac] + [*S:pb] [Proficiency Bonus]
    
-   --?[&BardicFlag] -eq 1|>far_Bardic;[*S:t-id];[&BardicMarker];[$Scriptcheck];[$AttackDiceBase];[$AttackRollMod];BardRoll
-   --?[&BaneMarkerFlag] -eq 1|&Baneroll;+ - 1d4 [Bane] |&Baneroll;
+   --?"X[&BardicFlag]" -eq "X1"|>far_Bardic;[*S:t-id];[&BardicMarker];[$Scriptcheck];[$AttackDiceBase];[$AttackRollMod];BardRoll
+   --?"X[&BaneMarkerFlag]" -eq "X1"|&Baneroll;+ - 1d4 [Bane] |&Baneroll;
    
-   --=AttackRoll|[$AttackDiceBase] + [*S:spell_attack_bonus] [Spell Attack Bonus] [&GlobalAttack] [&Baneroll] [&BardRoll]
+   --=AttackRoll|[$AttackDiceBase] + [$AttackMod] [&obrac][&Attrib][&cbrac] + [*S:pb] [Proficiency Bonus] [&GlobalAttack] [&Baneroll] [&BardRoll]
    
    --+Total Attack Roll |[b]#[$Shot][/b]: [$AttackRoll]
    --+|[br]
