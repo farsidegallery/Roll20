@@ -1,54 +1,72 @@
 !scriptcard {{
-  +++5Elib;snlib;Farsidelib+++
-
+ +++5Elib;snlib;Farsidelib+++
+  
   --#sourceToken|@{selected|token_id}
-  --#reentrant|Shadow Blade @{selected|character_id}
+  --#reentrant|My Cool Script @{selected|character_id}
   --#whisper|self,gm
-
+  
   --/|Script Name : Shadow Blade
-  --/|Version     : 1.0
-  --/|Author      : Farsidegallery
-  --/|Description : Creates the Shadow Blade spell effect, deducts a 2nd-level spell slot, and sets concentration.
-
+  --/|Version     : 1
+  --/|Requires SC : TokenMod, Chatsetattr, ScriptCards Library 5Elib/snlib Farsidelib
+  --/|Author      : Arak Stoneboulder
+  --/|Modified By : Farsidegallery
+  --/|
+  --/|  Script creates the Shadow Blade spell effect, deducts a 2nd-level spell slot, and sets concentration.
+  --/|  ==============================Script finds Caster's level, scales and calculates damage, determines damage modifier (resistant, immune), and applies damage. 
+  --/|  ==============================If target dies due to damgae, the "Dead" token marker is applied.
+  --/|
+  
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+      
   --&SpellName|Shadow Blade
   --&MinimumSpellLevel|2
+  
+  --/|What token marker is used for Concentration?
   --&ConcentrationMarker|Concentrating::7409928
-  --&SpellDuration|Concentration, up to 1 minute
-  --&SpellDesc|You weave together shadow to create a sword of solidified gloom in your hand. The blade deals 2d8 psychic damage on a hit, has finesse, light, and thrown (20/60) properties, and grants advantage on attack rolls in dim light or darkness.
-  --&SpellUsage|Attack with the blade as a simple melee weapon using Strength or Dexterity for attack and damage rolls.
-  --&HigherLevels|The spell has no additional effect when cast using a higher-level spell slot.
 
-  --#title|[&SpellName]
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+
   --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
   --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
-  -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
-  --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
-
+  
   --+Choose Function: |[rbutton]Cast Spell::New[/rbutton][rbutton]Dismiss::Remove[/rbutton]
   --X|
 
   --:New|
-   --+|[c][b]Cast Shadow Blade[/b][/c]
-   --#leftsub|1 bonus action
-   --#rightsub|Self
-   --+|Spell Level: 2
-   --+|Duration: [&SpellDuration]
-   --+|Damage: 2d8 psychic
-   --+|Properties: finesse, light, thrown (20/60)
-   --+|Advantage in dim light or darkness
-   --+Desc: |[&SpellDesc]
-   --+At Higher Levels: |[&HigherLevels]
-   --!a:[*S:character_id]|!ConcentrationSpell:[&SpellName]
-   -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];10
-   -->far_DeductSpellSlot|[*S:t-id];[&MinimumSpellLevel]
+   --#title|[&SpellName]
+   --#emoteText|[*S:t-name] casts [&SpellName]!
    --#emoteText|[*S:character_name] weaves a Shadow Blade!
-   --#whisper|
-    --+|[b]Shadow Blade[/b] has been cast.
-    --+|[&SpellUsage]
-    --+|[br]
-    --+|[&SpellDesc]
+   
+   -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+   --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+  
+   --+|[c][b]Cast At What Level?[/b][/c]
+    --&splvlMsg|
+    --%splvl|foreach;SpellCastLevel
+     --&splvlMsg|+ [rbutton][&splvl]::ChooseType;[&splvl][/rbutton]
+    --%|
+   --+|[c][&splvlMsg][/c]
+  --X|
+ 
+  --:ChooseType|
+   --=SpellLevel|[&reentryval]
+   --&SpellLevel|[&reentryval]
+   --#whisper| 
+   --+A sword out of solidified gloom appears in his hand|
+   -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
+   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
    --X|
-
+  
   --:Remove|
    --#emoteText|[*S:character_name] ends Shadow Blade.
    --#whisper|
