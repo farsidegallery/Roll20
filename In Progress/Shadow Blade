@@ -71,10 +71,6 @@
    --!a:[*S:character_id]|!ConcentrationSpell:[&SpellName]
    -->DamageRoll|
    
-   --~AttackMod|math;max;[*S:strength_mod];[*S:dexterity_mod]
-  --?[$AttackMod] -eq [*S:strength_mod]|&Attrib;strength_mod
-  --?[$AttackMod] -eq [*S:dexterity_mod]|&Attrib;dexterity_mod
-   
    --Rfind|[*S:character_id];[&SpellName];repeating_inventory;itemname
    --?"[*R:itemname]" -eq "NoRepeatingAttributeLoaded"|>Create |>Equip
    
