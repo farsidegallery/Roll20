@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Shadow Blade
-  --/|Version     : 1.0.0
+  --/|Version     : 1
   --/|Requires SC : TokenMod, Chatsetattr, ScriptCards Library 5Elib/snlib Farsidelib
   --/|Author      : Arak Stoneboulder
   --/|Modified By : Farsidegallery
@@ -50,6 +50,9 @@
    
    -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
    --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+   --&desc|[*R:spelldescription]
+   --&higherdesc|[*R:spellathigherlevels]
   
    --+|[c][b]Cast At What Level?[/b][/c]
     --&splvlMsg|
@@ -110,6 +113,9 @@
    --#whisper| 
    --+|A sword out of solidified gloom appears in [*S:t-name]'s hand!
    --+|[br]
+   --+Duration: |[&duration]
+   --+Desc: |[&desc]
+   --+At Higher Levels: |[&higherdesc]
    -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
    --X|
   
