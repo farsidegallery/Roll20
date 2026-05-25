@@ -89,7 +89,7 @@
 		useasresource:0|
 		equipped:1|
         options-flag:0|
-   --#debug|1     
+
    --Rfind|[*S:character_id];[&SpellName];repeating_inventory;itemname
    --!a:[*S:character_id]|![*R>itemmodifiers]:[&itemmods]
    -->Output|
@@ -122,7 +122,7 @@
   --:Remove|
    --#whisper|
    --#emoteText|[*S:t-name] ends Shadow Blade.
-   --+|[b]Shadow Blade[/b] ends.
+   --+|The blade of shadows returns to the shadows.
    -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker]
    --!a:[*S:character_id]|!ConcentrationSpell:**
    --Rfind|[*S:character_id];[&SpellName];repeating_inventory;itemname
