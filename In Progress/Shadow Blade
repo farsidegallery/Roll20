@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Shadow Blade
-  --/|Version     : 1
+  --/|Version     : 1.0.0
   --/|Requires SC : TokenMod, Chatsetattr, ScriptCards Library 5Elib/snlib Farsidelib
   --/|Author      : Arak Stoneboulder
   --/|Modified By : Farsidegallery
@@ -35,6 +35,7 @@
   --&cbrac|]
   --&oparen|(
   --&cparen|)
+  --&colon|:
 
   --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
   --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
@@ -45,7 +46,7 @@
   --:New|
    --#title|[&SpellName]
    --#emoteText|[*S:t-name] casts [&SpellName]!
-   --#emoteText|[*S:character_name] weaves a Shadow Blade!
+   --#emoteText|[*S:t-name] weaves a Shadow Blade!
    
    -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
    --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
@@ -61,17 +62,64 @@
   --:ChooseType|
    --=SpellLevel|[&reentryval]
    --&SpellLevel|[&reentryval]
-   --#whisper| 
-   --+A sword out of solidified gloom appears in his hand|
    -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
+   
+   -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];10
+   --!a:[*S:character_id]|!ConcentrationSpell:[&SpellName]
+   -->DamageRoll|
+   
+   --~AttackMod|math;max;[*S:strength_mod];[*S:dexterity_mod]
+  --?[$AttackMod] -eq [*S:strength_mod]|&Attrib;strength_mod
+  --?[$AttackMod] -eq [*S:dexterity_mod]|&Attrib;dexterity_mod
+   
+   --Rfind|[*S:character_id];[&SpellName];repeating_inventory;itemname
+   --?"[*R:itemname]" -eq "NoRepeatingAttributeLoaded"|>Create |>Equip
+   
+  --:Create|
+   --&itemmods|Item Type: Melee Weapon, Damage: [&DamageDice], Damage Type: Psychic, Range: 20/60, Critical Range: 20
+   --!or:[*S:character_id]:inventory|
+        itemname:[&SpellName]|
+		itemcount:1|
+		itemmodifiers:|
+		itemproperties:Finesse, Light, Range, Thrown|
+        itemweight:0|
+		useasresource:0|
+		equipped:1|
+        options-flag:0|
+   --#debug|1     
+   --Rfind|[*S:character_id];[&SpellName];repeating_inventory;itemname
+   --!a:[*S:character_id]|![*R>itemmodifiers]:[&itemmods]
+   -->Output|
+  
+  --:Equip|
+   --Rfind|[*S:character_id];[&SpellName];repeating_inventory;itemname
+   --!a:[*s:character_id]|![*R>equipped]:1
+   
+   --Rfind|[*S:character_id];[&weapon];repeating_attack;atkname
+   --!a:[*S:character_id]|![*R>dmgbase]:[&DamageDice]
+   -->Output|
+  
+  --:DamageRoll|
+   --?[$SpellLevel] -ge 7 |&DamageDice;5d8
+   --?[$SpellLevel] -eq 5 -or [$SpellLevel] -eq 6 |&DamageDice;4d8
+   --?[$SpellLevel] -eq 3 -or [$SpellLevel] -eq 4 |&DamageDice;3d8
+   --?[$SpellLevel] -eq 2 |&DamageDice;2d8
+   --<|
+  
+  --:Output| 
+   --#whisper| 
+   --+|A sword out of solidified gloom appears in [*S:t-name]'s hand!
+   --+|[br]
    -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
    --X|
   
   --:Remove|
-   --#emoteText|[*S:character_name] ends Shadow Blade.
    --#whisper|
-    --+|[b]Shadow Blade[/b] ends.
+   --#emoteText|[*S:t-name] ends Shadow Blade.
+   --+|[b]Shadow Blade[/b] ends.
    -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker]
    --!a:[*S:character_id]|!ConcentrationSpell:**
+   --Rfind|[*S:character_id];[&SpellName];repeating_inventory;itemname
+   --!a:[*S:character_id]|![*R>equipped]:0
    --X|
 }}
