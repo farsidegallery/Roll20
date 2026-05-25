@@ -94,7 +94,7 @@
    --Rfind|[*S:character_id];[&SpellName];repeating_inventory;itemname
    --!a:[*s:character_id]|![*R>equipped]:1
    
-   --Rfind|[*S:character_id];[&weapon];repeating_attack;atkname
+   --Rfind|[*S:character_id];[&SpellName];repeating_attack;atkname
    --!a:[*S:character_id]|![*R>dmgbase]:[&DamageDice]
    -->Output|
   
