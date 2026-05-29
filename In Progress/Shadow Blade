@@ -7,12 +7,12 @@
   
   --/|Script Name : Shadow Blade
   --/|Version     : 1.0.0
-  --/|Requires SC : TokenMod, Chatsetattr, ScriptCards Library 5Elib/snlib Farsidelib
+  --/|Requires SC : Chatsetattr, ScriptCards Library 5Elib/snlib Farsidelib
   --/|Author      : Arak Stoneboulder
   --/|Modified By : Farsidegallery
   --/|
   --/|  Script creates the Shadow Blade spell effect, deducts spell slot, and sets concentration. A new item will be created in caster's
-  --/|  attacks named Shadow Blade with all the correct properties. When Dismiss is selected, the item will be removed completely. 
+  --/|  attacks named Shadow Blade with all the correct properties. When Dismiss is selected, the item and concentration status will be removed. 
   --/|  
   
   --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
@@ -34,7 +34,6 @@
   --&cbrac|]
   --&oparen|(
   --&cparen|)
-  --&colon|:
   --&at|@
 
   --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
@@ -70,11 +69,7 @@
    -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];10
    --!a:[*S:character_id]|!ConcentrationSpell:[&SpellName]
    -->DamageRoll|
-   
    -->Create|
-   
-   --Rfind|[*S:character_id];[&SpellName];repeating_inventory;itemname
-   --?"[*R:itemname]" -eq "NoRepeatingAttributeLoaded"|>Create |>Equip
    
   --:Create|
    --~AttribScore|math;max;[*S:strength_mod];[*S:dexterity_mod]
@@ -91,27 +86,6 @@
         dmgattr:[&at][&brace][&Attrib][&cbrace]|
 		options-flag:0|
    
-   --&itemmods|Item Type: Melee Weapon, Damage: [&DamageDice], Damage Type: Psychic, Range: 20/60, Critical Range: 20
-   --/|!or:[*S:character_id]:inventory|
-        itemname:[&SpellName]|
-		itemcount:1|
-		itemmodifiers:|
-		itemproperties:Finesse, Light, Range, Thrown|
-        itemweight:0|
-		useasresource:0|
-		equipped:1|
-        options-flag:0|
-
-   --Rfind|[*S:character_id];[&SpellName];repeating_inventory;itemname
-   --!a:[*S:character_id]|![*R>itemmodifiers]:[&itemmods]
-   -->Output|
-  
-  --:Equip|
-   --Rfind|[*S:character_id];[&SpellName];repeating_inventory;itemname
-   --!a:[*s:character_id]|![*R>equipped]:1
-   
-   --Rfind|[*S:character_id];[&SpellName];repeating_attack;atkname
-   --!a:[*S:character_id]|![*R>dmgbase]:[&DamageDice]
    -->Output|
   
   --:DamageRoll|
