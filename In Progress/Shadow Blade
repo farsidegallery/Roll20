@@ -12,9 +12,8 @@
   --/|Modified By : Farsidegallery
   --/|
   --/|  Script creates the Shadow Blade spell effect, deducts spell slot, and sets concentration. A new item will be created in caster's
-  --/|  inventory named Shadow Blade with all the correct properties. Caster or GM will need to open the item properties and check the 
-  --/|  "Has Attack" box for sheet to build the weapon correctly in the attacks area. Damage formula will update if the box is not
-  --/|  unchecked. If the "Has Attack" box gets unchecked, damaga formula will not update and the previous formula will remain.
+  --/|  attacks named Shadow Blade with all the correct properties. When Dismiss is selected, the item will be removed completely. 
+  --/|  
   
   --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
       
