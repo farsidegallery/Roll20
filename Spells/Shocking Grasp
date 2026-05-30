@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Script Name : Shocking Grasp
-  --/|Version     : 1.1.0
+  --/|Version     : 1.1.1
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : 
   --/|Modified By : Farsidegallery
@@ -18,9 +18,9 @@
   
   --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
       
-   --&SpellName|Ray of Frost
+   --&SpellName|Shocking Grasp
    --&MinimumSpellLevel|cantrip
-   --&damageType|cold
+   --&damageType|lightning
    
    --&hpBar|1
    --&tempHPbar|4
