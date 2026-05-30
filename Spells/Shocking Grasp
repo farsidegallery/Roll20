@@ -20,7 +20,7 @@
       
    --&SpellName|Ray of Frost
    --&MinimumSpellLevel|cantrip
-   --&damageType|lightning
+   --&damageType|cold
    
    --&hpBar|1
    --&tempHPbar|4
