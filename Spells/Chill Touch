@@ -20,7 +20,7 @@
       
    --&SpellName|Chill Touch
    --&MinimumSpellLevel|cantrip
-   --&damageType1|necrotic
+   --&damageType|necrotic
    
    --&hpBar|1
    --&tempHPbar|4
@@ -116,7 +116,7 @@
    --#emoteText|[*S:t-name] attacks [*T:t-name]!
    --=TargetHP|[*T:t-bar1_value]
    --?[*T:npc] -eq 1|=TargetAC;[*T:npc_ac]|=TargetAC;[*T:ac]
-   -->far_CheckDamageModifiers|[*T:character_id];[&damageType1];damageMod[*T:t-id];0;0;0
+   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod[*T:t-id];0;0;0
    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexMarker];HexMarkerFlag[*T:t-id];HexMarkerCount
    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];HexBladeMarkerFlag[*T:t-id];HexBladeMarkerCount
    
@@ -167,7 +167,7 @@
     --=Damage[*T:t-id]|[$ChangedDamage[*T:t-id]] [&HexBlade[*T:t-id]] [&Hex[*T:t-id]][&GlobalDamage][&damageMod[*T:t-id]]
     --]|
    --&ResultLabel[*T:t-id]|[b]Critical Hit!!![/b]
-   --&ResultText[*T:t-id]|The bolt did [$Damage[*T:t-id]] points of [&damageType1] damage.
+   --&ResultText[*T:t-id]|The bolt did [$Damage[*T:t-id]] points of [&damageType] damage.
    --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$Damage[*T:t-id]];0;0;1
    -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
    --=FinalHP|[*T:t-bar[&hpBar]_value]+[*T:t-bar[&tempHPbar]_value]-[$Damage[*T:t-id]]
@@ -189,7 +189,7 @@
     --=Damage[*T:t-id]|[$ChangedDamage[*T:t-id]] [&HexBlade[*T:t-id]] [&Hex[*T:t-id]][&GlobalDamage][&damageMod[*T:t-id]]
     --]|
    --&ResultLabel[*T:t-id]|[b]Hit![/b]
-   --&ResultText[*T:t-id]|The bolt did [$Damage[*T:t-id]] points of [&damageType1] damage.
+   --&ResultText[*T:t-id]|The bolt did [$Damage[*T:t-id]] points of [&damageType] damage.
    --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$Damage];0;0;1
    -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$Damage[*T:t-id]];0;0;1
    --=FinalHP|[*T:t-bar[&hpBar]_value]+[*T:t-bar[&tempHPbar]_value]-[$Damage[*T:t-id]]
