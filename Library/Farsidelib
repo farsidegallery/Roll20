@@ -1,4 +1,4 @@
---/|ScriptCards Library: Farsidelib  version 1.0.0
+--/|ScriptCards Library: Farsidelib  version 1.0.1
 --/|Provides various utility procedures for Roll20
 
 --/|This library contains a number of functions that are customized to meet the different needs of spell or ability
@@ -466,6 +466,7 @@
   --#whisper|self,gm
   --~|array;define;changedIndex;
   --~|array;fromrollvar;rolledDice;[%1%];rolled
+  --&RollText|[$[%1%].RollText]
   --&function|[%2%]
   --?[$PointsAmmo] -le [$SorceryPoints]|>EmpowerNo
   --?"X[$ChangeCount]" -eq "X[$EmpowerDice]"|>EmpowerNo
@@ -534,7 +535,6 @@
   --<|
   
  --:far_FindDieSize|
-  --&RollText|[$Damage[*T:t-id].RollText]
   --~DieSize|string;after;d;[&RollText]	
    
   --?"[&RollText]" -inc "Resistant"|[
