@@ -69,6 +69,11 @@
   --&control|[*O:[*S:t-represents]:character:controlledby]
   --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
   --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  --#leftsub|[*R:spellcastingtime]
+  --#rightsub|[*R:spellrange]
+  --&desc|[*R:spelldescription]
+  --&higherdesc|[*R:spellathigherlevels]
+  --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
   -->ChooseFunction|
   
   --:ChooseFunction|
@@ -90,11 +95,6 @@
   --:ChooseType|
    --=SpellLevel|[&reentryval]
    --&SpellLevel|[&reentryval]
-   --#leftsub|[*R:spellcastingtime]
-   --#rightsub|[*R:spellrange]
-   --&spelldesc|[*R:spelldescription]
-   --&spellhigherdesc|[*R:spellathigherlevels]
-   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
    
    --+Choose Weapon: |[br]
    --+|[rbutton]BattleAxe::NewCast;BattleAxe[/rbutton][rbutton]Club::NewCast;Club[/rbutton][rbutton]Dagger::NewCast;Dagger[/rbutton][rbutton]Flail::NewCast;Flail[/rbutton][rbutton]Glaive::NewCast;Glaive[/rbutton][rbutton]GreatAxe::NewCast;GreatAxe[/rbutton][rbutton]GreatClub::NewCast;GreatClub[/rbutton][rbutton]GreatSword::NewCast;GreatSword[/rbutton][rbutton]Halberd::NewCast;Halberd[/rbutton][rbutton]HandAxe::NewCast;HandAxe[/rbutton][rbutton]Javelin::NewCast;Javelin[/rbutton][rbutton]Lance::NewCast;Lance[/rbutton][rbutton]LightHammer::NewCast;LightHammer[/rbutton][rbutton]Longsword::NewCast;Longsword[/rbutton][rbutton]Mace::NewCast;Mace[/rbutton][rbutton]Maul::NewCast;Maul[/rbutton][rbutton]MorningStar::NewCast;MorningStar[/rbutton][rbutton]Pike::NewCast;Pike[/rbutton][rbutton]Quarterstaff::NewCast;Quarterstaff[/rbutton][rbutton]Rapier::NewCast;Rapier[/rbutton][rbutton]scimitar::NewCast;scimitar[/rbutton][rbutton]Shortsword::NewCast;Shortsword[/rbutton][rbutton]Sickle::NewCast;Sickle[/rbutton][rbutton]Spear::NewCast;Spear[/rbutton][rbutton]Trident::NewCast;Trident[/rbutton][rbutton]WarHammer::NewCast;WarHammer[/rbutton][rbutton]Warpick::NewCast;Warpick[/rbutton]  {&skip}
@@ -137,7 +137,7 @@
    --&AttackWeapon|[*[&WeaponID]:Weapon]
    --#emoteText|[*S:character_name] attacks [*T:character_name] with a Spiritual Weapon shaped as an [&AttackWeapon]!
 
-   ---=TargetHP|[*T:t-bar1_value]
+   --=TargetHP|[*T:t-bar1_value]
    --?[*T:npc] -eq 1|=TargetAC;[*T:npc_ac]|=TargetAC;[*T:ac]
    -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;0;0;0
    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexMarker];HexMarkerFlag;HexMarkerCount
@@ -155,7 +155,6 @@
 
    --=AttackDiceBase|[&AttackDice]
    --+Rolling [&DisplayDice]: |[$AttackDiceBase]
-   --+|[br]
    --=AttackRollMod|[$AttackDiceBase] + [*S:spell_attack_bonus] [Spell Attack Bonus]
    
    --?[&BardicFlag] -eq 1|>far_Bardic;[*S:t-id];[&BardicMarker];[$Scriptcheck];[$AttackDiceBase];[$AttackRollMod];BardRoll
@@ -163,7 +162,8 @@
    
    --=AttackRoll|[$AttackDiceBase] + [*S:spell_attack_bonus] [Spell Attack Bonus] [&GlobalAttack] [&Baneroll] [&BardRoll]
    
-   --+Total Attack R
+   --+Total Attack Roll: |[$AttackRoll]
+   --+|[br]
 
    --?[$AttackDiceBase] -eq 20|>Crit
    --?[$AttackDiceBase] -eq 1|>Fumble
@@ -183,9 +183,9 @@
    --?[&CustomCritFlag] -eq 1|[
     --=CritDice|[&DamageDice]+[&CritDamageDiceModifier]
     --&CritDamage|[$CritDice][&CritDamageDiceRollType]8[&CritDamageRollModifier] + [$CritDamageModifier]
-    --=Damage|[&DamageDice]d8 [Hit] + [&CritDamage] [Crit] [&HexBlade] [&Hex] [&GlobalDamage][&damageMod]
+    --=Damage|[&DamageDice]d8 [Hit] + [&CritDamage] [Crit] + [*S:wisdom_mod] [WIS]  [&HexBlade] [&Hex] [&GlobalDamage][&damageMod]
 	--]|[
-	--=Damage|[&DamageDice]d8 [Hit] + [&DamageDice]d8 [Crit] [&HexBlade] [&Hex] [&GlobalDamage][&damageMod]
+	--=Damage|[&DamageDice]d8 [Hit] + [&DamageDice]d8 [Crit] + [*S:wisdom_mod] [WIS]  [&HexBlade] [&Hex] [&GlobalDamage][&damageMod]
 	--]|
    --+[b]Critical Hit!!![/b] |The attack did [$Damage] points of [&damageType] damage.
    --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$Damage];0;0;1
@@ -200,7 +200,7 @@
    -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0
    --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex;+ + 1d6 [Hex] |&Hex;
    --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade;
-   --=Damage|[&DamageDice]d10 [&HexBlade] [&Hex][&GlobalDamage][&damageMod]
+   --=Damage|[&DamageDice]d8 + [*S:wisdom_mod] [WIS] [&HexBlade] [&Hex][&GlobalDamage][&damageMod]
    --+[b]Hit![/b] |Spiritual [&AttackWeapon] hits [*T:character_name] for [$Damage] hp.
    --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$Damage];0;0;1
    -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
@@ -245,8 +245,8 @@
   --:Output| 
    --+|[br]
    --+Duration: |[&duration]
-   --+Desc: |[*R:spelldescription]
-   --+At Higher Levels: |[*R:spellathigherlevels]
+   --+Desc: |[&desc]
+   --+At Higher Levels: |[&higherdesc]
    --X|
   
  --:Remove|
