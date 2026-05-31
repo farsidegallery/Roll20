@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Poison Spray
-  --/|Version     : 1.0.0
+  --/|Version     : 1.0.1
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author	  : Farsidegallery
   --/|  
@@ -197,6 +197,7 @@
    --?"X[$EmpowerFeatFlag]" -eq "X1" -and "[&damageMod[*T:t-id]]" -ninc "Immune"|>far_EmpowerSelect;Damage[*T:t-id];Crit;DamageChangedFlag[*T:t-id];ChangedDamage[*T:t-id]
    --?"X[$DamageChangedFlag[*T:t-id]]" -eq "X1"|[
     --=Damage[*T:t-id]|[$ChangedDamage[*T:t-id]] [&HexBlade[*T:t-id]] [&Hex[*T:t-id]][&GlobalDamage][&damageMod[*T:t-id]]
+    --=EmpoweredDamageFlag|1
     --]|
    -->far_DamageTokenmod|[*T:t-id];1;4;-[$Damage[*T:t-id]];0;0;1
    --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$Damage];0;0;1
