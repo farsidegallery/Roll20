@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Acid Splash
-  --/|Version     : 1.0.1
+  --/|Version     : 1.1.0
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|  
@@ -23,6 +23,9 @@
    
    --&hpBar|1
    --&tempHPbar|4
+   
+   --/|What resource name is used for Sorcerer Points?
+   --&SorcererResource|Sorcery Points
    
    --/|Are you using the matching Bardic Inspiration Script from FarsideGallery? (Default is No using 0. Change to 1 if using the script.)
    --=Scriptcheck|1
@@ -62,6 +65,13 @@
   --=DC|[*S:spell_save_dc]
   --&range|[*R:spellrange]
   --&desc|[*R:spelldescription]
+  
+  -->far_FIND_CLASS_LEVEL|[*S:character_id];Sorcerer;SLevel
+  --?"X[&SLevel]" -ne "X0"|[
+   -->far_FindFeat|[*S:character_id];"Metamagic: Twinned Spell";TwinFeatFlag
+   -->far_FindFeat|[*S:character_id];"Metamagic: Empowered Spell";EmpowerFeatFlag
+   --=EmpowerDice|[*S:charisma_mod]
+   --]|
   
   --+Target|[rbutton]Click here to select your target.::TargetInfo;[&TB]target|token_id}[/rbutton]
   --X|
@@ -197,8 +207,12 @@
   --:Fail|
    -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0   
    --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex;+ + 1d6 [Hex] |&Hex;
-   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade;
+   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade;  
    --=Damage|[&DamageDice] [&HexBlade] [&Hex][&GlobalDamage][&damageMod]
+   --?"X[$EmpowerFeatFlag]" -eq "X1"|>far_EmpowerSelect;Damage;Crit;DamageChangedFlag;ChangedDamage
+   --?"X[$DamageChangedFlag]" -eq "X1"|[
+    --=Damage|[$ChangedDamage] [&HexBlade] [&Hex][&GlobalDamage][&damageMod]
+    --]|
    --+Save: |[*T:t-name] rolled a [$Save] vs a DC [$DC] and failed the saving throw. 
    --+Result: |[*T:t-name] takes [$Damage] hp of [&damageType] damage.
    -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
@@ -210,7 +224,7 @@
    --#leftsub|Spell Level: [&MinimumSpellLevel]
    --#rightsub|Range: [&range]
    --+Desc: |[&desc]
-   -->far_PlayEffects|[*S:t-id];[*T:t-id];burn-magic;burst-fire;
+   -->far_PlayEffects|[*S:t-id];[*T:t-id];burn-magic;burst-acid;
    --X|
   
   --:Died|
