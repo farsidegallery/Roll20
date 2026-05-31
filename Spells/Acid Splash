@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Acid Splash
-  --/|Version     : 1.1.0
+  --/|Version     : 1.1.1
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|  
@@ -70,7 +70,8 @@
   --?"X[&SLevel]" -ne "X0"|[
    -->far_FindFeat|[*S:character_id];"Metamagic: Twinned Spell";TwinFeatFlag
    -->far_FindFeat|[*S:character_id];"Metamagic: Empowered Spell";EmpowerFeatFlag
-   --=EmpowerDice|[*S:charisma_mod]
+   -->Lib5E_FIND_RESOURCE|[*S:character_id];[&SorcererResource];Pointsname;PointsAmmo
+   --=EmpowerDice|[*S:charisma_mod
    --]|
   
   --+Target|[rbutton]Click here to select your target.::TargetInfo;[&TB]target|token_id}[/rbutton]
@@ -225,6 +226,13 @@
    --#rightsub|Range: [&range]
    --+Desc: |[&desc]
    -->far_PlayEffects|[*S:t-id];[*T:t-id];burn-magic;burst-acid;
+   
+   --?"X[$DamageChangedFlag]" -eq "X1"|[
+    --=FinalPointsAmmo|[$PointsAmmo]-[$SorceryPoints]
+    --!a:[*S:character_id]|[&PointsAmmo]:[$FinalPointsAmmo]
+    --+|[br]
+	--+[&SorcererResource]: |Used: [$SorceryPoints] / Remaining: [$FinalPointsAmmo]
+    --]|
    --X|
   
   --:Died|
