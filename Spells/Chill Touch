@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Chill Touch
-  --/|Version     : 1.1.0
+  --/|Version     : 1.1.1
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : 
   --/|Modified By : Farsidegallery
@@ -165,6 +165,7 @@
    --?"X[$EmpowerFeatFlag]" -eq "X1"|>far_EmpowerSelect;Damage[*T:t-id];Crit;DamageChangedFlag[*T:t-id];ChangedDamage[*T:t-id]
    --?"X[$DamageChangedFlag[*T:t-id]]" -eq "X1"|[
     --=Damage[*T:t-id]|[$ChangedDamage[*T:t-id]] [&HexBlade[*T:t-id]] [&Hex[*T:t-id]][&GlobalDamage][&damageMod[*T:t-id]]
+    --=EmpoweredDamageFlag|1
     --]|
    --&ResultLabel[*T:t-id]|[b]Critical Hit!!![/b]
    --&ResultText[*T:t-id]|The bolt did [$Damage[*T:t-id]] points of [&damageType] damage.
@@ -187,6 +188,7 @@
    --?"X[$EmpowerFeatFlag]" -eq "X1"|>far_EmpowerSelect;Damage[*T:t-id];Crit;DamageChangedFlag[*T:t-id];ChangedDamage[*T:t-id]
    --?"X[$DamageChangedFlag[*T:t-id]]" -eq "X1"|[
     --=Damage[*T:t-id]|[$ChangedDamage[*T:t-id]] [&HexBlade[*T:t-id]] [&Hex[*T:t-id]][&GlobalDamage][&damageMod[*T:t-id]]
+    --=EmpoweredDamageFlag|1
     --]|
    --&ResultLabel[*T:t-id]|[b]Hit![/b]
    --&ResultText[*T:t-id]|The bolt did [$Damage[*T:t-id]] points of [&damageType] damage.
@@ -274,6 +276,5 @@
     --+|[br]
 	--+[&SorcererResource]: |Used: [$SorceryPoints] / Remaining: [$FinalPointsAmmo]
     --]|
-   --X|
    --X|
 }}
