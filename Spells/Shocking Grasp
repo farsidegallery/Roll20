@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Script Name : Shocking Grasp
-  --/|Version     : 1.1.2
+  --/|Version     : 1.1.3
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : 
   --/|Modified By : Farsidegallery
@@ -167,7 +167,7 @@
    --&ResultLabel[*T:t-id]|[b]Critical Hit!!![/b]
    --&ResultText[*T:t-id]|The bolt did [$Damage[*T:t-id]] points of [&damageType] damage.
    --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$Damage[*T:t-id]];0;0;1
-   -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
+   -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$Damage[*T:t-id]];0;0;1
    --=FinalHP|[*T:t-bar[&hpBar]_value]+[*T:t-bar[&tempHPbar]_value]-[$Damage[*T:t-id]]
    --?[$FinalHP] -le 0|>Died
    --^BottomForEachTarget|
