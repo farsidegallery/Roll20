@@ -1,4 +1,4 @@
---/|ScriptCards Library: Farsidelib  version 1.0.1
+--/|ScriptCards Library: Farsidelib  version 1.0.2
 --/|Provides various utility procedures for Roll20
 
 --/|This library contains a number of functions that are customized to meet the different needs of spell or ability
@@ -468,8 +468,11 @@
   --~|array;fromrollvar;rolledDice;[%1%];rolled
   --&RollText|[$[%1%].RollText]
   --&function|[%2%]
-  --?[$PointsAmmo] -le [$SorceryPoints]|>EmpowerNo
-  --?"X[$ChangeCount]" -eq "X[$EmpowerDice]"|>EmpowerNo
+  --?[$PointsAmmo] -le [$SorceryPoints] -or "X[$ChangeCount]" -eq "X[$EmpowerDice]"|[
+   --=SkipFlag|1
+   --^far_EmpowerNo|
+   --]|
+  --?"[&RollText]" -inc "Immune"|far_EmpowerNo
   --~DamageString|array;stringify;rolledDice;!@!
   --~|array;fromstring;DamageDiceRolls;!@!;[&DamageString]
   --&DieInformMsg|
@@ -483,17 +486,34 @@
   --+|[c]Do you want to spend a Sorcery Point to change a roll?[/c]
   --+|[c][rbutton]Yes::far_EmpowerYes[/rbutton]  [rbutton]No::far_EmpowerNo[/rbutton][/c]
   --X|
+  --:far_EmpowerExit|
   --<|
    
  --:far_EmpowerYes|
   --&DieRollMsg|
   --=DisplayCount|
+  --?"X[$ChangeCount]" -eq "X[$EmpowerDice]"|[
+   --&FinalDieMsg|
+   --+|You [&function] [*T:t-name] and rolled the following for Damage Dice:
+   --+|[br]
+   --%DiceMsg|foreach;DamageDiceRolls
+   --&FinalDieMsg|+  [&DiceMsg]
+   --%|
+   --+|[c][&FinalDieMsg][/c]
+   --+|[br]
+   --+|You cannot change any more rolls.
+   --+|[c][rbutton]Continue::far_EmpowerNo[/rbutton][/c]
+   --X|
+   --<|
+   --]|
   --=DisplayCount|[$EmpowerDice]-[$ChangeCount]
+  --=DieIndex|0
   --+|You can reroll a damage dice [$DisplayCount] more times (one time per dice only).
   --+|[br]
   --+|[c]Choose a Damage Dice to reroll:[/c]
   --%DieRoll|foreach;DamageDiceRolls
-   --&DieRollMsg|+ [rbutton][&DieRoll]::far_DieSelect;[&DieRoll][/rbutton]
+   --&DieRollMsg|+ [rbutton][&DieRoll]::far_DieSelect;[$DieIndex]%[&DieRoll][/rbutton]
+   --=DieIndex|[$DieIndex]+1
    --%|
   --+|[c][&DieRollMsg][/c]
   --+|[br]
@@ -503,9 +523,15 @@
   --<|
    
  --:far_EmpowerNo|
+  --?"X[$SkipFlag]" -eq "X1"|[
+   --^far_EmpowerExit|
+   --]|
+  --?"X[$ChangeCount]" -gt "X0" -and "X[$ChangeFlag]" -ne "X1"|[
+   --=SorceryPoints|[$SorceryPoints]+1
+   --=ChangeFlag|[$ChangeFlag]+1
+   --]|  
   --?"X[$ChangeCount]" -gt "X0"|[
    --=ChangedDamage|
-   --=SorceryPoints|[$SorceryPoints]+1
    --%damage|foreach;DamageDiceRolls
     --=ChangedDamage|[$ChangedDamage]+[&damage]
     --%|
@@ -514,29 +540,30 @@
   --<|
   
  --:far_DieSelect|
-  --&OrigValue|[&reentryval]
+  --=IndexValue|[&reentryval(split,%,0)]
+  --&DieValue|[&reentryval(split,%,1)]
   --=[%3%]|1
-  --~Index|array;indexof;DamageDiceRolls;[&OrigValue]
-  --~testvar|array;indexof;changedIndex;[&Index]
+  --~Index|array;indexof;DamageDiceRolls;[$IndexValue]
+  --~testvar|array;indexof;changedIndex;[$IndexValue]
   --?"[&testvar]" -eq "ArrayError" |[
-   --~|array;add;changedIndex;[&Index]
+   --~|array;add;changedIndex;[$IndexValue]
    --=ChangeCount|[$ChangeCount] + 1
    -->far_FindDieSize|
    --=NewDamage|1d[&DieSize]
    --+New Damage Roll: |[$NewDamage]
    --+|[br]
-  --~|array;setatindex;DamageDiceRolls;[&Index];[$NewDamage]
+  --~|array;setatindex;DamageDiceRolls;[$IndexValue];[$NewDamage]
    --^far_EmpowerYes|
    --]|[
-   --+Value [@DamageDiceRolls([&Index])]: |You have already changed this dice roll and cannot do so again!
+   --+Value [&DieValue]: |You have already changed this dice roll and cannot do so again!
    --+|[br]
    --]|
   --^far_EmpowerYes|
   --<|
   
- --:far_FindDieSize|
-  --~DieSize|string;after;d;[&RollText]	
-   
+ --:far_FindDieSize|   
+  --~DieSize|string;after;d;[&RollText]
+  
   --?"[&RollText]" -inc "Resistant"|[
    --~DieSize|string;before;\;[&RollText]
    --~DieSize|string;trim;[&DieSize]
