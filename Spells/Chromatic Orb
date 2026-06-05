@@ -6,7 +6,7 @@
   --#whisper|self,gm
 
   --/|Script Name : Chromatic Orb
-  --/|Version     : 1.2.0
+  --/|Version     : 1.2.1
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|  
@@ -88,6 +88,7 @@
    -->far_FindFeat|[*S:character_id];"Metamagic: Empowered Spell";EmpowerFeatFlag
    -->far_FindFeat|[*S:character_id];"Wild Magic Surge";WildFeatFlag
    --=EmpowerDice|[*S:charisma_mod]
+   --=SorceryPoints|0
    --=ChangeCount|0
    
    -->Lib5E_FIND_RESOURCE|[*S:character_id];[&SorcererResource];Pointsname;PointsAmmo
