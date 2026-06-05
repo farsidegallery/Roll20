@@ -6,7 +6,7 @@
   --#whisper|self,gm
 
   --/|Script Name : Chromatic Orb
-  --/|Version     : 1.1.0
+  --/|Version     : 1.2.0
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|  
@@ -86,6 +86,7 @@
    --?"X[&SLevel]" -eq "X0"|Target
    -->far_FindFeat|[*S:character_id];"Metamagic: Twinned Spell";TwinFeatFlag
    -->far_FindFeat|[*S:character_id];"Metamagic: Empowered Spell";EmpowerFeatFlag
+   -->far_FindFeat|[*S:character_id];"Wild Magic Surge";WildFeatFlag
    --=EmpowerDice|[*S:charisma_mod]
    --=ChangeCount|0
    
@@ -260,6 +261,8 @@
 	--+|[br]
 	--?"[&ResultLabel[&loop]]" -inc "Fail"|>FailTable
     --%|
+   
+   --?"X[$WildFeatFlag]" -eq "X1" -and [&MinimumSpellLevel] -ge 1|>far_WildTable
    
    --+|[br]
    --+Desc: |[&desc]
