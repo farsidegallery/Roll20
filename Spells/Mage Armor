@@ -2,7 +2,7 @@
   +++5Elib;Farsidelib+++
   
   --/|Script Name : Mage Armor
-  --/|Version     : 1.1.0
+  --/|Version     : 1.2.0
   --/|Modified By : Farsidegallery
   --/|  
   --/|  Script checks for spell level used and makes sure the slot is available. Script will check for existence of global mod and create if necessary.
@@ -61,6 +61,7 @@
    --?"X[&SLevel]" -eq "X0"|Target
    -->far_FindFeat|[*S:character_id];"Metamagic: Twinned Spell";TwinFeatFlag
    -->far_FindFeat|[*S:character_id];"Metamagic: Empowered Spell";EmpowerFeatFlag
+   -->far_FindFeat|[*S:character_id];"Wild Magic Surge";WildFeatFlag
    
    -->Lib5E_FIND_RESOURCE|[*S:character_id];[&SorcererResource];Pointsname;PointsAmmo
    --?"[&MinimumSpellLevel(toLowerCase)]" -eq "cantrip"|=SorceryPoints;1 |=SorceryPoints;[$SpellLevel]\2 {MIN:1}
@@ -136,6 +137,9 @@
   
   --:Finish|
    --#emotetext|[*S:character_name] casts Mage Armor!
+   
+   --?"X[$WildFeatFlag]" -eq "X1" -and [&MinimumSpellLevel] -ge 1|>far_WildTable
+   
    --+|[br]
    --+Duration: |[&duration]
    --+Desc: |[&spelldesc]
