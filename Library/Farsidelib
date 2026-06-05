@@ -14,7 +14,7 @@
 --/|     Are you using a custom critical damage game? 0 = no and 1 = yes
 --/| 
 --/|   far_WildTable|
---/|     Place the name of the Wild Magic Table in the first line (&WildTable variable)
+--/|     Create and place the name of the Wild Magic Table in the first line (&WildTable variable)
 --/|     Rolls for Wild Magic Surge and, if a 1 is rolled, rolls on the table and displays the entry rolled.
 --/|
 --/|   far_PCConcenCheck|PCRollReturnString;BardScriptReturnString
