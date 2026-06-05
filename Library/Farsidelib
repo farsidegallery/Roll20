@@ -1,4 +1,4 @@
---/|ScriptCards Library: Farsidelib  version 1.0.2
+--/|ScriptCards Library: Farsidelib  version 1.1.0
 --/|Provides various utility procedures for Roll20
 
 --/|This library contains a number of functions that are customized to meet the different needs of spell or ability
@@ -13,6 +13,10 @@
 --/|   far_CustomCritCheck|ReturnStringName
 --/|     Are you using a custom critical damage game? 0 = no and 1 = yes
 --/| 
+--/|   far_WildTable|
+--/|     Place the name of the Wild Magic Table in the first line (&WildTable variable)
+--/|     Rolls for Wild Magic Surge and, if a 1 is rolled, rolls on the table and displays the entry rolled.
+--/|
 --/|   far_PCConcenCheck|PCRollReturnString;BardScriptReturnString
 --/|     Used with Concentration Trigger.
 --/|     Do you want your players to hit a button for the Concentration Check? (0 = fully automated and 1 = Player will be prompted with a button)
@@ -106,6 +110,20 @@
 
   --&[%1%]|[&PlayerPrompt]
   --&[%2%]|[&FarsideBardic]
+  --<|
+ 
+ --:far_WildTable|
+  --&WildTable|Wild-Magic
+  --=WildRoll|1d20
+  --?"X[$WildRoll]" -eq "X1"|[
+   --+Wild Magic: |You rolled a [$WildRoll] and magic surges forth from you uncontrolled!
+   --+|[br]
+   --=WildTableRoll|[T#[&WildTable]]
+   --&WildText|[$WildTableRoll.tableEntryText]
+   --+|[&WildText]
+   --]|[
+   --+Wild Magic: | You rolled a [$WildRoll], the Weave remains stable... for now.
+   --]|
   --<|
  
  --:far_GetAndCheckSlotInformation|tokenid;SpellLevel;SpellLevelReturnString
