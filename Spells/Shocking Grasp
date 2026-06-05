@@ -82,6 +82,7 @@
   -->far_FindFeat|[*S:character_id];"Metamagic: Twinned Spell";TwinFeatFlag
   -->far_FindFeat|[*S:character_id];"Metamagic: Empowered Spell";EmpowerFeatFlag
   --=EmpowerDice|[*S:charisma_mod]
+  --=SorceryPoints|0
   --=ChangeCount|0
    
   -->Lib5E_FIND_RESOURCE|[*S:character_id];[&SorcererResource];Pointsname;PointsAmmo
