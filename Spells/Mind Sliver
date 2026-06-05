@@ -6,7 +6,7 @@
   --#whisper|self,gm
 
   --/|Script Name : Mind Sliver
-  --/|Version     : 1.0
+  --/|Version     : 1.0.0
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|  
@@ -25,14 +25,19 @@
    
    --&attrib|intelligence
    
+   --/|What resource name is used for Sorcerer Points?
+   --&SorcererResource|Sorcery Points
+   
    --/|Are you using the matching Bardic Inspiration Script from FarsideGallery? (Default is No using 0. Change to 1 if using the script.)
    --=Scriptcheck|1
   
    --/|Enter the Token Markers you use for each condition
-   --&DisAdvanMarker|Disadvantage::7409922
    --&BardicMarker|BardicInspiration::7409920
    --&BlessedMarker|angel-outfit
    --&InspirationMarker|Inspiration::7409921
+   --&BaneMarker|Hexed3::7409911
+   --&HexMarker|Hexed::7409913
+   --&HexBladebladeMarker|Hexed2::7409912
    --&DeathMarker|dead
    
   --/| ____________________ End Global User Variables ___________________________________________________________________________________________
@@ -60,15 +65,44 @@
   --&range|[*R:spellrange]
   --&desc|[*R:spelldescription]
   --=DC|[*S:spell_save_DC]
+  --=SorceryPoints|0
   
-  --+Target: |[rbutton]Click this button to select your target.::TargetInfo;[&TB]target|token_id}[/rbutton]
+  -->far_FIND_CLASS_LEVEL|[*S:character_id];Sorcerer;SLevel
+  --?"X[&SLevel]" -eq "X0"|Target
+  -->far_FindFeat|[*S:character_id];"Metamagic: Twinned Spell";TwinFeatFlag
+  -->far_FindFeat|[*S:character_id];"Metamagic: Empowered Spell";EmpowerFeatFlag
+  --=EmpowerDice|[*S:charisma_mod]
+  --=ChangeCount|0
+  
+  -->Lib5E_FIND_RESOURCE|[*S:character_id];[&SorcererResource];Pointsname;PointsAmmo
+  --?"X[$PointsAmmo]" -le "X0" -or "[&Pointsname]" -eq "Not Found" -or "X[$PointsAmmo]" -lt "X[$SorceryPoints]"|Target
+  
+  --+|[c]Do you want spend a Sorcery Point to Twin the spell?[/c]
+  --+|[c][rbutton]Yes::BuildTwinArray[/rbutton]  [rbutton]No::Target[/rbutton][/c]
   --X|
   
+  --:BuildTwinArray|
+   --?"[&MinimumSpellLevel(toLowerCase)]" -eq "cantrip"|=SorceryPoints;1 |=SorceryPoints;[$SpellLevel]
+   --=TwinFlag|1
+   -->far_BuildTargetList|2
+   -->far_BuildTargetArray|Targets;2;TargetString
+   -->TargetInfo|
+  
+  --:Target|
+   --+Target|[rbutton]Click this button to select your target.::TargetArray;[&TB]target|token_id}[/rbutton]
+   --X|
+  
+  --:TargetArray|
+   --&SingleTarget|[&reentryval]
+   --~|array;define;Targets;[&SingleTarget]
+   -->TargetInfo|
+  
   --:TargetInfo|
-   --#targettoken|[&reentryval]
+   --%target|foreach;Targets
+   --#targettoken|[&target]
    --#rightsub|[&Displayattrib] Save DC: [$DC]
    --#emoteText|[*S:t-name] attacks [*T:t-name]!
-   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;0;0;0
+   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod[*T:t-id];0;0;0
    --?"[*T:npc]" -ne "1"|PCRoll |NPCRoll
    
   --:PCRoll|
@@ -92,46 +126,43 @@
    --X|
   
   --:NPC|
-   --&saveDice|[&reentryval]
-   --?[*T:npc] -eq 1 -and [*T:npc_[&shortattrib]_save_flag] -gt 0|&Save;npc_[&shortattrib]_save |&Save;[&attrib]_mod
-   --=Save|[&saveDice] + [*T:[&Save]] [&obrac][&Displayattrib][&cbrac]
-   --#whisper|
-   --?[$Save.Base] -eq 20|>Crit
-   --?[$Save] -ge [$DC]|>Pass |>Fail   
+   --&saveDice[*T:t-id]|[&reentryval]
+   --c[&saveDice[*T:t-id]]|2d20kh1:&DisplayDice[*T:t-id];Advantage|1d20:&DisplayDice[*T:t-id];1d20|2d20kl1:&DisplayDice[*T:t-id];Disadvantage
+   --=InitSave[*T:t-id]|[&saveDice[*T:t-id]]
+   --?[*T:npc] -eq 1 -and [*T:npc_[&shortattrib]_save_flag] -gt 0|&Save[*T:t-id];npc_[&shortattrib]_save |&Save[*T:t-id];[&attrib]_mod
+   --=Save[*T:t-id]|[$InitSave[*T:t-id]] + [*T:[&Save[*T:t-id][&cbrac]] [&obrac][&Displayattrib][&cbrac]
+   --?[$Save[*T:t-id].Base] -eq 20|>Crit
+   --?[$Save[*T:t-id]] -ge [$DC]|>Pass |>Fail   
    
   --:PC| 
-   --&saveDice|[&reentryval]
-   -->far_Check_GLOBAL_MOD_EXISTS|[*T:character_id]; save; [&damageType]; damageSave
-   -->far_Check_GLOBAL_ATTRIB_SAVE_EXISTS|[*T:character_id]; [&attrib]; attribSaveRoll
-   --?[&damageSave] -eq 1 -or [&attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "1d20"|&saveDice;2d20kh1
-   --?[&damageSave] -eq 1 -or [&attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "2d20kl1"|&saveDice;1d20
+   --&saveDice[*T:t-id]|[&reentryval]
+   -->far_Check_GLOBAL_MOD_EXISTS|[*T:character_id]; save; [&damageType]; damageSave[*T:t-id]
+   -->far_Check_GLOBAL_ATTRIB_SAVE_EXISTS|[*T:character_id]; [&attrib]; attribSaveRoll[*T:t-id]
+   --?[&damageSave[*T:t-id]] -eq 1 -or [&attribSaveRoll[*T:t-id]] -eq 1 -and "[&saveDice[*T:t-id]]" -eqi "1d20"|&saveDice[*T:t-id];2d20kh1
+   --?[&damageSave[*T:t-id]] -eq 1 -or [&attribSaveRoll[*T:t-id]] -eq 1 -and "[&saveDice[*T:t-id]]" -eqi "2d20kl1"|&saveDice[*T:t-id];1d20
    
   
-   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&InspirationMarker];InspiredFlag;InspiredCount
-   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BardicMarker];BardicFlag;BardicCount
-   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
-   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexMarker];HexMarkerFlag;HexMarkerCount
-   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];HexBladeMarkerFlag;HexBladeMarkerCount
-   -->far_FindFeat|[*T:character_id];"Thought Shield";ThoughtFlag 
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&InspirationMarker];InspiredFlag[*T:t-id];InspiredCount
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BardicMarker];BardicFlag[*T:t-id];BardicCount
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BaneMarker];BaneMarkerFlag[*T:t-id];BaneMarkerCount
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexMarker];HexMarkerFlag[*T:t-id];HexMarkerCount
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];HexBladeMarkerFlag[*T:t-id];HexBladeMarkerCount
+   -->far_FindFeat|[*T:character_id];"Thought Shield";ThoughtFlag[*T:t-id] 
    
-   --?[&InspiredFlag] -ne 0 |>far_Inspiration;[*T:t-id];[&InspirationMarker];[&saveDice];saveDice
-   -->far_FIND_ACTIVE_GLOBAL_SAVE_MODS|[*T:character_id];GlobalSave
-   -->far_FIND_ACTIVE_GLOBAL_SKILL_MODS|[*T:character_id];GlobalSkill
+   --?[&InspiredFlag[*T:t-id]] -ne 0 |>far_Inspiration;[*T:t-id];[&InspirationMarker];[&saveDice[*T:t-id]];saveDice[*T:t-id]
+   -->far_FIND_ACTIVE_GLOBAL_SAVE_MODS|[*T:character_id];GlobalSave[*T:t-id]
+   -->far_FIND_ACTIVE_GLOBAL_SKILL_MODS|[*T:character_id];GlobalSkill[*T:t-id]
    
-   --=InitSave|[&saveDice]
-   --c[&saveDice]|2d20kh1:&DisplayDice;Advantage|1d20:&DisplayDice;1d20|2d20kl1:&DisplayDice;Disadvantage
-   --+Rolling [&DisplayDice]: |[$InitSave]
-   --+|[br]
-   --?[$InitSave.Base] -eq 20|>Crit
+   --=InitSave[*T:t-id]|[&saveDice[*T:t-id]]
+   --c[&saveDice[*T:t-id]]|2d20kh1:&DisplayDice[*T:t-id];Advantage|1d20:&DisplayDice[*T:t-id];1d20|2d20kl1:&DisplayDice[*T:t-id];Disadvantage
+   --?[$InitSave[*T:t-id].Base] -eq 20|>Crit 
+   --=attribSaveRoll[*T:t-id]|[$InitSave[*T:t-id]] + [*T:[&attrib]_save_bonus] [&Displayattrib]
+   --?[&BardicFlag[*T:t-id]] -eq 1|>far_Bardic;[*T:t-id];[&BardicMarker];[$Scriptcheck];[$InitSave[*T:t-id].Base];[$attribSaveRoll[*T:t-id]];BardRoll[*T:t-id]
+   --?[&BaneMarkerFlag[*T:t-id]] -eq 1|&Baneroll[*T:t-id];+ - 1d4 [Bane] |&Baneroll[*T:t-id];
    
-   --=attribSaveRoll|[$InitSave] + [*T:[&attrib]_save_bonus] [&Displayattrib]
-   --?[&BardicFlag] -eq 1|>far_Bardic;[*T:t-id];[&BardicMarker];[$Scriptcheck];[$InitSave.Base];[$attribSaveRoll];BardRoll
-   --?[&BaneMarkerFlag] -eq 1|&Baneroll;+ - 1d4 [Bane] |&Baneroll;
-   
-   --=Save|[$InitSave] + [*T:[&attrib]_save_bonus] [&obrac][&Displayattrib][&cbrac] [&GlobalSave] [&GlobalSkill] [&Baneroll] [&BardRoll]
+   --=Save[*T:t-id]|[$InitSave[*T:t-id]] + [*T:[&attrib]_save_bonus] [&obrac][&Displayattrib][&cbrac] [&GlobalSave[*T:t-id]] [&GlobalSkill[*T:t-id]] [&Baneroll[*T:t-id]] [&BardRoll[*T:t-id]]
 
-   --#whisper|
-   --?[$Save] -ge [$DC]|>Pass |>Fail
+   --?[$Save[*T:t-id]] -ge [$DC]|>Pass |>Fail
   
   --:DamageRoll|
    --?[*S:level] -ge 17 |&DamageDice;4d6
@@ -141,37 +172,66 @@
    --<|
   
   --:Crit|
-   --+Save: |[*T:t-name] rolled a [$Save] vs a DC [$DC] and cannot fail the saving throw. 
-   --+|[br]
-   --+Result: |[*S:t-name] flatly rejects the mental intrusion, taking no damage!
-   -->Output|
+   --&ResultLabel[*T:t-id]|Save: 
+   --&ResultText[*T:t-id]|[*T:t-name] rolled a [$Save[*T:t-id]] vs a DC [$DC] and cannot fail the saving throw.
+   --&ResultText2[*T:t-id]|[*T:t-name] flatly rejects the mental intrusion, taking no damage!
+   --^BottomForEachTarget|
   
-  --:Success|
-   --+Save: |[*T:t-name] rolled a [$Save] vs a DC [$DC] and passed the saving throw. 
-   --+|[br]
-   --+Result: |[*T:t-name] sucessfully fights off the mental instrustion, taking no damage!
-   -->Output|
+  --:Pass|
+   --&ResultLabel[*T:t-id]|Save: 
+   --&ResultText[*T:t-id]|[*T:t-name] rolled a [$Save[*T:t-id]] vs a DC [$DC] and passed the saving throw. 
+   --&ResultText2[*T:t-id]|[*T:t-name] sucessfully fights off the mental instrustion, taking no damage!
+   --^BottomForEachTarget|
    
   --:Fail|
    -->DamageRoll|
-   --=Damage|[&DamageDice] [&damageMod]
-   --+Save: |[*T:t-name] rolled a [$Save] vs a DC [$DC] and failed the saving throw. 
-   --+|[br]
-   --+Result: |[*S:t-name] was able to pierce [*T:t-name]'s mental defenses inflicting [$Damage] hp of [&damageType] damage!
-   -->far_DamageTokenmod|[*T:t-id];[&bar];[&tempBar];-[$Damage];0;0;1
-   
-   --?[$ThoughtFlag] -eq 1|[
-    --+|[br]
-    --+Additonal Result: |[*S:t-name] takes [$Damage] hp of [&damageType] damage due to [*T:t-name]'s mental defenses.
-    -->far_DamageTokenmod|[*S:t-id];[&bar];[&tempBar];-[$Damage];0;0;1
-   --]|
+   --=Damage[*T:t-id]|[&DamageDice] [&damageMod[*T:t-id]]
+   --?"X[$EmpowerFeatFlag]" -eq "X1"|>far_EmpowerSelect;Damage[*T:t-id];Hit;DamageChangedFlag[*T:t-id];ChangedDamage[*T:t-id]
+   --?"X[$DamageChangedFlag[*T:t-id]]" -eq "X1"|[
+    --=Damage[*T:t-id]|[$ChangedDamage[*T:t-id]] [&HexBlade[*T:t-id]] [&Hex[*T:t-id]][&damageMod[*T:t-id]]
+    --=EmpoweredDamageFlag|1
+    --]|
+   --&ResultLabel[*T:t-id]|[b]Fail[/b]
+   --&ResultText[*T:t-id]|[*T:t-name] rolled a [$Save[*T:t-id]] vs a DC [$DC] and failed the saving throw. 
+   --&ResultText2[*T:t-id]|[*S:t-name] was able to pierce [*T:t-name]'s mental defenses inflicting [$Damage[*T:t-id]] hp of [&damageType] damage!
+   -->far_DamageTokenmod|[*T:t-id];[&bar];[&tempBar];-[$Damage[*T:t-id]];0;0;1
+   --^BottomForEachTarget|
+  
+  --:BottomForEachTarget|
+   --%|
    -->Output|
   
   --:Output|
    --#leftsub|Spell Level: [&MinimumSpellLevel]
    --#rightsub|Range: [&range]
-   --+|[br]
+   --#whisper|
+   --?"X[$TwinFlag]" -eq "X1"|[
+    --#emoteText|[*S:t-name] Twins [&SpellName] to attack multiple targets!
+	--]|
+   
+   --%loop|foreach;Targets
+    -->far_PlayEffects|[*S:t-id];[*T:t-id];burn-magic;burst-smoke;
+	--+|[c][b]Target: [*[&loop]:t-name][/b][/c]
+	--+Rolling [&DisplayDice[&loop]]: |[$InitSave[&loop]]
+	--+[&ResultLabel[&loop]] |[&ResultText[&loop]]
+	--+|[br]
+	--+|[&ResultText2[&loop]]
+	--+|[br]
+ 
+   --?"X[$ThoughtFlag[&loop]]" -eq "X1" -and "[&ResultLabel[&loop]]" -inc "Fail"|[
+    --+Additonal Result: |[*S:t-name] takes [$Damage[*T:t-id]] hp of [&damageType] damage due to [*T:t-name]'s mental defenses.
+	--+|[br]
+    -->far_DamageTokenmod|[*S:t-id];[&bar];[&tempBar];-[$Damage[*T:t-id]];0;0;1
+   --]|   
+   --%|
+   
    --+Desc: |[&desc]
-   -->far_PlayEffects|[*S:t-id];[*T:t-id];burn-magic;burst-smoke;
+      
+   --?"X[$EmpoweredDamageFlag]" -eq "X1" -or "X[$TwinFlag]" -eq "X1"|[
+    --=FinalPointsAmmo|[$PointsAmmo]-[$SorceryPoints]
+    --!a:[*S:character_id]|[&PointsAmmo]:[$FinalPointsAmmo]
+    --+|[br]
+	--+[&SorcererResource]: |Used: [$SorceryPoints] / Remaining: [$FinalPointsAmmo]
+    --]|
    --X|
 }}
