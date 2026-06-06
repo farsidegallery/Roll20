@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Chill Touch
-  --/|Version     : 1.1.2
+  --/|Version     : 1.1.3
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : 
   --/|Modified By : Farsidegallery
@@ -85,9 +85,11 @@
   -->far_FindFeat|[*S:character_id];"Metamagic: Twinned Spell";TwinFeatFlag
   -->far_FindFeat|[*S:character_id];"Metamagic: Empowered Spell";EmpowerFeatFlag
   --=EmpowerDice|[*S:charisma_mod]
+  --=SorceryPoints|0
   --=ChangeCount|0
    
   -->Lib5E_FIND_RESOURCE|[*S:character_id];[&SorcererResource];Pointsname;PointsAmmo
+  --?"[&MinimumSpellLevel(toLowerCase)]" -eq "cantrip"|=SorceryPoints;1 |=SorceryPoints;[$SpellLevel]\2 {MIN:1}
   --?"X[$PointsAmmo]" -le "X0" -or "[&Pointsname]" -eq "Not Found" -or [$PointsAmmo] -lt [$SorceryPoints]|Target
   
   --+|[c]Do you want spend a Sorcery Point to Twin the spell?[/c]
@@ -95,7 +97,6 @@
   --X|
   
   --:BuildTwinArray|
-   --?"[&MinimumSpellLevel(toLowerCase)]" -eq "cantrip"|=SorceryPoints;1 |=SorceryPoints;[$SpellLevel]
    --=TwinFlag|1
    -->far_BuildTargetList|2
    -->far_BuildTargetArray|Targets;2;TargetString
