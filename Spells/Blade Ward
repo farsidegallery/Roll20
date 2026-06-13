@@ -1,0 +1,69 @@
+!scriptcards {{
+  +++5Elib;snlib;Farsidelib+++	
+  
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+  
+  --/|Script Name : Blade Ward
+  --/|Version     : 1.0.0
+  --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
+  --/|Author      : Farsidegallery
+  --/|  
+  --/|  Script saves original resistances (if any) and adds Blade Ward effects. On Dismiss, the original resistances are restored.
+  --/|  
+  --/|
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+    
+   --&SpellName|Blade Ward
+   --&MinimumSpellLevel|cantrip
+
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+ 
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+
+  --#title|[&SpellName]
+  
+  --+|[c][b]Choose Function:[/b][/c]
+  --+|[c][rbutton]New Cast::New[/rbutton][rbutton]Dismiss::Remove[/rbutton][/c]
+  --X|
+  
+  --:New|  
+   --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+   --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+   -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+   --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+  
+   --#emotetext|[*S:t-name] casts [&SpellName]!
+   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+   --&spelldesc|[*R:spelldescription]
+  
+   --&BladeResist|bludgeoning, piercing, slashing
+   --&NewResist|[*S:npc_resistances], [&BladeResist]
+   --!a:[*S:character_id]|!OrigResist:[*S:npc_resistances]
+   --!a:[*S:character_id]|!npc_resistances:[&NewResist]
+   
+   --#whisper|
+   --+|[*S:t-name] gains resistance to bludgeoning, piercing, and slashing damage.
+   --+|[br]
+   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+   --+Duration: |[&duration]
+   --+Desc: |[*R:spelldescription]
+  --X| 
+   
+  --:Remove|
+   --#whisper|
+   --#emotetext|[*S:t-name] removes [&SpellName]!
+   --+|[*S:t-name] loses resistance to bludgeoning, piercing, and slashing damage.
+   --&OriginalResist|[*S:OrigResist]
+   --?"[&OriginalResist]" -inc "undefined"|&OriginalResist;
+   --!a:[*S:character_id]|!OrigResist:[**]
+   --!a:[*S:character_id]|!npc_resistances:[&OriginalResist]    
+  --X|
+}}
