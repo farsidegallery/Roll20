@@ -1,26 +1,118 @@
-!smartaoe {{
-  --title|Burning Hands
-  --leftsub|Slot level ?{Cast at what level?|1,1|2,2|3,3|4,4|5,5|6,6|7,7|8,8|9,9}
-  --rightsub|DC @{selected|spell_save_dc} DEX
-  --chatAvatarsEnabled|false
-  --resource|lvl?{Cast at what level?}_slots_expended,1,Level ?{Cast at what level?} Slots
+!scriptcards {{
+  +++5Elib;snlib;Farsidelib+++	
+  
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+  
+  --/|Script Name : Burning Hands
+  --/|Version     : 1.1.0
+  --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
+  --/|Author      : Farsidegallery
+  --/|  
+  --/|  Script saves original resistances (if any) and adds Blade Ward effects. On Dismiss, the original resistances are restored.
+  --/|  
+  --/|
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+    
+   --&SpellName|Burning Hands
+   --&MinimumSpellLevel|1
+   --&damageType|fire
+   
+   --/|What resource name is used for Sorcerer Points?
+   --&SorcererResource|Sorcery Points
 
-  --aoeType|5econe
-  --forceIntersection|0
-  --radius|15ft
-  --origin|nearest, face
-  --minGridArea|0.25
-  --minTokArea|0.25
-  --fx|burn-fire
-  --dc|@{selected|spell_save_dc}
-  --saveFormula|5eDEX
-  --damageFormula1|[[(?{Cast at what level?}+2)d6]]
-  --damageType1|Fire
-  --instant|1
-  --ignore|SmartAoE_Ignore,1 
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+ 
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+  
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+  --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+  
+  -->far_FIND_CLASS_LEVEL|[*S:character_id];Sorcerer;SLevel
+  --?"X[&SLevel]" -eq "X0"|ChooseLevel
+  -->far_FindFeat|[*S:character_id];"Metamagic: Twinned Spell";TwinFeatFlag
+  -->far_FindFeat|[*S:character_id];"Metamagic: Empowered Spell";EmpowerFeatFlag
+  -->far_FindFeat|[*S:character_id];"Wild Magic Surge";WildFeatFlag
+  --=EmpowerDice|[*S:charisma_mod]
+  --=SorceryPoints|0
+  --=ChangeCount|0
+  
+  -->Lib5E_FIND_RESOURCE|[*S:character_id];[&SorcererResource];Pointsname;PointsAmmo
+  
+  --:ChooseLevel|
+   --+|[c][b]Cast At What Level?[/b][/c]
+    --&splvlMsg|
+    --%splvl|foreach;SpellCastLevel
+     --&splvlMsg|+ [rbutton][&splvl]::SpellPower;[&splvl][/rbutton]
+    --%|
+   --+|[c][&splvlMsg][/c]
+   --X|
 
-  --autoApply|1
-  --bar|1
-  --zeroHPmarker|dead
-  --desc|As you hold your hands with thumbs touching and fingers spread, a thin sheet of flames shoots forth from your outstretched fingertips. Each creature in a 15-foot cone must make a Dexterity saving throw. A creature takes 3d6 fire damage on a failed save, or half as much damage on a successful one.%br%%br%The fire ignites any flammable objects in the area that aren't being worn or carried.
+  --:SpellPower|
+   --=SpellLevel|[&reentryval]
+   --&SpellLevel|[&reentryval]
+   --=DamageDice|[$SpellLevel]+2
+   --=Damage|[$DamageDice]d6
+  
+   -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0
+   --?"X[$EmpowerFeatFlag]" -eq "X1"|>far_EmpowerSelect;Damage;Hit;DamageChangedFlag;ChangedDamage
+   
+   --?"X[$DamageChangedFlag]" -eq "X1"|[
+    --=EmpDamage|[$ChangedDamage] [&GlobalDamage]
+    --=EmpoweredDamageFlag|1
+    --]|
+   
+   --?[$EmpoweredDamageFlag] -eq 1|&Damage;<<[$EmpDamage.Raw]>> |&Damage;<<[$Damage.Raw]>>
+   
+   -->BuildAOE|
+   
+   --#whisper|
+   --?"X[$WildFeatFlag]" -eq "X1" -and [&MinimumSpellLevel] -ge 1|>far_WildTable
+  
+   --?"X[$EmpoweredDamageFlag]" -eq "X1" -or "X[$TwinFlag]" -eq "X1"|[
+    --=FinalPointsAmmo|[$PointsAmmo]-[$SorceryPoints]
+    --!a:[*S:character_id]|[&PointsAmmo]:[$FinalPointsAmmo]
+    --+|[br]
+	--+[&SorcererResource]: |Used: [$SorceryPoints] / Remaining: [$FinalPointsAmmo]
+    --]|
+   --X| 
+  
+  --:BuildAOE|
+   --@forselected|smartaoe [&brace][&brace]
+    _title|Burning Hands
+    _leftsub|Slot level [$SpellLevel]
+    _rightsub|DC [*S:spell_save_dc] DEX
+    _chatAvatarsEnabled|false
+    _resource|lvl[$SpellLevel]_slots_expended,1,Level [$SpellLevel] Slots
+    _aoeColor|#99000050
+    _gridColor|#99000050
+    _aoeType|5econe
+    _radius|15ft
+    _origin|nearest, face
+    _forceIntersection|0
+    _minGridArea|0.25
+    _minTokArea|0.25
+    _fx|burn-fire
+    _dc|[*S:spell_save_dc]
+    _saveFormula|5eDEX
+    _damageformula1|[&Damage]
+    _damagetype1|[&damageType]
+    _instant|1
+    _autoApply|1
+    _bar|1
+    _zeroHPmarker|dead
+    _desc|As you hold your hands with thumbs touching and fingers spread, a thin sheet of flames shoots forth from your outstretched fingertips. Each creature in a 15-foot cone must make a Dexterity saving throw. A creature takes 3d6 fire damage on a failed save, or half as much damage on a successful one.%br%%br%The fire ignites any flammable objects in the area that aren't being worn or carried.
+    [&cbrace][&cbrace]
+   --<| 
 }}
