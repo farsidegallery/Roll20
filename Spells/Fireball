@@ -6,11 +6,11 @@
   --#whisper|self,gm
   
   --/|Script Name : Fireball
-  --/|Version     : 1.1.0
+  --/|Version     : 1.1.1
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|  
-  --/|  Script saves original resistances (if any) and adds Blade Ward effects. On Dismiss, the original resistances are restored.
+  --/|  Casts Fireball with Empowered Spell and Wild Magic Surge support.
   --/|  
   --/|
   --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
