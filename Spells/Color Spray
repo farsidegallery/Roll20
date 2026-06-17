@@ -1,0 +1,316 @@
+!script {{
+  +++5Elib;snlib;Farsidelib+++
+  
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+  
+  --/|Script Name : Color Spray
+  --/|Version     : 1.0.0
+  --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
+  --/|Author	  : Farsidegallery
+  --/|  
+  --/|  Script prompts user for spell level used, direction of cast, and makes sure the slot is available.  Script finds tokens hit by
+  --/|  spell, sorts by current HP, and applies Blind condition, places animated token, and deducts spell slot. Script also checks for
+  --/|  Wild Magic Surge feat and rolls for effect. If activated, rolls on Wild Magic table specified in Farsidelib and displays result.
+  --/|
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+  
+   --&SpellName|Color Spray
+   --&MinimumSpellLevel|1
+  
+   --&hpBar|1
+   --&tempHPbar|4
+   
+   --&tokenVFX|burn-magic   
+   
+   --/|Are you using the matching Bardic Inspiration Script from FarsideGallery? (Default is No using 0. Change to 1 if using the script.)
+   --=Scriptcheck|1
+   
+   --/|Enter name for Charm Person Character.
+   --&CharName|Blinded
+   
+   --/|Link to Blinded animated token
+   --&link1|https://files.d20.io/images/490920990/tEpBbu7CRTC-
+   --&link2|-Jye_Ww9CQ/med.webm?1781672448
+   --&URLlink|[&link1][&link2]
+  
+   --/|Enter the Token Markers you use for each condition
+   --&BardicMarker|BardicInspiration::7409920
+   --&BlessedMarker|angel-outfit
+   --&InspirationMarker|Inspiration::7409921
+   --&BaneMarker|Hexed3::7409911
+   --&HexMarker|Hexed::7409913
+   --&HexBladebladeMarker|Hexed2::7409912
+   --&DeathMarker|dead
+   --&BlindedMarker|Blinded::7409948
+  
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+  
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+  
+  --#title|[&SpellName]
+  --=DC|[*S:spell_save_dc]
+  --&BlindTokenName|[*S:character_name] [&SpellName]
+  -->GetSpiritID|[&CharName];CharNameID
+  
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  
+  --+Choose Function: |[rbutton]New Cast::New[/rbutton][rbutton]Dismiss::Remove[/rbutton]
+   --X|
+  
+  --:New|
+   -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+   --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+   --#title|[&SpellName]
+   --#leftsub|Spell Level [&MinimumSpellLevel]
+   --#rightsub|Range: [*R:spellrange]
+   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+   --&desc|[*R:spelldescription]
+   --&higherdesc|[*R:spellathigherlevels]
+  
+   -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&InspirationMarker];InspiredFlag;InspiredCount
+   -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&BardicMarker];BardicFlag;BardicCount
+   -->far_FIND_ACTIVE_GLOBAL_ATTACK_MODS|[*S:character_id];GlobalAttack
+   -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
+   -->far_FindFeat|[*S:character_id];"Hexblade's Curse";HexBladeFlag
+  
+   -->far_FIND_CLASS_LEVEL|[*S:character_id];Sorcerer;SLevel
+   --?"X[&SLevel]" -eq "X0"|ChooseLevel
+   -->far_FindFeat|[*S:character_id];"Wild Magic Surge";WildFeatFlag
+
+  --:ChooseLevel|
+   --+|[c][b]Cast At What Level?[/b][/c]
+    --&splvlMsg|
+    --%splvl|foreach;SpellCastLevel
+     --&splvlMsg|+ [rbutton][&splvl]::SpellPower;[&splvl][/rbutton]
+    --%|
+   --+|[c][&splvlMsg][/c]
+   --X|
+
+  --:SpellPower|
+   --=SpellLevel|[&reentryval]
+   --&SpellLevel|[&reentryval]
+   --=DamageDice|[$SpellLevel]*2+4
+   --=Damage|[$DamageDice]d10
+   --#emotetext|[*S:character_name] casts [&SpellName] at Level [&SpellLevel]!
+   
+   --#activepage|[*s:t-_pageid]
+   --=scaler|[*P:snapping_increment] * 70
+   --=halfscaler|[$scaler] \ 2
+   --=doublescaler|[$scaler] * 2
+   --=triplescaler|[$scaler] * 3
+  
+  --/|Get all of the tokens on the page so we can cache their positions
+  --~|array;pagetokens;alltokens;@{selected|token_id}
+  
+  --/|Create an array to hold the tokens that are intersected by the line.
+  --~|array;define;tokensHit;
+  
+  -->createTokenLookup|
+  --/|Prompt for a direction for the cast, and define arrays that indicate the relative spaces that will be hit.
+  --&emoUp|& --&emoUp|+# --&emoUp|+x2B06;
+  --&emoUPRight|& --&emoUPRight|+# --&emoUPRight|+x2197;
+  --&emoRight|& --&emoRight|+# --&emoRight|+x27A1;
+  --&emoDownRight|& --&emoDownRight|+# --&emoDownRight|+x2198;
+  --&emoDown|& --&emoDown|+# --&emoDown|+x2B07;
+  --&emoUpLeft|& --&emoUpLeft|+# --&emoUpLeft|+x2196;
+  --&emoLeft|& --&emoLeft|+# --&emoLeft|+x2B05;
+  --&emoDownLeft|& --&emoDownLeft|+# --&emoDownLeft|+x2199;
+
+  
+  --+|[c][b]Cast In What Direction?[/b][/c]
+  --#buttonwidth|25%
+  --+|[c][rbutton][&emoUpLeft] (UP-LEFT)::AttackDirection;UL[/rbutton][rbutton][&emoUp] (Up)::AttackDirection;U[/rbutton][rbutton][&emoUPRight] (UP-RIGHT)::AttackDirection;UR[/rbutton][/c]
+  --+|[c][rbutton][&emoLeft] (LEFT)::AttackDirection;L[/rbutton][rbutton][&emoRight] (RIGHT)::AttackDirection;R[/rbutton][/c]
+  --+|[c][rbutton][&emoDownLeft] (DOWN-LEFT)::AttackDirection;DL[/rbutton][rbutton][&emoDown] (DOWN)::AttackDirection;D[/rbutton][rbutton][&emoDownRight] (DOWN-RIGHT)::AttackDirection;DR[/rbutton][/c]
+  --X|
+  
+  --:AttackDirection|
+  --&Direction|[&reentryval]
+  --~|array;define;U;0,-1;0,-2;-1,-2;-1,-3;0,-3;1,-3
+  --~|array;define;D;0,1;0,2;1,2;-1,3;0,3;1,3
+  --~|array;define;R;1,0;2,0;2,-1;3,-1;3,0;3,1
+  --~|array;define;L;-1,0;-2,0;-2,-1;-3,-1;-3,0;-3,1
+  --~|array;define;UR;1,-1;1,-2;1,-3;2,-1;2,-2;3,-1
+  --~|array;define;DR;1,1;1,2;1,3;2,1;2,2;3,1
+  --~|array;define;UL;-1,-1;-1,-2;-1,-3;-2,-1;-2,-2;-3,-1
+  --~|array;define;DL;-1,1;-1,2;-1,3;-2,1;-2,2;-3,1
+
+  --+|[t border=3 width=100%][tr][td][c][$DamageDice.Raw]d10 Points: [$Damage][/c][/td][/tr]
+  --+|[t border=3 width=100%][tr][td style="width:175px"][c][b]Target[/b][/c][/td][td style="width:175px"][c][b]Result[/b][/c][/td][/tr]
+  
+  --/|Call the "checkForTokenHits" subroutine. The passed parameter will be the per-space VFX. Leave blank for none.
+  -->checkForTokenHits|burn-magic
+
+  --/|The first item in the array will be a blank dummy item, so remove it.
+  --~|array;removeat;tokensHit;0
+  
+  --/|Loop through the tokensHit tokens and roll saves for each one and apply damage
+  --~tokenid|array;getfirst;tokensHit
+  --?[&tokenid] -eq ArrayError|>far_FatalError;No Targets Hit;ERROR;No targets hit by the spell!
+
+  --~|array;numericsort;tokensHit
+  
+  --/|Loop through the tokensHit tokens and roll saves for each one
+  --%saveloop|foreach;tokensHit
+   --~hp|string;before;,;[&saveloop]
+   --~saveloop|string;after;,;[&saveloop]
+   --&Immune|[*[&saveloop]:npc_condition_immunities]
+   --=TokenHP|[&hp]
+
+	--?"[&Immune]" -inc "blinded"|[
+	 --+|[t border=3 width=100%][td style="width:175px"][*[&saveloop]:t-name][/td][td style="width:175px"][c]Immune[/c][/td]
+	 -->BottomSaveLoop|
+	 --]|
+	 
+	--?[$Damage] -ge [$TokenHP] -and "[&Immune]" -ninc "blinded"|[
+	 --+|[t border=3 width=100%][td style="width:175px"][*[&saveloop]:t-name][/td][td style="width:175px"][c]Blinded[/c][/td]
+	 --!a:[*[&saveloop]:character_id]|!MageID:[*S:character_id]
+	 -->LibSN_ADD_STATUS_MARKER_SET|[*[&saveloop]:t-id];[&BlindedMarker];1
+	 --=Damage|[$Damage]-[$TokenHP]
+	 --!ot:BlindTID|name:"[&BlindTokenName]"|left:[*[&saveloop]:t-left]|top:[*[&saveloop]:t-top]|width:[=[*[&saveloop]:t-width]*3]|height:[=[*[&saveloop]:t-height]*3]|imgsrc:"[&URLlink]"|bar1_value:1|represents:[&CharNameID]|showname:false
+	 --z:graphic:[&BlindTID]|toback
+	 --@CARRY_TOKENS_CARRY_BELOW|[*[&saveloop]:t-id] [&BlindTID]
+	 --]|[
+	 --+|[t border=3 width=100%][td style="width:175px"][*[&saveloop]:character_name][/td][td style="width:175px"][c]No Effect[/c][/td]
+	 --]|
+   --:BottomSaveLoop|
+   --%|
+  
+  --:Finish|
+   --#whisper|
+   --+|[br]
+   
+   --?"X[$WildFeatFlag]" -eq "X1" -and [&MinimumSpellLevel] -ge 1|>far_WildTable
+   
+   --+Duration: |[&duration]
+   --+Desc: |[&desc]
+   --+At Higher Levels: |[&higherdesc]
+   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+   --X|
+ 
+ --/| ____________________ Procedures_______________________________________________________________________________________
+  
+  --:checkForTokenHits|parameter is vfx descriptor
+   --=baseX|[*S:t-left] - 1 \ [$scaler]
+   --=baseY|[*S:t-top] - 1 \ [$scaler]
+   --~offset|array;getfirst;[&Direction]
+   --:checkTokenLoop|
+   --?"[&offset]" -eq "ArrayError"|endCheckForTokenHits
+   --~split|string;split;,;[&offset]
+   --=thisX|[$baseX] + [&split1]
+   --=thisY|[$baseY] + [&split2]
+   --/|IF we passed a visual effect specifier in %1%, create a point VFX in the square
+   --?"X[%1%]X" -ne "XX" |[
+    --=VX|[$thisX] * [$scaler] + [$halfscaler]
+    --=VY|[$thisY] * [$scaler] + [$halfscaler]
+    --vpoint|[$VX] [$VY] [%1%]
+   --]|
+   -->checkTokens|[$thisX];[$thisY]
+   --~offset|array;getnext;[&Direction]
+   --^checkTokenLoop|
+   --:endCheckForTokenHits|
+   --<|
+    
+  --/|Reads the variables created by createTokenLookup to find any tokens that occupy a given space.
+  --:checkTokens|x;y
+   --?"X[&tok[%1%]-[%2%]]X" -ne "XX"|[
+   --~split|string;split;!;[&tok[%1%]-[%2%]]
+   --%P|1;[$splitCount.Total];1
+   --=var|split[&P]
+   --?"X[&[$var.RollText]]X" -eq "XX"|%
+    --~exists|array;indexof;tokensHit;[&[$var.RollText]]
+    --?[&exists] -ne ArrayError|skipAdd
+    --?[*[&[$var.RollText]]:t-bar[&hpBar]_value] -le 0|skipAdd
+    --?[&[$var.RollText]] -eq ArrayError|skipAdd
+    --~|array;add;tokensHit;[*[&[$var.RollText]]:t-bar[&hpBar]_value],[&[$var.RollText]]
+    --:skipAdd|
+    --%|
+  --<|
+  
+  --/|Creates a series of string variables with names like 'tok12-15' which represent the various squares that are
+  --/|occupied by tokens on the page. Handle 1x1, 2x2, and 3x3 tokens by simply adding extra squares in the appropriate
+  --/|pattern around the center point location. The result is that if there are two tokens at 12,15, the tok12-15 string
+  --/|will contain something like "-asln34njfn2nafd!-sdnfklaserfs" (IDs separated by exclamation points) that we can use to
+  --/|quickly evaluate hits by essentially asking "what is in square 12x15" by just reading the variable.
+  --:createTokenLookup|
+   --~tokenid|array;getfirst;alltokens
+   --:tokenSetupLoop|
+    --?[&tokenid] -eq ArrayError|endSetupLoop
+    --?[&checkLayers] -ninc [*[&tokenid]:t-layer]|skipThisToken
+    --=tLeft|[*[&tokenid]:t-left] - 1 \ [$scaler]
+   --=tTop|[*[&tokenid]:t-top] - 1 \ [$scaler]
+   --=tWidth|[*[&tokenid]:t-width]
+   --?[$tWidth] -eq [$scaler]|[ 
+    --&tok[$tLeft]-[$tTop]|+[&tokenid]!
+    --/+[*[&tokenid]:character_name]|At [$tLeft],[$tTop] : [&tok[$tLeft.Total]-[$tTop.Total]]
+    --]|
+   --?[$tWidth] -eq [$doublescaler]|[ 
+    --=NX|[$tLeft] + 1
+    --=NY|[$tTop] + 1
+    --&tok[$tLeft]-[$tTop]|+[&tokenid]!
+    --&tok[$tLeft]-[$NY]|+[&tokenid]!
+    --&tok[$NX]-[$tTop]|+[&tokenid]!
+    --&tok[$NX]-[$NY]|+[&tokenid]!
+    --]|
+   --?[$tWidth] -eq [$triplescaler]|[ 
+    --=PX|[$tLeft] - 1
+    --=PY|[$tTop] - 1
+    --=NX|[$tLeft] + 1
+    --=NY|[$tTop] + 1
+      --&tok[$tLeft]-[$tTop]|+[&tokenid]!
+      --&tok[$PX]-[$PY]|+[&tokenid]!
+    --&tok[$tLeft]-[$PY]|+[&tokenid]!
+    --&tok[$NX]-[$PY]|+[&tokenid]!
+      --&tok[$PX]-[$tTop]|+[&tokenid]!
+    --&tok[$NX]-[$tTop]|+[&tokenid]!
+      --&tok[$PX]-[$NY]|+[&tokenid]!
+      --&tok[$tLeft]-[$NY]|+[&tokenid]!
+      --&tok[$NX]-[$NY]|+[&tokenid]!
+    --]|
+   --:skipThisToken|
+   --~tokenid|array;getnext;alltokens
+   --^tokenSetupLoop|
+   --:endSetupLoop|
+   --<|
+ 
+ --:GetSpiritID|CharacterName;StringVariableForCharID
+   --~|array;objects:character;SpiritCharArr;[%1%]
+   --?[@SpiritCharArr(length)] -ne 1|>far_LogFatalError;Could not find character named [%1%]
+   --&[%2%]|[@SpiritCharArr(0)]
+   --<|
+  
+ --:Remove|
+  --#whisper|
+  --#emotetext|[*S:character_name] dismisses [&SpellName]!
+  --~|array;pagetokens;alltokens;[*S:t-id]
+  --~|array;define;Blinded
+  --%loop|foreach;alltokens
+   -->LibSN_CHECK_STATUS_MARKER|[*[&loop]:t-id];[&BlindedMarker];BlindFlag;BlindCount
+   --?[&BlindFlag] -eq 1 -and "[*[&loop]:MageID]" -inc "[*S:character_id]"|[
+   --&Blinded([@Blinded(length)])|[*[&loop]:t-id]
+   --]|
+   --%|
+ 
+  --%loop|foreach;Blinded
+   -->LibSN_REMOVE_STATUS_MARKER|[*[&loop]:t-id];[&BlindedMarker]
+   --!a:[*[&loop]:character_id]|MageID:**
+   --+|[*[&loop]:character_name] is no longer Blinded.
+   --%|
+   
+  --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&BlindTokenName]
+  --%loop|foreach;tokens
+   --~|object;token;delete;[*[&loop]:t-id]
+   --%| 
+   --X|
+}}
