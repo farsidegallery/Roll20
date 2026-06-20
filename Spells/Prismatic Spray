@@ -6,7 +6,7 @@
   --#whisper|self,gm  
   
   --/|Script Name : Prismatic Spray
-  --/|Version     : 2.0.1
+  --/|Version     : 2.1.0
   --/|Requires SC : TokenMod, SuperNotes (for template override only), ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|Base Code   : Base code taken from Matt M.'s Cone of Cold. That was in turn based on Kurt's Burning Hands script.
@@ -31,6 +31,9 @@
   --&tempHPbar|4
    
   --&attrib|dexterity
+  
+  --/|What resource name is used for Sorcerer Points?
+  --&SorcererResource|Sorcery Points
   
   --/|Set this to a list of layers to a semicolon separated check for tokens on. By default, objects and gmlayer are checked.
   --/|possible values are objects, gmlayer, and map, so to check all three, use "objects;gmlayer;map"
@@ -71,7 +74,7 @@
   -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
   --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
   
-  -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
+  -->far_GetAndCheckSlotInformation|[*S:t-id];[&MinimumSpellLevel]
   
   --=DC|[*S:spell_save_DC]
   
@@ -82,6 +85,16 @@
   --&range|[*R:spellrange]
   --&desc|[*R:spelldescription]
 
+  -->far_FIND_CLASS_LEVEL|[*S:character_id];Sorcerer;SLevel
+  --?"X[&SLevel]" -eq "X0"|ChooseLevel
+  -->far_FindFeat|[*S:character_id];"Metamagic: Empowered Spell";EmpowerFeatFlag
+  -->far_FindFeat|[*S:character_id];"Wild Magic Surge";WildFeatFlag
+  -->Lib5E_FIND_RESOURCE|[*S:character_id];[&SorcererResource];Pointsname;PointsAmmo
+  --=EmpowerDice|[*S:charisma_mod]
+  --=SorceryPoints|0
+  --=ChangeCount|0
+  
+  --:ChooseLevel|
   --/|Get all of the tokens on the page so we can cache their positions
   --~|array;pagetokens;alltokens;[*S:t-id] 
   
@@ -91,21 +104,32 @@
   --=YellowBaseDam|10d6
   --=GreenBaseDam|10d6
   --=BlueBaseDam|10d6
-  --+|[c]Eight multicolored rays of light flash from your hand. Each ray is a different color and has a different power and purpose.[/c]
-  --+|[t][t border=3 width=100%][tr][td][c][b]Base Damage:[/b][/c][/td][/tr]
-  --+|[t border=3 width=100%][tr][td style="width:105px"] Red (Fire): [$RedBaseDam][/td][td style="width:105px"] Green (Poison): [$GreenBaseDam][/td][/tr]
-  --+|[t border=3 width=100%][tr][td style="width:105px"] Orange (Acid): [$OrangeBaseDam][/td][td style="width:105px"] Blue (Cold): [$BlueBaseDam] [/td][/tr]
-  --+|[t border=3 width=100%][tr][td style="width:105px"] Yellow (Lightning): [$YellowBaseDam] [/td][/tr]
-  --+|[t border=3 width=100%][tr][td style="width:105px"] Indigo (Restrained)[/td][td style="width:105px"] Violet (Blinded) [/td][/tr]
-  --+|[br]
-  --+|[t border=3 width=100%][tr][td style="width:100px"][c]Target[/c][/td][td style="width:50px"][c]Color[/c][/td][td style="width:50px"][c]P/F?[/c][/td][td style="width:50px"][c]DAM[/c][/td][/tr]
+  
+  --?"X[$EmpowerFeatFlag]" -eq "X1"|>EmpowerArray
   
   --/|Create an array to hold the tokens that are intersected by the line.
   --~|array;define;tokensHit;
   
   -->createTokenLookup|
   --/|Prompt for a direction for the cast, and define arrays that indicate the relative spaces that will be hit.
-  --&direction|?{Direction|&#x2B06; (UP),U|&#x2197; (UP-RIGHT),UR|&#x27A1; (RIGHT),R|&#x2198; (DOWN-RIGHT),DR|&#x2B07; (DOWN),D|&#x2199; (DOWN-LEFT),DL|&#x2B05; (LEFT),L|&#x2196 (UP-LEFT);,UL|}
+  --&emoUp|& --&emoUp|+# --&emoUp|+x2B06;
+  --&emoUPRight|& --&emoUPRight|+# --&emoUPRight|+x2197;
+  --&emoRight|& --&emoRight|+# --&emoRight|+x27A1;
+  --&emoDownRight|& --&emoDownRight|+# --&emoDownRight|+x2198;
+  --&emoDown|& --&emoDown|+# --&emoDown|+x2B07;
+  --&emoUpLeft|& --&emoUpLeft|+# --&emoUpLeft|+x2196;
+  --&emoLeft|& --&emoLeft|+# --&emoLeft|+x2B05;
+  --&emoDownLeft|& --&emoDownLeft|+# --&emoDownLeft|+x2199;
+
+  --+|[c][b]Cast In What Direction?[/b][/c]
+  --#buttonwidth|25%
+  --+|[c][rbutton][&emoUpLeft] (UP-LEFT)::AttackDirection;UL[/rbutton][rbutton][&emoUp] (Up)::AttackDirection;U[/rbutton][rbutton][&emoUPRight] (UP-RIGHT)::AttackDirection;UR[/rbutton][/c]
+  --+|[c][rbutton][&emoLeft] (LEFT)::AttackDirection;L[/rbutton][rbutton][&emoRight] (RIGHT)::AttackDirection;R[/rbutton][/c]
+  --+|[c][rbutton][&emoDownLeft] (DOWN-LEFT)::AttackDirection;DL[/rbutton][rbutton][&emoDown] (DOWN)::AttackDirection;D[/rbutton][rbutton][&emoDownRight] (DOWN-RIGHT)::AttackDirection;DR[/rbutton][/c]
+  --X|
+  
+  --:AttackDirection|
+  --&Direction|[&reentryval]
   --~|array;define;U;0,-1;-1,-2;0,-2;1,-2;-1,-3;0,-3;1,-3;-2,-4;-1,-4;0,-4;1,-4;2,-4;-2,-5;-1,-5;0,-5;1,-5;2,-5;-3,-6;-2,-6;-1,-6;0,-6;1,-6;2,-6;3,-6;-3,-7;-2,-7;-1,-7;0,-7;1,-7;2,-7;3,-7;-4,-8;-3,-8;-2,-8;-1,-8;0,-8;1,-8;2,-8;3,-8;4,-8;-4,-9;-3,-9;-2,-9;-1,-9;0,-9;1,-9;2,-9;3,-9;4,-9;-5,-10;-4,-10;-3,-10;-2,-10;-1,-10;0,-10;1,-10;2,-10;3,-10;4,-10;5,-10;-5,-11;-4,-11;-3,-11;-2,-11;-1,-11;0,-11;1,-11;2,-11;3,-11;4,-11;5,-11;-6,-12;-5,-12;-4,-12;-3,-12;-2,-12;-1,-12;0,-12;1,-12;2,-12;3,-12;4,-12;5,-12;6,-12
   --~|array;define;D;0,1;-1,2;0,2;1,2;-1,3;0,3;1,3;-2,4;-1,4;0,4;1,4;2,4;-2,5;-1,5;0,5;1,5;2,5;-3,6;-2,6;-1,6;0,6;1,6;2,6;3,6;-3,7;-2,7;-1,7;0,7;1,7;2,7;3,7;-4,8;-3,8;-2,8;-1,8;0,8;1,8;2,8;3,8;4,8;-4,9;-3,9;-2,9;-1,9;0,9;1,9;2,9;3,9;4,9;-5,10;-4,10;-3,10;-2,10;-1,10;0,10;1,10;2,10;3,10;4,10;5,10;-5,11;-4,11;-3,11;-2,11;-1,11;0,11;1,11;2,11;3,11;4,11;5,11;-6,12;-5,12;-4,12;-3,12;-2,12;-1,12;0,12;1,12;2,12;3,12;4,12;5,12;6,12
   --~|array;define;R;1,0;2,-1;2,0;2,1;3,-1;3,0;3,1;4,-2;4,-1;4,0;4,1;4,2;5,-2;5,-1;5,0;5,1;5,2;6,-3;6,-2;6,-1;6,0;6,1;6,2;6,3;7,-3;7,-2;7,-1;7,0;7,1;7,2;7,3;8,-4;8,-3;8,-2;8,-1;8,0;8,1;8,2;8,3;8,4;9,-4;9,-3;9,-2;9,-1;9,0;9,1;9,2;9,3;9,4;10,-5;10,-4;10,-3;10,-2;10,-1;10,0;10,1;10,2;10,3;10,4;10,5;11,-5;11,-4;11,-3;11,-2;11,-1;11,0;11,1;11,2;11,3;11,4;11,5;12,-6;12,-5;12,-4;12,-3;12,-2;12,-1;12,0;12,1;12,2;12,3;12,4;12,5;12,6
@@ -118,6 +142,15 @@
   -->checkForTokenHits|[&tokenVFX]
   --/|The first item in the array will be a blank dummy item, so remove it.
   --~|array;removeat;tokensHit;0
+  
+  --+|[c]Eight multicolored rays of light flash from your hand. Each ray is a different color and has a different power and purpose.[/c]
+  --+|[t][t border=3 width=100%][tr][td][c][b]Base Damage:[/b][/c][/td][/tr]
+  --+|[t border=3 width=100%][tr][td style="width:105px"] [b]Yellow[/b] (Lightning): [$YellowBaseDam] [/td][/tr]
+  --+|[t border=3 width=100%][tr][td style="width:105px"] [b]Red[/b] (Fire): [$RedBaseDam][/td][td style="width:105px"] [b]Green[/b] (Poison): [$GreenBaseDam][/td][/tr]
+  --+|[t border=3 width=100%][tr][td style="width:105px"] [b]Orange[/b] (Acid): [$OrangeBaseDam][/td][td style="width:105px"] [b]Blue[/b] (Cold): [$BlueBaseDam] [/td][/tr]
+  --+|[t border=3 width=100%][tr][td style="width:105px"] [b]Indigo[/b] (Restrained)[/td][td style="width:105px"] [b]Violet[/b] (Blinded) [/td][/tr]
+  --+|[br]
+  --+|[t border=3 width=100%][tr][td style="width:100px"][c]Target[/c][/td][td style="width:50px"][c]Color[/c][/td][td style="width:50px"][c]P/F?[/c][/td][td style="width:50px"][c]DAM[/c][/td][/tr]
   
   --/|Loop through the tokensHit tokens and roll saves for each one and apply damage
   --~tokenid|array;getfirst;tokensHit
@@ -134,14 +167,25 @@
   --vtoken|[&tokenid] [&tokenVFX]
   --~tokenid|array;getnext;inRange
   --?[&tokenid] -ne ArrayError|loopDisplay
-  --/|Add some extra visual effects - a nova-fire at the target, and a beam-fire from source to target
-  --vbetweentokens|[*S:t-id] @{target|token_id} [&lineVFX]
   
   --:endOutput| 
    --#whisper|
    --+|[br]
+   --?"X[$WildFeatFlag]" -eq "X1" -and [&MinimumSpellLevel] -ge 1|>far_WildTable
+   
+   --+|[br]
    --+Desc: |[&desc]
+   -->far_DeductSpellSlot|[*S:t-id];[&MinimumSpellLevel]
+   
+   --?"X[$EmpoweredDamageFlag]" -eq "X1" -or "X[$TwinFlag]" -eq "X1"|[
+    --=FinalPointsAmmo|[$PointsAmmo]-[$SorceryPoints]
+    --!a:[*S:character_id]|[&PointsAmmo]:[$FinalPointsAmmo]
+    --+|[br]
+	--+[&SorcererResource]: |Used: [$SorceryPoints] / Remaining: [$FinalPointsAmmo]
+    --]|
    --X|
+
+  --/| ____________________ Procedures_______________________________________________________________________________________
   
   --:Physical|targetID;color;damageType;baseDam
    --&BlessFlag|
@@ -245,7 +289,7 @@
   --:checkForTokenHits|parameter is vfx descriptor
    --=baseX|[*S:t-left] - 1 \ 70
    --=baseY|[*S:t-top] - 1 \ 70
-   --~offset|array;getfirst;?{Direction}
+   --~offset|array;getfirst;[&Direction]
   --:checkTokenLoop|
    --?"[&offset]" -eq "ArrayError"|endCheckForTokenHits
    --~split|string;split;,;[&offset]
@@ -258,7 +302,7 @@
     --vpoint|[$VX] [$VY] [%1%]
    --]|
    -->checkTokens|[$thisX];[$thisY]
-   --~offset|array;getnext;?{Direction}
+   --~offset|array;getnext;[&Direction]
    --^checkTokenLoop|
   --:endCheckForTokenHits|
    --<|
@@ -341,5 +385,205 @@
   
   --:HexHeal|
    -->far_HexHeal|[*S:character_id];[*S:t-id]
+   --<|
+  
+  --:EmpowerArray|
+   --#whisper|self,gm
+   --~|array;define;RedChangedIndex;
+   --~|array;define;OrangeChangedIndex;
+   --~|array;define;YellowChangedIndex;
+   --~|array;define;GreenChangedIndex;
+   --~|array;define;BlueChangedIndex;
+   
+   --~|array;fromrollvar;RedRolledDice;RedBaseDam;rolled
+   --~RedDamageString|array;stringify;RedRolledDice;!@!
+   --~|array;fromstring;RedDamageDiceRolls;!@!;[&RedDamageString]
+   --&RedRollText|[$RedBaseDam.RollText]
+   
+   --~|array;fromrollvar;OrangeRolledDice;OrangeBaseDam;rolled
+   --~OrangeDamageString|array;stringify;OrangeRolledDice;!@!
+   --~|array;fromstring;OrangeDamageDiceRolls;!@!;[&OrangeDamageString]
+   --&OrangeRollText|[$OrangeBaseDam.RollText]
+   
+   --~|array;fromrollvar;YellowRolledDice;YellowBaseDam;rolled
+   --~YellowDamageString|array;stringify;YellowRolledDice;!@!
+   --~|array;fromstring;YellowDamageDiceRolls;!@!;[&YellowDamageString]
+   --&YellowRollText|[$YellowBaseDam.RollText]
+   
+   --~|array;fromrollvar;GreenRolledDice;GreenBaseDam;rolled
+   --~GreenDamageString|array;stringify;GreenRolledDice;!@!
+   --~|array;fromstring;GreenDamageDiceRolls;!@!;[&GreenDamageString]
+   --&GreenRollText|[$GreenBaseDam.RollText]
+   
+   --~|array;fromrollvar;BlueRolledDice;BlueBaseDam;rolled
+   --~BlueDamageString|array;stringify;BlueRolledDice;!@!
+   --~|array;fromstring;BlueDamageDiceRolls;!@!;[&BlueDamageString]
+   --&BlueRollText|[$BlueBaseDam.RollText]
+   
+   --~|array;define;RayColor;Red;Orange;Yellow;Green;Blue
+   
+   --%Color|foreach;RayColor
+    --%[&Color]DiceMsg|foreach;[&Color]DamageDiceRolls
+     --&[&Color]DieInformMsg|+  [&[&Color]DiceMsg]
+    --%|
+   --%|
+  
+  --:EmpowerSelect| 
+  --?[$PointsAmmo] -le [$SorceryPoints] -or "X[$ChangeCount]" -eq "X[$EmpowerDice]"|[
+   --=SkipFlag|1
+   --^EmpowerNo|
+   --]|
+  --?"[&RollText]" -inc "Immune"|EmpowerNo
+  
+  --+|You rolled the following for Damage Dice:
+  --+|[br]
+  --+|[t border=0 width=100%][tr][td style"width=80px"][b]Red[/b][/td] [td][&RedDieInformMsg][/td][/t][/tr]
+  --+|[t border=0 width=100%][tr][td style"width=80px"][b]Orange[/b][/td] [td][&OrangeDieInformMsg][/td][/t][/tr]
+  --+|[t border=0 width=100%][tr][td style"width=80px"][b]Yellow[/b][/td] [td][&YellowDieInformMsg][/td][/t][/tr]
+  --+|[t border=0 width=100%][tr][td style"width=80px"][b]Green[/b][/td] [td][&GreenDieInformMsg][/td][/t][/tr]
+  --+|[t border=0 width=100%][tr][td style"width=80px"][b]Blue[/b][/td] [td][&BlueDieInformMsg][/td][/t][/tr]
+  --+|[br]
+  --+|[c]Do you want to spend a Sorcery Point to change a roll?[/c]
+  --+|[c][rbutton]Yes::EmpowerYes[/rbutton]  [rbutton]No::EmpowerNo[/rbutton][/c]
+  --X|
+  --:EmpowerExit|
+  --<|
+   
+ --:EmpowerYes|
+  --&RedDieInformMsg|
+  --&OrangeDieInformMsg|
+  --&YellowDieInformMsg|
+  --&GreenDieInformMsg|
+  --&BlueDieInformMsg|
+  
+  --%Color|foreach;RayColor
+   --%[&Color]DiceMsg|foreach;[&Color]DamageDiceRolls
+    --&[&Color]DieInformMsg|+  [&[&Color]DiceMsg]
+   --%|
+   --&[&Color]RaySelectButton|[rbutton]Select::EmpowerDieSelect;[&Color][/rbutton]
+  --%|
+  
+  --+|[c][b]Select the ray color to modify.[/b][/c]
+  --+|[br]
+  --+|[t border=0 width=100%][tr][td style"width=50px"][b]Red[/b][/td] [td style"width=60px"][&RedDieInformMsg][/td][td style"width=15px"][r][&RedRaySelectButton][/r][/td][/t][/tr]
+  --+|[t border=0 width=100%][tr][td style"width=50px"][b]Orange[/b][/td] [td style"width=60px"][&OrangeDieInformMsg][/td][td style"width=15px"][r][&OrangeRaySelectButton][/r][/td][/t][/tr]
+  --+|[t border=0 width=100%][tr][td style"width=50px"][b]Yellow[/b][/td] [td style"width=60px"][&YellowDieInformMsg][/td][td style"width=15px"][r][&YellowRaySelectButton][/r][/td][/t][/tr]
+  --+|[t border=0 width=100%][tr][td style"width=50px"][b]Green[/b][/td] [td style"width=60px"][&GreenDieInformMsg][/td][td style"width=15px"][r][&GreenRaySelectButton][/r][/td][/t][/tr]
+  --+|[t border=0 width=100%][tr][td style"width=50px"][b]Blue[/b][/td] [td style"width=60px"][&BlueDieInformMsg][/td][td style"width=15px"][r][&BlueRaySelectButton][/r][/td][/t][/tr]
+  --+|[br]
+  --+|[c]When you are done rerolling click here: [/c]
+  --+|[c][rbutton]Continue::EmpowerNo[/rbutton][/c]
+  --X|  
+  
+ --:EmpowerDieSelect| 
+  --&RaySelected|[&reentryval]
+  --&RedDieInformMsg|
+  --&OrangeDieInformMsg|
+  --&YellowDieInformMsg|
+  --&GreenDieInformMsg|
+  --&BlueDieInformMsg|
+  --=DisplayCount|
+  
+  --?"X[$ChangeCount]" -eq "X[$EmpowerDice]"|[
+   --&FinalDieMsg|
+   --+|[c]You rolled the following for Damage Dice:[/c]
+   --+|[br]
+   --%Color|foreach;RayColor
+    --%[&Color]DiceMsg|foreach;[&Color]DamageDiceRolls
+     --&[&Color]DieInformMsg|+  [&[&Color]DiceMsg]
+     --%|
+    --%|
+   
+   --+|[t border=0 width=100%][tr][td style"width=80px"][b]Red[/b][/td] [td][&RedDieInformMsg][/td][/t][/tr]
+   --+|[t border=0 width=100%][tr][td style"width=80px"][b]Orange[/b][/td] [td][&OrangeDieInformMsg][/td][/t][/tr]
+   --+|[t border=0 width=100%][tr][td style"width=80px"][b]Yellow[/b][/td] [td][&YellowDieInformMsg][/td][/t][/tr]
+   --+|[t border=0 width=100%][tr][td style"width=80px"][b]Green[/b][/td] [td][&GreenDieInformMsg][/td][/t][/tr]
+   --+|[t border=0 width=100%][tr][td style"width=80px"][b]Blue[/b][/td] [td][&BlueDieInformMsg][/td][/t][/tr]
+   --+|[br]
+   --+|You cannot change any more rolls.
+   --+|[c][rbutton]Continue::EmpowerNo[/rbutton][/c]
+   --X|
+   --<|
+   --]|
+  --=DisplayCount|[$EmpowerDice]-[$ChangeCount]
+  --=DieIndex|0
+  --&DieRollMsg|
+  --+|[c]You chose the [&RaySelected] Ray.[/c]
+  --+|[br]
+  --+|You can reroll a damage dice [$DisplayCount] more times (one time per dice only).
+  --+|[br]
+  --+|[c]Choose a Damage Dice to reroll:[/c]
+  --%DieRoll|foreach;[&RaySelected]DamageDiceRolls
+   --&DieRollMsg|+ [rbutton][&DieRoll]::DieSelect;[$DieIndex]%[&DieRoll][/rbutton]
+   --=DieIndex|[$DieIndex]+1
+   --%|
+  --+|[c][&DieRollMsg][/c]
+  --+|[br]
+  --+|[c]When you are done rerolling click here: [/c]
+  --+|[c][rbutton]Continue::EmpowerNo[/rbutton][/c]
+  --X|
+  --<|
+   
+ --:EmpowerNo|
+  --?"X[$SkipFlag]" -eq "X1"|[
+   --^EmpowerExit|
+   --]|
+  --?"X[$ChangeCount]" -gt "X0" -and "X[$ChangeFlag]" -ne "X1"|[
+   --=SorceryPoints|[$SorceryPoints]+1
+   --=ChangeFlag|[$ChangeFlag]+1
+   --]|  
+  --?"X[$ChangeCount]" -gt "X0"|[
+   --%Color|foreach;RayColor
+    --=ChangedDamage|
+    --%damage|foreach;[&Color]DamageDiceRolls
+     --=ChangedDamage|[$ChangedDamage]+[&damage]
+     --%|
+    --=[&Color]BaseDam|[$ChangedDamage]
+	--%|
+   --]|
+  --<|
+  
+ --:DieSelect|
+  --=IndexValue|[&reentryval(split,%,0)]
+  --&DieValue|[&reentryval(split,%,1)]
+  --=EmpoweredDamageFlag|1
+  --~Index|array;indexof;[&RaySelected]DamageDiceRolls;[$IndexValue]
+  --~testvar|array;indexof;[&RaySelected]ChangedIndex;[$IndexValue]
+  --?"[&testvar]" -eq "ArrayError" |[
+   --~|array;add;[&RaySelected]ChangedIndex;[$IndexValue]
+   --=ChangeCount|[$ChangeCount] + 1
+   -->FindDieSize|
+   --=NewDamage|1d[&DieSize]
+   --+New Damage Roll: |[$NewDamage]
+   --+|[br]
+  --~|array;setatindex;[&RaySelected]DamageDiceRolls;[$IndexValue];[$NewDamage]
+   --^EmpowerYes|
+   --]|[
+   --+Value [&DieValue]: |You have already changed this dice roll and cannot do so again!
+   --+|[br]
+   --]|
+  --^EmpowerYes|
+  --<|
+  
+ --:FindDieSize|   
+  --~DieSize|string;after;d;[&[&RaySelected]RollText]
+  
+  --?"[&RollText]" -inc "Resistant"|[
+   --~DieSize|string;before;\;[&[&RaySelected]RollText]
+   --~DieSize|string;trim;[&DieSize]
+   --~DieSize|string;after;d;[&DieSize]
+   --]|
+
+  --?"[&RollText]" -inc "Vulnerable"|[
+   --~DieSize|string;before;*;[&[&RaySelected]RollText]
+   --~DieSize|string;trim;[&DieSize]
+   --~DieSize|string;after;d;[&DieSize]
+   --]|
+    
+  --?"[&RollText]" -inc "[Crit]"|[
+   --~DieSize|string;before;[&obrac];[&[&RaySelected]RollText]
+   --~DieSize|string;trim;[&DieSize]
+   --~DieSize|string;after;d;[&DieSize]
+   --]|
    --<|
 }}
