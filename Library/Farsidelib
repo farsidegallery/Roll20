@@ -1,4 +1,4 @@
---/|ScriptCards Library: Farsidelib  version 1.1.0
+--/|ScriptCards Library: Farsidelib  version 1.1.1
 --/|Provides various utility procedures for Roll20
 
 --/|This library contains a number of functions that are customized to meet the different needs of spell or ability
@@ -121,8 +121,10 @@
    --=WildTableRoll|[T#[&WildTable]]
    --&WildText|[$WildTableRoll.tableEntryText]
    --+|[&WildText]
+   --+|[br]
    --]|[
    --+Wild Magic: | You rolled a [$WildRoll], the Weave remains stable... for now.
+   --+|[br]
    --]|
   --<|
  

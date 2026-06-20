@@ -84,6 +84,10 @@
    --&desc|[*R:spelldescription]
    --&higherdesc|[*R:spellathigherlevels]
    --=DC|[*S:spell_save_dc]
+
+   -->far_FIND_CLASS_LEVEL|[*S:character_id];Sorcerer;SLevel
+   --?"X[&SLevel]" -eq "X0"|ChooseLevel
+   -->far_FindFeat|[*S:character_id];"Wild Magic Surge";WildFeatFlag
    -->BuildArray|
    
   --:BuildArray|
@@ -92,6 +96,9 @@
    -->far_BuildTargetList|[$targets.Total]
    -->far_BuildTargetArray|Held;[$targets.Raw];TargetString
    -->SaveLoop|
+   
+   --?"X[$WildFeatFlag]" -eq "X1" -and [&MinimumSpellLevel] -ge 1|>far_WildTable
+
    --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
    --+[br]|
    --+Duration: |[&duration]
