@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Sleep
-  --/|Version     : 2.0
+  --/|Version     : 2.1.0
   --/|Modified By : Farsidegallery
   --/|  
   --/|  Script checks for spell level used and makes sure the slot is available. Script will find creatures in range and rolls saving throw.
@@ -19,6 +19,9 @@
   --&SpellName|Sleep
   --&MinimumSpellLevel|1
 
+  --/|What resource name is used for Sorcerer Points?
+  --&SorcererResource|Sorcery Points
+  
   --&Sleep_Marker|Unconscious::7409935
   --&SleepChar|Sleep
   --&SleepLink|https://files.d20.io/images/466452653/fWh2Z4z8OtwxGOeorsnMCQ/med.webm?1764800273
@@ -65,6 +68,10 @@
    --=SpellLevel|[&reentryval]
    --&SpellLevel|[&reentryval]
    -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
+
+   -->far_FIND_CLASS_LEVEL|[*S:character_id];Sorcerer;SLevel
+   --?"X[&SLevel]" -eq "X0"|Target
+   -->far_FindFeat|[*S:character_id];"Wild Magic Surge";WildFeatFlag
    
    --#leftsub|[*R:spellcastingtime]
    --#rightsub|[*R:spellrange]
@@ -95,8 +102,7 @@
    --&SleepTarget|[*T:t-id]
    --&TargetName|[*T:character_name]
    --?[&TargetName] -eq [&SpellTargetToken]|AOE_SLEEP
-  
-  
+   
   --:AOE_SLEEP|
    --~|array;pagetokens;alltokens;[&SleepTarget]
    --~|array;define;inRange;
@@ -157,9 +163,13 @@
 	-->Finish|
   
   --:Finish|
+   --#whisper|
    --~|hash;clear;Sleep
    --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&SpellTargetToken]
    --~|object;token;delete;[@tokens(0)]
+   
+   --?"X[$WildFeatFlag]" -eq "X1" -and [&MinimumSpellLevel] -ge 1|>far_WildTable
+   
    --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
    --+Duration: |[&duration]
    --+Desc: |[*R:spelldescription]
