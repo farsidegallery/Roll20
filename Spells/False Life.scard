@@ -50,6 +50,7 @@
    --&TokenName|[*S:character_name] [&SpellName]
    -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
 
+   -->far_FIND_CLASS_LEVEL|[*S:character_id];Sorcerer;SLevel
    --?"X[&SLevel]" -eq "X0"|Target
    -->far_FindFeat|[*S:character_id];"Wild Magic Surge";WildFeatFlag
    -->AddHP|
