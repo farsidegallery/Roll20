@@ -5,7 +5,7 @@
   --#reentrant|My Cool Script @{selected|character_id}
   
   --/|Script Name : Detect Magic
-  --/|Version     : 2.0
+  --/|Version     : 2.1.0
   --/|Requires SC : SelectManager, Radar, ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|  
@@ -18,6 +18,9 @@
    
    --&SpellName|Detect Magic
    --&MinimumSpellLevel|1
+
+   --/|What resource name is used for Sorcerer Points?
+   --&SorcererResource|Sorcery Points
   
   --/| ____________________ End Global User Variables ___________________________________________________________________________________________
 
@@ -34,6 +37,9 @@
   --#rightsub| 30 ft
   --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
   --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  
+  --?"X[&SLevel]" -eq "X0"|ChooseLevel
+  -->far_FindFeat|[*S:character_id];"Wild Magic Surge";WildFeatFlag
   
   -->ChooseFunction|
   --X|
@@ -58,11 +64,14 @@
    -->Output|
   
   --:Output|
+   --#whisper|
+   --?"X[$WildFeatFlag]" -eq "X1" -and [&MinimumSpellLevel] -ge 1|>far_WildTable
+
    --!a:[*S:character_id]|!ConcentrationSpell:[&TentacleName]
    -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];10
    --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
-   --+Duration: |[&duration]
    --+|[br]
+   --+Duration: |[&duration]
    --+Desc: |[*R:spelldescription]
    --?[$CastFlag] -eq 1|[
     -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
