@@ -6,7 +6,7 @@
   --#whisper|self,gm
 
   --/|Script Name : False Life
-  --/|Version     : 1.0
+  --/|Version     : 1.1.0
   --/|Author      : Arak Stoneboulder
   --/|Modified By : Farsidegallery
   --/|
@@ -18,6 +18,9 @@
 
   --&SpellName|False Life
   --&MinimumSpellLevel|1
+
+  --/|What resource name is used for Sorcerer Points?
+   --&SorcererResource|Sorcery Points
 
   --/| ____________________ End Global User Variables ___________________________________________________________________________________________
 
@@ -46,6 +49,9 @@
    --&spelldesc|[*R:spelldescription]
    --&TokenName|[*S:character_name] [&SpellName]
    -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
+
+   --?"X[&SLevel]" -eq "X0"|Target
+   -->far_FindFeat|[*S:character_id];"Wild Magic Surge";WildFeatFlag
    -->AddHP|
 
   --:AddHP| 
@@ -56,6 +62,10 @@
    -->Finish|
    
   --:Finish|  
+   --#whisper|
+   
+   --?"X[$WildFeatFlag]" -eq "X1" -and [&MinimumSpellLevel] -ge 1|>far_WildTable
+
    --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
    --+|[br]
    --+Duration: |[&duration]
