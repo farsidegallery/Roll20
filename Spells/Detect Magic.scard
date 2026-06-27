@@ -5,7 +5,7 @@
   --#reentrant|My Cool Script @{selected|character_id}
   
   --/|Script Name : Detect Magic
-  --/|Version     : 2.1.0
+  --/|Version     : 2.1.1
   --/|Requires SC : SelectManager, Radar, ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|  
@@ -38,6 +38,7 @@
   --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
   --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
   
+  -->far_FIND_CLASS_LEVEL|[*S:character_id];Sorcerer;SLevel
   --?"X[&SLevel]" -eq "X0"|ChooseLevel
   -->far_FindFeat|[*S:character_id];"Wild Magic Surge";WildFeatFlag
   
