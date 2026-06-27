@@ -2,7 +2,7 @@
   +++Farsidelib+++
 
   --/|Script Name : Gust Of Wind
-  --/|Version     : 1.0
+  --/|Version     : 1.1.0
   --/|Requires SC : TokenMod, Chatsetattr
   --/|Author      : Will M.
   --/|Modified By : Farsidegallery
@@ -36,6 +36,17 @@
   -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];10
   --=SpellSaveDC|[*S:spell_save_dc]
   --=Result|1d20 + [*T:strength_save_bonus]
+
+  --#leftsub|[*R:spellcastingtime]
+  --#rightsub|[*R:spellrange]
+  --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+  --&desc|[*R:spelldescription]
+
+  -->far_FIND_CLASS_LEVEL|[*S:character_id];Sorcerer;SLevel
+  --?"X[&SLevel]" -eq "X0"|ChooseLevel
+  -->far_FindFeat|[*S:character_id];"Metamagic: Twinned Spell";TwinFeatFlag
+  -->far_FindFeat|[*S:character_id];"Metamagic: Empowered Spell";EmpowerFeatFlag
+  -->far_FindFeat|[*S:character_id];"Wild Magic Surge";WildFeatFlag
 
   --?[$Result.Base] -eq 1|TARGET_FAILED
   --?[$Result.Base] -eq 20|TARGET_PASSED
@@ -91,9 +102,10 @@
   
   --:Finish|
    --+|[br]
-   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+   --?"X[$WildFeatFlag]" -eq "X1" -and [&MinimumSpellLevel] -ge 1|>far_WildTable
+
    --+Duration: |[&duration]
-   --+Desc: |[*R:spelldescription]
+   --+Desc: |[&desc]
    -->far_DeductSpellSlot|[*S:t-id];[&MinimumSpellLevel]
    --X|
 }}
