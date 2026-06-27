@@ -7,7 +7,7 @@
  
   --/|=========================================================================================================
   --/|Script Name : 5E Magic Missile
-  --/|Version     : 3.0
+  --/|Version     : 3.1.1
   --/|Requires SC : TokenMod, Chatsetattr, ScriptCards Library snlib,Farsidelib
   --/|Author      : Kurt Jaegers
   --/|Modification: Farsidegallery
@@ -35,7 +35,7 @@
 
   --/|If damageMode is 1, a separate die will be rolled for each missile. Set this variable to 0 to, 
   --/|only have a single damage die roll applied to each missile.
-  --&damageMode|0  
+  --&damageMode|1
   
   --/|What is the name of the Global AC Mod used for Shield.
   --&ModName|Shield Spell
@@ -124,20 +124,10 @@
     --?"X[*R:spellname]" -ne "XNoRepeatingAttributeLoaded"|>ShieldPrompt
     --:ShieldReturn|
     --%|
-  --#debug|1
-   --=OneMissileDamage|1d4+1
-   --?[&damageMode] -eq 0|[
-    --?"X[$EmpowerFeatFlag]" -eq "X1"|>far_EmpowerSelect;OneMissileDamage;Hit;DamageChangedFlag[*T:t-id];ChangedDamage[*T:t-id]
-    
-    --?"X[$DamageChangedFlag[*T:t-id]]" -eq "X1"|[
-    --=OneMissileDamage|[$ChangedDamage[*T:t-id]] [&HexBlade[*T:t-id]] [&Hex[*T:t-id]][&GlobalDamage][&damageMod[*T:t-id]]
-    --=EmpoweredDamageFlag|1
-    --]|
-    --+Damage per dart: |[$OneMissileDamage]
-	  --+|[br]
-	  --]|
+  
+   --?"X[&damageMode]" -eq "X0"|>MissileSameDamage
    
-   --=DisplayCount|1
+   --=TargetCount|1
    --=TotalDamage|0
    --#emoteText|[*S:t-name] uses a level [$SpellLevel.Total] spell slot to fire [$MissileCount.Total] missiles of magical force!
 
@@ -147,57 +137,103 @@
    --#whisper|
    --%loop|foreach;Targets
     -->FireMissile|[&loop]
-    --=DisplayCount|[$DisplayCount]+1
-	--%|
+    --=TargetCount|[$TargetCount]+1
+	  --%|
+   
+   --?"X[&damageMode]" -eq "X1"|[
+    --%i|1;[$MissileCount];1
+     --+[&ResultLabel[&i]]: |[&ResultText[&i]]
+     -->far_PlayEffects|[*S:t-id];[&ThisTarget];none;burst-smoke;beam-magic
+     --%|
+    --]|
    --+|Total damage is [$TotalDamage]
   
    --%loopTarget|foreach;Unique
     -->far_DamageTokenmod|[&loopTarget];[&hpBar];[&tempHPbar];-[$Damage[&loopTarget]];0;0;1
-	--/|>LibSN_APPLY_DAMAGE_OR_HEALING|[&loopTarget];[&hitPointsBar];-[$Damage[&loopTarget]];0;0;1
-	--%|
+	  --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[&loopTarget];[&hitPointsBar];-[$Damage[&loopTarget]];0;0;1
+	  --%|
   
+   --#whisper|
    --+|[br]
    --?"X[$WildFeatFlag]" -eq "X1" -and [&MinimumSpellLevel] -ge 1|>far_WildTable
 
-   --+|[br]
    --+Desc: |[&desc]
    --+At Higher Levels: |[&higher]
    -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+  
+   --?"X[$EmpoweredDamageFlag]" -eq "X1" -or "X[$TwinFlag]" -eq "X1"|[
+    --=FinalPointsAmmo|[$PointsAmmo]-[$SorceryPoints]
+    --!a:[*S:character_id]|[&PointsAmmo]:[$FinalPointsAmmo]
+    --+|[br]
+	  --+[&SorcererResource]: |Used: [$SorceryPoints] / Remaining: [$FinalPointsAmmo]
+    --]|
    --X|
 
   --:FireMissile|
    --&ThisTarget|[%1%]
+   --#targettoken|[&ThisTarget]
    --&damageMod|
-   --?"X[&damageMode]" -eq "X1"|=ThisMissile;[$OneMissileDamage]
-   
    --?"X[&damageMode]" -eq "X0"|[
+    --=ThisMissile|[$OneMissileDamage]
+    -->far_PlayEffects|[*S:t-id];[&ThisTarget];none;burst-smoke;beam-magic
+    --]|
+  
+   --?"X[&damageMode]" -eq "X1"|[
     --=ThisMissile|1d4+1
     --?"X[$EmpowerFeatFlag]" -eq "X1"|>far_EmpowerSelect;ThisMissile;Hit;DamageChangedFlag[&ThisTarget];ChangedDamage[&ThisTarget]
     --?"X[$DamageChangedFlag[&ThisTarget]]" -eq "X1"|[
      --=ThisMissile|[$ChangedDamage[&ThisTarget]] [&HexBlade][&Hex][&GlobalDamage][&damageMod[&ThisTarget]]
+     --=EmpoweredDamageFlag|1
      --]|
-   --]|
+    --]|
     
-   -->far_PlayEffects|[*S:t-id];[&ThisTarget];none;burst-smoke;beam-magic
    -->Lib5E_GET_GLOBAL_MOD_STATUS|[*[&ThisTarget]:character_id]; ac; [&ModName]; ShieldFlag
    
-   --?[&ShieldFlag] -eq 1|[
-    --=ResultantDamage|0
-	  --=TotalDamage|[$TotalDamage] + [$ResultantDamage]
-	  --+Bolt [$DisplayCount.Raw]: |Hits a Shield surrounding [*[&ThisTarget]:t-name] for [$ResultantDamage] [b][&damageType][/b] damage.
-	  --<|
-	  --]|
+   --?[&ShieldFlag] -eq 1|>ShieldMitigation
    
    -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0
    -->far_CheckDamageModifiers|[&ThisTarget];[&damageType];damageMod;0;0;0
    
    --=ResultantDamage|[$ThisMissile.Raw][&GlobalDamage] [&damageMod]
    --=TotalDamage|[$TotalDamage] + [$ResultantDamage]   
-   --+Bolt [$DisplayCount.Raw]: |Hits [*[&ThisTarget]:t-name] for [$ResultantDamage] [b][&damageType][/b] damage
+   
+   --?"X[&damageMode]" -eq "X1"|[
+    --&ResultLabel[$TargetCount.Raw]|Bolt [$TargetCount.Raw]
+    --&ResultText[$TargetCount.Raw]|Hits [*[&ThisTarget]:t-name] for [$ResultantDamage] [b][&damageType][/b] damage.
+    --]|[
+    --+Bolt [$TargetCount.Raw]: |Hits [*[&ThisTarget]:t-name] for [$ResultantDamage] [b][&damageType][/b] damage.
+    --]|
+  
    --=Damage[&ThisTarget]|[$Damage[&ThisTarget]] + [$ResultantDamage]
    --?[*[&ThisTarget]:t-bar1_value] -lt 0|[
 	 -->LibSN_ADD_STATUS_MARKER|[*[&ThisTarget]:t-id];dead
 	 --]|
+   --<|
+  
+  --:MissileSameDamage|
+   --=OneMissileDamage|1d4+1
+
+   --?"X[$EmpowerFeatFlag]" -eq "X1"|>far_EmpowerSelect;OneMissileDamage;Hit;DamageChangedFlag[*T:t-id];ChangedDamage[*T:t-id]
+    
+   --?"X[$DamageChangedFlag[*T:t-id]]" -eq "X1"|[
+    --=OneMissileDamage|[$ChangedDamage[*T:t-id]] +1 [&HexBlade[*T:t-id]] [&Hex[*T:t-id]][&GlobalDamage][&damageMod[*T:t-id]]
+    --=EmpoweredDamageFlag|1
+    --]|
+    
+   --+Damage per dart: |[$OneMissileDamage]
+	 --+|[br]
+   --<|
+  
+  --:ShieldMitigation|
+   --=ResultantDamage|0
+	 --=TotalDamage|[$TotalDamage] + [$ResultantDamage]
+    
+   --?"X[&damageMode]" -eq "X1"|[
+    --&ResultLabel[$TargetCount.Raw]|Bolt [$TargetCount.Raw]
+    --&ResultText[$TargetCount.Raw]|Hits a Shield surrounding [*[&ThisTarget]:t-name] for [$ResultantDamage] [b][&damageType][/b] damage.
+    --]|[
+    --+Bolt [$TargetCount.Raw]: |Hits a Shield surrounding [*[&ThisTarget]:t-name] for [$ResultantDamage] [b][&damageType][/b] damage.
+    --]|
    --<|
   
   --:BuildUnique|
@@ -208,7 +244,7 @@
     --~testvar|array;indexof;Unique;[&ThisTarget]
     --?"[&testvar]" -eq "ArrayError" | [
      --~|array;add;Unique;[&ThisTarget]
-	 --]|
+	   --]|
     --:BottomUniqueLoop|
     --%|
    --<|
@@ -218,9 +254,9 @@
    --&playername|[*O:[&control]:player:displayname]
    --?"X[&playername]" -eq "X"|[
     --#whisper|gm
-	--]|[
+	  --]|[
     --#whisper|[&playername],gm
-	--]|
+	  --]|
    -->Lib5E_GET_GLOBAL_MOD_STATUS|[*[&loop]:character_id]; ac; [&ModName]; InitalShieldFlag
    --?"X[&InitalShieldFlag]" -eq "X1"|ShieldReturn
    -->GetAndCheckSlotInformation|[*[&loop]:t-id];1;shieldSpellLevel[&loop]
