@@ -584,6 +584,18 @@
  --:far_FindDieSize|   
   --~DieSize|string;after;d;[&RollText]
   
+  --?"[&RollText]" -inc "+"|[
+   --~DieSize|string;before;+;[&RollText]
+   --~DieSize|string;trim;[&DieSize]
+   --~DieSize|string;after;d;[&DieSize]
+   --]|
+   
+  --?"[&RollText]" -inc "-"|[
+   --~DieSize|string;before;-;[&RollText]
+   --~DieSize|string;trim;[&DieSize]
+   --~DieSize|string;after;d;[&DieSize]
+   --]|
+  
   --?"[&RollText]" -inc "Resistant"|[
    --~DieSize|string;before;\;[&RollText]
    --~DieSize|string;trim;[&DieSize]
