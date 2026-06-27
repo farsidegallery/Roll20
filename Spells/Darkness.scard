@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Darkness
-  --/|Version     : 1.0
+  --/|Version     : 1.1.0
   --/|Modified By : Farsidegallery
   --/|  
   --/|  Script prompts user for spell level used and makes sure the slot is available and spawn the designated token to the VTT.
@@ -68,7 +68,13 @@
    --&desc|[*R:spelldescription]
    -->GetCharID|"[&CharName]";SummonID
    --!a:[*S:character_id]|!ConcentrationSpell:[&TokenName]
-   -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];10   
+   -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];10
+
+   -->far_FIND_CLASS_LEVEL|[*S:character_id];Sorcerer;SLevel
+   --?"X[&SLevel]" -eq "X0"|ChooseLevel
+   -->far_FindFeat|[*S:character_id];"Metamagic: Twinned Spell";TwinFeatFlag
+   -->far_FindFeat|[*S:character_id];"Metamagic: Empowered Spell";EmpowerFeatFlag
+   -->far_FindFeat|[*S:character_id];"Wild Magic Surge";WildFeatFlag
 
    --/|SPAWN Darkness Token
    --:SpawnToken|
@@ -114,6 +120,9 @@
    --#whisper|
    --+|[*S:character_name] summons [&SpellName]!
    --+|[br]
+   
+   --?"X[$WildFeatFlag]" -eq "X1" -and [&MinimumSpellLevel] -ge 1|>far_WildTable
+   
    --+Duration: |[&duration]
    --+Desc: |[&desc]
    -->far_DeductSpellSlot|[*S:t-id];[&MinimumSpellLevel]
