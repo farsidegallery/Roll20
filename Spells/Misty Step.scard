@@ -62,9 +62,9 @@
    --&TokenID|[*S:t-id]
    --!a:[*[&MistyID]:character_id]|!caster_ID:[&TokenID]
   
+  --+|[br]
   --?"X[$WildFeatFlag]" -eq "X1" -and [&MinimumSpellLevel] -ge 1|>far_WildTable
    
-  --+|[br]
   --+Desc: |[&desc]
   -->far_DeductSpellSlot|[*S:t-id];[&MinimumSpellLevel]
   --X|
