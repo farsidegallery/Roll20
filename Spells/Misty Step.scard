@@ -5,7 +5,7 @@
   --#reentrant|My Cool Script @{selected|character_id}
 
   --/|Script Name : Misty Step
-  --/|Version     : 1.0
+  --/|Version     : 1.1.0
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Arak Stoneboulder
   --/|Modified By : Farsidegallery
@@ -35,6 +35,13 @@
   -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
   --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
     
+  --&desc|[*R:spelldescription]
+  
+  -->far_FIND_CLASS_LEVEL|[*S:character_id];Sorcerer;SLevel
+  --?"X[&SLevel]" -eq "X0"|Skip
+  -->far_FindFeat|[*S:character_id];"Wild Magic Surge";WildFeatFlag
+  
+  --:Skip|
   --#leftsub|1 Bonus Action
   --#rightsub|Range: 30 ft
   --#emoteText|[*S:character_name] Casts Misty Step.
@@ -55,6 +62,10 @@
    --&TokenID|[*S:t-id]
    --!a:[*[&MistyID]:character_id]|!caster_ID:[&TokenID]
   
+  --?"X[$WildFeatFlag]" -eq "X1" -and [&MinimumSpellLevel] -ge 1|>far_WildTable
+   
+  --+|[br]
+  --+Desc: |[&desc]
   -->far_DeductSpellSlot|[*S:t-id];[&MinimumSpellLevel]
   --X|
 
