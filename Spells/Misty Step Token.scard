@@ -7,7 +7,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Misty Step Token
-  --/|Version     : 1.0
+  --/|Version     : 1.0.1
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Arak Stoneboulder
   --/|Modified By : Farsidegallery
@@ -40,7 +40,7 @@
   --~count|array;pagetokens;tokens;[&TokenID];tprop:name=Misty Step
   --~|object;token;delete;[@tokens(0)]
    
-   --+|You used your bonus action to Misty Step!
+  --+|You used your bonus action to Misty Step!
    
   --/| ____________________ Procedures_______________________________________________________________________________________
   
