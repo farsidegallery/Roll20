@@ -1,4 +1,4 @@
---/|ScriptCards Library: Farsidelib  version 1.1.3
+--/|ScriptCards Library: Farsidelib  version 1.3.0
 --/|Provides various utility procedures for Roll20
 
 --/|This library contains a number of functions that are customized to meet the different needs of spell or ability
@@ -10,6 +10,9 @@
 
 --/|Functions Included:
 --/|
+--/|   far_LoadTokenMarkers|
+--/|     Centralized token marker definitions
+--/| 
 --/|   far_CustomCritCheck|ReturnStringName
 --/|     Are you using a custom critical damage game? 0 = no and 1 = yes
 --/| 
@@ -100,6 +103,42 @@
 
 --/| =============================== BEGIN LIBRARY CODE ===============================================
 
+ 
+ --:far_LoadTokenMarkers|
+  --/|Enter the Token Markers you use for each condition
+  
+  --&BaneMarker|Hexed3::7409911
+  --&BardicMarker|BardicInspiration::7409920
+  --&BeaconMarker|radioactive
+  --&BlessedMarker|angel-outfit
+  --&BlindedMarker|Blinded::7409948
+  --&BrokenMarker|Broken::7409891
+  --&CharmedMarker|Charmed::7409947
+  --&ConcentrationMarker|Concentrating::7409928
+  --&DeafenedMarker|Deafened::7409946
+  --&DeathMarker|dead
+  --&DisadvantageMarker|Disadvantage::7409922
+  --&DiseaseMarker|Nauseated::7409894
+  --&FaerieFireMarker|pink
+  --&FearMarker|Frightened::7409945
+  --&HexMarker|Hexed::7409913
+  --&HexBladeMarker|Hexed2::7409912
+  --&HoldMarker|Paralyzed::7409941
+  --&HunterMarker|Marked::7409918
+  --&IncapacitatedMarker|Incapacitated::7409943
+  --&InspirationMarker|Inspiration::7409921
+  --&InvisibilityMarker|Invisible::7409942
+  --&PoisonMarker|Poisoned::7409939  
+  --&ProneMarker|Prone::7409938
+  --&RageMarker|Raging::7409927
+  --&RestrainedMarker|Restrained::7409937
+  --&SleepMarker|Unconscious::7409935
+  --&SlowMarker|Slow::7409900
+  --&StunMarker|Stunned::7409936  
+  --&TollMarker|Marked4::7409915
+  --&ZephyrMarker|108-Range-Long::5818054
+  
+  --<|
  
  --:far_CustomCritCheck|ReturnStringName
   --&[%1%]|1
