@@ -1,0 +1,305 @@
+!script {{
+  +++5Elib;snlib;Farsidelib+++
+  
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+  
+  --/|Script Name : Sunbeam
+  --/|Version     : 1.0.1
+  --/|Modified By : Farsidegallery
+  --/|  
+  --/|  Script prompts user for spell level used and makes sure the slot is available and spawn the designated token to the VTT.
+  --/|  It will deduct 1 spell slot from the appropriate level
+  --/|
+  
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+  
+  --&SpellName|Sunbeam
+  --&MinimumSpellLevel|6
+  --&damageType|radiant
+  
+  --&hpBar|1
+  --&tempHPbar|4
+  
+  --&attrib|constitution
+  
+  --/|Enter Character used for Sunbeam.
+  --&CharName|Sunbeam
+  
+  --/|What resource name is used for Sorcerer Points?
+  --&SorcererResource|Sorcery Points
+  
+  --/|Use ScriptCards (1) or SpawnDefaultToken (2) to place the Sunbeam Character on the VTT?
+  --&SpawnScript|1
+  
+  --&Sunlink|https://files.d20.io/images/492229285/i7dN3VuZaF5TBKzwEDLVCw/med.webm?1782680626
+  
+  --/|Enter the Token Markers you use for each condition
+  --&BardicMarker|BardicInspiration::7409920
+  --&BlessedMarker|angel-outfit
+  --&InspirationMarker|Inspiration::7409921
+  --&BaneMarker|Hexed3::7409911
+  --&HexMarker|Hexed::7409913
+  --&HexBladebladeMarker|Hexed2::7409912
+  --&DeathMarker|dead
+  --&ConcentrationMarker|Concentrating::7409928
+  --&BlindedMarker|Blinded::7409948
+   
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+  
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+  
+  --~shortattrib|string;left;3;[&attrib]
+  --~Displayattrib|string;touppercase;[&shortattrib]
+  
+  --=Damage|6d8
+
+  --#title|[&SpellName]
+  --&TokenName|[*S:t-name] [&CharName]
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+  --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+  -->ChooseFunction|
+  --X|
+  
+  --:ChooseFunction|
+   --+Choose Function: |[rbutton]New Cast::New[/rbutton][rbutton]Attack::Attack[/rbutton][rbutton]Dismiss::Remove[/rbutton]
+   --X|
+  
+  --:New|
+   --#emoteText|[*S:character_name] Casts [&SpellName] at Spell Level [&MinimumSpellLevel]!
+   --#leftsub|DC: [*S:spell_save_dc]
+   --#rightsub|[*R:spellrange]
+   --=DC|[*S:spell_save_dc]
+   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+   --&desc|[*R:spelldescription]
+   -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];9
+   --=NewCastFlag|1
+   --=CurrentChangeCount|0
+   --=ReturnChangeCount|0
+   
+   -->GetCharID|"[&CharName]";SummonID
+   --!a:[&SummonID]|!SaveDC:[*S:spell_save_dc]
+   --!a:[*S:character_id]|!ConcentrationSpell:[&TokenName]
+   
+   -->CheckSorcerer|
+   -->CAST_SPELL|
+   --X|
+   
+  --:Attack|
+   --#emoteText|[*S:character_name] Attacks with [&SpellName]!
+   --#leftsub|DC: [*S:spell_save_dc]
+   --#rightsub|[*R:spellrange]
+   --=DC|[*S:spell_save_dc]
+   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+   --&desc|[*R:spelldescription]
+   --=CurrentChangeCount|[*S:ChangeCount]
+   
+   -->CheckSorcerer|
+   -->CAST_SPELL|
+   --X|
+   
+  --/| ____________________ Procedures_______________________________________________________________________________________
+  
+  --:GetCharID|CharacterName;StringVariableForCharID
+   --~|array;objects:character;SpiritCharArr;[%1%]
+   --?[@SpiritCharArr(length)] -ne 1|>far_far_LogFatalError;Could not find character named [%1%]
+   --&[%2%]|[@SpiritCharArr(0)]
+   --<|
+  
+  --:CheckSorcerer|
+   -->far_FIND_CLASS_LEVEL|[*S:character_id];Sorcerer;SLevel
+   --?"X[&SLevel]" -eq "X0"|CAST_SPELL
+   -->far_FindFeat|[*S:character_id];"Metamagic: Twinned Spell";TwinFeatFlag
+   -->far_FindFeat|[*S:character_id];"Metamagic: Empowered Spell";EmpowerFeatFlag
+   -->far_FindFeat|[*S:character_id];"Wild Magic Surge";WildFeatFlag
+   --=EmpowerDice|[*S:charisma_mod]
+   --=SorceryPoints|0
+   --=ChangeCount|0
+   
+   -->Lib5E_FIND_RESOURCE|[*S:character_id];[&SorcererResource];Pointsname;PointsAmmo  
+   -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0
+   --?"X[$EmpowerFeatFlag]" -eq "X1"|>far_EmpowerSelect;Damage;Hit;DamageChangedFlag;ChangedDamage;1;[$CurrentChangeCount];ReturnChangeCount    
+   --?"X[$DamageChangedFlag]" -eq "X1"|[
+    --=Damage|[$ChangedDamage] [&GlobalDamage]
+    --=EmpoweredDamageFlag|1
+    --]|
+   --<|
+  
+  --:CAST_SPELL|
+   --/| (1) Spawn the effect template and find the ID for it
+   
+   --?"X[$NewCastFlag]" -eq "X1"|[
+    --+|Move Spell Token to desired location and then click Continue to finish casting the spell.
+	
+	--!ot:SunTID|name:"[&TokenName]"|left:[*S:t-left]|top:[*S:t-top]|width:[=[*S:t-width]*12]|height:[*S:t-height]|imgsrc:"[&Sunlink]"|bar1_value:1|represents:[&SummonID]|showname:false
+    --z:graphic:[&SunTID]|toback
+	--!a:[*S:character_id]|!SunToken:[&SunTID]
+	--]|[
+	--+|Move Spell Token to desired location and then click Continue to attack again with Sunbeam.
+	--]|
+   
+   --+|[br]
+   --+Target: |[rbutton]Continue::Modtoken[/rbutton]
+   --X|
+  
+  --:Modtoken|
+   --?[*S:npc] -eq 1 |[ 
+	--~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&TokenName]
+    --!graphic:[@tokens(0)]|gm_only_tooltip:1
+	--]|
+   -->FindTargets|
+  
+  --:FindTargets|
+   --/|(GET ALL TOKENS INTO THE "allTokens" ARRAY will have blank 1st element to be removed later
+   --~|array;pagetokens;allTokens;[*S:t-id]
+   --/| CREATE THE "inRange" ARRAY TO HOLD TOKENS IN RANGE
+   --~|array;define;inRange;
+   --~|array;define;Failed;
+   --&SunTID|[*S:SunToken]
+   
+   --/| PREP ARRAY FOR LOOP if no array elements then end macro
+   --~tokenid|array;getfirst;allTokens
+   --?[&tokenid] -eq ArrayError|End
+   --/|(2) FIND ALL TOKENS IN AoE
+   --:RangeLoop|
+   --:/|TOKEN MUST BE ON OBJECTS OR GMLAYER AND TEMPLATE MUST OVERLAP AoE
+   --?[*[&tokenid]:t-layer] -ne objects -and [*[&tokenid]:t-layer] -ne gmlayer|NextToken
+   --?[&tokenid] -eq [&SunTID]|NextToken   
+   --?"X[*[&tokenid]:race]" -eq "X" -and "[*[&tokenid]:npc]" -ninc "1"|NextToken
+   -->LibSN_CHECK_TOKEN_OVERLAP|[&SunTID];[&tokenid];OLap
+   --?[&OLap] -eq 0|NextToken
+   
+   --/|ADD TO THE "inRange" ARRAY
+   --~|array;add;inRange;[&tokenid]
+   
+   --:NextToken|
+   --~tokenid|array;getnext;allTokens
+   --?[&tokenid] -ne ArrayError|RangeLoop
+   
+   --/|(3) REMOVE DUMMY FIRST ITEM IN inRange ARRAY and emote
+   --~|array;removeat;inRange;0
+   --?"X[@inRange(0)]" -eq "Xundefined array"|[
+   --+|[c][b]No Targets in Range![/b][/c]
+   -->Output|
+   --]|
+   -->SaveLoop|
+   
+  --:SaveLoop|  
+   --#whisper|
+   --~tokenid|array;getfirst;inRange
+   --?[&tokenid] -eq ArrayError|Output
+   --+|[t border=3 width=100%][tr][td][c]Base Damage: [$Damage][/c][/td][/tr]
+   --+|[t border=3 width=100%][tr][td style="width:100px"][c]Target[/c][/td][td style="width:50px"][c]Save[/c][/td][td style="width:30px"][c]P/F?[/c][/td][td style="width:30px"][c]DAM[/c][/td][/tr]
+   --%loop|foreach;inRange
+	--#targettoken|[&loop]
+	
+	--&BlessFlag|
+    --&BaneMarkerFlag|
+    --&GlobalSave|
+    --&GlobalSkill|
+	--&damageSave|
+	--&attribSaveRoll|
+	--&damageMod|	
+   
+    --&saveDice|1d20
+   
+    --?"X[*T:race]" -ne "X"|[
+     -->far_Check_GLOBAL_MOD_EXISTS|[*T:character_id]; save; [&damageType]; damageSave
+     -->far_Check_GLOBAL_ATTRIB_SAVE_EXISTS|[*T:character_id]; [&attrib]; attribSaveRoll
+     --?[&damageSave] -eq 1 -or [&attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "1d20"|&saveDice;2d20kh1
+     --?[&damageSave] -eq 1 -or [&attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "2d20kl1"|&saveDice;1d20
+    
+     -->far_FIND_ACTIVE_GLOBAL_SAVE_MODS|[*T:character_id];GlobalSave
+     -->far_FIND_ACTIVE_GLOBAL_SKILL_MODS|[*T:character_id];GlobalSkill
+	 --]|
+   
+    -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;0;0;0
+	-->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BlessedMarker];BlessFlag;BlessCount
+    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
+    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexMarker];HexMarkerFlag;HexMarkerCount
+    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];HexBladeMarkerFlag;HexBladeMarkerCount
+
+    --?[&BaneMarkerFlag] -eq 1|&Baneroll;+ - 1d4 [Bane] |&Baneroll;
+   
+    --=TargetSave|[&saveDice] + [*T:[&attrib]_save_bonus] [&obrac][&Displayattrib][&cbrac] [&GlobalSave] [&GlobalSkill] [&Baneroll]
+
+	--?[$TargetSave] -lt [*S:spell_save_dc]|[
+	 --=FinalDamage|[$Damage][&damageMod]
+	 --+|[t border=3 width=100%][tr][td style="width:100px"][c][*T:t-name][/c][/td][td style="width:50px"][c][$TargetSave][/c][/td][td style="width:30px"][c]F[/c][/td][td style="width:30px"][c][$FinalDamage][/c][/td][/tr]
+	 -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&BlindedMarker];1
+	 --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$FinalDamage];0;0;1
+     -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$FinalDamage];0;0;1
+     --=FinalHP|[*T:t-bar[&hpBar]_value]+[*T:t-bar[&tempHPbar]_value]-[$FinalDamage]
+     --?[$FinalHP] -le 0|>Died
+	 --%|
+	 --]|
+	 
+	--?[$TargetSave] -ge [*S:spell_save_dc]|[
+	 --=FinalDamage|[$Damage][&damageMod]\2
+	 --+|[t border=3 width=100%][tr][td style="width:100px"][c][*T:t-name][/c][/td][td style="width:50px"][c][$TargetSave][/c][/td][td style="width:30px"][c]P[/c][/td][td style="width:30px"][c][$FinalDamage][/c][/td][/tr]
+	 --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$FinalDamage];0;0;1
+     -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$FinalDamage];0;0;1
+     --=FinalHP|[*T:t-bar[&hpBar]_value]+[*T:t-bar[&tempHPbar]_value]-[$FinalDamage]
+     --?[$FinalHP] -le 0|>Died
+	 --%|
+	 --]|
+ 	 
+   --!a:[*S:character_id]|!ChangeCount:[$ReturnChangeCount] 
+   -->Output|
+  
+  --:Died|
+   -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DeathMarker]
+   --?[$HexBladeFlag] -eq 1 -and [&HexBladeMarkerFlag] -eq 1|>HexHeal
+   --<|
+  
+  --:HexHeal|
+   -->far_HexHeal|[*S:character_id];[*S:t-id]
+   -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexBladebladeMarker]
+   --<|
+  
+  --:Output|
+   --#whisper|
+   --#targettoken|
+   --+|[br]
+   
+   --?"X[$WildFeatFlag]" -eq "X1" -and [&MinimumSpellLevel] -ge 1 -and "X[$NewCastFlag]" -eq "X1"|>far_WildTable
+  
+   --+Duration: |[&duration]
+   --+Desc: |[&desc]
+   --?"X[$NewCastFlag]" -eq "X1"|[
+    --+|[br]
+	-->far_DeductSpellSlot|[*S:t-id];[&MinimumSpellLevel]
+	--]|
+   
+   --?"X[$EmpoweredDamageFlag]" -eq "X1" -or "X[$TwinFlag]" -eq "X1" -and "X[$NewCastFlag]" -eq "X1"|[
+    --=FinalPointsAmmo|[$PointsAmmo]-[$SorceryPoints]
+    --!a:[*S:character_id]|[&PointsAmmo]:[$FinalPointsAmmo]
+    --+|[br]
+	--+[&SorcererResource]: |Used: [$SorceryPoints] / Remaining: [$FinalPointsAmmo]
+    --]|
+   --X|
+  
+  --:Remove|
+   --&TokenName|[*S:t-name] [&CharName]
+   --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&TokenName]
+   --~|object;token;delete;[@tokens(0)]
+   --#whisper|
+   --#emotetext|[&CharName] vanishes!
+   --+|[*S:character_name] is no longer concentrating.
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker]
+   --!a:[*S:character_id]|!ConcentrationSpell:**
+   --!a:[*S:character_id]|!SunToken:**
+   --!a:[*S:character_id]|!ChangeCount:**
+   --X|
+}}
