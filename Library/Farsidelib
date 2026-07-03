@@ -1,4 +1,4 @@
---/|ScriptCards Library: Farsidelib  version 1.1.2
+--/|ScriptCards Library: Farsidelib  version 1.1.3
 --/|Provides various utility procedures for Roll20
 
 --/|This library contains a number of functions that are customized to meet the different needs of spell or ability
@@ -15,7 +15,7 @@
 --/| 
 --/|   far_WildTable|
 --/|     Create and place the name of the Wild Magic Table in the first line (&WildTable variable)
---/|     Rolls for Wild Magic Surge and, if a 1 is rolled, rolls on the table and displays the entry rolled.
+--/|     Rolls for Wild Magic surge and, if a 1 is rolled, rolls on the table and displays the entry rolled.
 --/|
 --/|   far_PCConcenCheck|PCRollReturnString;BardScriptReturnString
 --/|     Used with Concentration Trigger.
@@ -91,10 +91,11 @@
 --/|     representing what to add to a roll expression to account for the mod(s). Dice rolls in mods (ie, 1d4 for guidance) will
 --/|     include a # after the expression to keep it from being counted in the Crit/Fumble check.
 --/|
---/|   far_EmpowerSelect|DamageRollVariable;ReturnFunctionNameString
+--/|   far_EmpowerSelect|DamageRollVariable;ReturnFunctionNameString;DamageChangeVar;DamageVar;ReturnCountFlag;IncomingCount;ExportCount
 --/|      Prompts character to use Empower Spell Feat and branches to sub-functions based on choice. If player selects No,
 --/|      sub-function will return to script. If yes is selected, player will be allowed to change each damage die roll one
---/|      time only.
+--/|      time only. If ReturnCountFlag is yes, current change count will be exported (for multi-round spells).
+--/|      Also can accept incoming count if needed (to support multi-round spells such as Sunbeam).
 --/|      Sub-functions: far_EmpowerYes, far_EmpowerNo, far_DieSelect, far_FindDieSize
 
 --/| =============================== BEGIN LIBRARY CODE ===============================================
@@ -482,12 +483,13 @@
   --&_GSKM_Temp|+ + [%2%]# [&_obrac][%1%][&_cbrac] 
   --<|
  
- --:far_EmpowerSelect|DamageRollVariable;ReturnFunctionNameString;DamageChangeVar;DamageVar
+ --:far_EmpowerSelect|DamageRollVariable;ReturnFunctionNameString;DamageChangeVar;DamageVar;ReturnCountFlag;IncomingCount;ExportCount
   --#whisper|self,gm
   --~|array;define;changedIndex;
   --~|array;fromrollvar;rolledDice;[%1%];rolled
   --&RollText|[$[%1%].RollText]
   --&function|[%2%]
+  --?"X[%6%]" -ne "X"|=ChangeCount;[%6%]
   --?[$PointsAmmo] -le [$SorceryPoints] -or "X[$ChangeCount]" -eq "X[$EmpowerDice]"|[
    --=SkipFlag|1
    --^far_EmpowerNo|
@@ -544,6 +546,7 @@
    
  --:far_EmpowerNo|
   --?"X[$SkipFlag]" -eq "X1"|[
+   --?"X[%5%]" -eq "X1" -and [$ChangeCount] -gt 0|=[%7%];[$ChangeCount] |=[%7%];[$EmpowerDice]
    --^far_EmpowerExit|
    --]|
   --?"X[$ChangeCount]" -gt "X0" -and "X[$ChangeFlag]" -ne "X1"|[
@@ -557,6 +560,7 @@
     --%|
    --=[%4%]|[$ChangedDamage]
    --]|
+  --?"X[%5%]" -eq "X1" -and [$ChangeCount] -gt 0|=[%7%];[$ChangeCount] |=[%7%];[$EmpowerDice]
   --<|
   
  --:far_DieSelect|
