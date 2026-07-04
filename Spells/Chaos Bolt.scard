@@ -6,7 +6,7 @@
   --#whisper|self,gm
 
   --/|Script Name : Chaos Bolt
-  --/|Version     : 1.0.1
+  --/|Version     : 1.0.2
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|  
@@ -40,15 +40,6 @@
    --&CritDamageRollModifier|
    --=CritDamageModifier|+6
   
-   --/|Enter the Token Markers you use for each condition
-   --&BardicMarker|BardicInspiration::7409920
-   --&BlessedMarker|angel-outfit
-   --&InspirationMarker|Inspiration::7409921
-   --&BaneMarker|Hexed3::7409911
-   --&HexMarker|Hexed::7409913
-   --&HexBladeMarker|Hexed2::7409912
-   --&DeathMarker|dead
-  
   --/| ____________________ End Global User Variables ___________________________________________________________________________________________
 
   --/|Helper variable build up to allow us to include a target prompt in an rbutton
@@ -64,6 +55,7 @@
   --~shortattrib|string;left;3;[&attrib]
   --~Displayattrib|string;touppercase;[&shortattrib]
 
+  -->far_LoadTokenMarkers|
 
   --#title|[&SpellName]
   --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
