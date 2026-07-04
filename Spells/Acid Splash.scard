@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Acid Splash
-  --/|Version     : 1.1.2
+  --/|Version     : 1.1.3
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|  
@@ -30,16 +30,6 @@
    --/|Are you using the matching Bardic Inspiration Script from FarsideGallery? (Default is No using 0. Change to 1 if using the script.)
    --=Scriptcheck|1
    
-   --/|Enter the Token Markers you use for each condition
-   --&BardicMarker|BardicInspiration::7409920
-   --&BlessedMarker|angel-outfit
-   --&BaneMarker|Hexed3::7409911
-   --&DisAdvanMarker|Disadvantage::7409922
-   --&InspirationMarker|Inspiration::7409921
-   --&HexMarker|Hexed::7409913
-   --&HexBladeMarker|Hexed2::7409912
-   --&DeathMarker|dead
-   
   --/| ____________________ End Global User Variables ___________________________________________________________________________________________
  
   --/|Helper variable build up to allow us to include a target prompt in an rbutton
@@ -50,6 +40,8 @@
   --&obrac|[ 
   --&cbrac|]
   --&At|@
+
+  -->far_LoadTokenMarkers|
 
   --~shortattrib|string;left;3;[&attrib]
   --~Displayattrib|string;touppercase;[&shortattrib]
@@ -225,7 +217,9 @@
   --:Output|   
    --#leftsub|Spell Level: [&MinimumSpellLevel]
    --#rightsub|Range: [&range]
+   --+|[br]
    --+Desc: |[&desc]
+   --+|[br]
    -->far_PlayEffects|[*S:t-id];[*T:t-id];burn-magic;burst-acid;
    
    --?"X[$DamageChangedFlag]" -eq "X1"|[
