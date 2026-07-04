@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Bane
-  --/|Version     : 2.0
+  --/|Version     : 2.0.1
   --/|Requires SC : TokenMod, ScriptCards Library snlib/Farsidelib
   --/|Author      : Gunther
   --/|Modified By : Farsidegallery
@@ -22,11 +22,6 @@
   --&MinimumSpellLevel|1
   
   --&attrib|charisma
-  
-  --/|Enter the Token Markers you use for each condition
-  --&BlessedMarker|angel-outfit
-  --&BaneMarker|Hexed3::7409911
-  --&ConcentrationMarker|Concentrating::7409928
    
   --/| ____________________ End Global User Variables ___________________________________________________________________________________________
   
@@ -42,6 +37,8 @@
   
   --~shortattrib|string;left;3;[&attrib]
   --~Displayattrib|string;touppercase;[&shortattrib]
+
+  -->far_LoadTokenMarkers|
   
   --#title|[&SpellName]
   --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
