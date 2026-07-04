@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Armor of Agathys
-  --/|Version     : 1.0.1
+  --/|Version     : 1.0.2
   --/|Modified By : Farsidegallery
   --/|  
   --/|  Script checks for spell level used and makes sure the slot is available. Script will check for existence of global mod and create if necessary.
@@ -18,9 +18,6 @@
   --&SpellName|Armor of Agathys
   --&MinimumSpellLevel|1
   --&damageType|cold
-  
-  --&HexBladebladeMarker|Hexed2::7409912
-  --&DeathMarker|dead
    
   --/|Enter name for Armor of Agathys Character.
   --&CharName|Armor of Agathys
@@ -36,6 +33,7 @@
   --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
   --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
   
+  -->far_LoadTokenMarkers|
   
   --+|[c][b]Choose Function:[/b][/c]
   --+|[c][rbutton]New Cast::New[/rbutton][rbutton]Return Attack::Attack[/rbutton][rbutton]Dismiss::Remove[/rbutton][/c]
@@ -114,8 +112,8 @@
    --+Duration: |[&duration]
    --+Desc: |[*R:spelldescription]
    --+At Higher Levels: |[*R:spellathigherlevels]
+   --+|[br]
    -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
-   --X|
    --X|
 
  --/| ____________________ Procedures_______________________________________________________________________________________
@@ -133,6 +131,6 @@
   
   --:HexHeal|
    -->far_HexHeal|[*S:character_id];[*S:t-id]
-   -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexBladebladeMarker]
+   -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexBladeMarker]
    --<|
 }}
