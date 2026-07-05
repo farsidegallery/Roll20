@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Sunbeam
-  --/|Version     : 1.0.1
+  --/|Version     : 1.0.2
   --/|Modified By : Farsidegallery
   --/|  
   --/|  Script prompts user for spell level used and makes sure the slot is available and spawn the designated token to the VTT.
@@ -34,17 +34,6 @@
   --&SpawnScript|1
   
   --&Sunlink|https://files.d20.io/images/492229285/i7dN3VuZaF5TBKzwEDLVCw/med.webm?1782680626
-  
-  --/|Enter the Token Markers you use for each condition
-  --&BardicMarker|BardicInspiration::7409920
-  --&BlessedMarker|angel-outfit
-  --&InspirationMarker|Inspiration::7409921
-  --&BaneMarker|Hexed3::7409911
-  --&HexMarker|Hexed::7409913
-  --&HexBladebladeMarker|Hexed2::7409912
-  --&DeathMarker|dead
-  --&ConcentrationMarker|Concentrating::7409928
-  --&BlindedMarker|Blinded::7409948
    
   --/| ____________________ End Global User Variables ___________________________________________________________________________________________
   
@@ -58,6 +47,8 @@
   --&oparen|(
   --&cparen|)
   
+  -->far_LoadTokenMarkers|
+
   --~shortattrib|string;left;3;[&attrib]
   --~Displayattrib|string;touppercase;[&shortattrib]
   
@@ -224,6 +215,8 @@
      -->far_FIND_ACTIVE_GLOBAL_SKILL_MODS|[*T:character_id];GlobalSkill
 	 --]|
    
+    --?"[*T:npc_type]" -inc "undead" -or "[*T:npc_type]" -inc "ooze"|&saveDice;2d20kl1
+
     -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;0;0;0
 	-->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BlessedMarker];BlessFlag;BlessCount
     -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
