@@ -6,7 +6,7 @@
   --#whisper|self,gm
 
   --/|Script Name : Banishment
-  --/|Version     : 2.0
+  --/|Version     : 2.1.0
   --/|Requires SC : ScriptCards Library snlib/Farsidelib
   --/|Author      : 
   --/|Modified By : Farsidegallery
@@ -22,15 +22,9 @@
   --&MinimumSpellLevel|4
   
   --&attrib|charisma
-  
-  --/|What token marker is used for Banish?
-  --&BanishMarker|Marked4::7409915
-  
-  --/|Enter the Token Markers you use for each condition
-  --&BaneMarker|Hexed3::7409911
-  --&BlessedMarker|angel-outfit
-  --&DeathMarker|dead
-  --&ConcentrationMarker|Concentrating::7409928
+
+  --/|What resource name is used for Sorcerer Points?
+  --&SorcererResource|Sorcery Points
   
   --/| ____________________ End Global User Variables ___________________________________________________________________________________________
 	
@@ -44,27 +38,34 @@
   --&oparen|(
   --&cparen|)
   
+  -->far_LoadTokenMarkers|
+
   --~shortattrib|string;left;3;[&attrib]
   --~Displayattrib|string;touppercase;[&shortattrib]
   
-  --#title|[&SpellName]
-  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
-  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
-  -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
-  --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
-  
-  --+|[c][b]Cast At What Level?[/b][/c]
+  --+Choose Function: |[rbutton]New Cast::NewCast[/rbutton][rbutton]Dismiss::Remove[/rbutton]
+  --X|
+
+  --:NewCast|
+   --#title|[&SpellName]
+   --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+   --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+   -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+   --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+
+   --+|[c][b]Cast At What Level?[/b][/c]
     --&splvlMsg|
     --%splvl|foreach;SpellCastLevel
      --&splvlMsg|+ [rbutton][&splvl]::ChooseType;[&splvl][/rbutton]
     --%|
-  --+|[c][&splvlMsg][/c]
-  --X|
+   --+|[c][&splvlMsg][/c]
+   --X|
   
   --:ChooseType|
    --=SpellLevel|[&reentryval]
    --&SpellLevel|[&reentryval]
    -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
+   
    --#leftsub|[*R:spellcastingtime]
    --#rightsub|[*R:spellrange]
    --&desc|[*R:spelldescription]
@@ -73,21 +74,50 @@
    --#emoteState|hide
    --=DisplayCount|1
    
-   --!a:[*S:character_id]|!ConcentrationSpell:[&SpellName]
-   -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];10
-	
+   -->far_FIND_CLASS_LEVEL|[*S:character_id];Sorcerer;SLevel
+   --?"X[&SLevel]" -eq "X0"|Target
+   -->far_FindFeat|[*S:character_id];"Metamagic: Twinned Spell";TwinFeatFlag
+   -->far_FindFeat|[*S:character_id];"Metamagic: Empowered Spell";EmpowerFeatFlag
+   -->far_FindFeat|[*S:character_id];"Wild Magic Surge";WildFeatFlag
+   --=EmpowerDice|[*S:charisma_mod]
+   --=SorceryPoints|0
+   --=ChangeCount|0
+   
+   -->Lib5E_FIND_RESOURCE|[*S:character_id];[&SorcererResource];Pointsname;PointsAmmo
+   --?"X[$PointsAmmo]" -le "X0" -or "[&Pointsname]" -eq "Not Found" -or "X[$PointsAmmo]" -lt "X[$SorceryPoints]" -or "X[$SpellLevel]" -ne "X4"|Target
+   
+   --+|[c]Do you want spend a Sorcery Point to Twin the spell?[/c]
+   --+|[c][rbutton]Yes::TwinTarget[/rbutton]  [rbutton]No::Target[/rbutton][/c]
+   --X|
+
+   --:TwinTarget|
+    --=TwinFlag|1
+    --?"[&MinimumSpellLevel(toLowerCase)]" -eq "cantrip"|=SorceryPoints;1 |=SorceryPoints;[$SpellLevel]\2 {MIN:1}
+   
+   --:Target|	
    --/|Number of Targets
    --C[$SpellLevel.Raw]|4:=Targets;1|5:=Targets;2|6:=Targets;3|7:=Targets;4|8:=Targets;5|9:=Targets;6
+   --?"X[$TwinFlag]" -eq "X1" -and "X[$SpellLevel]" -eq "X4"|=Targets;2
    -->far_BuildTargetList|[$Targets.Total]
    -->far_BuildTargetArray|Banished;[$Targets];TargetString
    -->OutputResults|
+
    --+|[br]
+   --?"X[$WildFeatFlag]" -eq "X1" -and [&MinimumSpellLevel] -ge 1|>far_WildTable
    
    --+Duration: |[&duration]
    --+Desc: |[&desc]
    --+At Higher Levels: |[&higherdesc]
+   --+|[br]
    -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
-	--X|
+	
+   --?"X[$EmpoweredDamageFlag]" -eq "X1" -or "X[$TwinFlag]" -eq "X1"|[
+    --=FinalPointsAmmo|[$PointsAmmo]-[$SorceryPoints]
+    --!a:[*S:character_id]|[&PointsAmmo]:[$FinalPointsAmmo]
+    --+|[br]
+	--+[&SorcererResource]: |Used: [$SorceryPoints] / Remaining: [$FinalPointsAmmo]
+    --]|
+   --X|
 
 --/| ____________________ Procedures_______________________________________________________________________________________
 
@@ -139,6 +169,27 @@
 	-->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&BanishMarker];
 	--/|@token-mod|_ignore-selected _ids [*T:t-id] _set layer|gmlayer
 	--!t:[*T:t-id]|layer:gmlayer
+   --!a:[*S:character_id]|!ConcentrationSpell:[&SpellName]
+   -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];10
 	--]| 
    --<|
+
+  --:Remove| 
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker]
+   --~|array;pagetokens;alltokens;[*S:t-id]
+   --~|array;define;Banished
+   --%loop|foreach;alltokens
+    -->LibSN_CHECK_STATUS_MARKER|[*[&loop]:t-id];[&BanishMarker];BanishFlag;BanishCount
+    --?[&BanishFlag] -eq 1|[
+     --&Banished([@Banished(length)])|[*[&loop]:t-id]
+     --]|
+    --%|
+   
+   --%loop|foreach;Banished
+    -->LibSN_REMOVE_STATUS_MARKER|[*[&loop]:t-id];[&BanishMarker]
+	--!t:[*[&loop]:t-id]|layer:objects
+	--+|[*[&loop]:character_name] returns to the Material Plane!
+   --+|[br]
+	--%|
+   --X|
 }}
