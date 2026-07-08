@@ -1,15 +1,19 @@
 !script{{
  +++5Elib;snlib;Farsidelib+++	
  
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+
  --/|Script Name : Chain Lightning
- --/|Version     : 2.0.1
- --/|Requires SC : TokenMod, SuperNotes (for template override only), ScriptCards Library 5Elib/snlib/Farsidelib
+ --/|Version     : 2.1.0
+ --/|Requires SC : TokenMod, ScriptCards Library 5Elib/snlib/Farsidelib
  --/|Author      : Farsidegallery
  --/|  
  --/|  Script prompts user for spell level used and then calculates the number of targets and prompts user to select the targets. Spell desciption specifies that a target can only be hit one time. Script verifies
  --/|  target is not already selected before adding to the target list. Duplicate target entries will be ignored (to allow for target availability being less that number of targets allowed). Script calculates damage, 
  --/|  checks for and applies DEX saving throw and finally checks for modifiers (resistance, immunity, and vulnerability) and applies all modifications to the damage per target. Script then applies damage to targets,
- --/|  ouput results in a table, and creates visual effects on the VTT. First visual effec is from caster to the target. Secondary visual effects are from the first target to the "chained" targets.
+ --/|  ouput results in a table, and creates visual effects on the VTT. First visual effect is from caster to the target. Secondary visual effects are from the first target to the "chained" targets.
  --/|
  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
       
@@ -17,23 +21,15 @@
   --&MinimumSpellLevel|6
   --&damageType|lightning
   
+  --&attrib|dexterity
+
   --&hpBar|1
   --&tempHPbar|4
   
-  --&attrib|dexterity
-  
-  --/|Enter the Token Markers you use for each condition
-  --&BardicMarker|BardicInspiration::7409920
-  --&BlessedMarker|angel-outfit
-  --&InspirationMarker|Inspiration::7409921
-  --&DeathMarker|dead
-  --&BaneMarker|Hexed3::7409911
-  --&ConcentrationMarker|Concentrating::7409928
+  --/|What resource name is used for Sorcerer Points?
+  --&SorcererResource|Sorcery Points
   
  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
- 
- --#sourceToken|@{selected|token_id}
- --#whisper|self,gm
  
   --/|Helper variable build up to allow us to include a target prompt in an rbutton
   --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
@@ -45,6 +41,8 @@
   --&oparen|(
   --&cparen|)
 
+  -->far_LoadTokenMarkers|
+  
   --~shortattrib|string;left;3;[&attrib]
   --~Displayattrib|string;touppercase;[&shortattrib]
   
@@ -64,7 +62,7 @@
   
   --:ChooseType|
    --=SpellLevel|[&reentryval]
-   --#emoteText|[*S:character_name] Casts [&SpellName] at Spell Level [$SpellLevel]!
+   --#emoteText|[*S:t-name] Casts [&SpellName] at Spell Level [$SpellLevel]!
    --#leftsub|[*R:spellcastingtime]
    --#rightsub|[*R:spellrange]
    --&desc|[*R:spelldescription]
@@ -72,11 +70,31 @@
 
   --=ElectricCount|[$SpellLevel]-3
   --=SpellDamage|10d8
-  -->FirstTarget|
-  -->far_BuildTargetList|[$ElectricCount.Raw]
-  -->BuildTargetArray|
-  -->DetermineOutcome|
-  --X|
+
+  -->far_FIND_CLASS_LEVEL|[*S:character_id];Sorcerer;SLevel
+  --?"X[&SLevel]" -eq "X0"|SkipFeats
+  -->far_FindFeat|[*S:character_id];"Metamagic: Twinned Spell";TwinFeatFlag
+  -->far_FindFeat|[*S:character_id];"Metamagic: Empowered Spell";EmpowerFeatFlag
+  -->far_FindFeat|[*S:character_id];"Wild Magic Surge";WildFeatFlag
+  --=EmpowerDice|[*S:charisma_mod]
+  --=SorceryPoints|0
+  --=ChangeCount|0
+
+  -->Lib5E_FIND_RESOURCE|[*S:character_id];[&SorcererResource];Pointsname;PointsAmmo
+  --?"X[$PointsAmmo]" -le "X0" -or "[&Pointsname]" -eq "Not Found" -or [$PointsAmmo] -lt [$SorceryPoints]|SkipFeats
+
+  --?"X[$EmpowerFeatFlag]" -eq "X1"|>far_EmpowerSelect;SpellDamage;Hit;DamageChangedFlag;ChangedDamage
+  --?"X[$DamageChangedFlag]" -eq "X1"|[
+    --=SpellDamage|[$ChangedDamage]
+    --=EmpoweredDamageFlag|1
+    --]|
+
+  --:SkipFeats|
+   -->FirstTarget|
+   -->far_BuildTargetList|[$ElectricCount.Raw]
+   -->BuildTargetArray|
+   -->DetermineOutcome|
+   --X|
  
   --:FirstTarget|
    --?[$DisplayCount] -gt 1|NextTarget
@@ -141,7 +159,7 @@
 	--+|[t border=3 width=100%][tr][td style="width:100px"][c][*[&loop]:t-name][/c][/td][td style="width:50px"][c][$TargetSave][/c][/td][td style="width:50px"][#[&FontColor]][b][c][&DexSave][/c][/b][/#][/td][td style="width:50px"][c][$FinalDamage][/c][/td][/tr]
     --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[&loop];1;-[$FinalDamage];0;0;1
     -->far_DamageTokenmod|[&loop];[&hpBar];[&tempHPbar];-[$FinalDamage];0;0;1
-    --=FinalHP|[*[&loop]:t-bar1_value]-[$Finalamage]
+    --=FinalHP|[*T:t-bar[&hpBar]_value]+[*T:t-bar[&tempHPbar]_value]-[$FinalDamage]
     --?[$FinalHP] -le 0|[
 	 -->LibSN_ADD_STATUS_MARKER|[*[&loop]:t-id];dead
 	 --]|
@@ -149,10 +167,21 @@
     --%|
   --+|[/t]
   --+|[br]
+  
+  --?"X[$WildFeatFlag]" -eq "X1" -and [&MinimumSpellLevel] -ge 1|>far_WildTable
+  
   --+Desc: |[&desc]
   --+At Higher Levels: |[&higherdesc]
+  --+|[br]
   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
- --X|
+
+  --?"X[$EmpoweredDamageFlag]" -eq "X1" -or "X[$TwinFlag]" -eq "X1"|[
+    --=FinalPointsAmmo|[$PointsAmmo]-[$SorceryPoints]
+    --!a:[*S:character_id]|[&PointsAmmo]:[$FinalPointsAmmo]
+    --+|[br]
+	  --+[&SorcererResource]: |Used: [$SorceryPoints] / Remaining: [$FinalPointsAmmo]
+    --]|
+  --X| End Script
  
  --:BuildTargetArray|NumTargets
   --%LoopCounter|1;[$ElectricCount];1
