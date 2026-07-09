@@ -1,0 +1,107 @@
+!script  {{
+ +++5Elib;snlib;Farsidelib+++
+  
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+ 
+  --/|Script Name : Mirror Image
+  --/|Version     : 1.6.0
+  --/|Requires SC : SelectManager, SpawnDefaultToken, ScriptCards Library Farsidelib
+  --/|Modified By : Farsidegallery
+  --/|
+  --/|
+  --/|  Script checks availability of spell, spell level, and deducts a spell slot. Script will spawn 3 tokens of the &MirrorName character
+  --/|  from the global settings below. Ensure that the spawn character has an image from YOUR PERSONAL library and the player has Edit/Control access. 
+  --/|
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+      
+  --&SpellName|Mirror Image
+  --&MinimumSpellLevel|2
+ 
+  --/|Enter name for Mirror Image Character.
+  --&MirrorChar|Mirror Image
+  
+  --/|What resource name is used for Sorcerer Points?
+  --&SorcererResource|Sorcery Points
+ 
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+
+  -->far_LoadTokenMarkers|
+  
+  --#title|[&SpellName]
+  --&MirrorName|[&MirrorChar] [*S:t-name]
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  
+  --:ChooseFunction|
+   --+|[c]Choose Function:[/c]
+   --+|[c][rbutton]New Cast::NewCast[/rbutton][rbutton]Dismiss::Remove[/rbutton][/c]
+   --X|
+  
+  --:New|
+  -->far_GetAndCheckSlotInformation|[*S:t-id];[&MinimumSpellLevel];SpellLevel
+  --=SpellLevel|[&SpellLevel]
+  
+  --#sourceToken|@{selected|token_id}
+  --#emoteText|[*S:t-name] casts mirror image!
+  --#leftsub|[*R:spellcastingtime]
+  --#rightsub|[*R:spellrange]
+  --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+  --&desc|[*R:spelldescription]
+  
+  -->far_FIND_CLASS_LEVEL|[*S:character_id];Sorcerer;SLevel
+  --?"X[&SLevel]" -eq "X0"|Spawn
+  -->far_FindFeat|[*S:character_id];"Metamagic: Twinned Spell";TwinFeatFlag
+  -->far_FindFeat|[*S:character_id];"Metamagic: Empowered Spell";EmpowerFeatFlag
+  -->far_FindFeat|[*S:character_id];"Wild Magic Surge";WildFeatFlag
+  --=EmpowerDice|[*S:charisma_mod]
+  --=SorceryPoints|0
+  --=ChangeCount|0
+   
+  -->Lib5E_FIND_RESOURCE|[*S:character_id];[&SorcererResource];Pointsname;PointsAmmo
+  --?"X[$PointsAmmo]" -le "X0" -or "[&Pointsname]" -eq "Not Found" -or [$PointsAmmo] -lt [$SorceryPoints]|Spawn
+  
+  --:Spawn|
+   --@forselected+|Spawn _name|[&MirrorName] _qty|3 _bar1|5 _placement|surround _force|yes _order|toFront _offset|1,1 _tokenProps|name:[&MirrorName],showname:false _fx|burst-magic _expand|15,30 {^&select @{selected|token_id}}
+  
+   --#whisper|
+   --+|Three illusory duplicates of yourself appear nearby and begin to mimic your every move!
+   --+|[br]
+   
+   --?"X[$WildFeatFlag]" -eq "X1" -and [&MinimumSpellLevel] -ge 1|>far_WildTable
+   
+   --+Duration: |[&duration]
+   --+Desc: |[&desc]
+   --+|[br]
+   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+   
+   --?"X[$EmpoweredDamageFlag]" -eq "X1" -or "X[$TwinFlag]" -eq "X1"|[
+    --=FinalPointsAmmo|[$PointsAmmo]-[$SorceryPoints]
+    --!a:[*S:character_id]|[&PointsAmmo]:[$FinalPointsAmmo]
+    --+|[br]
+	--+[&SorcererResource]: |Used: [$SorceryPoints] / Remaining: [$FinalPointsAmmo]
+    --]|
+	
+  --*|Ensure player has access to "Mirror Image Attack" script for dealing with attacks.
+  --X|
+
+  --:Remove|
+   --#whisper|
+   
+   --+|[*S:t-name] dismisses all mirror images!
+   
+   --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&MirrorName]
+   --%loop|foreach;tokens
+	--~|object;token;delete;[*[&loop]:t-id]
+	--%| 
+  --X|  
+}}
