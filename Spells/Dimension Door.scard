@@ -6,7 +6,7 @@
   --#whisper|self,gm
 
   --/|Script Name : Dimension Door
-  --/|Version     : 1.0
+  --/|Version     : 1.1.0
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|  
@@ -39,6 +39,13 @@
   --#emoteText|[*S:character_name] Casts Dimension Door.
   -->GetCharID|[&DoorToken];DoorID
   --=CompanionFlag|
+  
+  -->far_FIND_CLASS_LEVEL|[*S:character_id];Sorcerer;SLevel
+  --?"X[&SLevel]" -eq "X0"|ChooseLevel
+  -->far_FindFeat|[*S:character_id];"Metamagic: Twinned Spell";TwinFeatFlag
+  -->far_FindFeat|[*S:character_id];"Metamagic: Empowered Spell";EmpowerFeatFlag
+  -->far_FindFeat|[*S:character_id];"Wild Magic Surge";WildFeatFlag
+  
   -->SetAbility|
   
   --+|[b][c]Are you taking a companion with you? (You will target the companion after clicking yes.)[/c][/b]
@@ -58,14 +65,14 @@
   
   --/|SPAWN Dimension Door TOKEN
   --:SpawnToken|
-  --?[&SpawnScript] -eq 2|[
-   --@forselected+|Spawn _name|[&DoorToken] _qty|1 _offset|0,0 _force|yes _tokenProps|name:Dimension Door,showname:true,showplayers_name:true _order|toFront _fx|nova-magic _expand|15,30 {^&select @{selected|token_id}}
-   --]|
+   --?[&SpawnScript] -eq 2|[
+    --@forselected+|Spawn _name|[&DoorToken] _qty|1 _offset|0,0 _force|yes _tokenProps|name:Dimension Door,showname:true,showplayers_name:true _order|toFront _fx|nova-magic _expand|15,30 {^&select @{selected|token_id}}
+    --]|
   
-  --?[&SpawnScript] -eq 1|[
-   --!ot:NewTID|name:"[&SpellName]"|_pageid:[*S:t-_pageid]|left:[=[*S:t-left]+70]|top:[*S:t-top]|width:[*S:t-width]|height:[*S:t-height]|imgsrc:"[&URLlink]"|bar1_value:1|represents:"[&DoorID]"|showname:0|t-aura1_radius:500|t-aura1_color:#d0e0e3
-   --z:graphic:[&NewTID]|tofront
-   --]|
+   --?[&SpawnScript] -eq 1|[
+    --!ot:NewTID|name:"[&SpellName]"|_pageid:[*S:t-_pageid]|left:[=[*S:t-left]+70]|top:[*S:t-top]|width:[*S:t-width]|height:[*S:t-height]|imgsrc:"[&URLlink]"|bar1_value:1|represents:"[&DoorID]"|showname:0|t-aura1_radius:500|t-aura1_color:#d0e0e3
+    --z:graphic:[&NewTID]|tofront
+    --]|
   
   --#whisper|
   --?[$CompanionFlag] -eq 1|[
@@ -75,6 +82,9 @@
    --+Spell! |[*S:character_name] casts Dimension Door!
    --+[br]|
    --]|
+  
+  --?"X[$WildFeatFlag]" -eq "X1" -and [&MinimumSpellLevel] -ge 1|>far_WildTable
+
   --+Desc: |[*R:spelldescription]
   --+[br]|
   -->far_DeductSpellSlot|[*S:t-id];[&MinimumSpellLevel]
@@ -99,7 +109,7 @@
   
   --:SetAbility|
    --~|array;objects:ability;AbilityArr;;[&DoorID]
-    --!ability:[@AbilityArr(0)]|istokenaction:True
+   --!ability:[@AbilityArr(0)]|istokenaction:True
 	--!ability:[@AbilityArr(1)]|istokenaction:False
 	--!ability:[@AbilityArr(2)]|istokenaction:False
 	--!ability:[@AbilityArr(3)]|istokenaction:False
