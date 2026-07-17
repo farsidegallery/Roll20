@@ -1,0 +1,241 @@
+!scriptcards {{
+  +++5Elib;snlib;Farsidelib+++	
+  
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|token_id}
+  --#whisper|self,gm
+  
+  --/|Script Name : Lightning Javelin
+  --/|Version     : 1.0.0
+  --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
+  --/|Author      : Arak Stoneboulder
+  --/|Modified By : Farsidegallery
+  --/|
+  --/|  Script prompts user of target and type of attack roll. Script rolls attack, compares to target's AC, and determines if spell hits.
+  --/|  Script finds Caster's level, scales and calculates damage, determines damage modifier (resistant, immune), and applies damage. 
+  --/|  If target dies due to damage, the "Dead" token marker is applied.
+  --/|
+  
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+      
+  --&Ability|Lightning Javelin
+  --&LineDamageType|lightning  
+  --=LineDamage|4d6
+  --&damageType|piercing
+  --&DamageDice|1d6
+   
+  --&hpBar|1
+  --&tempHPbar|4
+   
+  --/|Put the name of your check if custom crit damage will be applied.
+  --&CustomCritCheck|far_CustomCritCheck
+   
+  --/|Define your custom crit damage dice roll modifier, roll type, roll modifier, and extra damage modifier
+  --/|ex 1: 2d8+8 is -1 dicemodifier (making 2d8), d dicerolltype, blank rollmodifier, and with +8 damagemodifier
+  --/|ex 2: 3d8 keep highest one is blank dicemodifier, with d dicerolltype, kh1 for rollmodifier, and blank for damagemodifier
+  --/|ex 3: 3d8 max all dice is blank dicemodifier, m dicerolltype, blank rollmodifier, and blank damagemodifier
+  --&CritDamageDiceModifier|
+  --&CritDamageDiceRollType|m
+  --&CritDamageRollModifier|
+  --=CritDamageModifier|
+   
+  --/|Are you using the matching Bardic Inspiration Script from FarsideGallery? (Default is No using 0. Change to 1 if using the script.)
+  --=Scriptcheck|1
+  
+  --/|Enter the Token Markers you use for each condition
+  --&BardicMarker|BardicInspiration::7409920
+  --&BlessedMarker|angel-outfit
+  --&InspirationMarker|Inspiration::7409921
+  --&BaneMarker|Hexed3::7409911
+  --&HexMarker|Hexed::7409913
+  --&HexBladebladeMarker|Hexed2::7409912
+  
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+  
+  --#title|[&Ability]
+  -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&InspirationMarker];InspiredFlag;InspiredCount
+  -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&BardicMarker];BardicFlag;BardicCount
+  -->far_FIND_ACTIVE_GLOBAL_ATTACK_MODS|[*S:character_id];GlobalAttack
+  -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
+  -->far_FindFeat|[*S:character_id];"Hexblade's Curse";HexBladeFlag
+  
+   --+Click to choose your Target. |[rbutton]Click Here.::TargetInfo;[&TB]target|token_id}[/rbutton]
+   --X|
+  
+  --:TargetInfo|
+   --#targettoken|[&reentryval]
+   --#emoteText|[*S:t-name] throws a [&Ability] at [*T:t-name]!
+   --=TargetHP|[*T:t-bar1_value]
+   --?[*T:npc] -eq 1|=TargetAC;[*T:npc_ac]|=TargetAC;[*T:ac]
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexMarker];HexMarkerFlag;HexMarkerCount
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];HexBladeMarkerFlag;HexBladeMarkerCount
+   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;0;0;0
+   -->far_CheckDamageModifiers|[*T:character_id];[&LineDamageType];damageMod2;0;0;0
+   
+   --~griddist|distance;[*T:t-id];[*S:t-id]
+   
+   --=radiusmod|1
+   --?"[*T:npc_type]" -inc "Gargantuan"|=radiusmod;3
+   --?"[*T:npc_type]" -inc "Huge"|=radiusmod;2
+   
+   --=radius|[$griddist]-[$radiusmod]
+   --&radius|[$radius.Raw]u
+   --&AoeDamage|<<[$LineDamage.Raw]>>
+   
+   
+   --+|[c]Choose Attack Type:[/c]
+   --+|[c][rbutton]Advantage::AttackType;2d20kh1[/rbutton][rbutton]Normal::AttackType;1d20[/rbutton][rbutton]Disadvantage::AttackType;2d20kl1[/rbutton][/c]
+   --X|
+  
+  --:AttackType|
+   --+|[c][b][*S:t-name] speaks the command word![/b][/c]
+   --+|The javelin transforms into a Bolt of Lightning that is 5ft wide and extends out up to 120 ft or until it hits [*T:t-name].
+   --+|All creatures in that line except the target must make a DC 13 DEX save!
+   --+|Each creature that fails the save takes [$LineDamage] (4d6) points of [&LinedamageType] damage. Creatures that pass, take half damage.
+   --+|[br]
+   
+   --&AttackDice|[&reentryval]
+   --?[&InspiredFlag] -ne 0 |>far_Inspiration;[*S:t-id];[&InspirationMarker];[&AttackDice];AttackDice
+   --c[&AttackDice]|2d20kh1:&DisplayDice;Advantage|1d20:&DisplayDice;1d20|2d20kl1:&DisplayDice;Disadvantage
+
+   --=AttackDiceBase|[&AttackDice]
+   --+Rolling [&DisplayDice]: |[$AttackDiceBase]
+   --=AttackRollMod|[$AttackDiceBase] + [*S:strength_mod] [STR.] + [*S:pb][PB]
+   
+   --?[&BardicFlag] -eq 1|>far_Bardic;[*S:t-id];[&BardicMarker];[$Scriptcheck];[$AttackDiceBase];[$AttackRollMod];BardRoll
+   --?[&BaneMarkerFlag] -eq 1|&Baneroll;+ - 1d4 [Bane] |&Baneroll;
+   
+   --=AttackRoll|[$AttackDiceBase] + [*S:strength_mod] [STR] + [*S:pb][PB] [&GlobalAttack] [&Baneroll] [&BardRoll]
+   
+   --+Total Attack Roll: |[$AttackRoll] Vs [*T:t-name]
+   --+|[br]
+
+   --?[$AttackDiceBase] -eq 20|>Crit
+   --?[$AttackDiceBase] -eq 1|>Fumble
+   --?[$AttackRoll] -ge [$TargetAC.Total] -and [$AttackDiceBase] -nei 20|>Hit
+   --?[$AttackRoll] -lt [$TargetAC.Total] -and [$AttackDiceBase] -nei 1|>Miss
+   --X|
+
+  --/| ____________________ Procedures_______________________________________________________________________________________
+  
+
+  --:Crit|
+   --#whisper|
+   -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;1   
+   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex;+ + 1d6 [Hex] |&Hex;
+   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade;
+   -->[&CustomCritCheck]|CustomCritFlag
+    --?[&CustomCritFlag] -eq 1|[
+    --=CritDice|[&DamageDice]+[&CritDamageDiceModifier]
+    --&CritDamage|[$CritDice][&CritDamageDiceRollType]6[&CritDamageRollModifier] + [$CritDamageModifier]
+    --=Damage|[&DamageDice] + [*S:strength_mod][&damageMod] + [&CritDamage] [Crit] [&HexBlade] [&Hex] [&GlobalDamage]
+	--]|[
+    --=Damage|[&DamageDice] + [*S:strength_mod][&damageMod] + [&CritDamage] [Crit] [&HexBlade] [&Hex] [&GlobalDamage]
+	--]|
+   --=ModLightning|[$LineDamage][&damageMod2]
+   --=TotalDamage|[$Damage] + [$ModLightning]
+   --+Critical Hit! |The javelin strikes doing [$Damage] points of damage and [$ModLightning] points of [&LineDamageType(totitlecase)] damage.
+   --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$TotalDamage];0;0;1
+   -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$TotalDamage];0;0;1
+   --=FinalHP|[*T:t-bar[&hpBar]_value]+[*T:t-bar[&tempHPbar]_value]-[$TotalDamage]
+   --?[$FinalHP] -le 0|>Died
+   -->Output|
+   --X|
+
+  --:Hit|
+   --#whisper|
+   -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;1   
+   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex;+ + 1d6 [Hex] |&Hex;
+   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade;
+   --=Damage|[&DamageDice] + [*S:strength_mod][&damageMod] [&HexBlade] [&Hex] [&GlobalDamage]
+   --=ModLightning|[$LineDamage][&damageMod2]
+   --=TotalDamage|[$Damage] + [$ModLightning]
+   --+Hit! |The javelin strikes doing [$Damage] points of damage and [$ModLightning] points of [&LineDamageType(totitlecase)] damage.
+   --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$TotalDamage];0;0;1
+   -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$TotalDamage];0;0;1
+   --=FinalHP|[*T:t-bar[&hpBar]_value]+[*T:t-bar[&tempHPbar]_value]-[$TotalDamage]
+   --?[$FinalHP] -le 0|>Died
+   -->Output|
+   --X|
+
+  --:Miss|
+   --#whisper|
+   --+[b]Missed![/b] |So close but they ducked just in time. Better luck next time (if there is a next time).
+   -->Output|
+   --X|
+
+  --:Fumble|
+   --#whisper|
+   --+[b]Critical Fail!!![/b] |The attack went horribly wrong.
+   --=Fail|[T#Damage-Spell-Fail]
+   --&failText|[$Fail.tableEntryText]
+   --?"[&failText]" -inc "[&obrac][&obrac]"|[
+	--~failText1|string;before;[&obrac][&obrac];[&failText]
+	--~failText2|string;after;[&cbrac][&cbrac];[&failText]
+	--~roll|string;before;[&cbrac][&cbrac];[&failText]
+	--~roll|string;after;[&obrac][&obrac];[&roll]
+	--=failRoll|[&roll]
+	--&failText|[&failText1][$failRoll][&failText2]
+	--]|
+   --+|[br]
+   --+|[&failText]
+   --?"[&failText]" -inc "Roll for damage"|[
+    --=Damage|[&DamageDice]
+	--+|[br]
+	--+Damage: |[$Damage]
+	--]|
+   -->Output|
+   --X|  
+
+  --:Died|
+   -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DeathMarker]
+   --?[$HexBladeFlag] -eq 1 -and [&HexBladeMarkerFlag] -eq 1|>HexHeal
+   --<|
+  
+  --:HexHeal|
+   -->far_HexHeal|[*S:character_id];[*S:t-id]
+   -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexBladebladeMarker]
+   --<|
+  
+  --:Output|   
+   --#whisper|
+   --+|[br]
+
+  --@forselected|SmartAoE [&brace][&brace]   
+          _title|Lightning Javelin
+		  _titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/248538196/c9xft1A2jWNqOkBsxQwyLQ/max.jpg?1633278017');background-size: contain;
+		  _subtitlefontcolor|#ffffff
+          _subtitlefontcolor|#ffffff
+          _oddrowbackground|#2c2775
+          _evenrowbackground|#c0bfd6
+          _oddrowfontcolor|#ffffff
+          _tablebgcolor|#c0bfd6
+          _aoeColor|#0044ff50
+          _rightsub|DC 13 DEX
+          _chatAvatarsEnabled|false
+          _aoeType|line
+          _radius|[&radius]
+		  _fx|burn-frost
+          _dc|13
+          _saveFormula|5eDEX
+          _damageFormula1|[&AoeDamage]
+          _damageType1|lightning
+          _ignore|SmartAoE_Ignore,1 
+          _instant|1
+          _autoApply|1
+          _bar|1
+          _zeroHPmarker|dead
+		  _desc|This javelin is a magic weapon. When you hurl it and speak its command word, it transforms into a bolt of lightning, forming a line 5 feet wide that extends out from you to a target within 120 feet. Each creature in the line excluding you and the target must make a DC 13 Dexterity saving throw, taking 4d6 lightning damage on a failed save, and half as much damage on a successful one. The lightning bolt turns back into a javelin when it reaches the target. Make a ranged weapon attack against the target. On a hit, the target takes damage from the javelin plus 4d6 lightning damage.
+          [&cbrace][&cbrace]
+    --X| 
+}}
