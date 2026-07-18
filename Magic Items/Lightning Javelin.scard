@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Lightning Javelin
-  --/|Version     : 1.0.0
+  --/|Version     : 1.0.1
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Arak Stoneboulder
   --/|Modified By : Farsidegallery
@@ -27,6 +27,9 @@
   --&hpBar|1
   --&tempHPbar|4
    
+  -/|Enter the resource name for Javelin of Lightning
+  --&Resource|
+  
   --/|Put the name of your check if custom crit damage will be applied.
   --&CustomCritCheck|far_CustomCritCheck
    
@@ -68,6 +71,10 @@
   -->far_FIND_ACTIVE_GLOBAL_ATTACK_MODS|[*S:character_id];GlobalAttack
   -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
   -->far_FindFeat|[*S:character_id];"Hexblade's Curse";HexBladeFlag
+  
+  -->Lib5E_FIND_RESOURCE|[*S:character_id];[&Resource];Javname;JavAmmo
+   --?[$JavAmmo] -le 0|NoEyes
+   --=FinalAmmo|[$JavAmmo]-1
   
    --+Click to choose your Target. |[rbutton]Click Here.::TargetInfo;[&TB]target|token_id}[/rbutton]
    --X|
@@ -210,6 +217,9 @@
   --:Output|   
    --#whisper|
    --+|[br]
+   
+   --!a:[*S:character_id]|[&JavAmmo]:[$FinalAmmo]
+   --+|[&Ability] cannot be used again until tomorrow!
 
   --@forselected|SmartAoE [&brace][&brace]   
           _title|Lightning Javelin
@@ -237,5 +247,10 @@
           _zeroHPmarker|dead
 		  _desc|This javelin is a magic weapon. When you hurl it and speak its command word, it transforms into a bolt of lightning, forming a line 5 feet wide that extends out from you to a target within 120 feet. Each creature in the line excluding you and the target must make a DC 13 Dexterity saving throw, taking 4d6 lightning damage on a failed save, and half as much damage on a successful one. The lightning bolt turns back into a javelin when it reaches the target. Make a ranged weapon attack against the target. On a hit, the target takes damage from the javelin plus 4d6 lightning damage.
           [&cbrace][&cbrace]
-    --X| 
+    --X|
+
+  --:NoEyes|
+   --#emoteText|[*S:t-name] tries to to use [&Ability], but needs to take a long rest first.
+   --+|[&Ability] cannot be used until tomorrow.
+   --X| DONE    
 }}
