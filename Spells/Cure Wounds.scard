@@ -1,6 +1,10 @@
 !scriptcards {{
   +++5Elib;snlib;Farsidelib+++	
   
+ --#sourceToken|@{selected|token_id}
+ --#reentrant|My Cool Script @{selected|character_id}
+ --#whisper|self,gm
+
   --/|Script Name : Cure Wounds
   --/|Version     : 2.1.0
   --/|Requires SC : TokenMod, SuperNotes (for template override only), ScriptCards Library 5Elib/snlib/Farsidelib
@@ -13,11 +17,19 @@
   
   --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
       
-   --/|Do you use a token marker for Beacon of Hope? (0 for no (default) or 1 for yes)
-   --=BeaconFlag|1
-   
    --&SpellName|Cure Wounds
    --&MinimumSpellLevel|1
+
+   --&hpBar|1
+   --&tempHPbar|4
+   
+   --&attrib|dexterity
+
+   --/|What resource name is used for Sorcerer Points?
+   --&SorcererResource|Sorcery Points
+   
+   --/|Do you use a token marker for Beacon of Hope? (0 for no (default) or 1 for yes)
+   --=BeaconFlag|1
   
   --/| ____________________ End Global User Variables ___________________________________________________________________________________________
 
@@ -32,49 +44,101 @@
   --&cparen|)
 
   -->far_LoadTokenMarkers|
-  
-  --#sourceToken|@{selected|token_id}
-  --#reentrant|My Cool Script @{selected|character_id}
-  --#whisper|self,gm
-  --#emoteText|[*S:character_name] Casts Cure Wounds on [*T:character_name]
 
   --#title|[&SpellName]
+  --#emoteText|[*S:character_name] Casts Cure Wounds on [*T:character_name]
+
   --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
   --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
   -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
   --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+
   
-  --+|[c][b]Cast At What Level and What Target?[/b][/c]
+  --+|[c][b]Cast At What Level?[/b][/c]
     --&splvlMsg|
     --%splvl|foreach;SpellCastLevel
-     --&splvlMsg|+ [rbutton][&splvl]::ChooseType;[&TB]target|token_id}%[&splvl][/rbutton]
+     --&splvlMsg|+ [rbutton][&splvl]::ChooseType;[&splvl][/rbutton]
     --%|
   --+|[c][&splvlMsg][/c]
   --X|
   
   --:ChooseType|
-   --#targetToken|[&reentryval(split,%,0)]
-   --=SpellLevel|[&reentryval(split,%,1)]
-   --&SpellLevel|[&reentryval(split,%,1)]
-   -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
+   --=SpellLevel|[&reentryval]
+   --&SpellLevel|[&reentryval]
    
-   --#leftsub|[*R:spellcastingtime]
-   --#rightsub|[*R:spellrange]
-   --#emoteText|[*S:character_name] Casts [&SpellName] at Spell Level [&SpellLevel]!
-  -->Lib5E_FIND_CLASS_LEVEL|[*S:t-id];Sorcerer;SLevel
-  -->FindHopeBeacon|[*T:t-id]
-  --?[&SLevel] -eqi 0|>Cleric |>Sorcerer
-  --X|
-  
-  --:Sorcerer|
-   -->AbilityAssign|[*S:spellcasting_ability]
+   --#leftsub|Spell Level [&MinimumSpellLevel]
+   --#rightsub|[*R:range]
+   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+   --&desc|[*R:spelldescription]
+   --&higherdesc|[*R:spellathigherlevels]
+
+   -->far_FIND_CLASS_LEVEL|[*S:character_id];Sorcerer;SLevel
+   --?"X[&SLevel]" -eq "X0"|Target
+   -->far_FindFeat|[*S:character_id];"Metamagic: Twinned Spell";TwinFeatFlag
+   -->far_FindFeat|[*S:character_id];"Metamagic: Empowered Spell";EmpowerFeatFlag
+   -->far_FindFeat|[*S:character_id];"Wild Magic Surge";WildFeatFlag
+   --=EmpowerDice|[*S:charisma_mod]
+   --=SorceryPoints|0
+   --=ChangeCount|0
+   -->AbilityAssign|[*S:spellcasting_ability];ModHealing
+   
+   -->Lib5E_FIND_RESOURCE|[*S:character_id];[&SorcererResource];Pointsname;PointsAmmo
+   --?"X[$PointsAmmo]" -le "X0" -or "[&Pointsname]" -eq "Not Found" -or [$PointsAmmo] -lt [$SorceryPoints]|Target
+   
+   --+|[c]Do you want spend a Sorcery Point to Twin the spell?[/c]
+   --+|[c][rbutton]Yes::BuildTwinArray[/rbutton]  [rbutton]No::Target[/rbutton][/c]
    --X|
   
-  --:Cleric|
+  --:BuildTwinArray|
+   --?"[&MinimumSpellLevel(toLowerCase)]" -eq "cantrip"|=SorceryPoints;1 |=SorceryPoints;[$SpellLevel]\2 {MIN:1}
+   --=TwinFlag|1
+   -->far_BuildTargetList|2
+   -->far_BuildTargetArray|Targets;2;TargetString
+   -->TargetInfo|
+  
+  --:Target|
    -->far_FindFeat|[*S:t-id];Disciple of Life;LifeFlag
    -->far_FindFeat|[*S:t-id];Blessed Healer;HealerFlag
-   -->AbilityAssign|[*S:spellcasting_ability]
+   -->AbilityAssign|[*S:spellcasting_ability];ModHealing
+
+   --+Target|[rbutton]Click this button to select your target.::SingleTarget;[&TB]target|token_id}[/rbutton]
    --X|
+
+  --:SingleTarget|
+   --&SingleTarget|[&reentryval]
+   --~|array;define;Targets;[&SingleTarget]
+   -->TargetInfo|
+  
+  --:TargetInfo|
+   --%target|foreach;Targets
+    --#targettoken|[&target]
+    -->far_PlayEffects|[*S:t-id];[*T:t-id];burn-magic;burst-holy;;;
+    -->FindHopeBeacon|[*T:t-id]
+    -->Heal|
+    --+|[br]
+    --%|
+    
+   --?[$HealerFlag] -eq 1|[
+    --=SelfHeal|[$SpellLevel] [Spell Level] + 2 [Blessed Healer]
+	 --+Blessed Healer: |[*S:character_name] self heals for [$SelfHeal] hp.
+	 -->LibSN_APPLY_DAMAGE_OR_HEALING|[*S:t-id];1;[$SelfHeal];0;0
+	 --]|
+   
+   --?"X[$WildFeatFlag]" -eq "X1" -and [&MinimumSpellLevel] -ge 1|>far_WildTable
+   
+   --+Desc: |[*R:spelldescription]
+   --+At Higher Levels: |[*R:spellathigherlevels]
+   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+
+   --?"X[$EmpoweredDamageFlag]" -eq "X1" -or "X[$TwinFlag]" -eq "X1"|[
+    --=FinalPointsAmmo|[$PointsAmmo]-[$SorceryPoints]
+    --!a:[*S:character_id]|[&PointsAmmo]:[$FinalPointsAmmo]
+    --+|[br]
+	  --+[&SorcererResource]: |Used: [$SorceryPoints] / Remaining: [$FinalPointsAmmo]
+    --]|
+   --X|  
+
+--/| ____________________ Procedures_______________________________________________________________________________________
 
   --:FindHopeBeacon|TargetID
    --/|Check Global Setting if Beacon of Hope has a Token Marker
@@ -88,34 +152,26 @@
 	--]|
    --<|
   
-  --:Heal|
+  --:Heal|TargetID
    --#whisper|
    --=HPCalc|[$SpellLevel]
-   --c[$LifeFlag]|0:=Disciple;0 |1:=Disciple;2 + [$SpellLevel] [Disciple of Life]
+   --c[$LifeFlag]|0:&Disciple; |1:&Disciple;+ [2 + [$SpellLevel]] [Disciple of Life]
    --c[$Beacon]|0:=Dice;[$HPCalc]d8 |1:=Dice;[$HPCalc] * 8
-   --=HPRecovered|[$Dice] + [%1%] [[&Attribute] Mod] + [$Disciple] [Disciple of Life]
+   --=HPRecovered|[$Dice] + [$ModHealing] [[&Displayattrib] Mod]  [&Disciple]
    --+Rolling: |[$HPCalc.Text]d8 = [$Dice]
    --+Total Healing:|[*S:t-name] heals [$HPRecovered] hit points.
    --=Missing|[*T:hp^] - [*T:hp]
    --?[$HPRecovered] -gt [$Missing]|=HealAmount;[$Missing]|=HealAmount;[$HPRecovered]
-   -->LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;[$HealAmount];0;0
+   -->LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];[&hpBar];[$HealAmount];0;0;0
    --+Amount Healed:|[*T:t-name] regains [$HealAmount] hit points.
-   --?[$HealerFlag] -eq 1|[
-    --=SelfHeal|2+[$SpellLevel] [Blessed Healer]
-	--+Blessed Healer: |[*S:character_name] self heals for [$SelfHeal] hp.
-	-->LibSN_APPLY_DAMAGE_OR_HEALING|[*S:t-id];1;[$SelfHeal];0;0
-	--]|
-   --+|[br]
-   --+Desc: |[*R:spelldescription]
-   --+At Higher Levels: |[*R:spellathigherlevels]
-   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
-   --X|  
+   --<|
    
   --:AbilityAssign|SpellAbility
    --&Attribute|[%1%]
    --~Attribute|string;after;{;[&Attribute]
    --~Attribute|string;before;_;[&Attribute]
-   --=Mod|[*S:[&Attribute]_mod]
-   -->Heal|[$Mod]
+   --=[%2%]|[*S:[&Attribute]_mod]
+   --~shortattrib|string;left;3;[&Attribute]
+   --~Displayattrib|string;touppercase;[&shortattrib]
    --<|
 }}

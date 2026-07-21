@@ -106,8 +106,6 @@
  
  --:far_LoadTokenMarkers|
   --/|Enter the Token Markers you use for each condition
-  
-  --/|This is used when a creature is under the effects of Bane.  If you use a different marker, change it here.
   --&BaneMarker|Hexed3::7409911
   
   --/|This is used when an object or creature is Banished.  If you use a different marker, change it here.
@@ -153,7 +151,6 @@
   --/|This is used in the Path to the Grave ability.  If you use a different marker, change it here.
   --&TollMarker|Marked4::7409915
   
-  --/|This is used for the Zephyr Strike ability.  If you use a different marker, change it here.
   --&ZephyrMarker|108-Range-Long::5818054
   --<|
  
