@@ -2,7 +2,7 @@
   +++5Elib;snlib;Farsidelib+++	
   
   --/|Script Name : Detect Evil and Good
-  --/|Version     : 2.0
+  --/|Version     : 2.0.1
   --/|Requires SC : SelectManager, Radar, ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : 
   --/|Modified By : Farsidegallery
@@ -10,9 +10,6 @@
   --/|  Script automatically creates radar wave to detect appropriate creatures and deducts spell slot from caster.
   --/|
   --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
-    
-   --/|Enter marker used for Concentration.
-   --&ConcentrationMarker|Concentrating::7409928
    
    --&SpellName|Detect Evil and Good
    --=SpellLevel|1
@@ -29,6 +26,8 @@
   --&cbrac|]
   --&oparen|(
   --&cparen|)
+
+  -->far_LoadTokenMarkers|
   
   --#title|Detect Evil and Good
   --#sourceToken|@{selected|token_id}
