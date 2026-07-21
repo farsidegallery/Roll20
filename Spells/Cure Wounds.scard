@@ -2,7 +2,7 @@
   +++5Elib;snlib;Farsidelib+++	
   
   --/|Script Name : Cure Wounds
-  --/|Version     : 2.0
+  --/|Version     : 2.1.0
   --/|Requires SC : TokenMod, SuperNotes (for template override only), ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : 
   --/|Modified By : Farsidegallery
@@ -15,9 +15,6 @@
       
    --/|Do you use a token marker for Beacon of Hope? (0 for no (default) or 1 for yes)
    --=BeaconFlag|1
-
-   --/|What token marker is used for Beacon of Hope?
-   --&BeaconMarker|radioactive
    
    --&SpellName|Cure Wounds
    --&MinimumSpellLevel|1
@@ -33,6 +30,8 @@
   --&cbrac|]
   --&oparen|(
   --&cparen|)
+
+  -->far_LoadTokenMarkers|
   
   --#sourceToken|@{selected|token_id}
   --#reentrant|My Cool Script @{selected|character_id}
