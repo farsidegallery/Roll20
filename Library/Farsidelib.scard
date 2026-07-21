@@ -1,4 +1,4 @@
---/|ScriptCards Library: Farsidelib  version 1.3.1
+--/|ScriptCards Library: Farsidelib  version 1.3.2
 --/|Provides various utility procedures for Roll20
 
 --/|This library contains a number of functions that are customized to meet the different needs of spell or ability
@@ -107,13 +107,23 @@
  --:far_LoadTokenMarkers|
   --/|Enter the Token Markers you use for each condition
   
+  --/|This is used when a creature is under the effects of Bane.  If you use a different marker, change it here.
   --&BaneMarker|Hexed3::7409911
+  
+  --/|This is used when an object or creature is Banished.  If you use a different marker, change it here.
   --&BanishMarker|Marked4::7409915
+  
   --&BardicMarker|BardicInspiration::7409920
+  
+  --/|This is used for Beacon of Hope spell.  If you use a different marker, change it here.
   --&BeaconMarker|radioactive
+  
   --&BlessedMarker|angel-outfit
   --&BlindedMarker|Blinded::7409948
+  
+  --/|This is for the Shatter Spell.  If you use a different marker, change it here.
   --&BrokenMarker|Broken::7409891
+  
   --&CharmedMarker|Charmed::7409947
   --&ConcentrationMarker|Concentrating::7409928
   --&DeafenedMarker|Deafened::7409946
@@ -125,7 +135,10 @@
   --&HexMarker|Hexed::7409913
   --&HexBladeMarker|Hexed2::7409912
   --&HoldMarker|Paralyzed::7409941
+  
+  --/|This is used for Hunter's Mark spell.  If you use a different marker, change it here.
   --&HunterMarker|Marked::7409918
+  
   --&IncapacitatedMarker|Incapacitated::7409943
   --&InspirationMarker|Inspiration::7409921
   --&InvisibilityMarker|Invisible::7409942
@@ -136,7 +149,11 @@
   --&SleepMarker|Unconscious::7409935
   --&SlowMarker|Slow::7409900
   --&StunMarker|Stunned::7409936  
+  
+  --/|This is used in the Path to the Grave ability.  If you use a different marker, change it here.
   --&TollMarker|Marked4::7409915
+  
+  --/|This is used for the Zephyr Strike ability.  If you use a different marker, change it here.
   --&ZephyrMarker|108-Range-Long::5818054
   --<|
  
