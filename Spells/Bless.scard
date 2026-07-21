@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Bless
-  --/|Version     : 2.5
+  --/|Version     : 2.6.0
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|  
@@ -17,12 +17,6 @@
   
   --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
     
-  --/|What token marker is used for Bless?
-  --&BlessMarker|angel-outfit
-  
-  --/|What token marker is used for Concentration?
-  --&ConcentrationMarker|Concentrating::7409928
-  
   --/|What is the name of the Global Attack Mod used for Bless?
   --&BlessAttack|Bless
   
@@ -52,6 +46,8 @@
   --&oparen|(
   --&cparen|)
   
+  -->far_LoadTokenMarkers|
+
   --#title|[&SpellName]
   --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
   --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
