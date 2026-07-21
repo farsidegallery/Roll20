@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Blade Barrier Attack
-  --/|Version     : 1.0
+  --/|Version     : 1.1.0
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author	  : Farsidegallery
   --/|  
@@ -22,16 +22,19 @@
   
   --&attrib|charisma
   
-  --/|Enter the Token Markers you use for each condition
-  --&BaneMarker|Hexed3::7409911
-  --&BlessedMarker|angel-outfit
-  --&DeathMarker|dead
-  
   --/| ____________________ End Global User Variables ___________________________________________________________________________________________
   
   --/|Helper variable build up to allow us to include a target prompt in an rbutton
   --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
   --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+  
+  -->far_LoadTokenMarkers|
   
   --~shortattrib|string;left;3;[&attrib]
   --~Displayattrib|string;touppercase;[&shortattrib]
