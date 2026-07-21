@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Create Bonfire
-  --/|Version     : 1.0.1
+  --/|Version     : 1.1.0
   --/|Modified By : Farsidegallery
   --/|  
   --/|  Script prompts user for spell level used and makes sure the slot is available and spawn the designated token to the VTT.
@@ -23,12 +23,6 @@
   --&tempHPbar|4
    
   --&attrib|dexterity
-  
-  --/|Enter the Token Markers you use for each condition
-   --&BaneMarker|Hexed3::7409911
-   --&HexMarker|Hexed::7409913
-   --&HexBladeMarker|Hexed2::7409912
-   --&DeathMarker|dead
   
   --/|Enter Character used for Create Bonfire.
   --&CharName|Create Bonfire
@@ -53,6 +47,8 @@
   --&cbrac|]
   --&oparen|(
   --&cparen|)
+
+  -->far_LoadTokenMarkers|
   
   --~shortattrib|string;left;3;[&attrib]
   --~Displayattrib|string;touppercase;[&shortattrib]
