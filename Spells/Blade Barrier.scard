@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Blade Barrier
-  --/|Version     : 1.0
+  --/|Version     : 1.1.0
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author	  : Farsidegallery
   --/|  
@@ -19,9 +19,6 @@
   --&SpellName|Blade Barrier
   --&MinimumSpellLevel|6
 	
-  --/|Enter marker used for Concentration.
-  --&ConcentrationMarker|Concentrating::7409928
-  
   --/|Use ScriptCards (1) or SpawnDefaultToken (2) to place the Charm Person Character on the VTT?
   --&SpawnScript|1
   
@@ -30,6 +27,14 @@
   --/|Helper variable build up to allow us to include a target prompt in an rbutton
   --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
   --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+
+  -->far_LoadTokenMarkers|
   
   --#title|[&SpellName]
   
