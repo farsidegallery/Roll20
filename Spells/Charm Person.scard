@@ -67,12 +67,14 @@
   --:ChooseLevel|
    --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
    --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
-   -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
-   --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+   
    --+Choose Function: |[rbutton]New Cast::New[/rbutton][rbutton]Dismiss::Remove[/rbutton]
    --X|
   
   --:New|
+   -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+   --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+   
    --+|[c][b]Cast At What Level?[/b][/c]
     --&splvlMsg|
     --%splvl|foreach;SpellCastLevel
@@ -207,6 +209,7 @@
    --^NextLoop|
   
   --:Remove|
+   --#whisper|
    --~|array;pagetokens;alltokens;[*S:t-id]
    --~|array;define;Charmed
    --%loop|foreach;alltokens
