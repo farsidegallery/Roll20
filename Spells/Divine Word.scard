@@ -6,7 +6,7 @@
   --#whisper|self,gm
 
   --/|Script Name : Divine Word
-  --/|Version     : 2.0
+  --/|Version     : 2.1.0
   --/|Requires SC : TokenMod, SuperNotes (for template override only), ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|
@@ -25,18 +25,6 @@
   
   --/|Are you using the matching Bardic Inspiration Script from FarsideGallery? (Default is No using 0. Change to 1 if using the script.)
   --=Scriptcheck|1
-  
-  --/|Enter the Token Markers you use for each condition
-  --&BardicMarker|BardicInspiration::7409920
-  --&BlessedMarker|angel-outfit
-  --&InspirationMarker|Inspiration::7409921
-  --&BaneMarker|Hexed3::7409911
-  --&HexMarker|Hexed::7409913
-  --&HexBladeMarker|Hexed2::7409912
-  --&DeathMarker|dead
-  --&BlindedMarker|Blinded::7409948
-  --&StunnedMarker|Stunned::7409936
-  --&DeafenedMarker|Deafened::7409946
 
   --/| ____________________ End Global User Variables ___________________________________________________________________________________________ 
 
@@ -49,6 +37,8 @@
   --&cbrac|]
   --&oparen|(
   --&cparen|)
+  
+  -->far_LoadTokenMarkers|
   
   --~shortattrib|string;left;3;[&attrib]
   --~Displayattrib|string;touppercase;[&shortattrib]
@@ -81,6 +71,7 @@
   --+|[br]
   --+Duration: |[&duration]
   --+Desc: |[&desc]
+  --+|[br]
   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
   --X|
 
@@ -110,7 +101,7 @@
   --?[$PVPCheck] -eq 1|>AllyCheck |>SaveLoop
   
   --:AllyCheck|
-   --+Ally Check |Remove any allies that are in the target list and then hit "Cast Spell"
+   --+Ally Check: |Remove any allies that are in the target list and then hit "Cast Spell."
    --+|[c][rbutton]Cast Spell::SaveLoop[/rbutton][/c]
    --+|[br]
    -->ShowTargetList|Y
@@ -137,7 +128,7 @@
   
    --%target|foreach;inRange  
     -->far_PlayEffects|[*S:t-id];[&tokenid];burst-magic;burn-holy;;
-	-->DetermineOutcome|[&target]
+	  -->DetermineOutcome|[&target]
     --%|
    -->Finish|
    --X|
@@ -150,6 +141,14 @@
   --&GlobalSave|
   --&GlobalSkill|
    
+  -->LibSN_CHECK_STATUS_MARKER|[&tokenid];[&DeafenedMarker];DeafenedFlag;DeafenedCount
+  --?[&DeafenedFlag] -eq 1|[
+   --&CHASave|-
+   --&FontColor|777777
+   --+|[t border=3 width=100%][tr][td style="width:100px"][c][*[&tokenid]:t-name][/c][/td][/td][td style="width:40px"][c]-[/c][/td][td style="width:40px"][#[&FontColor]][b][c][&CHASave][/c][/b][/#][/td][td style="width:70px"][c]Cannot hear[/c][/td][/tr]
+   --<|
+   --]|
+
   --&saveDice|1d20
    
   --?"X[*[&tokenid]:race]" -ne "X"|[
@@ -175,10 +174,10 @@
    --<|
    --]|
   
-  --?"[*[&tokenid]:npc_type]" -inc "celestial" -or "[*[&tokenid]:npc_type]" -inc "elemental" -or "[*[&tokenid]:npc_type]" -inc "fey" -or "[*[&tokenid]:npc_type]" -inc "fiend"|[
+  --?"[*[&tokenid]:npc_type]" -inc "celestial" -or "[*[&tokenid]:npc_type]" -inc "elemental" -or "[*[&tokenid]:npc_type]" -inc "fey" -or "[*[&tokenid]:npc_type]" -inc "fiend" -and [$TargetSave] -lt [*S:spell_save_dc]|[
    --&CHASave|F
    --&FontColor|990000
-   -->LibSN_ADD_STATUS_MARKER|[&tokenid];purple;
+   -->LibSN_ADD_STATUS_MARKER|[&tokenid];[&BanishedMarker];
    --!t:[&tokenid]|layer:gmlayer
    --+|[t border=3 width=100%][tr][td style="width:100px"][c][*[&tokenid]:t-name][/c][/td][/td][td style="width:40px"][c][$TargetSave][/c][/td][td style="width:40px"][#[&FontColor]][b][c][&CHASave][/c][/b][/#][/td][td style="width:70px"][c]Banished[/c][/td][/tr]
    --<|
