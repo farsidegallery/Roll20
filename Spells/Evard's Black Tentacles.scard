@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Evard's Black Tentacles
-  --/|Version     : 1.0.1
+  --/|Version     : 1.0.2
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author	  : Farsidegallery
   --/|  
@@ -22,14 +22,19 @@
   --/|Enter name for Evard's Black Tentacles Character.
   --&TentacleName|[*S:character_name] Evard's Black Tentacles
   
-  --/|Enter marker used for Concentration.
-  --&ConcentrationMarker|Concentrating::7409928
-  
   --/| ____________________ End Global User Variables ___________________________________________________________________________________________
   
   --/|Helper variable build up to allow us to include a target prompt in an rbutton
   --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
   --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+  
+  -->far_LoadTokenMarkers|
   
   --#title|[&SpellName]
   
