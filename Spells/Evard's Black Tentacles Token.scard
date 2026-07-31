@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Evard's Black Tentacles Attack
-  --/|Version     : 1.0.1
+  --/|Version     : 1.0.2
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author	  : Farsidegallery
   --/|  
@@ -28,21 +28,19 @@
   --/|Are you using the matching Bardic Inspiration Script from FarsideGallery? (Default is No using 0. Change to 1 if using the script.)
   --=Scriptcheck|1
   
-  --/|Enter the Token Markers you use for each condition
-  --&BardicMarker|BardicInspiration::7409920
-  --&BlessedMarker|angel-outfit
-  --&InspirationMarker|Inspiration::7409921
-  --&BaneMarker|Hexed3::7409911
-  --&HexMarker|Hexed::7409913
-  --&HexBladeMarker|Hexed2::7409912
-  --&DeathMarker|dead
-  --&RestrainedMarker|Restrained::7409937
-  
   --/| ____________________ End Global User Variables ___________________________________________________________________________________________
   
   --/|Helper variable build up to allow us to include a target prompt in an rbutton
   --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
   --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+  
+  -->far_LoadTokenMarkers|
   
   --#title|[&SpellName]
   
