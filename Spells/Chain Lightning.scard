@@ -6,7 +6,7 @@
   --#whisper|self,gm
 
  --/|Script Name : Chain Lightning
- --/|Version     : 2.1.0
+ --/|Version     : 2.1.1
  --/|Requires SC : TokenMod, ScriptCards Library 5Elib/snlib/Farsidelib
  --/|Author      : Farsidegallery
  --/|  
@@ -83,7 +83,7 @@
   -->Lib5E_FIND_RESOURCE|[*S:character_id];[&SorcererResource];Pointsname;PointsAmmo
   --?"X[$PointsAmmo]" -le "X0" -or "[&Pointsname]" -eq "Not Found" -or [$PointsAmmo] -lt [$SorceryPoints]|SkipFeats
 
-  --?"X[$EmpowerFeatFlag]" -eq "X1"|>far_EmpowerSelect;SpellDamage;Hit;DamageChangedFlag;ChangedDamage
+  --?"X[$EmpowerFeatFlag]" -eq "X1"|>far_EmpowerSelect;SpellDamage;Hit;DamageChangedFlag;ChangedDamage;;;1
   --?"X[$DamageChangedFlag]" -eq "X1"|[
     --=SpellDamage|[$ChangedDamage]
     --=EmpoweredDamageFlag|1
