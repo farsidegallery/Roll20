@@ -1,0 +1,266 @@
+!scriptcard  {{
+  +++5Elib;snlib;Farsidelib+++
+  
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+  
+  --/|Script Name : Finger of Death
+  --/|Version     : 1.1.0
+  --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
+  --/|Author      : Farsidegallery
+  --/|  
+  --/|  Script prompts for target, resolves a Constitution saving throw, and applies 7d8+30 necrotic damage (half on save).
+  --/|  If a humanoid is killed by the damage, it rises as a zombie at the start of the caster's next turn.
+  --/|
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+    
+   --&SpellName|Finger of Death
+   --&MinimumSpellLevel|7
+   --&damageType|necrotic
+   
+   --&hpBar|1
+   --&tempHPbar|4
+   
+   --&attrib|constitution
+   
+   --/|What resource name is used for Sorcerer Points?
+   --&SorcererResource|Sorcery Points
+   
+   --/|Are you using the matching Bardic Inspiration Script from FarsideGallery? (Default is No using 0. Change to 1 if using the script.)
+   --=Scriptcheck|1
+   
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+  
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+  
+  -->far_LoadTokenMarkers|
+  
+  --~shortattrib|string;left;3;[&attrib]
+  --~Displayattrib|string;touppercase;[&shortattrib]
+
+  --#title|[&SpellName]
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+  --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+  
+  --=SpellLevel|[&MinimumSpellLevel]
+  --&SpellLevel|[&MinimumSpellLevel]
+  
+  --=DC|[*S:spell_save_dc]
+  
+  --#leftsub|Range: [*R:spellrange]
+  --#rightsub|[&Displayattrib] Save DC: [$DC]
+  --&range|[*R:spellrange]
+  --&desc|[*R:spelldescription]
+  --=Damage|7d8+30
+  -->far_FindFeat|[*S:character_id];"Hexblade's Curse";HexBladeFlag
+  
+  -->far_FIND_CLASS_LEVEL|[*S:character_id];Sorcerer;SLevel
+  --?"X[&SLevel]" -eq "X0"|Target
+  -->far_FindFeat|[*S:character_id];"Metamagic: Twinned Spell";TwinFeatFlag
+  -->far_FindFeat|[*S:character_id];"Metamagic: Empowered Spell";EmpowerFeatFlag
+  -->far_FindFeat|[*S:character_id];"Wild Magic Surge";WildFeatFlag
+  --=EmpowerDice|[*S:charisma_mod]
+  --=SorceryPoints|0
+  --=ChangeCount|0
+   
+  -->Lib5E_FIND_RESOURCE|[*S:character_id];[&SorcererResource];Pointsname;PointsAmmo
+  --?"X[$TwinFeatFlag]" -ne "X1"|Target
+  --?"X[$PointsAmmo]" -le "X0" -or "[&Pointsname]" -eq "Not Found" -or [$PointsAmmo] -lt [$SorceryPoints]|Target
+  
+  --+|[c]Do you want spend Sorcery Points to Twin the spell?[/c]
+  --+|[c][rbutton]Yes::BuildTwinArray[/rbutton]  [rbutton]No::Target[/rbutton][/c]
+  --X|
+  
+  --:BuildTwinArray|
+   --?"[&MinimumSpellLevel(toLowerCase)]" -eq "cantrip"|=SorceryPoints;1 |=SorceryPoints;[$SpellLevel]\2 {MIN:1}
+   --=TwinFlag|1
+   -->far_BuildTargetList|2
+   -->far_BuildTargetArray|Targets;2;TargetString
+   -->TargetArray|
+  
+  --:Target|
+   --+Target|[rbutton]Click this button to select your target.::SingleTarget;[&TB]target|token_id}[/rbutton]
+   --X|
+  
+  --:SingleTarget|
+   --&SingleTarget|[&reentryval]
+   --~|array;define;Targets;[&SingleTarget]
+   -->TargetArray|
+  
+  --:TargetArray|
+   --?"X[$EmpowerFeatFlag]" -eq "X1"|>far_EmpowerSelect;Damage;cast [&SpellName];DamageChangedFlag;ChangedDamage
+   --?"X[$DamageChangedFlag]" -eq "X1"|[
+    --=Damage|[$ChangedDamage]
+    --=EmpoweredDamageFlag|1
+    --]|
+   -->TargetInfo| 
+  
+  --:TargetInfo|
+   --%target|foreach;Targets
+    --#targettoken|[&target]
+    --#emoteText|[*S:t-name] casts [&SpellName] at [*T:t-name]!
+    -->ActionSpell|
+    --%|
+   -->Output|
+
+ --/| ____________________ Procedures_______________________________________________________________________________________
+
+  --:ActionSpell|
+   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod[*T:t-id];0;0;0
+   --?"[*T:npc]" -ne "1"|PCRoll |NPCRoll
+   
+  --:PCRoll|
+   --&control|[*O:[*T:t-represents]:character:controlledby]
+   --&playername|[*O:[&control]:player:displayname]
+   --?"X[&playername]" -eq "X"|[
+    --#whisper|gm
+	--]|[
+    --#whisper|[&playername],gm
+	--]|
+   -->ChooseRoll|PC
+  
+  --:NPCRoll|
+   --#whisper|gm
+   -->ChooseRoll|NPC
+  
+  --:ChooseRoll| 
+   --&function|[%1%]
+   --+|[c]Choose Saving Throw Type:[/c]
+   --+|[c][rbutton]Advantage::[&function];2d20kh1[/rbutton][rbutton]Normal::[&function];1d20[/rbutton][rbutton]Disadvantage::[&function];2d20kl1[/rbutton][/c]
+   --X|
+  
+  --:NPC|
+   --&saveDice[*T:t-id]|[&reentryval]
+   --#whisper|
+   --?[*T:npc] -eq 1 -and [*T:npc_[&shortattrib]_save_flag] -gt 0|&Save;npc_[&shortattrib]_save |&Save;[&attrib]_mod
+   --=InitSave[*T:t-id]|[&saveDice[*T:t-id]]
+   --c[&saveDice[*T:t-id]]|2d20kh1:&DisplayDice[*T:t-id];Advantage|1d20:&DisplayDice[*T:t-id];1d20|2d20kl1:&DisplayDice[*T:t-id];Disadvantage
+   --?[$InitSave[*T:t-id].Base] -eq 20|>Crit
+   --=TargetSave[*T:t-id]|[$InitSave[*T:t-id]] + [*T:[&attrib]_save_bonus] [&obrac][&Displayattrib][&cbrac]
+   --?[$TargetSave[*T:t-id]] -ge [$DC]|>Pass |>Fail   
+   
+  --:PC| 
+   --&saveDice[*T:t-id]|[&reentryval]
+   -->far_Check_GLOBAL_MOD_EXISTS|[*T:character_id]; save; [&damageType]; damageSave[*T:t-id]
+   -->far_Check_GLOBAL_ATTRIB_SAVE_EXISTS|[*T:character_id]; [&attrib]; attribSaveRoll[*T:t-id]
+   --?[&damageSave[*T:t-id]] -eq 1 -or [&attribSaveRoll[*T:t-id]] -eq 1 -and "[&saveDice[*T:t-id]]" -eqi "1d20"|&saveDice[*T:t-id];2d20kh1
+   --?[&damageSave[*T:t-id]] -eq 1 -or [&attribSaveRoll[*T:t-id]] -eq 1 -and "[&saveDice[*T:t-id]]" -eqi "2d20kl1"|&saveDice[*T:t-id];1d20
+   
+  
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&InspirationMarker];InspiredFlag[*T:t-id];InspiredCount[*T:t-id]
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BardicMarker];BardicFlag[*T:t-id];BardicCount[*T:t-id]
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BaneMarker];BaneMarkerFlag[*T:t-id];BaneMarkerCount[*T:t-id]
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexMarker];HexMarkerFlag[*T:t-id];HexMarkerCount[*T:t-id]
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];HexBladeMarkerFlag[*T:t-id];HexBladeMarkerCount[*T:t-id]
+   
+   --?[&InspiredFlag[*T:t-id]] -ne 0 |>far_Inspiration;[*T:t-id];[&InspirationMarker];[&saveDice[*T:t-id]];saveDice[*T:t-id]
+   -->far_FIND_ACTIVE_GLOBAL_SAVE_MODS|[*T:character_id];GlobalSave[*T:t-id]
+   -->far_FIND_ACTIVE_GLOBAL_SKILL_MODS|[*T:character_id];GlobalSkill[*T:t-id]
+   
+   --=InitSave[*T:t-id]|[&saveDice[*T:t-id]]
+   --c[&saveDice[*T:t-id]]|2d20kh1:&DisplayDice[*T:t-id];Advantage|1d20:&DisplayDice[*T:t-id];1d20|2d20kl1:&DisplayDice[*T:t-id];Disadvantage
+   --?[$InitSave[*T:t-id].Base] -eq 20|>Crit
+   
+   --=attribSaveRoll[*T:t-id]|[$InitSave[*T:t-id]] + [*T:[&attrib]_save_bonus] [&Displayattrib]
+   --?[&BardicFlag[*T:t-id]] -eq 1|>far_Bardic;[*T:t-id];[&BardicMarker];[$Scriptcheck];[$InitSave[*T:t-id].Base];[$attribSaveRoll[*T:t-id]];BardRoll[*T:t-id]
+   --?[&BaneMarkerFlag[*T:t-id]] -eq 1|&Baneroll[*T:t-id];+ - 1d4 [Bane] |&Baneroll[*T:t-id];
+   
+   --=TargetSave[*T:t-id]|[$InitSave[*T:t-id]] + [*T:[&attrib]_save_bonus] [&obrac][&Displayattrib][&cbrac] [&GlobalSave[*T:t-id]] [&GlobalSkill[*T:t-id]] [&Baneroll[*T:t-id]] [&BardRoll[*T:t-id]]
+
+   --#whisper|
+   --?[$TargetSave[*T:t-id]] -ge [$DC]|>Pass |>Fail
+   
+  --:Crit|
+   -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage[*T:t-id];0
+   --?"X[&HexMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex[*T:t-id];+ + 1d6 [Hex] |&Hex[*T:t-id];
+   --?"X[&HexBladeMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade[*T:t-id];+ + [*S:pb] [Proficiency Bonus] |&HexBlade[*T:t-id];
+   --=Damage[*T:t-id]|[$Damage] [&HexBlade[*T:t-id]] [&Hex[*T:t-id]][&GlobalDamage[*T:t-id]][&damageMod[*T:t-id]]\2
+   --&ResultLabel[*T:t-id]|[b]Critical Save!!![/b]
+   --&ResultText[*T:t-id]|[*T:t-name] rolled a [$InitSave[*T:t-id]] vs a DC [$DC] and cannot fail the saving throw. [*T:t-name] takes [$Damage[*T:t-id]] damage.
+   --%|
+   -->Output|
+  
+  --:Pass|
+   -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage[*T:t-id];0
+   --?"X[&HexMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex[*T:t-id];+ + 1d6 [Hex] |&Hex[*T:t-id];
+   --?"X[&HexBladeMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade[*T:t-id];+ + [*S:pb] [Proficiency Bonus] |&HexBlade[*T:t-id];
+   --=Damage[*T:t-id]|[$Damage] [&HexBlade[*T:t-id]] [&Hex[*T:t-id]][&GlobalDamage[*T:t-id]][&damageMod[*T:t-id]]\2
+   --&ResultLabel[*T:t-id]|[b]Pass[/b]
+   --&ResultText[*T:t-id]|[*T:t-name] rolled a [$TargetSave[*T:t-id]] vs a DC [$DC] and passed the saving throw. [*T:t-name] takes [$Damage[*T:t-id]] damage.
+   --%|
+   -->Output|
+
+  --:Fail|
+   -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage[*T:t-id];0
+   --?"X[&HexMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex[*T:t-id];+ + 1d6 [Hex] |&Hex[*T:t-id];
+   --?"X[&HexBladeMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade[*T:t-id];+ + [*S:pb] [Proficiency Bonus] |&HexBlade[*T:t-id];
+   --=Damage[*T:t-id]|[$Damage] [&HexBlade[*T:t-id]] [&Hex[*T:t-id]][&GlobalDamage[*T:t-id]][&damageMod[*T:t-id]]
+   --&ResultLabel[*T:t-id]|[b]Failed[/b]
+   --&ResultText[*T:t-id]|[*T:t-name] rolled a [$TargetSave[*T:t-id]] vs a DC [$DC] and failed the saving throw. [*T:t-name] takes [$Damage[*T:t-id]] damage.
+   --%|
+   -->Output|
+
+  --:Died|
+   -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DeathMarker]
+   --?"[*T:npc]" -ne "1"|[
+    --+|[br]
+    --+|[*T:t-name] has died due to the damage from [&SpellName] and next turn will rise as a zombie under the control of [*S:t-name]!
+    --]|
+   --?"[*T:npc]" -eq "1" -and "[*T:npc_type]" -inc "humanoid"|[
+    --+|[br]
+    --+|[*T:t-name] has died due to the damage from [&SpellName] and next turn will rise as a zombie under the control of [*S:t-name]!
+    --]|
+   --?[$HexBladeFlag] -eq 1 -and [&HexBladeMarkerFlag[*T:t-id]] -eq 1|>HexHeal
+   --<|
+  
+  --:HexHeal|
+   -->far_HexHeal|[*S:character_id];[*S:t-id]
+   -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexBladeMarker]
+   --<|
+  
+  --:Output|
+   --#whisper|
+   --?"X[$TwinFlag]" -eq "X1"|[
+    --#emoteText|[*S:t-name] casts a twinned [&SpellName] on multiple targets!
+	--]|
+   
+   --%loop|foreach;Targets
+    --#targettoken|[&loop]
+    -->far_PlayEffects|[*S:t-id];[*T:t-id];burn-magic;burn-death;;
+    --+|[c][b]Target: [*T:t-name][/b][/c]
+    --+Rolling [&DisplayDice[*T:t-id]]: |[$InitSave[*T:t-id]]
+    --+|[br]
+    --+[&ResultLabel[*T:t-id]]: |[&ResultText[*T:t-id]]
+    -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$Damage[*T:t-id]];0;0;1
+    --+|[br]
+    --=FinalHP[*T:t-id]|[*T:t-bar[&hpBar]_value]+[*T:t-bar[&tempHPbar]_value]-[$Damage[*T:t-id]]
+    --?[$FinalHP[*T:t-id]] -le 0|>Died
+    --%|
+   
+   --?"X[$WildFeatFlag]" -eq "X1" -and [&MinimumSpellLevel] -ge 1|>far_WildTable
+
+   --+|[br]
+   --+Desc: |[&desc]
+   --+|[br]
+   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+   
+   --?"X[$EmpoweredDamageFlag]" -eq "X1" -or "X[$TwinFlag]" -eq "X1"|[
+    --=FinalPointsAmmo|[$PointsAmmo]-[$SorceryPoints]
+    --!a:[*S:character_id]|[&PointsAmmo]:[$FinalPointsAmmo]
+    --+|[br]
+	--+[&SorcererResource]: |Used: [$SorceryPoints] / Remaining: [$FinalPointsAmmo]
+    --]|
+   --X|
+ 
+}}
