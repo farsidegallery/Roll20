@@ -11,7 +11,7 @@
 --/|Functions Included:
 --/|
 --/|   far_LoadTokenMarkers|
---/|     Centralized token marker definitions
+--/|     Centralized token marker definition repository
 --/| 
 --/|   far_CustomCritCheck|ReturnStringName
 --/|     Are you using a custom critical damage game? 0 = no and 1 = yes
