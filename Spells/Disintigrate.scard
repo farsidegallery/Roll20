@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Disintegrate
-  --/|Version     : 2.1.0
+  --/|Version     : 2.1.1
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : 
   --/|Modified By : Farsidegallery
@@ -114,7 +114,7 @@
    --?"X[*T:character_id]" -eq "X"|>ObjectTarget
    --=Damage|[$DamageDice]d6 + 40
 
-   --?"X[$EmpowerFeatFlag]" -eq "X1"|>far_EmpowerSelect;Damage;Crit;DamageChangedFlag;ChangedDamage
+   --?"X[$EmpowerFeatFlag]" -eq "X1"|>far_EmpowerSelect;Damage;Crit;DamageChangedFlag;ChangedDamage;;;1
    --?"X[$DamageChangedFlag]" -eq "X1"|[
     --=Damage|[$ChangedDamage]
     --=EmpoweredDamageFlag|1
