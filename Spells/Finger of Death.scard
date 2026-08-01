@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Finger of Death
-  --/|Version     : 1.1.0
+  --/|Version     : 1.1.1
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|  
@@ -99,7 +99,7 @@
    -->TargetArray|
   
   --:TargetArray|
-   --?"X[$EmpowerFeatFlag]" -eq "X1"|>far_EmpowerSelect;Damage;cast [&SpellName];DamageChangedFlag;ChangedDamage
+   --?"X[$EmpowerFeatFlag]" -eq "X1"|>far_EmpowerSelect;Damage;cast [&SpellName];DamageChangedFlag;ChangedDamage;;;1
    --?"X[$DamageChangedFlag]" -eq "X1"|[
     --=Damage|[$ChangedDamage]
     --=EmpoweredDamageFlag|1
