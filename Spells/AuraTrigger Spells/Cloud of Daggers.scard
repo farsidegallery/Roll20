@@ -1,0 +1,235 @@
+!script {{
+  +++5Elib;snlib;Farsidelib+++
+
+  --#sourceToken|@{selected|token_id}
+  --&SavedSourceToken|@{selected|token_id}
+  --#reentrant|Cloud of Daggers @{selected|character_id}
+  --#whisper|self,gm
+
+  --/|Script Name : Cloud of Daggers
+  --/|Version     : 1.0.0
+  --/|Requires SC : ScriptCards 3.0.25+, 5Elib/snlib/Farsidelib, AuraTriggers 0.9+, TokenMod
+  --/|Author      : Farsidegallery using Cursor AI
+  --/|
+  --/|  Prompts for cast level and places a 5-foot cube cloud via spell-token targeting. AuraTriggers
+  --/|  apply slashing damage when creatures enter or start their turn in the cube (once per turn).
+  --/|  Supports upcasting, concentration tracking, dismiss, Twinned Spell (two cubes), and Wild
+  --/|  Magic Surge on cast. Empowered Spell is not supported — damage is rolled on each aura
+  --/|  trigger, not at cast time, so that metamagic cannot be handled here.
+  --/|
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+
+  --&SpellName|Cloud of Daggers
+  --&MinimumSpellLevel|2
+  --&damageType|slashing
+  
+  --&hpBar|1
+  --&tempHPbar|4
+ 
+  --/|Enter name for Cloud of Daggers Character.
+  --&CharName|Cloud of Daggers
+
+  --/|What resource name is used for Sorcerer Points?
+  --&SorcererResource|Sorcery Points
+ 
+  --&ATColor|#a4c2f4
+ 
+  --&SpellTargetToken|Spell Token
+  --&URLlink|https://files.d20.io/images/469753332/ew1SU1DcQK4eborJlOqNQw/original.png
+  --&CloudLink|https://files.d20.io/images/496041336/uh42M3-Vuj5ipYgntKaA0w/med.webm?1785602492
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+  
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+  
+  -->far_LoadTokenMarkers|
+
+  --#title|Cloud of Daggers
+  --&TokenName|[*S:t-name] [&CharName]
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  
+  --#leftsub|[*R:spellcastingtime]
+  --#rightsub|[*R:spellrange]
+  --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+  --&desc|[*R:spelldescription]
+  --&higherdesc|[*R:spellathigherlevels]
+
+  --+Choose Function: |[rbutton]New Cast::ChooseLevel[/rbutton][rbutton]Dismiss::Remove[/rbutton]
+  --X|
+
+  --:ChooseLevel|
+   -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+   --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+
+   --+|[c][b]Cast At What Level?[/b][/c]
+   --&splvlMsg|
+   --%splvl|foreach;SpellCastLevel
+    --&splvlMsg|+ [rbutton][&splvl]::New;[&splvl][/rbutton]
+   --%|
+   --+|[c][&splvlMsg][/c]
+   --X|
+
+  --:New|
+   --#sourceToken|[&SavedSourceToken]
+   --=SpellLevel|[&reentryval]
+   --&SpellLevel|[&reentryval]
+   --=D4Count|[$SpellLevel]*2
+   --&CodDamageFormula|[$D4Count.Raw]d4
+   --&DamageDisplay|[&CodDamageFormula] slashing
+
+   --=TwinFlag|0
+   --=SecondCubeFlag|0
+
+   -->far_FIND_CLASS_LEVEL|[*S:character_id];Sorcerer;SLevel
+   -->far_FindFeat|[*S:character_id];"Metamagic: Twinned Spell";TwinFeatFlag
+   -->far_FindFeat|[*S:character_id];"Wild Magic Surge";WildFeatFlag
+   --=SorceryPoints|0
+
+   --?"X[&SLevel]" -eq "X0"|CastSetup
+   -->Lib5E_FIND_RESOURCE|[*S:character_id];[&SorcererResource];Pointsname;PointsAmmo
+   --?"X[$TwinFeatFlag]" -ne "X1"|CastSetup
+   --?"[&MinimumSpellLevel(toLowerCase)]" -eq "cantrip"|=TwinCost;1 |=TwinCost;[$SpellLevel]\2 {MIN:1}
+   --?"X[$PointsAmmo]" -le "X0" -or "[&Pointsname]" -eq "Not Found" -or [$PointsAmmo] -lt [$TwinCost]|CastSetup
+
+   --+|[c]Do you want to spend [$TwinCost.Raw] Sorcery Points to Twin the spell (two cubes)?[/c]
+   --+|[c][rbutton]Yes::BuildTwinArray[/rbutton]  [rbutton]No::CastSetup[/rbutton][/c]
+   --X|
+
+  --:BuildTwinArray|
+   --=SorceryPoints|[$TwinCost]
+   --=TwinFlag|1
+   -->CastSetup|
+
+  --:CastSetup|
+   --#sourceToken|[&SavedSourceToken]
+   --&CloudTokenName|[&TokenName]
+   --&CasterToken|[*S:t-id]
+   -->GetCharID|"[&CharName]";SummonID
+   --#emoteText|[*S:t-name] casts [&SpellName]!
+   --!a:[*S:character_id]|!ConcentrationSpell:[&TokenName]
+   -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];10
+
+   -->CAST_SPELL|
+   --X|
+
+  --:CAST_SPELL|
+   --#sourceToken|[&CasterToken]
+   -->GetCharID|"[&SpellTargetToken]";AOETargetID
+   --+|Move the spell token to the cube center, then click Target.
+   --!ot:NewTID|name:"[&SpellTargetToken]"|_pageid:[*S:t-_pageid]|left:[=[*S:t-left]+70]|top:[*S:t-top]|width:[*S:t-width]|height:[*S:t-height]|imgsrc:"[&URLlink]"|bar1_value:1|represents:"[&SpellTargetToken]"|showname:0|t-aura1_radius:5|t-aura1_color:[&ATColor]
+   --&PlacementTID|[&NewTID]
+   --?"X[$SecondCubeFlag]" -eq "X1"|[ --z:graphic:[&FirstCloudTID]|toback --]|
+   --z:graphic:[&NewTID]|toback
+   -->SetAbility|
+   --+Target: |[rbutton]Select Cloud of Daggers::SetTarget;[&TB]target|token_id}[/rbutton]
+   --X|
+
+  --:SetTarget|
+   --#sourceToken|[&CasterToken]
+   --?"X[&reentryval]" -eq "X"|>far_FatalError;Wrong Target;ERROR;Click Place Cloud of Daggers, then target the placement token.
+   --#targettoken|[&reentryval]
+   --?"[&reentryval]" -eq "[&PlacementTID]"|SetCloudName
+   --&TargetName|[*T:t-name]
+   --?"[&TargetName]" -eq "[&SpellTargetToken]"|SetCloudName
+   -->far_FatalError;Wrong Target;ERROR;Target the spell placement token.
+   --<|
+
+  --:SetCloudName|
+   --?"X[$SecondCubeFlag]" -eq "X1"|[ --&CloudTokenName|[&TokenName] (2) --]|[ --&CloudTokenName|[&TokenName] --]|
+   -->SpawnCloud|
+
+  --:SpawnCloud|
+   --#sourceToken|[&CasterToken]
+   --&PlaceTID|[&reentryval]
+   --&SpawnLeft|[*[&PlaceTID]:t-left]
+   --&SpawnTop|[*[&PlaceTID]:t-top]
+   --&CloudWidth|[=[*[&PlaceTID]:t-width]*3]
+   --&CloudHeight|[=[*[&PlaceTID]:t-height]*3]
+   --#targettoken|notoken
+   --!ot:CloudTID|name:"[&CloudTokenName]"|left:[&SpawnLeft]|top:[&SpawnTop]|width:[&CloudWidth]|height:[&CloudHeight]|imgsrc:"[&CloudLink]"|bar1_value:"[&CodDamageFormula]"|represents:[&SummonID]|showname:false|tooltip:"[&CodDamageFormula] slashing"|show_tooltip:true|aura1_radius:"-0.01"|aura1_color:"[&ATColor]"|aura1_square:"true"|gmnotes:${[{"color":"#a4c2f4","name":"Cloud of Daggers","toNPCs":true,"toPCs":true,"toGraphics":false,"applySelf":false,"removeOnExit":false,"toLayers":"objects,gmlayer","ignoreWalls":false,"targetVfxOnEnter":"burn-blood","chatActionOnEnter":"!script !{!{ +++5Elib;snlib;Farsidelib+++ --&damageType|slashing --&hpBar|1 --&tempHPbar|4 --#sourcetoken|[ATID] --#targettoken|[TID] --#hideTitleCard|1 --#emoteTargetTokenSize|75 --?[*[TID]:t-bar3_value] -eq 1|[--X --]| -->far_CheckDamageModifiers|[*[TID]:character_id];slashing;damageMod;0;0;0 --&CodDmg|[*[ATID]:t-bar1_value] --=AdjDmg|[&CodDmg][&damageMod] --#emoteText|[TNAME] enters [ANAME]! --+Damage: |[$AdjDmg] slashing -->far_DamageTokenmod|[TID];1;4;-[$AdjDmg];0;0;1 --!t:[TID]|bar3_value:1 --X| !}!} ","chatActionOnStartTurn":"!script !{!{ +++5Elib;snlib;Farsidelib+++ --#targettoken|[TID] --!t:[TID]|bar3_value:0 --&damageType|slashing --&hpBar|1 --&tempHPbar|4 --#sourcetoken|[ATID] --#hideTitleCard|1 --#emoteTargetTokenSize|75 --?[*[TID]:t-bar3_value] -eq 1|[--X --]| -->far_CheckDamageModifiers|[*[TID]:character_id];slashing;damageMod;0;0;0 --&CodDmg|[*[ATID]:t-bar1_value] --=AdjDmg|[&CodDmg][&damageMod] --#emoteText|[TNAME] starts their turn in [ANAME]! --+Damage: |[$AdjDmg] slashing -->far_DamageTokenmod|[TID];1;4;-[$AdjDmg];0;0;1 --!t:[TID]|bar3_value:1 --X| !}!} ","chatActionOnEndTurn":"!script !{!{ +++5Elib;snlib;Farsidelib+++ --#targettoken|[TID] --#hideTitleCard|1 --!t:[TID]|bar3_value:0 --X| !}!} ","chatActionOnExit":"!script !{!{ +++5Elib;snlib;Farsidelib+++ --#targettoken|[TID] --#hideTitleCard|1 --#emoteText|[TNAME] leaves [ANAME] --!t:[TID]|bar3_value:0 --X| !}!} " }]$}
+   --z:graphic:[&CloudTID]|toback
+
+   --?"X[$TwinFlag]" -eq "X1" -and "X[$SecondCubeFlag]" -ne "X1"|[
+    --&FirstCloudTID|[&CloudTID]
+    --~|object;token;delete;[&NewTID]
+    --=SecondCubeFlag|1
+    --+|[c]Place the second twinned cube. Move the spell token, then click Target.[/c]
+    -->CAST_SPELL|
+    --^AfterSpawn|
+    --]|
+
+   --?"X[$TwinFlag]" -eq "X1" -and "X[$SecondCubeFlag]" -eq "X1"|[ --z:graphic:[&FirstCloudTID]|toback --]|
+
+   --~|object;token;delete;[&NewTID]
+   --?[*S:npc] -eq 1|[
+    --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&TokenName]
+    --!graphic:[@tokens(0)]|gm_only_tooltip:1
+    --?[@tokens(1)] -ninc undefined|[
+     --!graphic:[@tokens(1)]|gm_only_tooltip:1
+     --]|
+   --]|
+   -->Output|
+   --:AfterSpawn|
+   --X|
+
+  --:Output|
+   --#whisper|
+   --#sourceToken|[&CasterToken]
+   --?"X[$TwinFlag]" -eq "X1"|[
+    --#emoteText|[*S:t-name] casts a twinned [&SpellName]!
+    --]|
+   --+|[*S:t-name] creates a [&SpellName] ([&DamageDisplay])!
+   --+|[br]
+
+   --?"X[$WildFeatFlag]" -eq "X1" -and [&MinimumSpellLevel] -ge 1|>far_WildTable
+
+   --+Duration: |[&duration]
+   --+Desc: |[&desc]
+   --+At Higher Levels: |[&higherdesc]
+   --+|[br]
+   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+
+   --?"X[$TwinFlag]" -eq "X1"|[
+    --=FinalPointsAmmo|[$PointsAmmo]-[$SorceryPoints]
+    --!a:[*S:character_id]|[&PointsAmmo]:[$FinalPointsAmmo]
+    --+|[br]
+	  --+[&SorcererResource]: |Used: [$SorceryPoints] / Remaining: [$FinalPointsAmmo]
+    --]|
+   --X|
+
+  --:Remove|
+   --#whisper|
+   --#sourceToken|@{selected|token_id}
+   --&TokenName|[*S:t-name] [&CharName]
+   --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&TokenName]
+   --~|object;token;delete;[@tokens(0)]
+   --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&TokenName] (2)
+   --?"[@tokens(0)]" -ninc undefined|--~|object;token;delete;[@tokens(0)]
+   --#emoteText|[&TokenName] vanishes!
+   --+|[*S:t-name] is no longer concentrating on [&SpellName].
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker]
+   --!a:[*S:character_id]|!ConcentrationSpell:**
+   --X|
+
+  --:GetCharID|CharacterName;StringVariableForCharID
+   --~|array;objects:character;SpiritCharArr;[%1%]
+   --?[@SpiritCharArr(length)] -ne 1|>far_FatalError;Character Not Found;ERROR;Could not find character named [%1%]
+   --&[%2%]|[@SpiritCharArr(0)]
+   --<|
+
+  --:SetAbility|
+   --~|array;objects:ability;AbilityArr;;[&AOETargetID]
+   --!ability:[@AbilityArr(0)]|istokenaction:False
+   --!ability:[@AbilityArr(1)]|istokenaction:False
+   --!ability:[@AbilityArr(2)]|istokenaction:False
+   --!ability:[@AbilityArr(3)]|istokenaction:False
+   --<|
+}}
