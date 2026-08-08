@@ -1,0 +1,166 @@
+!script{{
+  +++5Elib;snlib;Farsidelib+++
+
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script [*S:character_id]
+  --#whisper|self,gm
+
+  --/|Script Name : See Invisibility
+  --/|Version     : 1.2.0
+  --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
+  --/|Author      : Farsidegallery
+  --/|
+  --/|  Checks spell slot availability and deducts a slot. Scans gmlayer master tokens with the
+  --/|  Invisibility marker (proxy-based Invisibility / Greater Invisibility) and adds the caster's
+  --/|  player to each affected character's controlledby so they can see the objects-layer proxy.
+  --/|
+
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+
+  --&SpellName|See Invisibility
+  --&MinimumSpellLevel|2
+
+  --/|What resource name is used for Sorcerer Points?
+  --&SorcererResource|Sorcery Points
+
+  --/|Character attribute set on New Cast and cleared on Dismiss; required for Refresh.
+  --&ActiveFlag|SeeInvisibilityActive
+
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+
+  -->far_LoadTokenMarkers|
+  --#title|[&SpellName]
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+  --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+  --=SpellLevel|[&MinimumSpellLevel]
+  --&SpellLevel|[&MinimumSpellLevel]
+  --#leftsub|[*R:spellcastingtime]
+  --#rightsub|[*R:spellrange]
+
+  -->ChooseFunction|
+  --X|
+
+  --:ChooseFunction|
+   --+|[c][b]Choose Function:[/b][/c]
+   --+|[c][rbutton]New Cast::NewCast[/rbutton][rbutton]Refresh::Refresh[/rbutton][rbutton]Dismiss::Remove[/rbutton][/c]
+   --X|
+
+  --:NewCast|
+   -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
+   --#leftsub|[*R:spellcastingtime]
+   --#rightsub|[*R:spellrange]
+   --#emotetext|[*S:t-name] casts [&SpellName]!
+   -->FindInvisTargets|
+   -->SetVision|
+   -->Output|
+
+  --:Output|
+   --#whisper|
+   -->far_FIND_CLASS_LEVEL|[*S:character_id];Sorcerer;SLevel
+   --?"X[&SLevel]" -ne "X0"|[
+    -->far_FindFeat|[*S:character_id];"Wild Magic Surge";WildFeatFlag
+   --]|
+   --?"X[$WildFeatFlag]" -eq "X1" -and [&MinimumSpellLevel] -ge 1|>far_WildTable
+   --?"X[*S:SleepString]" -eq "X" -or "[*S:SleepString]" -eq ""|[
+    --+|[*S:t-name] can now see invisible creatures, but none were found.
+   --]|[
+    --+|[*S:t-name] can now see invisible creatures.
+    --%loop|foreach;Invis
+     --+|[c][*[&loop]:t-name][/c]
+    --%|
+   --]|
+   --+|[br]
+   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+   --+Duration: |[&duration]
+   --+Desc: |[*R:spelldescription]
+   --?"X[*R:spellathigherlevels]" -ne "X" -and "[*R:spellathigherlevels]" -ne ""|[
+    --+At Higher Levels: |[*R:spellathigherlevels]
+   --]|
+   --+|[br]
+   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+   --!a:[*S:character_id]|![&ActiveFlag]:1
+   --X|
+
+  --:Refresh|
+   --#whisper|
+   --?"X[*S:[&ActiveFlag]]" -eq "X" -or "[*S:[&ActiveFlag]]" -ne "1"|[
+    --+|[*S:t-name] must cast See Invisibility before using Refresh.
+    --X|
+   --]|
+   -->FindInvisTargets|
+   -->SetVision|
+   --?"X[*S:SleepString]" -eq "X" -or "[*S:SleepString]" -eq ""|[
+    --+No invisible creatures were found.
+   --]|[
+    --+See Invisibility vision refreshed.
+   --]|
+   --X|
+
+  --:FindInvisTargets|
+   --~|array;pagetokens;alltokens;[*S:t-id]
+   --~|array;define;Invis
+   --%loop|foreach;alltokens
+    --?[*[&loop]:t-layer] -ne gmlayer|%
+    -->LibSN_CHECK_STATUS_MARKER|[*[&loop]:t-id];[&InvisibilityMarker];InvisFlag;InvisCount
+    --?[&InvisFlag] -ne 1|%
+    --~|array;add;Invis;[*[&loop]:t-id]
+   --%|
+   --<|
+
+  --:SetVision|
+   --?[@Invis(length)] -eq 0|[
+    --!a:[*S:character_id]|!SleepString:**|!SleepString^:**
+    --<|
+   --]|
+   --&Player|[*O:[*S:t-represents]:character:controlledby]
+   --~TargetArrayString|array;stringify;Invis;,
+   --!a:[*S:character_id]|!SleepString:[&TargetArrayString]|!SleepString^:[@Invis(length)]
+   --%loop|foreach;Invis
+    --#targettoken|[&loop]
+    --&CharID|[*T:character_id]
+    --?"X[*O:[&CharID]:character:ControlledBy]" -eq "X" -or "[*O:[&CharID]:character:ControlledBy]" -eq ""|[
+     --&controllers|[*O:[&CharID]:character:controlledby]
+     --?"[&controllers]" -ninc "-"|&controllers;None
+     --!a:[&CharID]|!ControlledBy:[&controllers]
+    --]|
+    --&controllers|[*O:[&CharID]:character:ControlledBy]
+    --?"[&controllers]" -inc "[&Player]"|%
+    --?"[&controllers]" -eq "None" -or "[&controllers]" -eq ""|&newcontrollers;[&Player] |&newcontrollers;[&controllers],[&Player]
+    --!c:[&CharID]|controlledby:[&newcontrollers]
+   --%|
+   --<|
+
+  --:Remove|
+   --#whisper|
+   --?"X[*S:[&ActiveFlag]]" -eq "X" -or "[*S:[&ActiveFlag]]" -ne "1"|[
+    --+|[*S:t-name] is not currently using See Invisibility.
+    --X|
+   --]|
+   --?"X[*S:SleepString]" -ne "X" -and "[*S:SleepString]" -ne ""|[
+    --~|array;fromstring;UndoInvis;,;[*S:SleepString]
+    --%loop|foreach;UndoInvis
+     --#targettoken|[&loop]
+     --&CharID|[*T:character_id]
+     --&restore|[*O:[&CharID]:character:ControlledBy]
+     --?"[&restore]" -eq "None"|&controllers; |&controllers;[&restore]
+     --!c:[&CharID]|controlledby:[&controllers]
+     --!a:[&CharID]|!ControlledBy:**
+    --%|
+   --]|
+   --!a:[*S:character_id]|!SleepString:**|!SleepString^:**|![&ActiveFlag]:**
+   --+|[*S:t-name] can no longer see invisible creatures.
+   --X|
+
+}}
