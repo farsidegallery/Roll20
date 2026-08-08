@@ -7,12 +7,12 @@
   --#whisper|self,gm
 
   --/|Script Name : Spiritual Weapon
-  --/|Version     : 2.0.2
+  --/|Version     : 2.1.0
   --/|Requires SC : Spawn, SelectManager, ChatSetAttr, ScriptCards Library snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|  
   --/|  Script prompts user for spell level used and then queries for shape of the weapon. It will deduct 1 spell slot from the appropriate level and spawn the designated token to the VTT. Script calculates
-  --/|  attack roll, enemy AC, and damage. Script outputs results to chat and deducts damage from the enemy.
+  --/|  attack roll, enemy AC, and damage. Script outputs results to chat and deducts damage from the enemy. (2014: not a concentration spell.)
   --/|
   
   --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
@@ -42,15 +42,6 @@
   --/|Are you using the matching Bardic Inspiration Script from FarsideGallery? (Default is No using 0. Change to 1 if using the script.)
   --=Scriptcheck|1
   
-  --/|Enter the Token Markers you use for each condition
-  --&BardicMarker|BardicInspiration::7409920
-  --&BlessedMarker|angel-outfit
-  --&InspirationMarker|Inspiration::7409921
-  --&BaneMarker|Hexed3::7409911
-  --&HexMarker|Hexed::7409913
-  --&HexBladebladeMarker|Hexed2::7409912
-  --&DeathMarker|dead
-  
   --/| ____________________ End Global User Variables ___________________________________________________________________________________________
 
   --/|Helper variable build up to allow us to include a target prompt in an rbutton
@@ -63,6 +54,8 @@
   --&oparen|(
   --&cparen|)
  
+  -->far_LoadTokenMarkers|
+
   -->GetSpiritID|[&WeaponName];WeaponID
   --&control|[*O:[*S:t-represents]:character:controlledby]
   --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
@@ -110,9 +103,6 @@
    --!a:[&WeaponID]|!Weapon_Level:[$SpellLevel]
    -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
    -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
-   --!a:[*S:character_id]|!ConcentrationSpell:[&SpellName]
-   --!a:[*S:character_id]|!ConcentrationSpellTargetToken:[&WeaponName]
-   
    --!c:[&WeaponID]|controlledby:[&control]
    --@forselected+|Spawn _name|[&WeaponName] _qty|1 _bar1|5/ _placement|surround _side|[$Side] _offset|1,1 _force|yes _tokenProps|name:[&WeaponName],showname:true,showplayers_name:true _order|toFront _fx|nova-magic _expand|15,30 _isDrawing|1 {^&select @{selected|token_id}}
    -->ChooseTarget|
@@ -124,7 +114,6 @@
    --&spelldesc|[*R:spelldescription]
    --&spellhigherdesc|[*R:spellathigherlevels]
    --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
-   
    -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&InspirationMarker];InspiredFlag;InspiredCount
    -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&BardicMarker];BardicFlag;BardicCount
    -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&BlessedMarker];BlessFlag;BlessCount
@@ -156,9 +145,8 @@
    --=AttackRollMod|[$AttackDiceBase] + [*S:spell_attack_bonus] [Spell Attack Bonus]
    
    --?[&BardicFlag] -eq 1|>far_Bardic;[*S:t-id];[&BardicMarker];[$Scriptcheck];[$AttackDiceBase];[$AttackRollMod];BardRoll
-   --?[&BaneMarkerFlag] -eq 1|&Baneroll;+ - 1d4 [Bane] |&Baneroll;
    
-   --=AttackRoll|[$AttackDiceBase] + [*S:spell_attack_bonus] [Spell Attack Bonus] [&GlobalAttack] [&Baneroll] [&BardRoll]
+   --=AttackRoll|[$AttackDiceBase] + [*S:spell_attack_bonus] [Spell Attack Bonus] [&GlobalAttack] [&BardRoll]
    
    --+Total Attack Roll: |[$AttackRoll]
    --+|[br]
@@ -248,10 +236,14 @@
    --X|
   
  --:Remove|
-   --#targetToken|[&reentryval]
    --!a:[&WeaponID]|!Weapon:**
    --!a:[&WeaponID]|!Weapon_Level:**
-   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];Concentrating::7409928
+   --?"[*S:ConcentrationSpell]" -eq "[&SpellName]"|[
+    --!a:[*S:character_id]|!ConcentrationSpell:**
+   --]|
+   --?"[*S:ConcentrationSpellTargetToken]" -eq "[&WeaponName]"|[
+    --!a:[*S:character_id]|!ConcentrationSpellTargetToken:**
+   --]|
    --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&WeaponName]
    --~|object;token;delete;[@tokens(0)]
    --#whisper|
