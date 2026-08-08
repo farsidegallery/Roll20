@@ -1,6 +1,6 @@
 !script {{
   --/|Script Name : Concentration
-  --/|Version     : 1.1.1
+  --/|Version     : 1.1.2
   --/|Requires SC : ScriptCards 3.0.25+, 5Elib/snlib/Farsidelib
 
   --/|This example watches for graphics objects (in this case tokens) to change. if the value that changed is the current hit points
@@ -205,7 +205,7 @@
    --+|[br]
    --+Result: |[*[&GraphicOld_id]:character_name] lost concentration.
    
-   --C[&SpellTokenName]|Bane:>Bane|Banishment:>Banishment|Bless:>Bless|Divine Favor:>Favor|Faerie Fire:>Faerie|Greater Invisibility:>Invisibility|Guidance:>Guidance|Hex:>Hex|Hold Person:>Hold|Tasha's Hideous Laughter:>HideousLaughter
+   --C[&SpellTokenName]|Bane:>Bane|Banishment:>Banishment|Bless:>Bless|Divine Favor:>Favor|Faerie Fire:>Faerie|Greater Invisibility:>Invisibility|Invisibility:>Invisibility|Guidance:>Guidance|Hex:>Hex|Hold Person:>Hold|Tasha's Hideous Laughter:>HideousLaughter
    --C[&SpellTokenName]|Holy Weapon:>Weapon|Hunter's Mark:>Hunter|Shield of Faith:>Faith|Spirit Guardians:>Guardians|Shadow Blade:>ShadowBlade|Vampiric Touch:>Vampiric|Witch Bolt:>Witch|Zephyr Strike:>Zephyr
    
    -->LibSN_REMOVE_STATUS_MARKER|[*[&GraphicOld_id]:t-id];[&ConcentrationMarker]
