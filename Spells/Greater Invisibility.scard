@@ -1,0 +1,193 @@
+!script {{
+  +++5Elib;snlib;Farsidelib+++
+
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script [*S:character_id]
+  --#whisper|self,gm
+
+  --/|Script Name : Greater Invisibility
+  --/|Version     : 2.1.1
+  --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib, CARRY_TOKENS API mod
+  --/|Author      : Farsidegallery
+  --/|
+  --/|  Prompts for a single target, checks spell slot availability, and applies proxy-based
+  --/|  invisibility. Master token moves to the GM layer with the Invisibility marker; a
+  --/|  transparent proxy on the objects layer shares the same character represents for
+  --/|  player movement and See Invisibility support. CARRY_TOKENS links proxy to master;
+  --/|  purple square aura marks the proxy for controlling players only.
+  --/|
+
+  --/| ____________________ Begin Global User Variables ___________________________________
+
+  --&SpellName|Greater Invisibility
+  --&MinimumSpellLevel|4
+
+  --/|What resource name is used for Sorcerer Points?
+  --&SorcererResource|Sorcery Points
+
+  --/|Transparent proxy token image (objects layer).
+  --&TransparentLink|https://files.d20.io/images/101563658/FUnIVWR0LfmKfiA6FWExBA/original.png?1578865453
+
+  --/|Suffix appended to proxy token names for cleanup lookup.
+  --&ProxyNameSuffix| Invis Proxy
+
+  --/|Bump default Objects Layer (Invisible) aura color for controlling-player visibility.
+  --&ProxyAuraColor|#800080
+
+  --/| ____________________ End Global User Variables _____________________________________
+
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+
+  -->far_LoadTokenMarkers|
+  --#title|[&SpellName]
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+
+  --:ChooseFunction|
+   --+Choose Function: |[rbutton]Cast Spell::Cast[/rbutton][rbutton]Dismiss::Remove[/rbutton]
+   --X|
+
+  --:Cast|
+   --=SpellLevel|[&MinimumSpellLevel]
+   --&SpellLevel|[&MinimumSpellLevel]
+   -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
+   --#leftsub|[*R:spellcastingtime]
+   --#rightsub|[*R:spellrange]
+   -->CheckSorcererMetamagic|
+
+  --:CheckSorcererMetamagic|
+   -->far_FIND_CLASS_LEVEL|[*S:character_id];Sorcerer;SLevel
+   --?"X[&SLevel]" -eq "X0"|ChooseTarget
+   -->far_FindFeat|[*S:character_id];"Metamagic: Twinned Spell";TwinFeatFlag
+   -->far_FindFeat|[*S:character_id];"Wild Magic Surge";WildFeatFlag
+   --=SorceryPoints|0
+   -->Lib5E_FIND_RESOURCE|[*S:character_id];[&SorcererResource];Pointsname;PointsAmmo
+   --?"X[$PointsAmmo]" -le "X0" -or "[&Pointsname]" -eq "Not Found" -or [$PointsAmmo] -lt [$SorceryPoints]|ChooseTarget
+   --+|[c]Do you want to spend Sorcery Points to Twin the spell?[/c]
+   --+|[c][rbutton]Yes::BuildTwinArray[/rbutton]  [rbutton]No::ChooseTarget[/rbutton][/c]
+   --X|
+
+  --:BuildTwinArray|
+   --?"[&MinimumSpellLevel(toLowerCase)]" -eq "cantrip"|=SorceryPoints;1 |=SorceryPoints;[$SpellLevel]\2 {MIN:1}
+   --=TwinFlag|1
+   -->far_BuildTargetList|2
+   -->far_BuildTargetArray|Invis;2;[&TargetString]
+   -->BeginCast|
+
+  --:ChooseTarget|
+   --+Target|[rbutton]Click here to select your target.::SetTarget;&#64;{target|token_id}[/rbutton]
+   --X|
+
+  --:SetTarget|
+   --#targettoken|[&reentryval]
+   --#rightsub|Target: [*T:character_name]
+   --~|array;define;Invis;[&reentryval]
+   -->BeginCast|
+
+  --:BeginCast|
+   --#emotetext|[*S:character_name] casts [&SpellName]!
+   --!a:[*S:character_id]|!ConcentrationSpell:[&SpellName]
+   -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];10
+   --?"X[$TwinFlag]" -eq "X1"|[
+    --+|The following characters are now invisible.
+   --]|[
+    --+|The following character is now invisible.
+   --]|
+   -->ActionSpell|
+
+  --:ActionSpell|
+   --#whisper|
+   --%loop|foreach;Invis
+    -->HideTarget|[*[&loop]:t-id]
+    --+|[c][*[&loop]:character_name][/c]
+   --%|
+   --+|[br]
+   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+   --+Duration: |[&duration]
+   --+Desc: |[*R:spelldescription]
+   --+|[br]
+   --?"X[$WildFeatFlag]" -eq "X1" -and [&MinimumSpellLevel] -ge 1|>far_WildTable
+   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+   --?"X[$TwinFlag]" -eq "X1"|[
+    --=FinalPointsAmmo|[$PointsAmmo]-[$SorceryPoints]
+    --!a:[*S:character_id]|[&PointsAmmo]:[$FinalPointsAmmo]
+    --+|[br]
+    --+[&SorcererResource]: |Used: [$SorceryPoints] / Remaining: [$FinalPointsAmmo]
+   --]|
+   --X|
+
+  --:Remove|
+   --#whisper|
+   --#sourceToken|@{selected|token_id}
+   --?"X[*S:ConcentrationSpell]" -eq "X" -or "[*S:ConcentrationSpell]" -ne "[&SpellName]"|[
+    --+|[*S:character_name] is not concentrating on [&SpellName].
+    --X|
+   --]|
+   -->FindInvisTargets|
+   --+|[*S:character_name] is no longer concentrating on [&SpellName].
+   --+|[br]
+   --%loop|foreach;Invis
+    -->RevealTarget|[*[&loop]:t-id]
+    --+|[*[&loop]:character_name] is no longer Invisible.
+   --%|
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker]
+   --!a:[*S:character_id]|!ConcentrationSpell:**
+   --X|
+
+  --:FindInvisTargets|
+   --~|array;pagetokens;alltokens;[*S:t-id]
+   --~|array;define;Invis
+   --%loop|foreach;alltokens
+    -->LibSN_CHECK_STATUS_MARKER|[*[&loop]:t-id];[&InvisibilityMarker];InvisFlag;InvisCount
+    --?[&InvisFlag] -eq 1|[
+     --?"[*[&loop]:MageID]" -inc "[*S:character_id]"|[
+      --&Invis([@Invis(length)])|[*[&loop]:t-id]
+     --]|
+     --?"[*[&loop]:MageID]" -inc "[*S:t-id]"|[
+      --&Invis([@Invis(length)])|[*[&loop]:t-id]
+     --]|
+    --]|
+   --%|
+   --<|
+
+  --:HideTarget|masterTokenId
+   --&MasterTID|[%1%]
+   --#targettoken|[&MasterTID]
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&InvisibilityMarker];AlreadyInvisFlag;AlreadyInvisCount
+   --?[&AlreadyInvisFlag] -eq 1|[
+    --<|
+   --]|
+   -->far_PlayEffects|;[*T:t-id];;burn-magic;;
+   -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&InvisibilityMarker];9
+   --!a:[*T:character_id]|!MageID:[*S:character_id]
+   --&ProxyTokenName|[*T:character_name][&ProxyNameSuffix]
+   --!ot:ProxyTID|name:"[&ProxyTokenName]"|_pageid:[*T:t-_pageid]|left:[*T:t-left]|top:[*T:t-top]|width:[*T:t-width]|height:[*T:t-height]|imgsrc:"[&TransparentLink]"|represents:[*T:character_id]|showname:false|showplayers_name:false|bar1_value:|bar1_max:|bar2_value:|bar2_max:|bar3_value:|bar2_max:|bar3_value:|bar3_max:|aura1_square:true|aura1_radius:0.000001|aura1_color:[&ProxyAuraColor]|showplayers_aura1:false|showplayers_aura2:false
+   --z:graphic:[&ProxyTID]|toback
+   --!t:[*T:t-id]|layer:gmlayer
+   --@CARRY_TOKENS_CARRY_BELOW|[&ProxyTID] [*T:t-id]
+   --!a:[*T:character_id]|!InvisProxyID:[&ProxyTID]
+   --<|
+
+  --:RevealTarget|masterTokenId
+   --&MasterTID|[%1%]
+   --#targettoken|[&MasterTID]
+   --&ProxyTID|[*T:InvisProxyID]
+   --?"X[&ProxyTID]" -ne "X" -and "[&ProxyTID]" -ne ""|[
+    --#targettoken|[&ProxyTID]
+    --!t:[&MasterTID]|left:[*T:t-left]|top:[*T:t-top]
+    --~|object;token;delete;[&ProxyTID]
+   --]|
+   --!t:[&MasterTID]|layer:objects
+   -->LibSN_REMOVE_STATUS_MARKER|[&MasterTID];[&InvisibilityMarker]
+   --!a:[*T:character_id]|!MageID:**
+   --!a:[*T:character_id]|!InvisProxyID:**
+   --<|
+
+}}
