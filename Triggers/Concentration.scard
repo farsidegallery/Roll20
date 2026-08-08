@@ -1,6 +1,6 @@
 !script {{
   --/|Script Name : Concentration
-  --/|Version     : 1.1.0
+  --/|Version     : 1.1.1
   --/|Requires SC : ScriptCards 3.0.25+, 5Elib/snlib/Farsidelib
 
   --/|This example watches for graphics objects (in this case tokens) to change. if the value that changed is the current hit points
@@ -418,11 +418,24 @@
    
    --+|[br]
    --%loop|foreach;Invis
-    -->LibSN_REMOVE_STATUS_MARKER|[*[&loop]:t-id];[&InvisibilityMarker]
-	--!a:[*[&loop]:character_id]|!MageID:**
-	--@bump| _ids [*[&loop]:t-id]
-	--+|[*[&loop]:character_name] is no longer Invisible.
-	--%|   
+    -->RevealInvisTarget|[*[&loop]:t-id]
+    --+|[*[&loop]:character_name] is no longer Invisible.
+    --%|
+   --<|
+
+  --:RevealInvisTarget|masterTokenId
+   --&MasterTID|[%1%]
+   --#targettoken|[&MasterTID]
+   --&ProxyTID|[*T:InvisProxyID]
+   --?"X[&ProxyTID]" -ne "X" -and "[&ProxyTID]" -ne ""|[
+    --#targettoken|[&ProxyTID]
+    --!t:[&MasterTID]|left:[*T:t-left]|top:[*T:t-top]
+    --~|object;token;delete;[&ProxyTID]
+   --]|
+   --!t:[&MasterTID]|layer:objects
+   -->LibSN_REMOVE_STATUS_MARKER|[&MasterTID];[&InvisibilityMarker]
+   --!a:[*T:character_id]|!MageID:**
+   --!a:[*T:character_id]|!InvisProxyID:**
    --<|
   
   --:ShadowBlade|
