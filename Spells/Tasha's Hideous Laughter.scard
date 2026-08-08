@@ -1,17 +1,18 @@
-!scriptcards {{
+!script {{
   +++5Elib;snlib;Farsidelib+++	
   
   --#sourceToken|@{selected|token_id}
   --#reentrant|My Cool Script @{selected|character_id}
   
   --/|Script Name : Tasha's Hideous Laughter
-  --/|Version     : 1.0.0
+  --/|Version     : 1.1.0
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|  
-  --/|  Script automatically creates radar wave to detect appropriate creatures and deducts spell slot from caster.
-  --/|
-  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+  --/|  Script prompts user to target a creature and resolve a Wisdom saving throw (with save modifiers). On a failed save the target is marked incapacitated and prone,
+  --/|  and concentration is tracked until dismissed. Undead, constructs, and creatures with Intelligence 4 or less consume a slot with no effect, appearing as a successful save.
+  --/|  It will deduct 1 spell slot from the appropriate level.
+  --/|  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
     
    --&SpellName|Tasha's Hideous Laughter
    --&MinimumSpellLevel|1
@@ -20,16 +21,6 @@
    
    --/|Are you using the matching Bardic Inspiration Script from FarsideGallery? (Default is No using 0. Change to 1 if using the script.)
    --=Scriptcheck|1
-  
-   --/|Enter the Token Markers you use for each condition
-   --&BardicMarker|BardicInspiration::7409920
-   --&BlessedMarker|angel-outfit
-   --&InspirationMarker|Inspiration::7409921
-   --&BaneMarker|Hexed3::7409911
-   --&HexMarker|Hexed::7409913
-   --&HexBladeMarker|Hexed2::7409912
-   --&DeathMarker|dead
-   --&ProneMarker|Prone::7409938
    
   --/| ____________________ End Global User Variables ___________________________________________________________________________________________
   
@@ -43,6 +34,8 @@
   --&oparen|(
   --&cparen|)
   
+  -->far_LoadTokenMarkers|
+
   --~shortattrib|string;left;3;[&attrib]
   --~Displayattrib|string;touppercase;[&shortattrib]
   
@@ -67,8 +60,13 @@
   --:NewCast|
    -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
    --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+   -->far_GetAndCheckSlotInformation|[*S:t-id];[&MinimumSpellLevel]
    
    --#targetToken|[&reentryval]
+   --?"[*T:npc_type]" -inc "undead"|InvalidEnd
+   --?"[*T:npc_type]" -inc "construct"|InvalidEnd
+   --?"X[*T:intelligence]" -ne "X" -and [*T:intelligence] -le 4|InvalidEnd
+   --?"X[*T:npc_int]" -ne "X" -and [*T:npc_int] -le 4|InvalidEnd
    --#emotetext|[*S:t-name] casts [&SpellName] on [*T:t-name]!
    --?"[*T:npc]" -ne "1"|PCRoll |NPCRoll
    
@@ -94,20 +92,30 @@
   
   --:NPC|
    --&saveDice|[&reentryval]
+   --&Blessroll|
+   --&Baneroll|
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BlessedMarker];BlessFlag;BlessCount
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
+   --?[&BlessFlag] -eq 1|&Blessroll;+ + 1d4 [Bless] |&Blessroll;
+   --?[&BaneMarkerFlag] -eq 1|&Baneroll;+ - 1d4 [Bane] |&Baneroll;
    --?[*T:npc] -eq 1 -and [*T:npc_[&shortattrib]_save_flag] -gt 0|&Save;npc_[&shortattrib]_save |&Save;[&attrib]_mod
-   --=Save|[&saveDice] + [*T:[&Save]] [&Displayattrib]
+   --=Save|[&saveDice] + [*T:[&Save]] [&Displayattrib] [&Blessroll] [&Baneroll]
    --?[$Save.Base] -eq 20|>Crit
    --?[$Save] -ge [$DC]|>Pass |>Fail   
    
   --:PC| 
    --&saveDice|[&reentryval]
+   --&Blessroll|
+   --&Baneroll|
    -->far_Check_GLOBAL_ATTRIB_SAVE_EXISTS|[*T:character_id]; [&attrib]; attribSaveRoll
-   --?[&damageSave] -eq 1 -or [&attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "1d20"|&saveDice;2d20kh1
-   --?[&damageSave] -eq 1 -or [&attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "2d20kl1"|&saveDice;1d20
-   
+   --?[&damageSave] -eq 1 -or [&attribSaveRoll] -eq 1|[
+    --?"[&saveDice]" -eqi "1d20"|&saveDice;2d20kh1
+    --?"[&saveDice]" -eqi "2d20kl1"|&saveDice;1d20
+   --]|   
   
    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&InspirationMarker];InspiredFlag;InspiredCount
    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BardicMarker];BardicFlag;BardicCount
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BlessedMarker];BlessFlag;BlessCount
    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
    
    --?[&InspiredFlag] -ne 0 |>far_Inspiration;[*T:t-id];[&InspirationMarker];[&saveDice];saveDice
@@ -122,15 +130,17 @@
    
    --=attribSaveRoll|[$InitSave] + [*T:[&attrib]_save_bonus] [&Displayattrib]
    --?[&BardicFlag] -eq 1|>far_Bardic;[*T:t-id];[&BardicMarker];[$Scriptcheck];[$InitSave.Base];[$attribSaveRoll];BardRoll
+   --?[&BlessFlag] -eq 1|&Blessroll;+ + 1d4 [Bless] |&Blessroll;
    --?[&BaneMarkerFlag] -eq 1|&Baneroll;+ - 1d4 [Bane] |&Baneroll;
    
-   --=Save|[$InitSave] + [*T:[&attrib]_save_bonus] [&obrac][&Displayattrib][&cbrac] [&GlobalSave] [&GlobalSkill] [&Baneroll] [&BardRoll]
+   --=Save|[$InitSave] + [*T:[&attrib]_save_bonus] [&obrac][&Displayattrib][&cbrac] [&GlobalSave] [&GlobalSkill] [&Blessroll] [&Baneroll] [&BardRoll]
 
    --#whisper|
    --?[$Save] -ge [$DC]|>Pass |>Fail
   
   --:Crit|
-   --+Save: |[*T:t-name] rolled a [$Save.Base] vs a DC [$DC] and cannot fail the saving throw. 
+   --?"X[$InitSave.Base]" -ne "X"|&CritDie;[$InitSave.Base]|&CritDie;[$Save.Base]
+   --+Save: |[*T:t-name] rolled a [&CritDie] vs a DC [$DC] and cannot fail the saving throw. 
    -->Output|
   
   --:Pass|
@@ -141,16 +151,36 @@
    --+Save: |[*T:t-name] rolled a [$Save] vs a DC [$DC] and failed the saving throw. 
    --+|[br]
    --+Result: |[*T:t-name] perceives everything as hilariously funny and falls prone in fits of laughter.
-   -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&ProneMarker];
+   -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];10
+   -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&IncapacitatedMarker];1
+   -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&ProneMarker];1
+   --!a:[*S:character_id]|!ConcentrationSpell:[&SpellName]
+   --!a:[*S:character_id]|!ConcentrationSpellTargetToken:[*T:t-id]
    -->Output|
    
   --:Output|
    --#whisper|
    
    -->far_PlayEffects|[*S:t-id];[*T:t-id];;burst-magic
-   --!a:[*S:character_id]|!ConcentrationSpell:[&SpellName]
-   --!a:[*S:character_id]|!ConcentrationSpellTargetToken:[*T:t-id]
 
+   --+|[br]
+   --+Duration: |[&duration]
+   --+Desc: |[&desc]
+   -->far_DeductSpellSlot|[*S:t-id];[&MinimumSpellLevel]
+   --X|
+  
+  --:InvalidEnd|
+   --#whisper|
+   --#emotetext|[*S:t-name] casts [&SpellName] on [*T:t-name]!
+   --?"[*T:npc]" -ne "1"|[
+    --=Save|1d20 + [*T:wisdom_save_bonus] [WIS]
+   --]|[
+    --?[*T:npc] -eq 1 -and [*T:npc_wis_save_flag] -gt 0|&SaveAttr;npc_wis_save |&SaveAttr;wisdom_mod
+    --=Save|1d20 + [*T:[&SaveAttr]] [&Displayattrib]
+   --]|
+   --?[$Save] -lt [$DC]|=Save|[$DC]
+   --+Save: |[*T:t-name] rolled a [$Save] vs a DC [$DC] and passed the saving throw.
+   -->far_PlayEffects|[*S:t-id];[*T:t-id];;burst-magic
    --+|[br]
    --+Duration: |[&duration]
    --+Desc: |[&desc]
@@ -159,11 +189,16 @@
   
   --:Remove|
    --#whisper|
+   --?"X[*S:ConcentrationSpell]" -eq "X" -or "[*S:ConcentrationSpell]" -ne "[&SpellName]"|[
+    --+|[*S:character_name] is not concentrating on [&SpellName].
+    --X|
+   --]|
    --#targetToken|[*S:ConcentrationSpellTargetToken]
    --+|[*S:character_name] is no longer concentrating.
    --+|[br]
    --+|[*T:t-name] is no longer laughing uncontrollably.
    -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker]
+   -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&IncapacitatedMarker]
    -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&ProneMarker]
    --!a:[*S:character_id]|!ConcentrationSpell:**
    --!a:[*S:character_id]|!ConcentrationSpellTargetToken:**
