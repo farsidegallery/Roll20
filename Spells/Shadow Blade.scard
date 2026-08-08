@@ -1,0 +1,129 @@
+!scriptcard {{
+ +++5Elib;snlib;Farsidelib+++
+  
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+  
+  --/|Script Name : Shadow Blade
+  --/|Version     : 1.0.1
+  --/|Requires SC : Chatsetattr, ScriptCards Library 5Elib/snlib Farsidelib
+  --/|Author      : Arak Stoneboulder
+  --/|Modified By : Farsidegallery
+  --/|
+  --/|  Script creates the Shadow Blade spell effect, deducts spell slot, and sets concentration. A new item will be created in caster's
+  --/|  attacks named Shadow Blade with all the correct properties. When Dismiss is selected, the item and concentration status will be removed. 
+  --/|  
+  
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+      
+  --&SpellName|Shadow Blade
+  --&MinimumSpellLevel|2
+  
+  --/|What token marker is used for Concentration?
+  --&ConcentrationMarker|Concentrating::7409928
+
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+  --&at|@
+
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  
+  --+Choose Function: |[rbutton]Cast Spell::New[/rbutton][rbutton]Dismiss::Remove[/rbutton]
+  --X|
+
+  --:New|
+   --#title|[&SpellName]
+   --#emoteText|[*S:t-name] casts [&SpellName]!
+   --#emoteText|[*S:t-name] weaves a Shadow Blade!
+   
+   -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+   --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+   --&desc|[*R:spelldescription]
+   --&higherdesc|[*R:spellathigherlevels]
+  
+   --+|[c][b]Cast At What Level?[/b][/c]
+    --&splvlMsg|
+    --%splvl|foreach;SpellCastLevel
+     --&splvlMsg|+ [rbutton][&splvl]::ChooseType;[&splvl][/rbutton]
+    --%|
+   --+|[c][&splvlMsg][/c]
+  --X|
+ 
+  --:ChooseType|
+   --=SpellLevel|[&reentryval]
+   --&SpellLevel|[&reentryval]
+   -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
+   
+   -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];10
+   --!a:[*S:character_id]|!ConcentrationSpell:[&SpellName]
+   -->DamageRoll|
+   -->Create|
+   
+  --:Create|
+   --~AttribScore|math;max;[*S:strength_mod];[*S:dexterity_mod]
+   --?[$AttribScore] -eq [*S:strength_mod]|&Attrib;strength_mod
+   --?[$AttribScore] -eq [*S:dexterity_mod]|&Attrib;dexterity_mod
+   
+   --!or:[*S:character_id]:attack|
+        atkname:[&SpellName]|
+		atkattr_base:[&at][&brace][&Attrib][&cbrace]|
+		atkrange:20/60|
+		atkmagic:|
+		dmgbase:[&DamageDice]|
+		dmgtype:psychic|
+        dmgattr:[&at][&brace][&Attrib][&cbrace]|
+		options-flag:0|
+   
+   -->Output|
+  
+  --:DamageRoll|
+   --?[$SpellLevel] -ge 7 |&DamageDice;5d8
+   --?[$SpellLevel] -eq 5 -or [$SpellLevel] -eq 6 |&DamageDice;4d8
+   --?[$SpellLevel] -eq 3 -or [$SpellLevel] -eq 4 |&DamageDice;3d8
+   --?[$SpellLevel] -eq 2 |&DamageDice;2d8
+   --<|
+  
+  --:Output| 
+   --#whisper| 
+   --+|A sword out of solidified gloom appears in [*S:t-name]'s hand!
+   --+|[br]
+   --+Duration: |[&duration]
+   --+Desc: |[&desc]
+   --+At Higher Levels: |[&higherdesc]
+   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+   --X|
+  
+  --:Remove|
+   --#whisper|
+   --#emoteText|[*S:t-name] ends Shadow Blade.
+   --+|The blade melts back into the shadows.
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker]
+   --!a:[*S:character_id]|!ConcentrationSpell:**
+  
+   --=attackrow|0
+   --=rowflag|0
+   
+   --%loop|while;[$rowflag] -eq 0
+    --Rbyindex|[*S:character_id];repeating_attack;[$attackrow]
+    --?"[*R:atkname]" -eq "Shadow Blade"|[
+     --=rowflag|1
+     --]|[
+     --=attackrow|[$attackrow]+1
+     --]|
+    --%| 
+   
+   --@delattr| _sel _silent _repeating_attack_$[$attackrow]
+   --X|
+}}
