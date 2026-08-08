@@ -1,0 +1,489 @@
+!script {{
+  --/|Script Name : Concentration
+  --/|Version     : 1.1.0
+  --/|Requires SC : ScriptCards 3.0.25+, 5Elib/snlib/Farsidelib
+
+  --/|This example watches for graphics objects (in this case tokens) to change. if the value that changed is the current hit points
+  --/|(as specified by the hitPointBar variable below), it will be checked to see if it has hit 0. If so, the token will be marked 
+  --/|with the "dead" status marker. If not, it will be checked for Concentration, and if needed, remove concentration spell affects and tokens.
+  
+  --#hidecard|1
+
+--/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________ 
+ 
+  --/|What is the name of the Global Attack Mod used for Bless?
+  --&BlessAttack|Bless
+  
+  --/|What is the name of the Global Save Mod used for Bless?
+  --&BlessSave|Bless
+  
+  --/|What is the name of the Global AC Mod used for Shield.
+  --&ShieldName|Shield Spell
+  
+  --/|What is the name of the Global AC Mod used for Shield of Faith.
+  --&FaithMod|Shield of Faith
+  
+  --/|Enter name used for Divine Favor Damage Mod.
+  --&FavorName|Divine Favor
+  
+  --/|Enter name of the Global Damage Mod used for Holy Weapon.
+  --&WeaponName|Holy Weapon
+  
+  --/|Enter name of the Global Damage Mod used for Hunter's Mark.
+  --&HunterMark|Hunter's Mark
+  
+  --/|Enter name of the Global Damage Mod used for Zephyr's.
+  --&zephyrstrike|Zephyr-Strike
+  
+  --/|What is the name of the Global Skill Mod used for Guidance?
+  --&GuideMod|Guidance
+
+  --/|Ability used for concentration saving throws (Constitution in 5e 2014).
+  --/|Active global save mods (Bless, Resistance, Warding Bond, Protection items, Aura of Protection, Bladesong, etc.)
+  --/|are picked up automatically via far_FIND_ACTIVE_GLOBAL_SAVE_MODS. Guidance uses far_FIND_ACTIVE_GLOBAL_SKILL_MODS.
+  --&attrib|constitution
+
+  --/|Helper brackets for save roll display.
+  --&obrac|[ 
+  --&cbrac|]
+
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+  
+  --/|TRIGGER_REPLACEMENTS
+  +++5Elib;snlib;Farsidelib+++
+  
+  --#reentrant|My Cool Script [*[&GraphicOld_id]:character_id]
+  --&hitPointBar|1
+  --&tempHPBar|4
+
+  -->far_LoadTokenMarkers|
+
+  --?[&GraphicOldbar[&tempHPBar]_value] -gt 0|[
+   --?[&GraphicOldbar[&tempHPBar]_value] -eq [&GraphicNewbar[&tempHPBar]_value]|SKIPTEMP
+   --?[&GraphicNewbar[&tempHPBar]_value] -gt [&GraphicOldbar[&tempHPBar]_value]|SKIPTEMP
+   --?[&GraphicNewbar[&tempHPBar]_value] -gt 0|Concentration
+   --]|
+  --:SKIPTEMP|
+  
+  --?[&GraphicOldbar[&hitPointBar]_value] -eq [&GraphicNewbar[&hitPointBar]_value]|SKIP
+  --?[&GraphicNewbar[&hitPointBar]_value] -gt [&GraphicOldbar[&hitPointBar]_value]|SKIP
+  --?"[&GraphicNewbar[&hitPointBar]_max]" -eq ""|SKIP
+  --?"[&GraphicOldstatusmarkers]" -inc "dead"|SKIP
+  --&newstatus|[&GraphicOldstatusmarkers],dead
+  --?[&GraphicNewbar[&hitPointBar]_value] -le 0|SETSTATUS
+  --?[&GraphicNewbar[&hitPointBar]_value] -gt 0|Concentration
+  --?"X[&GraphicOldstatusmarkers]" -eq "X"|SETSTATUS
+  
+  --:SETSTATUS|
+   --#hidecard|0
+   --+Died: |[*[&GraphicOld_id]:character_name] died from the damage!
+   --!t:[&GraphicOld_id]|statusmarkers:[&newstatus]
+   --?"[&GraphicOldstatusmarkers]" -inc "&ConcentrationMarker"|>DeadEntry
+   --X|
+ 
+  --:SKIP|
+   --X|
+  
+  --:Concentration|
+   --?"[&GraphicOldstatusmarkers]" -ninc "[&ConcentrationMarker]"|SKIP
+   -->far_PCConcenCheck|PCConcen;Scriptcheck
+   --=Scriptcheck|[&Scriptcheck]
+   --#hidecard|0
+   --#title|Concentration Check
+   --&SpellTokenName|[*[&GraphicOld_id]:ConcentrationSpell]
+   --=damage|[&GraphicOldbar[&hitPointBar]_value]-[&GraphicNewbar[&hitPointBar]_value]+[&GraphicOldbar[&tempHPBar]_value]-[&GraphicNewbar[&tempHPBar]_value]\2
+   --~DC|math;max;10;[$damage]
+   --~shortattrib|string;left;3;[&attrib]
+   --~Displayattrib|string;touppercase;[&shortattrib]
+   --?"[*[&GraphicOld_id]:npc]" -ne "1"|PC
+   --?[*[&GraphicOld_id]:npc] -eq 1 -and [*[&GraphicOld_id]:npc_con_save_flag] -gt 0|&Save;npc_con_save |&Save;constitution_mod
+   --=InitSave|1d20
+   --c1d20|&DisplayDice;1d20
+   --?[$InitSave.Base] -eq 20|>Crit
+   --=Save|[$InitSave] + [*[&GraphicOld_id]:[&Save]] [&obrac][&Displayattrib][&cbrac]
+   --?[$Save] -ge [$DC]|>Success |>Fail
+
+  --:PC|
+   --#whisper|[*[&GraphicOld_id]:character_name],gm
+   --#emoteText|[*[&GraphicOld_id]:t-name] is Concentrating on a spell!
+   -->LibSN_CHECK_STATUS_MARKER|[*[&GraphicOld_id]:t-id];[&InspirationMarker];InspiredFlag;InspiredCount
+   -->LibSN_CHECK_STATUS_MARKER|[*[&GraphicOld_id]:t-id];[&BardicMarker];BardicFlag;BardicCount
+   -->LibSN_CHECK_STATUS_MARKER|[*[&GraphicOld_id]:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
+   -->LibSN_CHECK_STATUS_MARKER|[*[&GraphicOld_id]:t-id];[&BlessedMarker];BlessFlag;BlessCount
+   -->far_FindFeat|[*[&GraphicOld_id]:character_id];War Caster;WarCasterFlag
+   -->far_FindFeat|[*[&GraphicOld_id]:character_id];Eldritch Invocation: Eldritch Mind;EldritchMindFlag
+   -->far_FindFeat|[*[&GraphicOld_id]:character_id];Bend Luck;BendLuckFlag
+   -->far_FindFeat|[*[&GraphicOld_id]:character_id];Dark One's Own Luck;DarkOneLuckFlag
+   --?[&PCConcen] -eq 1|[
+    --+Concentration: |[*[&GraphicOld_id]:character_name] took [$damage] hp of damage and needs to make a DC [$DC] Constitution saving throw to maintain concentration!
+    --+|[br]
+    --+|[b]Click here to roll the Concentration Saving Throw![/b]
+    --+|[rbutton]Roll Saving Throw::PCContinue[/rbutton]
+    --X|
+   --]|
+   -->PCContinue|
+
+  --:PCContinue|
+   --+|[c]Choose Saving Throw Type:[/c]
+   --+|[c][rbutton]Advantage::RollSave;2d20kh1[/rbutton][rbutton]Normal::RollSave;1d20[/rbutton][rbutton]Disadvantage::RollSave;2d20kl1[/rbutton][/c]
+   --X|
+
+  --:RollSave|
+   --&saveDice|[&reentryval]
+   --&GlobalSave|
+   --&GlobalSkill|
+   --&Baneroll|
+   --&BardRoll|
+   --&BendLuckRoll|
+   --&DarkOneRoll|
+   --?"X[$WarCasterFlag]" -eq "X1" -or "X[$EldritchMindFlag]" -eq "X1"|[
+    --?"[&saveDice]" -eqi "1d20"|&saveDice;2d20kh1
+    --?"[&saveDice]" -eqi "2d20kl1"|&saveDice;1d20
+   --]|
+   -->far_Check_GLOBAL_MOD_EXISTS|[*[&GraphicOld_id]:character_id]; save; [&attrib]; damageSave
+   -->far_Check_GLOBAL_ATTRIB_SAVE_EXISTS|[*[&GraphicOld_id]:character_id]; [&attrib]; attribSaveRoll
+   --?[&damageSave] -eq 1 -or [&attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "1d20"|&saveDice;2d20kh1
+   --?[&damageSave] -eq 1 -or [&attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "2d20kl1"|&saveDice;1d20
+   --?[&InspiredFlag] -ne 0 |>far_Inspiration|[*[&GraphicOld_id]:t-id];[&InspirationMarker];[&saveDice];saveDice
+   -->far_FIND_ACTIVE_GLOBAL_SAVE_MODS|[*[&GraphicOld_id]:character_id];GlobalSave
+   -->far_FIND_ACTIVE_GLOBAL_SKILL_MODS|[*[&GraphicOld_id]:character_id];GlobalSkill
+   --=InitSave|[&saveDice]
+   --c[&saveDice]|2d20kh1:&DisplayDice;Advantage|1d20:&DisplayDice;1d20|2d20kl1:&DisplayDice;Disadvantage
+   --?[$InitSave.Base] -eq 20|>Crit
+   --=PartialSave|[$InitSave] + [*[&GraphicOld_id]:constitution_save_bonus] [&obrac][&Displayattrib][&cbrac]
+   --?[&BaneMarkerFlag] -eq 1|&Baneroll;+ - 1d4 [Bane] |&Baneroll;
+   --+Rolling [&DisplayDice]: |[$InitSave]
+   --+|[br]
+   --?[&BardicFlag] -eq 1|>far_Bardic|[*[&GraphicOld_id]:t-id];[&BardicMarker];[$Scriptcheck];[$InitSave.Base];[$PartialSave];BardRoll
+   --?"X[$BendLuckFlag]" -eq "X1"|>ConcentrationBendLuck
+   --?"X[$DarkOneLuckFlag]" -eq "X1"|>ConcentrationDarkOneLuck
+   -->ConcentrationFinishSave|
+
+  --:ConcentrationBendLuck|
+   --+Bend Luck|Spend a Sorcery Point to add or subtract 1d4 from this concentration save?
+   --+|[rbutton]+1d4::ConcentrationBendLuckApply;add[/rbutton][rbutton]-1d4::ConcentrationBendLuckApply;sub[/rbutton][rbutton]No::ConcentrationDarkOneLuckCheck[/rbutton]
+   --X|
+
+  --:ConcentrationBendLuckApply|
+   --?"[&reentryval]" -eq "add"|&BendLuckRoll;+ + 1d4 [Bend Luck] |&BendLuckRoll;+ - 1d4 [Bend Luck]
+   -->ConcentrationDarkOneLuckCheck|
+
+  --:ConcentrationDarkOneLuckCheck|
+   --?"X[$DarkOneLuckFlag]" -eq "X1"|>ConcentrationDarkOneLuck
+   -->ConcentrationFinishSave|
+
+  --:ConcentrationDarkOneLuck|
+   --+Dark One's Own Luck|Add 1d10 to this concentration save?
+   --+|[rbutton]Yes::ConcentrationDarkOneLuckApply[/rbutton][rbutton]No::ConcentrationFinishSave[/rbutton]
+   --X|
+
+  --:ConcentrationDarkOneLuckApply|
+   --&DarkOneRoll|+ + 1d10 [Dark One's Own Luck]
+   -->ConcentrationFinishSave|
+
+  --:ConcentrationFinishSave|
+   --=Save|[$InitSave] + [*[&GraphicOld_id]:constitution_save_bonus] [&obrac][&Displayattrib][&cbrac] [&GlobalSave] [&GlobalSkill] [&Baneroll] [&BardRoll] [&BendLuckRoll] [&DarkOneRoll]
+   --#whisper|
+   --?[$Save] -ge [$DC]|>Success |>Fail
+  
+  --:Crit|
+   --#whisper|
+   --+Save: |[*[&GraphicOld_id]:character_name] rolled a [$InitSave] (natural 20) vs a DC [$DC] and cannot fail the saving throw.
+   --+|[br]
+   --+Result: |[*[&GraphicOld_id]:character_name] is still concentrating.
+   --X|
+  
+  --:Success|
+   --+Save: |[*[&GraphicOld_id]:character_name] rolled a [$Save] vs a DC [$DC] and passed the saving throw. 
+   --+|[br]
+   --+Result: |[*[&GraphicOld_id]:character_name] is still concentrating.
+   --X|
+   
+  --:Fail|
+   --+Save: |[*[&GraphicOld_id]:character_name] rolled a [$Save] vs a DC [$DC] and failed the saving throw. 
+   --:DeadEntry|
+   --+|[br]
+   --+Result: |[*[&GraphicOld_id]:character_name] lost concentration.
+   
+   --C[&SpellTokenName]|Bane:>Bane|Banishment:>Banishment|Bless:>Bless|Divine Favor:>Favor|Faerie Fire:>Faerie|Greater Invisibility:>Invisibility|Guidance:>Guidance|Hex:>Hex|Hold Person:>Hold|Tasha's Hideous Laughter:>HideousLaughter
+   --C[&SpellTokenName]|Holy Weapon:>Weapon|Hunter's Mark:>Hunter|Shield of Faith:>Faith|Spirit Guardians:>Guardians|Shadow Blade:>ShadowBlade|Vampiric Touch:>Vampiric|Witch Bolt:>Witch|Zephyr Strike:>Zephyr
+   
+   -->LibSN_REMOVE_STATUS_MARKER|[*[&GraphicOld_id]:t-id];[&ConcentrationMarker]
+   --~count|array;pagetokens;tokens;[*[&GraphicOld_id]:t-id];tprop:name=[*[&GraphicOld_id]:ConcentrationSpell]
+   --~|object;token;delete;[@tokens(0)]
+   --!a:[*[&GraphicOld_id]:character_id]|!ConcentrationSpell:**
+   --X|
+
+  
+  --:Bane|
+   --~|array;pagetokens;alltokens;[*[&GraphicOld_id]:t-id]
+   --~|array;define;Bane
+   --%loop|foreach;alltokens
+   -->LibSN_CHECK_STATUS_MARKER|[*[&loop]:t-id];[&BaneMarker];BaneFlag;BaneCount
+   --?[&BaneFlag] -eq 1|[
+    --&Bane([@Bane(length)])|[*[&loop]:t-id]
+    --]|
+    --%|
+   
+   --%loop|foreach;Bane
+    -->LibSN_REMOVE_STATUS_MARKER|[*[&loop]:t-id];[&BaneMarker]
+	--%|   
+   --<|
+  
+  --:Banishment|
+   --~|array;pagetokens;alltokens;[*[&GraphicOld_id]:t-id]
+   --~|array;define;Banished
+   --%loop|foreach;alltokens
+   -->LibSN_CHECK_STATUS_MARKER|[*[&loop]:t-id];[&BanishMarker];BanishFlag;BanishCount
+   --?[&BanishFlag] -eq 1|[
+    --&Banished([@Banished(length)])|[*[&loop]:t-id]
+    --]|
+    --%|
+   
+   --+|[br]
+   --%loop|foreach;Banished
+    -->LibSN_REMOVE_STATUS_MARKER|[*[&loop]:t-id];[&BanishMarker]
+	--!t:[*[&loop]:t-id]|layer:objects
+	--+|[*[&loop]:character_name] returns to the Material Plane!
+	--%|
+   --<|
+  
+  --:Bless|
+   --~|array;pagetokens;alltokens;[*[&GraphicOld_id]:t-id]
+   --~|array;define;Blessed
+   --%loop|foreach;alltokens
+    -->LibSN_CHECK_STATUS_MARKER|[*[&loop]:t-id];[&BlessMarker];BlessFlag;BlessCount
+    --?[&BlessFlag] -eq 1 -and "[*[&loop]:Cleric_Bless]" -inc "[*[&GraphicOld_id]:character_id]"|[
+    --&Blessed([@Blessed(length)])|[*[&loop]:t-id]
+    --]|
+    --%|
+ 
+   --+|[br]
+   --%loop|foreach;Blessed
+    -->LibSN_REMOVE_STATUS_MARKER|[*[&loop]:t-id];[&BlessMarker]
+    -->Lib5E_SET_GLOBAL_MOD_STATUS|[*[&loop]:character_id];save;[&BlessSave];0
+    -->Lib5E_SET_GLOBAL_MOD_STATUS|[*[&loop]:character_id];attack;[&BlessAttack];0
+	--!a:[*[&loop]:character_id]|Cleric_Bless:**
+    --+|[*[&loop]:character_name] is no longer Blessed.
+    --%|
+   
+   --&TokenName|[*[&GraphicOld_id]:character_name] Bless
+   --~count|array;pagetokens;tokens;[*[&GraphicOld_id]:t-id];tprop:name=[&TokenName]
+   --%loop|foreach;tokens
+	--~|object;token;delete;[*[&loop]:t-id]
+	--%|
+   --<|
+  
+  --:HideousLaughter|
+   --&targetToken|[*[&GraphicOld_id]:ConcentrationSpellTargetToken]
+   -->LibSN_REMOVE_STATUS_MARKER|[*[&GraphicOld_id]:t-id];[&ConcentrationMarker]
+   -->LibSN_REMOVE_STATUS_MARKER|[*[&targetToken]:t-id];[&ProneMarker]
+   -->LibSN_REMOVE_STATUS_MARKER|[*[&targetToken]:t-id];[&IncapacitatedMarker]
+   --!a:[*[&GraphicOld_id]:character_id]|!ConcentrationSpell:**
+   --!a:[*[&GraphicOld_id]:character_id]|!ConcentrationSpellTargetToken:**
+   --#whisper|
+   --+|[br]
+   --+|[*[&targetToken]:t-name] is no longer affected by Tasha's Hideous Laughter!
+   --<|
+  
+  --:Faerie|
+   --~|array;pagetokens;alltokens;[*[&GraphicOld_id]:t-id]
+   --~|array;define;FFire
+   --%loop|foreach;alltokens
+    -->LibSN_CHECK_STATUS_MARKER|[*[&loop]:t-id];[&FFMarker];FFFlag;FFCount
+    --?[&FFFlag] -eq 1 -and "[*[&loop]:MageID]" -inc "[*[&GraphicOld_id]:character_id]"|[
+    --&FFire([@FFire(length)])|[*[&loop]:t-id]
+    --]|
+    --%|
+ 
+   --+|[br]
+   --%loop|foreach;FFire
+    -->LibSN_REMOVE_STATUS_MARKER|[*[&loop]:t-id];[&FFMarker]
+	--!a:[*[&loop]:character_id]|MageID:**
+    --+|[*[&loop]:character_name] is no longer lit by Faerie Fire.
+    --%|
+   
+   --&targetToken|[*[&GraphicOld_id]:ConcentrationSpellTargetToken]
+   --~count|array;pagetokens;tokens;[*[&GraphicOld_id]:t-id];tprop:name=[&targetToken]
+   --%loop|foreach;tokens
+	--~|object;token;delete;[*[&loop]:t-id]
+	--%|
+   
+   -->LibSN_REMOVE_STATUS_MARKER|[*[&GraphicOld_id]:t-id];[&ConcentrationMarker]
+   --!a:[*[&GraphicOld_id]:character_id]|ConcentrationSpell:**
+   --!a:[*[&GraphicOld_id]:character_id]|ConcentrationSpellTargetToken:**  
+   --<|
+  
+  --:Faith|
+   --&targetToken|[*[&GraphicOld_id]:ConcentrationSpellTargetToken]
+   -->LibSN_REMOVE_STATUS_MARKER|[*[&GraphicOld_id]:t-id];[&ConcentrationMarker]
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*[&targetToken]:character_id];ac;[&FaithMod];0
+   --~count|array;pagetokens;tokens;[*[&GraphicOld_id]:t-id];tprop:name=[&SpellTokenName]
+   --~|object;token;delete;[@tokens(0)]
+   --!a:[&GraphicOld_id]|!ConcentrationSpell:**
+   --!a:[&GraphicOld_id]|!ConcentrationSpellTargetToken:**
+   --#whisper|
+   --#emotetext|[*[&GraphicOld_id]:character_name] is no longer concentrating on Shield of Faith!
+   --+|[br]
+   --+|The inivisible barrier vanishes! [*[&targetToken]:character_name]'s AC returns to normal.
+   --<|
+   
+  --:Favor|
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*[&GraphicOld_id]:character_id];damage;[&FavorName];0
+   --+|[br]
+   --+|[*[&GraphicOld_id]:character_name] no longer has Divine Favor!
+   --<
+  
+  --:Guardians|
+   --&targetToken|[*[&GraphicOld_id]:ConcentrationSpellTargetToken]
+   --~count|array;pagetokens;tokens;[*[&GraphicOld_id]:t-id];tprop:name=[&targetToken]
+   --~|object;token;delete;[@tokens(0)]
+   --<|
+  
+  --:Guidance|
+   --&targetToken|[*[&GraphicOld_id]:ConcentrationSpellTargetToken]
+   -->LibSN_REMOVE_STATUS_MARKER|[*[&GraphicOld_id]:t-id];[&ConcentrationMarker]
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*[&targetToken]:character_id];skill; [&GuideMod];0
+   --!a:[*[&GraphicOld_id]:character_id]|!ConcentrationSpellTargetToken:**
+   --#whisper|
+   --+|[br]
+   --+|[*[&targetToken]:character_name] no longer has Guidance for a skill check.
+   --<|
+  
+  --:Hex|
+   --&OffMark|[*[&GraphicOld_id]:HexTarget]
+   --&TokenName|[*[&GraphicOld_id]:ConcentrationSpellTargetToken]
+   --+|[br]
+   --+[*[&OffMark]:t-name]: |You no longer have disadvantage on ability saving throws.
+   -->LibSN_REMOVE_STATUS_MARKER|[&OffMark];[&Hex]
+   --!a:[*[&GraphicOld_id]:character_id]|!ConcentrationSpellTargetToken:**
+   --!a:[*S:character_id]|!HexTarget:**
+   --!a:[*S:character_id]|!HexSpellLevel:**
+   --~count|array;pagetokens;tokens;[*[&GraphicOld_id]:t-id];tprop:name=[&TokenName]
+   --~|object;token;delete;[@tokens(0)]
+   --<|
+  
+  --:Hold|
+   --~|array;pagetokens;alltokens;[*[&GraphicOld_id]:t-id]
+   --~|array;define;Held
+   --%loop|foreach;alltokens
+    -->LibSN_CHECK_STATUS_MARKER|[*[&loop]:t-id];[&HoldMarker];HoldFlag;HoldCount
+    --?[&HoldFlag] -eq 1 -and "[*[&loop]:MageID]" -inc "[*[&GraphicOld_id]:character_id]"|[
+    --&Held([@Held(length)])|[*[&loop]:t-id]
+    --]|
+    --%|
+ 
+   --+|[br]
+   --%loop|foreach;Held
+    -->LibSN_REMOVE_STATUS_MARKER|[*[&loop]:t-id];[&HoldMarker]
+	--!a:[*[&loop]:character_id]|MageID:**
+    --+|[*[&loop]:character_name] is no longer Held.
+    --%|
+   
+   --+|[br]
+   --&targetToken|[*[&GraphicOld_id]:ConcentrationSpellTargetToken]
+   --~count|array;pagetokens;tokens;[*[&GraphicOld_id]:t-id];tprop:name=[&targetToken]
+   --%loop|foreach;tokens
+	--~|object;token;delete;[*[&loop]:t-id]
+	--%| 
+   --<|
+  
+  --:Hunter|
+   --&markToken|[*[&GraphicOld_id]:marked]
+   --&targetToken|[*[&GraphicOld_id]:ConcentrationSpellTargetToken]
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*[&GraphicOld_id]:t-id]; damage; "[&HunterMark]"; 0
+   -->LibSN_REMOVE_STATUS_MARKER|[*[&markToken]:t-id];[&HuntMarked]
+   --!a:[*[&GraphicOld_id]:character_id]|HunterMark:0
+   --!a:[*[&GraphicOld_id]:character_id]|marked:**
+   --+|[br]
+   --+|[*[&GraphicOld_id]:character_name]'s Hunter's Mark fades!
+   --~count|array;pagetokens;tokens;[*[&GraphicOld_id]:t-id];tprop:name=[&targetToken]
+   --~|object;token;delete;[@tokens(0)]
+   --<|
+  
+  --:Invisibility|
+   --~|array;pagetokens;alltokens;[*[&GraphicOld_id]:t-id]
+   --~|array;define;Invis
+   --%loop|foreach;alltokens
+   -->LibSN_CHECK_STATUS_MARKER|[*[&loop]:t-id];[&InvisibilityMarker];InvisFlag;InvisCount
+   --?[&InvisFlag] -eq 1|[
+    --?"[*[&loop]:MageID]" -inc "[*[&GraphicOld_id]:character_id]"|[
+     --&Invis([@Invis(length)])|[*[&loop]:t-id]
+    --]|
+    --?"[*[&loop]:MageID]" -inc "[*[&GraphicOld_id]:t-id]"|[
+     --&Invis([@Invis(length)])|[*[&loop]:t-id]
+    --]|
+   --]|
+    --%|
+   
+   --+|[br]
+   --%loop|foreach;Invis
+    -->LibSN_REMOVE_STATUS_MARKER|[*[&loop]:t-id];[&InvisibilityMarker]
+	--!a:[*[&loop]:character_id]|!MageID:**
+	--@bump| _ids [*[&loop]:t-id]
+	--+|[*[&loop]:character_name] is no longer Invisible.
+	--%|   
+   --<|
+  
+  --:ShadowBlade|
+   -->LibSN_REMOVE_STATUS_MARKER|[*[&GraphicOld_id]:t-id];[&ConcentrationMarker]
+   --=attackrow|0
+   --=rowflag|0
+   --%loop|while;[$rowflag] -eq 0
+    --Rbyindex|[*[&GraphicOld_id]:character_id];repeating_attack;[$attackrow]
+    --?"[*R:atkname]" -eq "[&SpellTokenName]"|[
+     --=rowflag|1
+     --]|[
+     --=attackrow|[$attackrow]+1
+     --]|
+    --%|
+   --?"X[$rowflag]" -eq "X1"|[
+    --#sourceToken|[*[&GraphicOld_id]:t-id]
+    --@delattr| _sel _silent _repeating_attack_$[$attackrow]
+   --]|
+   --!a:[*[&GraphicOld_id]:character_id]|!ConcentrationSpell:**
+   --#whisper|
+   --+|[br]
+   --+|[*[&GraphicOld_id]:character_name]'s Shadow Blade melts back into the shadows.
+   --<|
+  
+  --:Vampiric|
+   --&targetToken|[*[&GraphicOld_id]:VampiricTargetToken]
+   --!a:[*[&GraphicOld_id]:character_id]|Vampiric_Level:**
+   --!a:[*[&GraphicOld_id]:character_id]|VampiricTargetToken:** 
+   --+|[br]
+   --+|[*[&targetToken]:character_name] is no longer targeted by Vampiric Touch!
+   --<|
+  
+  --:Weapon|
+   --&targetToken|[*[&GraphicOld_id]:ConcentrationSpellTargetToken]
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*[&targetToken]:character_id];damage;[&WeaponName];0
+   --!t:[*[&targetToken]:t-id]|emits_bright_light:[*[&targetToken]:EmitsBright]
+   --!t:[*[&targetToken]:t-id]|bright_light_distance:[*[&targetToken]:BrightLight]
+   --!t:[*[&targetToken]:t-id]|low_light_distance:[*[&targetToken]:LowLight]
+   --!t:[*[&targetToken]:t-id]|emits_low_light:[*[&targetToken]:EmitsLow]
+   --!a:[*[&targetToken]:character_id]|!EmitsBright:** |!BrightLight:** |!EmitsLow:**|!LowLight:**
+   --!a:[&GraphicOld_id]|!ConcentrationSpellTargetToken:**
+   --+|[br]
+   --+|[*[&targetToken]:character_name] no longer has a holy weapon!
+   --<|
+  
+  --:Witch|
+   --&targetToken|[*[&GraphicOld_id]:WitchTargetToken]
+   -->LibSN_REMOVE_STATUS_MARKER|[*[&GraphicOld_id]:t-id];[&ConcentrationMarker]
+   -->LibSN_REMOVE_STATUS_MARKER|[*[&targetToken]:t-id];[&HexbladeMarker]
+   --!a:[*[&GraphicOld_id]:character_id]|WitchTarget: **
+   --!a:[*[&GraphicOld_id]:character_id]|WitchTargetToken: ** 
+   --+|[br]
+   --+|[*[&targetToken]:character_name] is no longer targeted by Witch Bolt!
+   --<|
+  
+  --:Zephyr|
+   --+|[br]
+   --+Speed: |Your speed returns to normal.
+   --!a:[*[&GraphicOld_id]:character_id]| Zephyr:0
+   --!a:[*[&GraphicOld_id]:character_id]|!ConcentrationSpell:**
+   -->LibSN_REMOVE_STATUS_MARKER|[*[&GraphicOld_id]:t-id];[&zephyr]
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*[&GraphicOld_id]:t-id]; damage; [&zephyrstrike]; 0
+   --<|
+}}
