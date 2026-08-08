@@ -6,15 +6,15 @@
   --#whisper|self,gm
 
   --/|Script Name : Invisibility
-  --/|Version     : 1.1.0
+  --/|Version     : 1.1.1
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib, CARRY_TOKENS API mod
   --/|Author      : Farsidegallery
   --/|
-  --/|  Proof of concept for proxy-based invisibility (no Bump). Master token moves to the
-  --/|  GM layer with the Invisibility marker; a transparent proxy on the objects layer shares
-  --/|  the same character represents value for player movement and See Invisibility support.
-  --/|  CARRY_TOKENS links proxy to master so the hidden token follows player movement.
-  --/|  Proxy uses a Bump-style purple square aura so controlling players can see their token.
+  --/|  Prompts for spell level, collects targets, and applies proxy-based invisibility. Master
+  --/|  token moves to the GM layer with the Invisibility marker; a transparent proxy on the
+  --/|  objects layer shares the same character represents for player movement and See
+  --/|  Invisibility support. CARRY_TOKENS links proxy to master; purple square aura marks
+  --/|  the proxy for controlling players only.
   --/|
 
   --/| ____________________ Begin Global User Variables ___________________________________
@@ -43,7 +43,7 @@
   --&cparen|)
 
   -->far_LoadTokenMarkers|
-  --#title|Test [&SpellName]
+  --#title|[&SpellName]
   --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
   --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
 
