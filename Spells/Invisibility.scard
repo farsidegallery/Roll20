@@ -1,0 +1,163 @@
+!script {{
+  +++snlib;Farsidelib+++
+
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script [*S:character_id]
+  --#whisper|self,gm
+
+  --/|Script Name : Invisibility
+  --/|Version     : 1.1.0
+  --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib, CARRY_TOKENS API mod
+  --/|Author      : Farsidegallery
+  --/|
+  --/|  Proof of concept for proxy-based invisibility (no Bump). Master token moves to the
+  --/|  GM layer with the Invisibility marker; a transparent proxy on the objects layer shares
+  --/|  the same character represents value for player movement and See Invisibility support.
+  --/|  CARRY_TOKENS links proxy to master so the hidden token follows player movement.
+  --/|  Proxy uses a Bump-style purple square aura so controlling players can see their token.
+  --/|
+
+  --/| ____________________ Begin Global User Variables ___________________________________
+
+  --&SpellName|Invisibility
+  --&MinimumSpellLevel|2
+
+  --/|Transparent proxy token image (objects layer).
+  --&TransparentLink|https://files.d20.io/images/101563658/FUnIVWR0LfmKfiA6FWExBA/original.png?1578865453
+
+  --/|Suffix appended to proxy token names for cleanup lookup.
+  --&ProxyNameSuffix| Invis Proxy
+
+  --/|Bump default Objects Layer (Invisible) aura color for controlling-player visibility.
+  --&ProxyAuraColor|#800080
+
+  --/| ____________________ End Global User Variables _____________________________________
+
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+
+  -->far_LoadTokenMarkers|
+  --#title|Test [&SpellName]
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+
+  --:ChooseFunction|
+   --+Choose Function: |[rbutton]Cast Spell::Cast[/rbutton][rbutton]Dismiss::Remove[/rbutton]
+   --X|
+
+  --:Cast|
+   -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+   --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+
+   --+|[c][b]Cast At What Level?[/b][/c]
+    --&splvlMsg|
+    --%splvl|foreach;SpellCastLevel
+     --&splvlMsg|+ [rbutton][&splvl]::ChooseType;[&splvl][/rbutton]
+    --%|
+   --+|[c][&splvlMsg][/c]
+   --X|
+
+  --:ChooseType|
+   --=SpellLevel|[&reentryval]
+   --&SpellLevel|[&reentryval]
+   -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
+   --=Targets|[$SpellLevel]-1
+   -->far_BuildTargetList|[$Targets.Raw]
+   -->far_BuildTargetArray|Invis;[$Targets.Raw];[&TargetString]
+   --!a:[*S:character_id]|!ConcentrationSpell:[&SpellName]
+   -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];9
+   --#whisper|
+   --#leftsub|[*R:spellcastingtime]
+   --#rightsub|[*R:spellrange]
+   --#emotetext|[*S:character_name] casts [&SpellName] at [&SpellLevel]!
+   --+|The following characters are now invisible.
+   -->ActionSpell|
+
+  --:ActionSpell|
+   --%loop|foreach;Invis
+    -->HideTarget|[*[&loop]:t-id]
+    --+|[c][*[&loop]:character_name][/c]
+   --%|
+   --+|[br]
+   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+   --+Duration: |[&duration]
+   --+Desc: |[*R:spelldescription]
+   --+At Higher Levels: |[*R:spellathigherlevels]
+   --+|[br]
+   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+   --X|
+
+  --:Remove|
+   --#whisper|
+   --#sourceToken|@{selected|token_id}
+   --?"X[*S:ConcentrationSpell]" -eq "X" -or "[*S:ConcentrationSpell]" -ne "[&SpellName]"|[
+    --+|[*S:character_name] is not concentrating on [&SpellName].
+    --X|
+   --]|
+   -->FindInvisTargets|
+   --+|[*S:character_name] is no longer concentrating on [&SpellName].
+   --+|[br]
+   --%loop|foreach;Invis
+    -->RevealTarget|[*[&loop]:t-id]
+    --+|[*[&loop]:character_name] is no longer Invisible.
+   --%|
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker]
+   --!a:[*S:character_id]|!ConcentrationSpell:**
+   --X|
+
+  --:FindInvisTargets|
+   --~|array;pagetokens;alltokens;[*S:t-id]
+   --~|array;define;Invis
+   --%loop|foreach;alltokens
+    -->LibSN_CHECK_STATUS_MARKER|[*[&loop]:t-id];[&InvisibilityMarker];InvisFlag;InvisCount
+    --?[&InvisFlag] -eq 1|[
+     --?"[*[&loop]:MageID]" -inc "[*S:character_id]"|[
+      --&Invis([@Invis(length)])|[*[&loop]:t-id]
+     --]|
+     --?"[*[&loop]:MageID]" -inc "[*S:t-id]"|[
+      --&Invis([@Invis(length)])|[*[&loop]:t-id]
+     --]|
+    --]|
+   --%|
+   --<|
+
+  --:HideTarget|masterTokenId
+   --&MasterTID|[%1%]
+   --#targettoken|[&MasterTID]
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&InvisibilityMarker];AlreadyInvisFlag;AlreadyInvisCount
+   --?[&AlreadyInvisFlag] -eq 1|[
+    --<|
+   --]|
+   -->far_PlayEffects|;[*T:t-id];;burn-magic;;
+   -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&InvisibilityMarker];9
+   --!a:[*T:character_id]|!MageID:[*S:character_id]
+   --&ProxyTokenName|[*T:character_name][&ProxyNameSuffix]
+   --!ot:ProxyTID|name:"[&ProxyTokenName]"|_pageid:[*T:t-_pageid]|left:[*T:t-left]|top:[*T:t-top]|width:[*T:t-width]|height:[*T:t-height]|imgsrc:"[&TransparentLink]"|represents:[*T:character_id]|showname:false|showplayers_name:false|bar1_value:|bar1_max:|bar2_value:|bar2_max:|bar3_value:|bar3_max:|aura1_square:true|aura1_radius:0.000001|aura1_color:[&ProxyAuraColor]|showplayers_aura1:false|showplayers_aura2:false
+   --z:graphic:[&ProxyTID]|toback
+   --!t:[*T:t-id]|layer:gmlayer
+   --@CARRY_TOKENS_CARRY_BELOW|[&ProxyTID] [*T:t-id]
+   --!a:[*T:character_id]|!InvisProxyID:[&ProxyTID]
+   --<|
+
+  --:RevealTarget|masterTokenId
+   --&MasterTID|[%1%]
+   --#targettoken|[&MasterTID]
+   --&ProxyTID|[*T:InvisProxyID]
+   --?"X[&ProxyTID]" -ne "X" -and "[&ProxyTID]" -ne ""|[
+    --#targettoken|[&ProxyTID]
+    --!t:[&MasterTID]|left:[*T:t-left]|top:[*T:t-top]
+    --~|object;token;delete;[&ProxyTID]
+   --]|
+   --!t:[&MasterTID]|layer:objects
+   -->LibSN_REMOVE_STATUS_MARKER|[&MasterTID];[&InvisibilityMarker]
+   --!a:[*T:character_id]|!MageID:**
+   --!a:[*T:character_id]|!InvisProxyID:**
+   --<|
+
+}}
