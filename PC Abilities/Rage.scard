@@ -24,7 +24,7 @@
   --/|______________________________________________________________________________________________________________________________________
   
   --/|Script Name : Rage
-  --/|Version     : 2.0.1
+  --/|Version     : 2.0.2
   --/|Requires SC : ScriptCards Library 5Elib/Farsidelib, Meta-Toolbox Fetch
   --/|Author      : Farsidegallery
 
@@ -427,8 +427,12 @@
    --#sourceToken|[&SavedSourceToken]
    --#targettoken|notoken
    --#whisper|
-   --?"X[$SurgeRoll.Raw]" -eq "X"|=SurgeRoll|[*S:SurgeRoll]
-   --?"X[$SurgeRoll.Raw]" -eq "X"|=SurgeRoll|0
+   --?"X[$SurgeRoll.Raw]" -eq "X"|[
+   --=SurgeRoll|[*S:SurgeRoll]
+   --]|
+   --?"X[$SurgeRoll.Raw]" -eq "X"|[
+   --=SurgeRoll|0
+   --]|
    --+Strength: |[*S:t-name] now has advantage on Strength checks and Strength saving throws.
    --+|[br]
    --+Damage: |[*S:t-name] now does extra damage.
