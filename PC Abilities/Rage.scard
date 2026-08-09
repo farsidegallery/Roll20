@@ -1,10 +1,8 @@
-!scriptcard {{
+!scriptcards {{
   +++5Elib;snlib;Farsidelib+++	
   
-   
---/|                >>>>> Formatting <<<<<
+  --/|                >>>>> Formatting <<<<<
   --#emoteBackground|#transparent
-  --#titleCardBackground|#ed0202
   --#titlefontsize|1.75em
   --#titlefontlineheight|1.75em
   --#titleFontColor|white
@@ -18,14 +16,16 @@
   --#whisper|self,gm
   --#title|RAGE
   --#titleCardBackground|#FF0000
-  --#sourceToken|@{selected|token_id}
-  --#reentrant|RAGE @{selected|character_id}
+  
+  --#sourceToken|@(selected.token_id)
+  --&SavedSourceToken|@(selected.token_id)
+  --#reentrant|RAGE [*S:character_id]
   
   --/|______________________________________________________________________________________________________________________________________
   
   --/|Script Name : Rage
   --/|Version     : 2.0.1
-  --/|Requires SC : ScriptCards Library 5Elib/Farsidelib
+  --/|Requires SC : ScriptCards Library 5Elib/Farsidelib, Meta-Toolbox Fetch
   --/|Author      : Farsidegallery
 
   --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
@@ -42,24 +42,31 @@
   --&cbrace|}
   --&obrac|[ 
   --&cbrac|]
-  --&At|@
    
    -->far_LoadTokenMarkers|
 
+   --?"X[*S:t-id]" -eq "X"|>far_FatalError;No Token Selected;ERROR;Select your character token on the map before using Rage.
+
+   --?"X[&reentryval]" -ne "X"|TurnOnSkip
    --?[*S:Raging] -eq 1|TurnOff
+   --:TurnOnSkip|
    
    --#whisper|
    -->Lib5E_FIND_RESOURCE|[*S:character_id];Rage;Ammoname;Ammo
    --?[$Ammo] -eq 0|NoAmmoLeft
    --=Ammo|[$Ammo] - 1
    
-   --#emoteText|@{selected|token_name} goes into a fit of RAGE!!!
+   --#emoteText|[*S:t-name] goes into a fit of RAGE!!!
    --/| +|[img]https://c.tenor.com/ob62tslCeUIAAAAC/gnome-gravity-falls.gif[/img]
-   --/| @roll20AM|_audio,play,nomenu|rage
+   --/| roll20AM audio play rage (uncomment and use roll20AM mod if desired)
    --vtoken|[*S:t-id] burn-death
-   -->far_Check_GLOBAL_MOD_EXISTS|[*S:t-id]; damage; [&ModName]; Exists
-   --?[&Exists] -eq 1|>SetRageMod |>CreateRageMod
+   -->far_Check_GLOBAL_MOD_EXISTS|[*S:character_id]; damage; [&ModName]; Exists
+   --?[&Exists] -eq 1|>SetRageMod
+   -->CreateRageMod|
    --!a:[*S:character_id]|!Raging:1
+   --?"X[*S:SurgeRoll]" -ne "X"|[
+   --!a:[*S:character_id]|!SurgeRoll:**
+   --]|
    -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&RageMarker];9
    -->Lib5E_FIND_CLASS_LEVEL|[*S:character_id];Barbarian;BarbLevel
    --=DC|8 + [*S:pb] + [*S:constitution_mod]
@@ -82,7 +89,7 @@
    --?"[*S:class_display]" -inc "Battlerager"|>Battlerager
    --?"[*S:class_display]" -inc "Beast"|>Beast
    --?"[*S:class_display]" -inc "Wild"|>Wild
-   -->AmmoSpent|
+   --^MainEnd|
    
  --/| ____________________ Procedures_______________________________________________________________________________________
  
@@ -183,7 +190,8 @@
    
    --:WildWhisperEntry|
    
-   --#targettoken|[&reentryval]
+   --#sourceToken|[&SavedSourceToken]
+   --#targettoken|notoken
    --#whisper|self,gm
    
    --?[&BarbLevel] -ge 3 -and [$SurgeFlag] -nei 1|>SurgeRoll
@@ -239,8 +247,10 @@
    --=SurgeFlag|1
    --?[&BarbLevel] -ge 14|RollTwice |=SurgeRoll;1d8
    --+|You rolled a [$SurgeRoll]
+   -->SurgeEntry|
    
   --:SurgeEntry|
+   --&WildSurgeRoll|[$SurgeRoll]
    --!a:[*S:character_id]|!SurgeRoll:[$SurgeRoll]
    --+|[br]
    --?[$SurgeRoll] -eq 1| >Roll_1
@@ -259,6 +269,7 @@
       --+|Shadowy tendrils lash around you. 
       --+|[j]Each creature of your choice that you can see within 30 feet of you must succeed on a **[#990000]Constitution saving throw[/#]** or take 1d12 necrotic damage.[/j]
       --+|You also gain [$TempHP] temporary hit points.
+      --+|[br]
 	  --!a:[*S:character_id]|!hp_temp:[$TempHP]
       
 	  --@forselected+|smartaoe [&brace][&brace] 
@@ -284,7 +295,7 @@
 	   _instant|1 
 	   _zeroHPmarker|dead 
 	   _desc|Each creature of your choice that you can see within 30 feet of you must succeed on a Constitution saving throw or take 1d12 necrotic damage.
-	   [&cbrace][&cbrace]
+	   [&cbrace][&cbrace] {^&select [*S:t-id]}
 	  
 	  --<|
 
@@ -294,6 +305,7 @@
       --+Ongoing Effect: |[j]Until your rage ends, you can use this effect again on each of your turns as a bonus action.[/j]
 	  --+|[br]
 	  --+Ability: |Use the [b]WM Teleport[/b] script in your attacks area for this ability.
+      --+|[br]
       --<|
   
   --:Roll_3|
@@ -304,6 +316,7 @@
 	  --+Ongoing Effect: |[j]Until your rage ends, you can use this effect again, summoning another spirit, on each of your turns as a bonus action.[/j]
 	  --+|[br]
 	  --+Ability: |Use the [b]WM Intangible Spirit[/b] script in your attacks area for this ability.
+      --+|[br]
       --<|
   
   --:Roll_4|
@@ -311,18 +324,21 @@
       --+|[j]Magic infuses one weapon of your choice that you are holding.[/j]
       --+|[j]Until your rage ends, the **weapon's damage type changes to force, and it gains the light and thrown properties**, with a normal range of 20 feet and a long range of 60 feet.[/j]
       --+|[j]If the weapon leaves your hand, the weapon reappears in your hand at the end of the current turn.[/j]
+      --+|[br]
       --<|
   
   --:Roll_5|
       --=Retribution|1d6
 	  --+[c][#030bfc]**~~Retributive Strike~~|**[/#][/c]
       --+Ongoing Effect: |[j]Whenever a creature hits you with an attack roll before your rage ends, that creature takes **[#990000]1d6 force damage[/#]**, as magic lashes out in retribution.[/j]
+      --+|[br]
       --<|
   
   --:Roll_6|
       --+[c][#030bfc]**~~Protective Aura~~|**[/#][/c]
       --+Ongoing Effect: |[j]Until your rage ends, you are surrounded by multi colored, protective lights. You gain a **[#990000]+1 bonus to AC[/#]**, and while within 10 feet of you, your allies gain the same bonus.[/j]
-	  -->far_Check_GLOBAL_MOD_EXISTS|[*S:t-id]; ac;"Protective Aura"; ACModExists
+      --+|[br]
+	  -->far_Check_GLOBAL_MOD_EXISTS|[*S:character_id]; ac;"Protective Aura"; ACModExists
 	  --?[&ACModExists] -eq 1|>SetAura |>CreateAura
 	  --<|
   
@@ -330,6 +346,7 @@
       --+[c][#030bfc]**~~Entangling Aura~~|**[/#][/c]
       --+|[j]Flowers and vines temporarily grow around you.[/j]
       --+Ongoing Effect: |[j]Until your rage ends, the ground within 15 feet of you is **[#990000]difficult terrain[/#]** for your enemies.[/j]
+      --+|[br]
       --<|
   
   --:Roll_8|
@@ -340,6 +357,7 @@
 	  --+Ongoing Effect: |[j]Until your rage ends, you can use this effect again on each of your turns as a bonus action.[/j]
 	  --+|[br]
 	  --+Ability: |Use the [b]WM Radiant Bolt[/b] script in your attacks area for this ability.
+	  --+|[br]
 	  --<|
   
   --:Roll1Effect|
@@ -406,7 +424,11 @@
   
   --:WildDisplayEntry|
       
+   --#sourceToken|[&SavedSourceToken]
+   --#targettoken|notoken
    --#whisper|
+   --?"X[$SurgeRoll.Raw]" -eq "X"|=SurgeRoll|[*S:SurgeRoll]
+   --?"X[$SurgeRoll.Raw]" -eq "X"|=SurgeRoll|0
    --+Strength: |[*S:t-name] now has advantage on Strength checks and Strength saving throws.
    --+|[br]
    --+Damage: |[*S:t-name] now does extra damage.
@@ -634,6 +656,10 @@
    --#emoteText|[*S:t-name] is all out of Rage.
    --X|
 
+  --:MainEnd|
+   -->AmmoSpent|
+   --<|
+   
   --:AmmoSpent|
    --!a:[*S:character_id]|[&Ammo]:[$Ammo]
    --+|[br]
@@ -677,17 +703,17 @@
     --+|[br]
 	--]|
    
-   --?[*S:SurgeRoll] -eq 1|[
+   --?"X[*S:SurgeRoll]" -ne "X" -and [*S:SurgeRoll] -eq 1|[
     --+Temp HP: |[*S:t-name]'s temporary HP is removed.
 	--!a:[*S:character_id]|!hp_temp:0
 	--]|
    
-   --?[*S:SurgeRoll] -eq 6|[
+   --?"X[*S:SurgeRoll]" -ne "X" -and [*S:SurgeRoll] -eq 6|[
     --+Protective Aura: |[*S:t-name]'s protective aura vanishes!
 	-->Lib5E_SET_GLOBAL_MOD_STATUS|[*S:character_id];ac;Protective Aura;0
 	--]|
    
-   --?"[*S:class_display]" -inc "Wild"|[
+   --?"[*S:class_display]" -inc "Wild" -and "X[*S:SurgeRoll]" -ne "X"|[
     --!a:[*S:character_id]|!SurgeRoll:**
 	--]|
    
