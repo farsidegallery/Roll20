@@ -21,18 +21,14 @@
   --#sourceToken|@{selected|token_id}
   --#reentrant|RAGE @{selected|character_id}
   
-  --/|------------------------------------------------------------------
+  --/|______________________________________________________________________________________________________________________________________
   
   --/|Script Name : Rage
-  --/|Version     : 2.0
+  --/|Version     : 2.0.1
   --/|Requires SC : ScriptCards Library 5Elib/Farsidelib
   --/|Author      : Farsidegallery
 
   --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
-    
-  --/|Enter Token Markers used for each of the following.
-  --&Rage|Raging::7409927
-  --&BlindednMarker|Blinded::7409948
 
   --/|What is the name of the Global Damage Mod used for Rage.
   --&ModName|Rage Damage
@@ -48,6 +44,8 @@
   --&cbrac|]
   --&At|@
    
+   -->far_LoadTokenMarkers|
+
    --?[*S:Raging] -eq 1|TurnOff
    
    --#whisper|
@@ -62,7 +60,7 @@
    -->far_Check_GLOBAL_MOD_EXISTS|[*S:t-id]; damage; [&ModName]; Exists
    --?[&Exists] -eq 1|>SetRageMod |>CreateRageMod
    --!a:[*S:character_id]|!Raging:1
-   -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&Rage]
+   -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&RageMarker];9
    -->Lib5E_FIND_CLASS_LEVEL|[*S:character_id];Barbarian;BarbLevel
    --=DC|8 + [*S:pb] + [*S:constitution_mod]
    --=PB|[*S:pb]
@@ -84,7 +82,7 @@
    --?"[*S:class_display]" -inc "Battlerager"|>Battlerager
    --?"[*S:class_display]" -inc "Beast"|>Beast
    --?"[*S:class_display]" -inc "Wild"|>Wild
-   
+   -->AmmoSpent|
    
  --/| ____________________ Procedures_______________________________________________________________________________________
  
@@ -122,7 +120,6 @@
    
    --?[&BarbLevel] -ge 3 -and [$BearFlag] -eq 1|[
     --+Level 3 - Bear: |While raging, you have resistance to all damage except psychic damage. The spirit of the bear makes you tough enough to stand up to any punishment.
-	--!a:[*S:character_id]|!npc_resistances:[*S:OrigResist]
     --&BearResist|,bludgeoning, piercing, slashing, fire, cold, acid, lightning, poison, necrotic, force, radiant, thunder
     -->Resistances|[&BearResist]
 	--+|[br]
@@ -142,7 +139,7 @@
    
    --?[&BarbLevel] -ge 3 -and [$ElkFlag] -eq 1|[
     --+Level 3 - Elk: |While you're raging and aren't wearing heavy armor, your walking speed increases by 15 feet. The spirit of the elk makes you extraordinarily swift.
-	--+Speed: |Your movement speed by 15 feet.
+	--+Speed: |Your movement speed increases by 15 feet.
     --!a:[*S:character_id]|!OrigSpeed:[*S:speed]
     --=NewSpeed|[*S:speed]+15
     --!a:[*S:character_id]|!speed:[$NewSpeed]
@@ -170,7 +167,8 @@
 	--]|
    
    --?[&BarbLevel] -ge 14 -and [$ElkFlag] -eq 1|[
-    --+Level 14 - Elk: |While raging, you can use a bonus action during your move to pass through the space of a Large or smaller creature. That creature must succeed on a DC [$DC] Strength saving throw (DC 8 + your Strength bonus + your proficiency bonus) or be knocked prone and take bludgeoning damage equal to 1d12 + your Strength modifier.
+    --=ElkDC|8 + [*S:strength_mod] + [*S:pb]
+    --+Level 14 - Elk: |While raging, you can use a bonus action during your move to pass through the space of a Large or smaller creature. That creature must succeed on a DC [$ElkDC] Strength saving throw (DC 8 + your Strength modifier + your proficiency bonus) or be knocked prone and take bludgeoning damage equal to 1d12 + your Strength modifier.
 	--+|[br]
 	--]|
    
@@ -335,10 +333,9 @@
       --<|
   
   --:Roll_8|
-	  --=BoltFlag|1
       --+[c][#030bfc]**~~Radiant Bolt~~|**[/#][/c]
       --+|[j]A bolt of light shoots from your chest.[/j]
-      --+|[j]Another creature of your choice that you can see within 30 feet of you must succeed on a **[#990000]Constitution saving throw[/#]** or take [$RadiantDam] radiant damage and be blinded until the start of your next turn.[/j]
+      --+|[j]Another creature of your choice that you can see within 30 feet of you must succeed on a **[#990000]Constitution saving throw[/#]** or take 1d6 radiant damage and be blinded until the start of your next turn.[/j]
       --+|[br]
 	  --+Ongoing Effect: |[j]Until your rage ends, you can use this effect again on each of your turns as a bonus action.[/j]
 	  --+|[br]
@@ -348,8 +345,8 @@
   --:Roll1Effect|
    --+[c][#030bfc]**~~Shadow Tendrils~~|**[/#][/c]
    --+|Shadowy tendrils lash around you. 
-   --+|[j]Each creature of your choice that you can see within 30 feet of you must succeed on a **[#990000]Constitution saving throw)[/#]** or take [$NecroDam] necrotic damage.[/j]
-   --+|You also gain [$TempHP] temporary hit points.
+   --+|[j]Each creature of your choice that you can see within 30 feet of you must succeed on a **[#990000]Constitution saving throw[/#]** or take 1d12 necrotic damage.[/j]
+   --+|You also gain [*S:hp_temp] temporary hit points.
    --+|[br]
    --<|
 
@@ -364,7 +361,7 @@
   --:Roll3Effect|
    --+[c][#030bfc]**~~Intangible Spirit~~|**[/#][/c]
    --+|[j]An intangible spirit, which looks like a **flumph** or a **pixie** (your choice), appears within 5 feet of one creature of your choice that you can see within 30 feet of you.[/j]
-   --+|[j]At the end of the current turn, the spirit explodes, and each creature within 5 feet of it must succeed on a **[#990000]Dexterity saving throw)[/#]** or take [$ForceDam] (1d6) force damage.[/j] 
+   --+|[j]At the end of the current turn, the spirit explodes, and each creature within 5 feet of it must succeed on a **[#990000]Dexterity saving throw[/#]** or take 1d6 force damage.[/j] 
    --+|[br]
    --+Ongoing Effect: |[j]Until your rage ends, you can use this effect again, summoning another spirit, on each of your turns as a bonus action.[/j]
    --+|[br]
@@ -380,7 +377,7 @@
 
   --:Roll5Effect|
    --+[c][#030bfc]**~~Retributive Strike~~|**[/#][/c]
-   --+Ongoing Effect: |[j]Whenever a creature hits you with an attack roll before your rage ends, that creature takes **[#990000][$Retribution] (1d6) force damage[/#]**, as magic lashes out in retribution.[/j]
+   --+Ongoing Effect: |[j]Whenever a creature hits you with an attack roll before your rage ends, that creature takes **[#990000]1d6 force damage[/#]**, as magic lashes out in retribution.[/j]
    --+|[br]
    --<|
 
@@ -527,7 +524,7 @@
    --=ExtraDamage|1d6 + [&HalfLevel]
    
    --?[&BarbLevel] -ge 3|[
-    --+Divine Fury: |You can channel divine fury into your weapon strikes. While you’re raging, the first creature you hit on each of your turns with a weapon attack takes [$ExtraDamage] extra damage (equal to 1d6 + half your barbarian level). The extra damage is necrotic or radiant, you choose the type of damage when you gain this feature..
+    --+Divine Fury: |You can channel divine fury into your weapon strikes. While you’re raging, the first creature you hit on each of your turns with a weapon attack takes [$ExtraDamage] extra damage (equal to 1d6 + half your barbarian level). The extra damage is necrotic or radiant, you choose the type of damage when you gain this feature.
 	--+|[br]
 	--+Warrior of the Gods: |Your soul is marked for endless battle. If a spell, such as raise dead, has the sole effect of restoring you to life (but not undeath), the caster doesn’t need material components to cast the spell on you.
 	--+|[br]
@@ -565,7 +562,6 @@
    --+|[br]
    
    --?[&BarbLevel] -ge 6|[
-    --!a:[*S:character_id]|hp_temp:[*S:constitution_mod]
 	--+Reckless Abandon: |When you use Reckless Attack while raging, you also gain [*S:constitution_mod] temporary hit points (equal to your Constitution modifier (minimum of 1)). They vanish if any of them are left when your rage ends.
 	--+|[br]
 	--]|
@@ -638,9 +634,6 @@
    --#emoteText|[*S:t-name] is all out of Rage.
    --X|
 
-  --:Continue|
-   --<|
-  
   --:AmmoSpent|
    --!a:[*S:character_id]|[&Ammo]:[$Ammo]
    --+|[br]
@@ -653,8 +646,8 @@
    -->Lib5E_FIND_RESOURCE|[*S:character_id];Rage;Ammoname;Ammo
    --=Rages|[$Ammo]
    --#leftsub|Remaining Rages: [$Rages.Total]
-   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&Rage]
-   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*S:t-id]; damage; Rage Damage; 0
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&RageMarker]
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*S:character_id]; damage; [&ModName]; 0
    --!a:[*S:character_id]|!Raging:0
    --+Damage: |Extra damage is turned off.
    --+|[br]
