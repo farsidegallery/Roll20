@@ -1,11 +1,12 @@
-!script {{
+!scriptcards {{
   +++5Elib;snlib;Farsidelib+++
-  --&brace|{
-  --&cbrace|}
   
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|Dragonborn Breath Weapon @{selected|character_id}
+
   --/|Script Name : Dragonborn Breath Weapon
-  --/|Version     : 1.0
-  --/|Requires SC : SmartAOE, ScriptCards Library snlib/Farsidelib
+  --/|Version     : 1.0.2
+  --/|Requires SC : SmartAOE, ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|SmartAOE Code : David M.
   --/|  
@@ -18,26 +19,24 @@
   --&BreathResource|Breath Weapon
    
   --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+  
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+  
+  -->far_LoadTokenMarkers|
 
-  --#hidecard|1
-  --#sourcetoken|@{selected|token_id}
+   --?"X[*S:t-id]" -eq "X"|>far_FatalError;No Token Selected;ERROR;Select your character token on the map before using Dragonborn Breath Weapon.
 
   --:FindResource|
-   -->Lib5E_FIND_RESOURCE|[*S:id];[&BreathResource];BreathName;BreathAmmo
-   --?[$BreathAmmo] -eq 0|>NoResource
-   --=FinalAmmo|[$BreathAmmo]-1
-   --!a:[*S:character_id]|[&BreathAmmo]:[$FinalAmmo]
-
-   --=dc|8 + [*S:constitution_mod] [CON mod] + [*S:pb] [Proficiency Bonus]
-  
-   --=level|[*S:level]
-   --?[$level] -ge 17|&damageFormula1;<<4d10>>
-   --?[$level] -ge 11 -and [$level] -lt 17|&damageFormula1;<<3d10>>
-   --?[$level] -ge 5 -and [$level] -lt 11|&damageFormula1;<<2d10>>
-   --?[$level] -lt 5|&damageFormula1;<<1d10>>
-
-   --Rfind|[*S:id];[&BreathResource];repeating_traits;name;traitname
-   --?"[*R:traitname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a trait named [&BreathResource].
+   --Rfind|[*S:character_id];[&BreathResource];repeating_traits;name
+   --?"[*R:name]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Trait Not Found;ERROR;Could not find a trait named [&BreathResource].
    --&desc|[*R:description]
    --&color|[*R:description]
    --~color|string;before;draconic;[&color]
@@ -45,6 +44,18 @@
    --~color|string;trim;[&color]
    --~color|string;totitlecase;[&color]
    --+Color: |[&color]
+   
+   -->Lib5E_FIND_RESOURCE|[*S:character_id];[&BreathResource];BreathName;BreathAmmo
+   --?"[&BreathName]" -eq "Not Found"|>far_FatalError;Resource Not Found;ERROR;Could not find a resource named [&BreathResource].
+   --?[$BreathAmmo] -le 0|>NoResource
+   
+   --=dc|8 + [*S:constitution_mod] [CON mod] + [*S:pb] [Proficiency Bonus]
+  
+   --=level|[*S:level]
+   --?[$level] -ge 17|&damageFormula1;<<4d10>>
+   --?[$level] -ge 11 -and [$level] -lt 17|&damageFormula1;<<3d10>>
+   --?[$level] -ge 5 -and [$level] -lt 11|&damageFormula1;<<2d10>>
+   --?[$level] -lt 5|&damageFormula1;<<1d10>>
 
    --?"[&color]" -inc "black" -or "[&color]" -inc "copper"|>acid
    --?"[&color]" -inc "white" -or "[&color]" -inc "silver"|>cold
@@ -57,6 +68,7 @@
    --?"[&color]" -inc "emerald"|>psychic
    --?"[&color]" -inc "sapphire"|>thunder
    --?"[&color]" -inc "topaz"|>necrotic
+   -->far_FatalError;Unknown Ancestry;ERROR;Could not determine draconic ancestry for color [&color].
 
   --:acid|
    --&damageType1|acid
@@ -68,11 +80,10 @@
    --&shape|5eLine
    --&distance|30ft
    --&save|5eDex
-   --&savedesc|Dexterity
    -->BuildAOE|
    
   --:cold|
-   --&damageType1|acid
+   --&damageType1|cold
    --&aoeColor|#00ffff50
    --&aoeOutlineColor|#00ffff
    --&subtitlefontcolor|#000000
@@ -81,7 +92,6 @@
    --&shape|5eCone
    --&distance|15ft
    --&save|5eCon
-   --&savedesc|Constitution
    -->BuildAOE|
 
   --:fire|
@@ -94,7 +104,6 @@
    --&shape|5eCone
    --&distance|15ft
    --&save|5eDex
-   --&savedesc|Dexterity
    -->BuildAOE|
 
   --:brass_fire|
@@ -107,7 +116,6 @@
    --&shape|5eLine
    --&distance|30ft
    --&save|5eDex
-   --&savedesc|Dexterity
    -->BuildAOE|
 
   --:lightning|
@@ -115,12 +123,11 @@
    --&aoeColor|#4a86e850
    --&aoeOutlineColor|#4a86e8
    --&subtitlefontcolor|#000000
-   --&fx|burn-frost
+   --&fx|burn-magic
    --&titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/261004639/m2UaTAp9gpMAFGX32BgySQ/max.jpg?1639962320');background-size: 100% 100%; background-repeat: no-repeat
    --&shape|5eLine
    --&distance|30ft
    --&save|5eDex
-   --&savedesc|Dexterity
    -->BuildAOE|
 
   --:poison|
@@ -133,7 +140,6 @@
    --&shape|5eCone
    --&distance|15ft
    --&save|5eCon
-   --&savedesc|Constitution
    -->BuildAOE|
    
   --:force|
@@ -146,7 +152,6 @@
    --&shape|5eCone
    --&distance|15ft
    --&save|5eDex
-   --&savedesc|Dexterity
    -->BuildAOE|
   
   --:radiant|
@@ -159,20 +164,18 @@
    --&shape|5eCone
    --&distance|15ft
    --&save|5eDex
-   --&savedesc|Dexterity
    -->BuildAOE|
   
   --:psychic|
    --&damageType1|psychic
    --&aoeColor|#8066FF50
-   --&aoeOutlineColor|#80066FF
+   --&aoeOutlineColor|#8066FF
    --&subtitlefontcolor|#ffffff
    --&fx|glow-magic
    --&titlecardbackground|linear-gradient(purple, #99CCFF)
    --&shape|5eCone
    --&distance|15ft
    --&save|5eDex
-   --&savedesc|Dexterity
    -->BuildAOE|
   
   --:thunder|
@@ -185,12 +188,11 @@
    --&shape|5eCone
    --&distance|15ft
    --&save|5eDex
-   --&savedesc|Dexterity
    -->BuildAOE|
    
   --:necrotic|
    --&damageType1|necrotic
-   --&aoeColor|#434343
+   --&aoeColor|#43434350
    --&aoeOutlineColor|#000000
    --&subtitlefontcolor|#ffffff
    --&fx|burn-death
@@ -198,7 +200,6 @@
    --&shape|5eCone
    --&distance|15ft
    --&save|5eDex
-   --&savedesc|Dexterity
    -->BuildAOE|
 
   --:BuildAOE|
@@ -227,6 +228,8 @@
     _desc|[&desc]
     [&cbrace][&cbrace]
 
+  --=FinalAmmo|[$BreathAmmo]-1
+  --!a:[*S:character_id]|[&BreathAmmo]:[$FinalAmmo]
   --X|End Macro
 
  --:NoResource|
