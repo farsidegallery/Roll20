@@ -6,7 +6,7 @@
   --#whisper|self,gm
 
   --/|Script Name : Banishment
-  --/|Version     : 2.1.0
+  --/|Version     : 2.1.1
   --/|Requires SC : ScriptCards Library snlib/Farsidelib
   --/|Author      : 
   --/|Modified By : Farsidegallery
@@ -84,15 +84,16 @@
    --=ChangeCount|0
    
    -->Lib5E_FIND_RESOURCE|[*S:character_id];[&SorcererResource];Pointsname;PointsAmmo
-   --?"X[$PointsAmmo]" -le "X0" -or "[&Pointsname]" -eq "Not Found" -or "X[$PointsAmmo]" -lt "X[$SorceryPoints]" -or "X[$SpellLevel]" -ne "X4"|Target
+   --?"[&MinimumSpellLevel(toLowerCase)]" -eq "cantrip"|=TwinCost;1 |=TwinCost;[$SpellLevel]\2 {MIN:1}
+   --?"X[$PointsAmmo]" -le "X0" -or "[&Pointsname]" -eq "Not Found" -or [$PointsAmmo] -lt [$TwinCost] -or "X[$SpellLevel]" -ne "X4"|Target
    
-   --+|[c]Do you want spend a Sorcery Point to Twin the spell?[/c]
+   --+|[c]Do you want to spend [$TwinCost.Raw] [&SorcererResource] to Twin the spell?[/c]
    --+|[c][rbutton]Yes::TwinTarget[/rbutton]  [rbutton]No::Target[/rbutton][/c]
    --X|
 
    --:TwinTarget|
     --=TwinFlag|1
-    --?"[&MinimumSpellLevel(toLowerCase)]" -eq "cantrip"|=SorceryPoints;1 |=SorceryPoints;[$SpellLevel]\2 {MIN:1}
+    --=SorceryPoints|[$TwinCost]
    
    --:Target|	
    --/|Number of Targets
