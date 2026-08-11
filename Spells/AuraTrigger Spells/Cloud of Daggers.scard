@@ -7,13 +7,12 @@
   --#whisper|self,gm
 
   --/|Script Name : Cloud of Daggers
-  --/|Version     : 1.1.0
-  --/|Requires SC : ScriptCards 3.0.25+, 5Elib/snlib/Farsidelib, AuraTriggers 0.9+, TokenMod
+  --/|Version     : 1.1.1
+  --/|Requires SC : ScriptCards 3.0.25+, 5Elib/snlib/Farsidelib, AuraTriggers 0.9+, TokenMod, Carry Tokens API
   --/|Author      : Farsidegallery using Cursor AI
   --/|
-  --/|  Prompts for cast level and places a 5-foot cube cloud via spell-token targeting. AuraTriggers
-  --/|  apply slashing damage when creatures enter or start their turn in the cube (once per turn).
-  --/|  Supports upcasting, concentration tracking, dismiss, and Wild Magic Surge on cast.
+  --/|  Prompts for cast level and places a 5-foot cube cloud via spell-token targeting. Script verifies token is selected before proceeding. AuraTriggers
+  --/|  apply slashing damage when creatures enter or start their turn in the cube (once per turn). Script supports upcasting, concentration tracking, dismiss, and Wild Magic Surge on cast.
   --/|  Empowered Spell is not supported — damage is rolled on each aura trigger, not at cast time.
   --/|
   --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
