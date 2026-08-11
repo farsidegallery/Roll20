@@ -2,10 +2,10 @@
   +++5Elib;snlib;Farsidelib+++
   
   --/|Script Name : Charm Person
-  --/|Version     : 2.2.1
+  --/|Version     : 2.1.0
   --/|Modified By : Farsidegallery
   --/|  
-  --/|  Script prompts user for spell level used and makes sure the slot is available.  and spawn the designated token to the VTT. Script calculates
+  --/|  Script prompts user for spell level used and makes sure the slot is available. Script verifies token is selected before proceeding. Script calculates
   --/|  It will deduct 1 spell slot from the appropriate level
   --/|
   
@@ -99,9 +99,10 @@
    --?"X[&SLevel]" -eq "X0"|Fighting
    
    -->Lib5E_FIND_RESOURCE|[*S:character_id];[&SorcererResource];Pointsname;PointsAmmo
+   --=TwinCost|1
    
-   --?[$SpellLevel] -eq 1 -and [$PointsAmmo] -gt 0|[
-    --+|[c]Do you want spend a Sorcery Point to Twin the spell?[/c]
+   --?[$SpellLevel] -eq 1 -and [$PointsAmmo] -ge [$TwinCost]|[
+    --+|[c]Do you want to spend [$TwinCost.Raw] [&SorcererResource] to Twin the spell?[/c]
 	--+|[c][rbutton]Yes::TwinSpell[/rbutton]  [rbutton]No::Fighting[/rbutton][/c] 
 	--X|
 	--]|
@@ -109,7 +110,7 @@
   --:TwinSpell|
    --=targets|2
    --=TwinFlag|1
-   --=SorceryPoints|1
+   --=SorceryPoints|[$TwinCost]
    -->Fighting|
   
   --:Fighting| 
