@@ -10,7 +10,7 @@
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author	    : Farsidegallery
   --/|  
-  --/|  Script prompts user for spell level used and makes sure the slot is available.  and spawn the designated token to the VTT. Script calculates
+  --/|  Script prompts user for spell level used and makes sure the slot is available. Script verifies token is selected before proceeding. Script calculates
   --/|  It will deduct 1 spell slot from the appropriate level
   --/|
   --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
@@ -81,14 +81,15 @@
    --=ChangeCount|0
    
    -->Lib5E_FIND_RESOURCE|[*S:character_id];[&SorcererResource];Pointsname;PointsAmmo
-   --?"X[$PointsAmmo]" -le "X0" -or "[&Pointsname]" -eq "Not Found" -or [$PointsAmmo] -lt [$SorceryPoints]|Target
-   
-   --+|[c]Do you want spend a Sorcery Point to Twin the spell?[/c]
+   --?"[&MinimumSpellLevel(toLowerCase)]" -eq "cantrip"|=TwinCost;1 |=TwinCost;[$SpellLevel]\2 {MIN:1}
+   --?"X[$PointsAmmo]" -le "X0" -or "[&Pointsname]" -eq "Not Found" -or [$PointsAmmo] -lt [$TwinCost]|Target
+
+   --+|[c]Do you want to spend [$TwinCost.Raw] [&SorcererResource] to Twin the spell?[/c]
    --+|[c][rbutton]Yes::BuildTwinArray[/rbutton]  [rbutton]No::Target[/rbutton][/c]
    --X|
-  
+
   --:BuildTwinArray|
-   --?"[&MinimumSpellLevel(toLowerCase)]" -eq "cantrip"|=SorceryPoints;1 |=SorceryPoints;[$SpellLevel]\2 {MIN:1}
+   --=SorceryPoints|[$TwinCost]
    --=TwinFlag|1
    -->far_BuildTargetList|2
    -->far_BuildTargetArray|Targets;2;TargetString
