@@ -1,8 +1,15 @@
 !script {{
   --/|Script Name : Concentration
-  --/|Version     : 1.1.2
+  --/|Version     : 1.1.3
   --/|Requires SC : ScriptCards 3.0.25+, 5Elib/snlib/Farsidelib
-
+  --/|
+  --/|Trigger setup (ScriptCards_Triggers character):
+  --/|  Ability name must be exactly: change:graphic
+  --/|  Attribute listen_to_tokenmod must be 0 or unset. When set to 1, TokenMod injects gmnotes
+  --/|  into trigger replacements without escaping embedded double-hyphen text, which breaks ScriptCards
+  --/|  parsing and posts this entire script to chat (common when bulk-heal uses @token-mod).
+  --/|  Bulk heal macros should use !t: bar updates instead of @token-mod, or disable listen_to_tokenmod.
+  --/|
   --/|This example watches for graphics objects (in this case tokens) to change. if the value that changed is the current hit points
   --/|(as specified by the hitPointBar variable below), it will be checked to see if it has hit 0. If so, the token will be marked 
   --/|with the "dead" status marker. If not, it will be checked for Concentration, and if needed, remove concentration spell affects and tokens.
@@ -58,11 +65,9 @@
 
   -->far_LoadTokenMarkers|
 
-  --?[&GraphicOldbar[&tempHPBar]_value] -gt 0|[
-   --?[&GraphicOldbar[&tempHPBar]_value] -eq [&GraphicNewbar[&tempHPBar]_value]|SKIPTEMP
-   --?[&GraphicNewbar[&tempHPBar]_value] -gt [&GraphicOldbar[&tempHPBar]_value]|SKIPTEMP
-   --?[&GraphicNewbar[&tempHPBar]_value] -gt 0|Concentration
-   --]|
+  --?[&GraphicOldbar[&tempHPBar]_value] -gt 0 -and [&GraphicOldbar[&tempHPBar]_value] -eq [&GraphicNewbar[&tempHPBar]_value]|SKIPTEMP
+  --?[&GraphicOldbar[&tempHPBar]_value] -gt 0 -and [&GraphicOldbar[&tempHPBar]_value] -ne [&GraphicNewbar[&tempHPBar]_value]|Concentration
+  --?[&GraphicNewbar[&tempHPBar]_value] -gt 0|Concentration
   --:SKIPTEMP|
   
   --?[&GraphicOldbar[&hitPointBar]_value] -eq [&GraphicNewbar[&hitPointBar]_value]|SKIP

@@ -80,14 +80,15 @@
    -->far_FindFeat|[*S:character_id];"Wild Magic Surge";WildFeatFlag
    --=SorceryPoints|0
    -->Lib5E_FIND_RESOURCE|[*S:character_id];[&SorcererResource];Pointsname;PointsAmmo
-   --?"X[$PointsAmmo]" -le "X0" -or "[&Pointsname]" -eq "Not Found" -or [$PointsAmmo] -lt [$SorceryPoints]|BuildTargets
+   --?"[&MinimumSpellLevel(toLowerCase)]" -eq "cantrip"|=TwinCost;1 |=TwinCost;[$SpellLevel]\2 {MIN:1}
+   --?"X[$PointsAmmo]" -le "X0" -or "[&Pointsname]" -eq "Not Found" -or [$PointsAmmo] -lt [$TwinCost]|BuildTargets
    --?[$Targets] -ne 1|BuildTargets
-   --+|[c]Do you want to spend Sorcery Points to Twin the spell?[/c]
+   --+|[c]Do you want to spend [$TwinCost.Raw] [&SorcererResource] to Twin the spell?[/c]
    --+|[c][rbutton]Yes::BuildTwinArray[/rbutton]  [rbutton]No::BuildTargets[/rbutton][/c]
    --X|
 
   --:BuildTwinArray|
-   --?"[&MinimumSpellLevel(toLowerCase)]" -eq "cantrip"|=SorceryPoints;1 |=SorceryPoints;[$SpellLevel]\2 {MIN:1}
+   --=SorceryPoints|[$TwinCost]
    --=TwinFlag|1
    --=Targets|2
    -->BuildTargets|

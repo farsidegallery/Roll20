@@ -1,0 +1,52 @@
+!script {{
++++5Elib;snlib;ActionMenuAddons;dnd5elib;LibSiG+++
+--#sourceToken|@{selected|token_id}
+--#emoteBackground|#223030
+--#emoteFontColor|#10C6E6
+--#titleCardBackground|#10C6E6
+--#evenRowBackground|#bbf970
+--#oddRowBackground|#f9dc9e
+--#subtitleFontColor|#000603
+--/|variables for summoned AoE token
+--=CastLevel|?{What Level Cast?|3|4|5|6|7|8|9}
+--?[$CastLevel] -ne 3|>Preference
+--&aciddam|2d6
+--&colddam|2d6
+--:DamSet|
+
+--#title|Hunger of Hadar
+--&SpellName|Hunger of Hadar
+--/| Insert link to token image below
+--&URLlink|https://files.d20.io/images/485264485/8WdgzvdAad5UP87aPpLsZw/original.png
+
+--#emoteText|[*S:character_name] casts Hunger of Hadar!
+
+-->LibSiG_GetAndCheckSlotInformation|[*S:t-id];[$CastLevel]
+-->Lib5E_EXPEND_SPELL_SLOT|[*S:character_id];[$CastLevel]
+-->LibSN_ADD_STATUS_MARKER|[*S:t-id];blue
+
+-->GetSpellTokenID|[&SpellName];STokenID
+--!ot:NewTID|name:"[&SpellName]"|_pageid:[*S:t-_pageid]|left:[=[*S:t-left]+140]|top:[*S:t-top]|width:[=[*S:t-width]*1]|height:[=[*S:t-height]*1]|imgsrc:"[&URLlink]"|represents:"[&STokenID]"|showname:1|bar1_value:"[&colddam]"|bar2_value:"[&aciddam]"|bar3_value:"[*S:spell_save_dc]"|aura2_radius:"20"|aura2_color:"#9900ff50"|gmnotes:${[{"color":"#9900ff50","name":"Hunger of  Hadar","icon": "snail","toNPCs":true,"toPCs":true,"toGraphics":false,"applySelf":false,"removeOnExit":true,"targetVfxOnEnter":"shield-frost","toLayers":"objects,gmlayer","ignoreWalls":false,"chatActionOnStartTurn":"!script !{!{ +++5Elib;snlib;dnd5elib;LibSiG+++ --#targettoken|[TID] --#emoteTargetTokenSize|75 --&CharID|[*T:character_id]  --=Damage|[*[ATID]:t-bar1_value] --#hideTitleCard|1 -->Lib5E_CheckDamageModifiers|ResistType;cold  --=DamageRoll|[$Damage][&ResistType] --=AdjDmg|[$DamageRoll] -->LibSN_APPLY_DAMAGE_OR_HEALING|[TID];1;-[$AdjDmg];0;0;0 --#emoteText|[TNAME] is touched by the chill winds of The Far Realms and takes [$AdjDmg] cold damage  --:End| --X| !}!} ",
+"chatActionOnEndTurn": "!script !{!{  +++5Elib;snlib;dnd5elib;LibSiG+++ --#targettoken|[TID] --#emoteTargetTokenSize|75 --&SaveType|dex  -->LibSiG_SetSave2|[&SaveType] --=Damage|[*[ATID]:t-bar2_value] --#hideTitleCard|1 -->Lib5E_CheckDamageModifiers|ResistType;acid  --=DamageRoll|[$Damage][&ResistType] --=AdjDmg|[$DamageRoll] --?[*[TID]:npc] -ne 1|>PC --?[*[TID]:npc] -eq 1 -and [*[TID]:npc_[&SaveType]_save_flag] -gt 0|&Save;npc_[&SaveType]_save|&Save;[&Save2]_save_bonus --=TargetSave|1d20 + [*[TID]:[&Save]] --#targetToken|[*[TID]:t-id] --?[$TargetSave] -ge [*[ATID]:t-bar3_value] | [--#emoteText|With a Dex save of [$TargetSave], [TNAME] nimbly dodges the ungodly tentacles that seek the warmth of their flesh --]|[-->LibSN_APPLY_DAMAGE_OR_HEALING|[TID];1;-[$AdjDmg];0;0;0 --#emoteText|With a Dex save of [$TargetSave] vs DC [*[ATID]:t-bar3_value] , [TNAME] fails to escape the eldritch horror and takes [$AdjDmg] acid damage from the eerie, milky tentacles that caress them--]| --X| --:PC| --#emoteText|[TNAME] must make a DC [*[ATID]:t-bar3_value] Dex save or take [$AdjDmg] acid damage --X| !}!}",
+"chatActionOnExit": "!script !{!{  +++5Elib;snlib+++ --#targettoken|[TID] --#emoteTargetTokenSize|75 --&CharID|[*T:character_id] --#emoteText|[TNAME] moves out of harm's way  --#hideTitleCard|1 !}!}" }]$}
+--z:graphic:[&NewTID]|toBack
+
+--/|:LibSiG_CHECK_WILD_MAGIC|classdisplay;desiredclass;
+-->LibSiG_CHECK_WILD_MAGIC|[*S:class_display];Wild Magic;
+--X|Stop
+
+--:GetSpellTokenID|CharacterName;StringVariableForCharID
+   --~|array;objects:character;SpellCharArr;[%1%]
+   --?[@SpellCharArr(length)] -ne 1|>LogFatalError;Could not find character named [%1%]
+   --&[%2%]|[@SpellCharArr(0)]
+   --<|
+ --X|
+ 
+ --:Preference|
+ --i Casting over base level, additional information required; Which damage type do you wish to increase?|q;Preference;Upcast which damage type|acid|cold
+ --=Upcast|[$CastLevel.Raw] - 3
+ --=dice|2 + [$Upcast.Raw]
+ --? [&Preference] -eq acid|&aciddam;[$dice]d6|&aciddam;2d6
+ --? [&Preference] -eq cold|&colddam;[$dice]d6|&colddam;2d6
+ -->DamSet|
+  }}

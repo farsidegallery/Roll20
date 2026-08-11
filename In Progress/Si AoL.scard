@@ -1,0 +1,42 @@
+!script {{
++++5Elib;snlib;ActionMenuAddons;dnd5elib;LibSiG+++
+--#title|Aura of Life
+--&SpellName|Aura of Life
+--#sourceToken|@{selected|token_id}
+--#emoteBackground|#223030
+--#emoteFontColor|#F79205
+--#titleCardBackground|#F79205
+--#evenRowBackground|#bbf970
+--#oddRowBackground|#f9dc9e
+--#subtitleFontColor|#F79205
+--/| check if this spell has finished and just needs shutting down
+--?[*S:AuraOfLife] -eq 1|Reset
+--/|set flag on caster at initial cast to be used to redirect to branch after spell expires to cancel aura and set concentration marker on source token
+--!a:[*S:character_id]|!AuraOfLife:1
+--!t:[*S:t-id]|statusmarkers:blue
+--/|variables for summoned AoE token
+--i Additional info required;Choose your Spell Level|q;CastLevel;What Spell Level are you casting at?|4|5|6|7|8|9
+
+--#emoteText|[*S:character_name] casts Aura of Life at level [&CastLevel], granting resistance to necrotic damage to self and all allies within 30ft !
+
+-->LibSiG_GetAndCheckSlotInformation|[*S:t-id];[&CastLevel]
+-->Lib5E_EXPEND_SPELL_SLOT|[*S:character_id];[&CastLevel]
+--/| We will fix this aura on the caster, so SCID will be that character's ID defined inside the gmnotes to make it work
+
+--!t:@{selected|token_id}|aura2_radius:30|aura2_color:#F7920575|gmnotes:${[{"color":"#F7920575","name":"Aura of Life","toNPCs":false,"toPCs":true,"toGraphics":false,"applySelf":true,"removeOnExit":true,"targetVfxOnEnter":"shield-holy","toLayers":"objects,gmlayer","ignoreWalls":false,"chatActionOnEnter":"!script !{!{ +++5Elib;snlib;dnd5elib;LibSiG+++ --#emoteTargetTokenSize|75 --#targettoken|[TID] --#hideTitleCard|1  --#emoteText|Through the divine power of [ANAME] you have Resistance to necrotic damage and your hit point maximum cannot be reduced  --&Type|necrotic --!a:[*[TID]:character_id]|!npc_resistances:** --!a:[*[TID]:character_id]|!OrigResist:[*[TID]:npc_resistances] --&NewResist|[*[TID]:npc_resistances][&Type] --!a:[*[TID]:character_id]|!npc_resistances:[&NewResist]  --X|!}!} ",
+"chatActionOnStartTurn": "!script !{!{  +++5Elib;snlib;dnd5elib;LibSiG+++ --#targettoken|[TID] --#emoteTargetTokenSize|75   --#hideTitleCard|1  --? X[*[TID]:t-bar1_value] -eq X|ZeroHP  --:Next| --#emoteText|You remain under the divine protection of [ANAME], have resistance to necrotic damage and your hit point maximum cannot be reduced[&Heal] --X| --:ZeroHP|-->LibSN_APPLY_DAMAGE_OR_HEALING|[TID];1;1;0;0;0 --&Heal|, you also regain 1 HP -->Next| --X| !}!}",
+"chatActionOnExit": "!script !{!{  +++5Elib;snlib+++ --#targettoken|[TID] --#emoteTargetTokenSize|75 --#emoteText|[TNAME] is no longer protected by Aura of Life  --!a:[*[TID]:character_id]|npc_resistances:[*[TID]:OrigResist] --!a:[*T:character_id]|OrigResist:**  --#hideTitleCard|1 --X| !}!}" }]$}
+
+--/|:LibSiG_CHECK_WILD_MAGIC|classdisplay;desiredclass;
+-->LibSiG_CHECK_WILD_MAGIC|[*S:class_display];Wild Magic;
+--X|Stop
+
+--:Reset|
+--&STID|@{selected|token_id}
+--!t:[&STID]|aura2_radius:-0.000001|aura2_color:#F7920575
+--!a:[*S:character_id]|AuraOfLife:0|npc_resistances:[*[*S:character_id]:OrigResist]|OrigResist:**
+--!t:[*S:t-id]|statusmarkers:-blue
+--+|[*S:t-name] ceases concentration on [&SpellName]
+--w9:!t:[&STID]|aura2_radius:-0.000001|aura2_color:#transparent
+--X|
+}}

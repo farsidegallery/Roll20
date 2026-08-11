@@ -6,13 +6,13 @@
  --#whisper|self,gm
 
   --/|Script Name : Cure Wounds
-  --/|Version     : 2.1.0
+  --/|Version     : 2.1.1
   --/|Requires SC : TokenMod, SuperNotes (for template override only), ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : 
   --/|Modified By : Farsidegallery
   --/|
   --/|  Script prompts user for spell level used and then queries target to be healed. It will deduct 1 spell slot from the appropriate level. 
-  --/|  Script checks for Disciple of Life and Belssed Healer feats. It checks if Beacon of Hope is active, calculates, applies healing to the target.
+  --/|  Script checks for Disciple of Life and Belssed Healer feats. It checks if Beacon of Hope is active, calculates, and applies healing to the target.
   --/|
   
   --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
@@ -83,14 +83,15 @@
    -->AbilityAssign|[*S:spellcasting_ability];ModHealing
    
    -->Lib5E_FIND_RESOURCE|[*S:character_id];[&SorcererResource];Pointsname;PointsAmmo
-   --?"X[$PointsAmmo]" -le "X0" -or "[&Pointsname]" -eq "Not Found" -or [$PointsAmmo] -lt [$SorceryPoints]|Target
-   
-   --+|[c]Do you want spend a Sorcery Point to Twin the spell?[/c]
+   --?"[&MinimumSpellLevel(toLowerCase)]" -eq "cantrip"|=TwinCost;1 |=TwinCost;[$SpellLevel]\2 {MIN:1}
+   --?"X[$PointsAmmo]" -le "X0" -or "[&Pointsname]" -eq "Not Found" -or [$PointsAmmo] -lt [$TwinCost]|Target
+
+   --+|[c]Do you want to spend [$TwinCost.Raw] [&SorcererResource] to Twin the spell?[/c]
    --+|[c][rbutton]Yes::BuildTwinArray[/rbutton]  [rbutton]No::Target[/rbutton][/c]
    --X|
-  
+
   --:BuildTwinArray|
-   --?"[&MinimumSpellLevel(toLowerCase)]" -eq "cantrip"|=SorceryPoints;1 |=SorceryPoints;[$SpellLevel]\2 {MIN:1}
+   --=SorceryPoints|[$TwinCost]
    --=TwinFlag|1
    -->far_BuildTargetList|2
    -->far_BuildTargetArray|Targets;2;TargetString

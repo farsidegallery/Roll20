@@ -1,0 +1,19 @@
+[
+  {
+   "name": "Paladin Aura",
+   "color": "#9900ff00",
+   "icon": "overdrive",
+   "toPCs": true,
+   "toNPCs": false,
+   "toGraphics": false,
+   "toLayers": "objects,gmlayer",
+   "applySelf": false,
+   "removeOnExit": true,
+   "ignoreWalls": false,
+   "targetVfxOnEnter": "shield-holy",
+   "targetVfxOnExit": "shield-death",
+   "chatActionOnEnter": "!script {{ +++5Elib;snlib+++ --#targettoken|[TID] --#sourcetoken|[ATID] --&CharID|[*T:character_id] --&PalID|[*S:character_id] -->Lib5E_FIND_CLASS_LEVEL|[&PalID];paladin;PLevel --?[&PLevel] -le 9|&Courage;.|&Courage;  and the Aura of Courage makes you immune to the Frightened Condition --#emoteText|[TNAME] enters the protection of Paladin [ATNAME] --#hideTitleCard|1 -->Lib5E_SET_GLOBAL_MOD_STATUS|[&CharID]; save; Paladin Aura; 1 --!a:[&CharID]|global_save_mod_flag:1 -->Lib5E_GET_GLOBAL_MOD_STATUS|[&CharID]; save; [ANAME];Aura --?[&Aura] -eq 0|>Create|>Exists --X| --:Exists| --Rfind|[&CharID];Paladin Aura;repeating_savemod;global_save_name --!a:[&CharID]|[*R>global_save_roll]:[*S:charisma_mod] --+|[c]Your saving throws will now receive an additional +[*S:charisma_mod] bonus[&Courage][/c] -->Lib5E_FIND_ACTIVE_GLOBAL_SAVE_MODS|[&CharID];Mods --+Global Save Modifiers|[&Mods] -->End| --X| --:Create| --!or:[&CharID]:savemod|global_save_name:Paladin Aura|global_save_active_flag:1|global_save_roll:[*S:charisma_mod]|options-flag:0| --+|[c]Your saving throws will now receive an additional +[*S:charisma_mod] bonus[&Courage][/c] -->Lib5E_FIND_ACTIVE_GLOBAL_SAVE_MODS|[&CharID];Mods --+Global Save Modifiers|[&Mods] Paladin Level  --:End| --X|}}",
+   "chatActionWhileInside": "!script {{ +++5Elib;snlib+++ --#targettoken|[TID] --#sourcetoken|[ATID] --#emoteText|[TNAME] remains protected by Paladin [ATNAME] --#hideTitleCard|1}}",
+   "chatActionOnExit": "!script {{ +++5Elib;snlib+++ --#targettoken|[TID] --#sourcetoken|[ATID] --&CharID|[*T:character_id] --#emoteText|[TNAME] leaves the protection of Paladin [ATNAME] --#hideTitleCard|1 -->Lib5E_SET_GLOBAL_MOD_STATUS|[&CharID]; save; Paladin Aura; 0}}"
+  }
+]
