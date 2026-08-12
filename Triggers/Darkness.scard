@@ -1,0 +1,45 @@
+!script {{
+  --/|Script Name : Darkness Trigger
+  --/|Version     : 1.0.2
+  --/|This watches for graphics objects (in this case tokens) to change. If a Darkness token is placed it will 
+  --/|change the has_bright_light_vision off or on in support of the spell Darkness.
+  
+  --#hidecard|1
+  
+  --/|TRIGGER_REPLACEMENTS
+  +++snlib+++
+  
+  --~count|array;pagetokens;tokens;[&GraphicOld_id];tprop:name~=Darkness
+  --?"X[@tokens(0)]" -eq "XArrayError"|Skip
+  --?"X[*[&GraphicOld_id]:character_id]" -eq "X"|Skip
+  --?"X[*[&GraphicOld_id]:t-id]" -eq "X"|Skip
+  
+  -->LibSN_CHECK_TOKEN_OVERLAP|[@tokens(0)];[&GraphicOld_id];OLap
+  --?[*[&GraphicOld_id]:npc] -eq 1|[
+   --?[&OLap] -eq 0|Skip
+   --?[*[&GraphicOld_id]:t-has_bright_light_vision] -eq false|Skip
+   --!t:[*[&GraphicOld_id]:t-id]|t-has_bright_light_vision:false
+   --^Skip|
+  --]|
+  
+  --?[&OLap] -eq 0 -and "X[*[&GraphicOld_id]:darkness]" -ne "X1"|Skip
+  --?[&OLap] -eq 0 -and "X[*[&GraphicOld_id]:darkness]" -eq "X1"|TurnOn
+  
+  --?[*[&GraphicOld_id]:t-has_bright_light_vision] -eq false|Skip
+  --?"X[*[&GraphicOld_id]:darkness]" -eq "X"|[
+   --!t:[*[&GraphicOld_id]:t-id]|t-has_bright_light_vision:false
+   --^Skip|
+  --]|
+  
+  --!a:[*[&GraphicOld_id]:character_id]|!darkness:1
+  --!t:[*[&GraphicOld_id]:t-id]|t-has_bright_light_vision:false
+  
+  --:Skip|
+   --X|
+   
+  --:TurnOn|
+   --!t:[*[&GraphicOld_id]:t-id]|t-has_bright_light_vision:true
+   --?"X[*[&GraphicOld_id]:darkness]" -eq "X"|Skip
+   --!a:[*[&GraphicOld_id]:character_id]|darkness:0
+   --X|
+}}
