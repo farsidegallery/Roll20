@@ -1,4 +1,4 @@
---/|ScriptCards Library: Farsidelib  version 1.3.3
+--/|ScriptCards Library: Farsidelib  version 1.4.0
 --/|Provides various utility procedures for Roll20
 
 --/|This library contains a number of functions that are customized to meet the different needs of spell or ability
@@ -6,7 +6,8 @@
 --/|or written by me to meet specialized script needs. To use this library, paste the contents of this script into a 
 --/|handout with the name "ScriptCards Library Farsidelib" and then use the sequence +++Farsidelib+++ in your script 
 --/|to allow access to the libraryfunctions within your script. Refer to the ScriptCards wiki for additional 
---/|information on libraries and their use.
+--/|information on libraries and their use. Handout name: ScriptCards Library Farsidelib. Paste into Notes and Description (same as 5Elib and snlib).
+--/|No !scriptcards wrapper. Reload the Roll20 tab after republishing to pick up library changes.
 
 --/|Functions Included:
 --/|
@@ -63,8 +64,14 @@
 --/|   far_PlayEffects|Parameters are : sourcetoken; targettoken; source effect; target effect; line effect; sound effect
 --/|      Used to display vfx in one referencing call
 --/| 
---/|   far_HexHeal|characterid; token-id
---/|      If creature dies while under effects of HexBlade's Curse AND to the Warlock who cast the curse, heals the Warlock
+--/|   far_EndHexbladeCurse|cursed-target-token-id; optional-warlock-token-id
+--/|      Removes Hexblade's Curse marker, CurseCaster, warlock CurseTarget/CurseHexToken, and hex graphic token without healing
+--/|
+--/|   far_CheckWarlockHexbladeCurse|warlock-token-id
+--/|      Ends an active curse if the warlock is dead or incapacitated
+--/|
+--/|   far_HexHeal|cursed-target-token-id
+--/|      If a cursed creature dies, heals the Warlock stored in CurseCaster (minimum 1 hp), then calls far_EndHexbladeCurse
 --/|  
 --/|   far_Inspiration|token-id;tokenmarker;attackstring;attackstringreturn
 --/|      Used if PC character has Inspiration to alter base roll.
@@ -134,6 +141,7 @@
   --&FearMarker|Frightened::7409945
   --&HexMarker|Hexed::7409913
   --&HexBladeMarker|Hexed2::7409912
+  --&HexCharName|Hex
   --&HoldMarker|Paralyzed::7409941
   
   --/|This is used for Hunter's Mark spell.  If you use a different marker, change it here.
@@ -359,11 +367,70 @@
   --vbetweentokens|[%1%] [%2%] [%5%]
   --<|
   
- --:far_HexHeal|characterid; token-id
-  -->Lib5E_FIND_CLASS_LEVEL|[%1%];Warlock;WarlockLevel
-  --=WarlockHeal|[&WarlockLevel][Level] + [*[%1%]:charisma_mod] [Cha Mod]
-  -->LibSN_APPLY_DAMAGE_OR_HEALING|[%2%];1;[$WarlockHeal];0;0;0
-  --+[br]Hex Heal: |[*[%1%]:character_name] heals for [$WarlockHeal] hp.
+ --:far_EndHexbladeCurse|cursed-target-token-id; optional-warlock-token-id
+  --&CurseTargetToken|[%1%]
+  --?"X[&CurseTargetToken]" -eq "X"|[
+     --^EndHexbladeReturn|
+     --]|
+  --&WarlockToken|[*[&CurseTargetToken]:CurseCaster]
+  --?"X[&WarlockToken]" -eq "X" -and "X[%2%]" -ne "X"|&WarlockToken;[%2%]
+  -->LibSN_REMOVE_STATUS_MARKER|[&CurseTargetToken];[&HexBladeMarker]
+  --?"X[*[&CurseTargetToken]:character_id]" -ne "X"|[
+   --!a:[*[&CurseTargetToken]:character_id]|!CurseCaster:**
+  --]|
+  --?"X[&WarlockToken]" -ne "X"|[
+   --?"X[*[&WarlockToken]:character_id]" -ne "X"|[
+    --!a:[*[&WarlockToken]:character_id]|!CurseTarget:**
+   --]|
+   --?"X[*[&WarlockToken]:CurseHexToken]" -ne "X"|[
+    --~|object;token;delete;[*[&WarlockToken]:CurseHexToken]
+    --?"X[*[&WarlockToken]:character_id]" -ne "X"|[
+     --!a:[*[&WarlockToken]:character_id]|!CurseHexToken:**
+    --]|
+    --^HexTokenDeleted|
+   --]|
+   --&HexTokenName|[*[&WarlockToken]:t-name] [&HexCharName]
+   --~HexCount|array;pagetokens;tokens;[&WarlockToken];tprop:name=[&HexTokenName]
+   --?[@tokens(length)] -ge 1|[
+    --~|object;token;delete;[@tokens(0)]
+   --]|
+   --:HexTokenDeleted|
+  --]|
+  --:EndHexbladeReturn|
+  --<|
+ 
+ --:far_CheckWarlockHexbladeCurse|warlock-token-id
+  --?"X[*[%1%]:CurseTarget]" -eq "X"|[
+     --<|
+     --]|
+  --?"X[*[%1%]:bar1_value]" -le "X0"|>far_ClearWarlockCurse
+  --?"X[*[%1%]:statusmarkers]" -inc "dead"|>far_ClearWarlockCurse
+  -->LibSN_CHECK_STATUS_MARKER|[%1%];[&IncapacitatedMarker];IncapFlag;IncapCount
+  --?[&IncapFlag] -eq 1|>far_ClearWarlockCurse
+  --<|
+ 
+ --:far_ClearWarlockCurse|
+  -->far_EndHexbladeCurse|[*[%1%]:CurseTarget];[%1%]
+  --<|
+ 
+ --:far_HexHeal|cursed-target-token-id
+  --?"X[*[%1%]:CurseCaster]" -eq "X"|[
+   --<|
+  --]|
+  --?"X[*[%1%]:bar1_value]" -ne "X" -and [*[%1%]:bar1_value] -gt 0|[
+   --?"X[*[%1%]:statusmarkers]" -ninc "dead"|[
+    --<|
+   --]|
+  --]|
+  --&WarlockToken|[*[%1%]:CurseCaster]
+  --?"X[&WarlockToken]" -eq "X"|[
+   --<|
+  --]|
+  -->Lib5E_FIND_CLASS_LEVEL|[*[&WarlockToken]:character_id];Warlock;WarlockLevel
+  --=WarlockHeal|[&WarlockLevel][Level] + [*[&WarlockToken]:charisma_mod] [Cha Mod] {MIN:1}
+  -->LibSN_APPLY_DAMAGE_OR_HEALING|[&WarlockToken];1;[$WarlockHeal];0;0;0
+  --+|[*[%1%]:t-name] has fallen! [*[&WarlockToken]:character_name] regains [$WarlockHeal] hp from the Hexblade Curse.
+  -->far_EndHexbladeCurse|[%1%];[&WarlockToken]
   --<|
   
  --:far_Inspiration|token-id;tokenmarker;attackstring;attackstringreturn
