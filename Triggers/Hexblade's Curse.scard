@@ -1,0 +1,111 @@
+!script {{
+  --/|Script Name : Hexblade's Curse Trigger
+  --/|Version     : 1.0.0
+  --/|Requires SC : ScriptCards 3.0.25+, 5Elib/snlib/Farsidelib handouts in Notes and Description
+  --/|
+  --/|Trigger setup (ScriptCards_Triggers character):
+  --/|  Ability name must be exactly: change:graphic
+  --/|  listen_to_tokenmod is usually 1 on this character so Concentration can run. Hexblade does not read gmnotes.
+  --/|  If a token gmnote contains ScriptCards syntax, trigger parsing can break; keep gmnotes plain on cursed tokens.
+  --/|
+  --/|Ends Hexblade's Curse when the marker expires (Combat Master ticks badge 9 to 0), the cursed target dies,
+  --/|or the warlock dies or is incapacitated.
+  
+  --#hidecard|1
+
+  --/|TRIGGER_REPLACEMENTS
+  +++5Elib;snlib;Farsidelib+++
+  
+  -->far_LoadTokenMarkers|
+  --&HexMarkerTag|7409912
+  
+  --/|Route cursed target by hex marker; route warlock by CurseTarget. Avoid reading CurseCaster on the warlock sheet.
+  --?"X[&GraphicOldstatusmarkers]" -inc "[&HexMarkerTag]"|>TargetCurseCheck
+  --?"X[*[&GraphicOld_id]:CurseTarget]" -ne "X"|>WarlockCurseCheck
+  --X|
+  
+  --:TargetCurseCheck|
+   --?"X[*[&GraphicOld_id]:CurseCaster]" -eq "X"|SKIP
+   --?"X[&GraphicOldstatusmarkers]" -inc "dead"|>CheckMarkerExpiry
+   --?"X[&GraphicOldbar1_value]" -ne "X"|[
+    --?[&GraphicOldbar1_value] -gt 0|[
+     --?"X[&GraphicNewbar1_value]" -eq "X"|[
+      -->CallHexHeal|
+      --^SKIP|
+     --]|
+     --?"X[&GraphicNewbar1_value]" -ne "X" -and [&GraphicNewbar1_value] -gt [&GraphicOldbar1_value]|>CheckMarkerExpiry
+     --?"X[&GraphicNewbar1_value]" -ne "X" -and [&GraphicNewbar1_value] -le 0|[
+      -->CallHexHeal|
+      --^SKIP|
+     --]|
+    --]|
+   --]|
+   --?"X[&GraphicOldstatusmarkers]" -ninc "dead" -and "X[&GraphicNewstatusmarkers]" -inc "dead"|[
+    -->CallHexHeal|
+    --^SKIP|
+   --]|
+   --:CheckMarkerExpiry|
+   --?"X[&GraphicOldstatusmarkers]" -inc "[&HexMarkerTag]" -and "X[&GraphicNewstatusmarkers]" -ninc "[&HexMarkerTag]"|[
+    -->AnnounceCurseEnd|[&GraphicOld_id]
+    -->far_EndHexbladeCurse|[&GraphicOld_id];[*[&GraphicOld_id]:CurseCaster]
+   --]|
+   --^SKIP|
+  
+  --:CallHexHeal|
+   --&WarlockToken|[*[&GraphicOld_id]:CurseCaster]
+   --#hidecard|0
+   --#whisper|
+   --#title|Hexblade Curse
+   --#emoteText|[*[&GraphicOld_id]:t-name] is slain!
+   -->far_HexHeal|[&GraphicOld_id]
+   --<|
+  
+  --:WarlockCurseCheck|
+   --?"X[*[&GraphicOld_id]:CurseTarget]" -eq "X"|SKIP
+   --&CurseTargetToken|[*[&GraphicOld_id]:CurseTarget]
+   --?"X[&CurseTargetToken]" -eq "X"|SKIP
+   --?"X[*[&CurseTargetToken]:t-id]" -eq "X"|SKIP
+   --?"X[&GraphicOldstatusmarkers]" -inc "dead"|>WarlockRecoverSkip
+   --?"X[&GraphicOldbar1_value]" -ne "X"|[
+    --?[&GraphicOldbar1_value] -gt 0|[
+     --?"X[&GraphicNewbar1_value]" -eq "X"|[
+      -->EndWarlockCurse|
+      --^SKIP|
+     --]|
+     --?"X[&GraphicNewbar1_value]" -ne "X" -and [&GraphicNewbar1_value] -gt [&GraphicOldbar1_value]|>WarlockRecoverSkip
+     --?"X[&GraphicNewbar1_value]" -ne "X" -and [&GraphicNewbar1_value] -le 0|[
+      -->EndWarlockCurse|
+      --^SKIP|
+     --]|
+    --]|
+   --]|
+   --?"X[&GraphicOldstatusmarkers]" -ninc "dead" -and "X[&GraphicNewstatusmarkers]" -inc "dead"|[
+    -->EndWarlockCurse|
+    --^SKIP|
+   --]|
+   --?"X[&GraphicOldstatusmarkers]" -ninc "Incapacitated" -and "X[&GraphicNewstatusmarkers]" -inc "Incapacitated"|[
+    -->EndWarlockCurse|
+    --^SKIP|
+   --]|
+   -->LibSN_CHECK_STATUS_MARKER|[&GraphicOld_id];[&IncapacitatedMarker];IncapFlag;IncapCount
+   --?[&IncapFlag] -eq 1|[
+    --?"X[&GraphicOldstatusmarkers]" -ninc "Incapacitated"|>EndWarlockCurse
+   --]|
+   --:WarlockRecoverSkip|
+   --^SKIP|
+  
+  --:EndWarlockCurse|
+   -->AnnounceCurseEnd|[&CurseTargetToken]
+   -->far_EndHexbladeCurse|[&CurseTargetToken];[&GraphicOld_id]
+   --^SKIP|
+  
+  --:AnnounceCurseEnd|token-id
+   --#hidecard|0
+   --#whisper|
+   --#title|Hexblade Curse
+   --#emotetext|[*[%1%]:t-name] is no longer cursed!
+   --<|
+  
+  --:SKIP|
+   --X|
+}}
