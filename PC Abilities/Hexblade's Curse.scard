@@ -1,4 +1,4 @@
-!scriptcard {{
+!scriptcards {{
   +++5Elib;snlib;Farsidelib+++
 
   --#title|Hexblade's Curse
@@ -9,11 +9,12 @@
   --#rightsub|Curse
   
   --/|Script Name : Hexblade's Curse
-  --/|Version     : 1.0
+  --/|Version     : 1.1.1
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|
-  --/|  Script prompts user for to choose target of curse, marks target, and reduces resource.
+  --/|  Script prompts user to choose target of curse, marks target, and reduces resource.
+  --/|  CurseCaster on the target tracks the Warlock for bonus damage and death healing. CurseTarget on the warlock tracks dismiss.
   --/|
   
   --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
@@ -24,7 +25,7 @@
    --/|Enter name for Hex Character.
    --&CharName|Hex
   
-   --/|Use ScriptCards (1) or SpawnDefaultToken (2) to place the Charm Person Character on the VTT?
+   --/|Use ScriptCards (1) or SpawnDefaultToken (2) to place the Hex Character on the VTT?
    --&SpawnScript|1
   
    --&URLlink|https://files.d20.io/images/466487142/LFih0-BYMb8YKB5Vc8YGdw/med.webm?1764822315
@@ -62,6 +63,7 @@
    --]|
   
   --!a:[*S:character_id]|[&CurseAmmo]:0
+  --!a:[*T:character_id]|!CurseCaster:[*S:t-id]
   --!a:[*S:character_id]|!CurseTarget:[*T:t-id]
   
   --#whisper|
@@ -84,12 +86,19 @@
    --X|NoSlotsLeftStop 
   
   --:Remove|
-   --#targetToken|[*S:CurseTarget]
+   --#targettoken|[*S:CurseTarget]
+   --?"X[*T:t-id]" -eq "X"|>NoCurseTarget
    -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexbladeMarker]
-   --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&TokenName]
+   --~count|array;pagetokens;tokens;[*T:t-id];tprop:name=[&TokenName]
    --~|object;token;delete;[@tokens(0)]
+   --!a:[*T:character_id]|!CurseCaster:**
    --!a:[*S:character_id]|!CurseTarget:**
    --#whisper|
    --#emotetext|[*T:t-name] is no longer cursed!
-   --X|  
+   --X|
+  
+  --:NoCurseTarget|
+   --#whisper|
+   --+|[*S:t-name] has no active curse target to dismiss.
+   --X|
 }}

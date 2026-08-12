@@ -2,7 +2,7 @@
   +++5Elib;snlib;Farsidelib+++	
   
   --/|Script Name : Eldritch Blast
-  --/|Version     : 2.0.1
+  --/|Version     : 2.0.5
   --/|Requires SC : TokenMod, SuperNotes (for template override only), ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : 
   --/|Modified By : Farsidegallery
@@ -113,13 +113,15 @@
 
     --&HexMarkerFlag|
     --&HexBladeMarkerFlag|
-    
+    --&HexBlade|
+    --&Hex|
+    --&Blast|
     --I Select the target of your Eldritch Blast.;Eldritch Blast #[$DisplayCount].|t;ThisTarget;Eldritch Blast #[$DisplayCount]:
     --#targetToken|[&ThisTarget]
     --#leftsub|Blast # [$DisplayCount.Raw]
     --#rightsub|[*T:t-name]
     --#emoteText|[*S:character_name] attacks [*T:character_name]!
-	-->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&InspirationMarker];InspiredFlag;InspiredCount
+	  -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&InspirationMarker];InspiredFlag;InspiredCount
     -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&BardicMarker];BardicFlag;BardicCount
     -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
     -->far_FIND_ACTIVE_GLOBAL_ATTACK_MODS|[*S:character_id];GlobalAttack
@@ -154,7 +156,7 @@
 	--+|[br]Total Attack Roll [b]#[$Shot][/b]: [$AttackRoll]
 	--+[br]|
     --?[$AttackDiceBase] -eq 20|>Crit
-    --?[$AttackDiceBase] -eq 19 -and [$HexBladeFlag] -eq 1 -and [&HexBladeMarkerFlag] -eq 1|>Crit
+    --?[$AttackDiceBase] -eq 19 -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|>Crit
     --?[$AttackDiceBase] -eq 1|>Fumble
     --?[$AttackRoll.Total] -ge [$TargetAC.Total] -and [$AttackRoll.Base] -nei 20|>Hit
     --?[$AttackRoll.Total] -lt [$TargetAC.Total] -and [$AttackRoll.Base] -nei 1|>Miss
@@ -204,8 +206,8 @@
    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];HexBladeMarkerFlag;HexBladeMarkerCount
    
    --?[$BlastFlag] -eq 1|&Blast; + [*S:charisma_mod] [Agonizing Blast] |&Blast;
-   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex;+ + 1d6 [Hex] |&Hex;
-   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade;
+   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex; + 1d6 [Hex] |&Hex;
+   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade; + [*S:pb] [Hexblade Curse] |&HexBlade;
    
    --=Damage|[$MissileDamage] [&Blast] [&HexBlade] [&Hex] [&GlobalDamage] [&damageMod]
    --+|&#x1F3AF;[b]Hit![/b] The blast did [$Damage] points of Force damage.
@@ -220,8 +222,8 @@
    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexMarker];HexMarkerFlag;HexMarkerCount
    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];HexBladeMarkerFlag;HexBladeMarkerCount
    --?[$BlastFlag] -eq 1|&Blast; + [*S:charisma_mod] [Agonizing Blast] |&Blast;
-   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex;+ + 1d6 [Hex] |&Hex;
-   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade;
+   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex; + 1d6 [Hex] |&Hex;
+   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade; + [*S:pb] [Hexblade Curse] |&HexBlade;
    -->[&CustomCritCheck]|CustomCritFlag
    --?[&CustomCritFlag] -eq 1|[
 	--=CritDice|1 + [&CritDamageDiceModifier]
@@ -255,12 +257,11 @@
 	--:DEAD|
       --+Congrats|You managed to kill [*T:character_name]
       -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DeathMarker]
-      --?[$HexBladeFlag] -eq 1 -and [&HexBladeMarkerFlag] -eq 1|>HexHeal     
+      --?"X[*T:CurseCaster]" -ne "X"|>HexHeal     
       --<|
 
   --:HexHeal|
-   -->far_HexHeal|[*S:character_id];[*S:t-id]
-   -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexBladebladeMarker]
+   -->far_HexHeal|[*T:t-id]
    --<|
   
   --:MOVE_TOKEN|STokenid, TTokenId, Units
