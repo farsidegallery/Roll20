@@ -1,6 +1,6 @@
 !script {{
   --/|Script Name : Darkness Trigger
-  --/|Version     : 1.0.2
+  --/|Version     : 1.0.0
   --/|This watches for graphics objects (in this case tokens) to change. If a Darkness token is placed it will 
   --/|change the has_bright_light_vision off or on in support of the spell Darkness.
   
