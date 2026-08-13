@@ -1,6 +1,6 @@
 !script {{
   --/|Script Name : Hexblade's Curse Trigger
-  --/|Version     : 1.1.5
+  --/|Version     : 1.1.0
   --/|Requires SC : ScriptCards 3.0.25+, 5Elib/snlib/Farsidelib handouts in Notes and Description
   --/|
   --/|Trigger setup (ScriptCards_Triggers character):
