@@ -9,13 +9,14 @@
   --#rightsub|Curse
   
   --/|Script Name : Hexblade's Curse
-  --/|Version     : 2.1.0
+  --/|Version     : 2.2.0
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib 1.3.13+, Triggers/Hexblade's Curse.scard
   --/|  Farsidelib handout: name "ScriptCards Library Farsidelib", paste into Notes and Description (same as 5Elib/snlib).
   --/|Author      : Farsidegallery
   --/|
   --/|  Script prompts user to choose target of curse, marks target, and reduces resource.
-  --/|  CurseCaster on the target tracks the Warlock for bonus damage and death healing. CurseTarget on the warlock tracks dismiss.
+  --/|  CurseCaster on the target tracks the Warlock for bonus damage. CurseTarget on the warlock tracks dismiss.
+  --/|  Death heal is handled by Triggers/Hexblade's Curse.scard only (far_HexHeal), not by spell scripts.
   --/|  Marker badge 9 (~1 minute) ticks via Combat Master on Hexed2::7409912 with direction -1. ScriptCards cannot pass badge 10.
   --/|  Triggers/Hexblade's Curse.scard ends the curse when the marker expires or the warlock dies or is incapacitated.
   --/|
