@@ -2,7 +2,7 @@
   +++5Elib;snlib;Farsidelib+++
   
   --/|Script Name : Hold Person
-  --/|Version     : 2.1.1
+  --/|Version     : 2.2.0
   --/|Modified By : Farsidegallery
   --/|  
   --/|  Script prompts user for spell level used and makes sure the slot is available.  and spawn the designated token to the VTT. Script calculates
@@ -16,11 +16,8 @@
   
   --&attrib|wisdom
   
-  --/|Enter the Token Markers you use for each condition
-  --&BlessedMarker|angel-outfit
-  --&BaneMarker|Hexed3::7409911
-  --&ConcentrationMarker|Concentrating::7409928
-  --&HoldMarker|Paralyzed::7409941
+  --/|Are you using the matching Bardic Inspiration Script from FarsideGallery? (Default is No using 0. Change to 1 if using the script.)
+  --=Scriptcheck|1
      
   --/|Enter name for Hold Person Character.
   --&HoldName|Hold Person
@@ -41,6 +38,8 @@
   --&cbrac|]
   --&oparen|(
   --&cparen|)
+  
+  -->far_LoadTokenMarkers|
   
   --~shortattrib|string;left;3;[&attrib]
   --~Displayattrib|string;touppercase;[&shortattrib]
@@ -106,7 +105,7 @@
    --+At Higher Levels: |[&higherdesc]
    -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
    --?[$NumHeld] -gt 0 -and [&SpawnScript] -eq 2|[
-    --@forselected+|Spawn _name|[&CharName] _qty|1 _targets|[$NumHeld],Select the [$NumHeld] targets that failed the save. _offset|0,0 _force|yes _size|3 _tokenProps|name:[&HoldTokenName],showname:true,showplayers_name:true _order|toBack _bar1|KeepLink _fx|nova-magic _expand|15,30 {^&select @{selected|token_id}}
+    --@forselected+|Spawn _name|[&HoldName] _qty|1 _targets|[$NumHeld],Select the [$NumHeld] targets that failed the save. _offset|0,0 _force|yes _size|3 _tokenProps|name:[&HoldTokenName],showname:true,showplayers_name:true _order|toBack _bar1|KeepLink _fx|nova-magic _expand|15,30 {^&select @{selected|token_id}}
     --]|
    --X|
 
@@ -120,67 +119,141 @@
    --+[br]|
    --+|[c]You targeted [$targets] creature(s).[/c]
    --+[br]|
-   --+|[t border=3 width=100%][tr][td style="width:100px"][c]Target[/c][/td][td style="width:40px"][c]Save[/c][/td][td style="width:40px"][c]P/F?[/c][/td][td style="width:70px"][c]Held?[/c][/td][/tr]
    --%loop|foreach;Held
-	-->Save|[&loop]
-	--%|
+	--#targettoken|[&loop]
+	--#emoteText|[*S:t-name] casts [&SpellName] at [*T:t-name]!
+	-->ActionSpell|
+   --:BottomForEachTarget|
+   --%|
+   -->Output|
    --<|
 	
-   --:Save|
-	--?"[*[&loop]:npc_condition_immunities]" -inc "paralyzed" -or "[*[&loop]:npc_immunities]" -inc "paralyzed"|[
-	 --+|[t border=3 width=100%][tr][td style="width:100px"][c][*[&loop]:character_name][/c][/td][td style="width:40px"][c][/c][/td][td style="width:40px"][c]P[/c][/td][td style="width:70px"][c][b]Immune[/b][/c][/td][/tr]
-	 --<|
-	 --]|
-	
-	--&BlessFlag|
-    --&BaneMarkerFlag|
-    --&GlobalSave|
-    --&GlobalSkill|
+  --:ActionSpell|
+   --?"[*T:npc]" -eq "1" -and "[*T:npc_type]" -ninc "humanoid"|[
+	--&ResultLabel[*T:t-id]|[b]Invalid Target[/b]
+	--&ResultText[*T:t-id]|[*T:t-name] is not a humanoid. Hold Person has no effect.
+	--&SaveResult[*T:t-id]|Invalid
+	--^BottomForEachTarget|
+   --]|
+   --?"[*T:npc_condition_immunities]" -inc "paralyzed" -or "[*T:npc_immunities]" -inc "paralyzed"|[
+	--&ResultLabel[*T:t-id]|[b]Immune[/b]
+	--&ResultText[*T:t-id]|[*T:t-name] is immune to being paralyzed.
+	--&SaveResult[*T:t-id]|Immune
+	--^BottomForEachTarget|
+   --]|
+   --?"[*T:npc]" -ne "1"|PCRoll|NPCRoll
    
-    --&saveDice|1d20
+  --:PCRoll|
+   --&control|[*O:[*T:t-represents]:character:controlledby]
+   --&playername|[*O:[&control]:player:displayname]
+   --?"X[&playername]" -eq "X"|[
+    --#whisper|gm
+	--]|[
+    --#whisper|[&playername],gm
+	--]|
+   -->ChooseRoll|PC
+  
+  --:NPCRoll|
+   --#whisper|gm
+   -->ChooseRoll|NPC
+  
+  --:ChooseRoll| 
+   --&function|[%1%]
+   --+|[c]Choose Saving Throw Type for [*T:t-name]:[/c]
+   --+|[c][rbutton]Advantage::[&function];2d20kh1[/rbutton][rbutton]Normal::[&function];1d20[/rbutton][rbutton]Disadvantage::[&function];2d20kl1[/rbutton][/c]
+   --X|
+  
+  --:NPC|
+   --&saveDice[*T:t-id]|[&reentryval]
+   --&Blessroll[*T:t-id]|
+   --&Baneroll[*T:t-id]|
+   --#whisper|
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BlessedMarker];BlessFlag[*T:t-id];BlessCount[*T:t-id]
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BaneMarker];BaneMarkerFlag[*T:t-id];BaneMarkerCount[*T:t-id]
+   --?[&BlessFlag[*T:t-id]] -eq 1|&Blessroll[*T:t-id];+ + 1d4 [Bless] |&Blessroll[*T:t-id];
+   --?[&BaneMarkerFlag[*T:t-id]] -eq 1|&Baneroll[*T:t-id];+ - 1d4 [Bane] |&Baneroll[*T:t-id];
+   --?[*T:npc] -eq 1 -and [*T:npc_[&shortattrib]_save_flag] -gt 0|&Save;npc_[&shortattrib]_save |&Save;[&attrib]_mod
+   --=InitSave[*T:t-id]|[&saveDice[*T:t-id]]
+   --c[&saveDice[*T:t-id]]|2d20kh1:&DisplayDice[*T:t-id];Advantage|1d20:&DisplayDice[*T:t-id];1d20|2d20kl1:&DisplayDice[*T:t-id];Disadvantage
+   --?[$InitSave[*T:t-id].Base] -eq 20|>Crit
+   --=TargetSave[*T:t-id]|[$InitSave[*T:t-id]] + [*T:[&attrib]_save_bonus] [&obrac][&Displayattrib][&cbrac] [&Blessroll[*T:t-id]] [&Baneroll[*T:t-id]]
+   --?[$TargetSave[*T:t-id]] -ge [$DC]|>Pass |>Fail   
    
-    --?"X[*T:race]" -ne "X"|[
-     -->far_Check_GLOBAL_MOD_EXISTS|[*[&loop]:character_id]; save; [&damageType]; damageSave
-     -->far_Check_GLOBAL_ATTRIB_SAVE_EXISTS|[*[&loop]:character_id]; [&attrib]; attribSaveRoll
-     --?[&damageSave] -eq 1 -or [&attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "1d20"|&saveDice;2d20kh1
-     --?[&damageSave] -eq 1 -or [&attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "2d20kl1"|&saveDice;1d20
-    
-     -->far_FIND_ACTIVE_GLOBAL_SAVE_MODS|[*[&loop]:character_id];GlobalSave
-     -->far_FIND_ACTIVE_GLOBAL_SKILL_MODS|[*[&loop]:character_id];GlobalSkill
-	 --]|
+  --:PC| 
+   --&saveDice[*T:t-id]|[&reentryval]
+   --&Blessroll[*T:t-id]|
+   --&Baneroll[*T:t-id]|
+   -->far_Check_GLOBAL_ATTRIB_SAVE_EXISTS|[*T:character_id]; [&attrib]; attribSaveRoll[*T:t-id]
+   --?[&attribSaveRoll[*T:t-id]] -eq 1 -and "[&saveDice[*T:t-id]]" -eqi "1d20"|&saveDice[*T:t-id];2d20kh1
+   --?[&attribSaveRoll[*T:t-id]] -eq 1 -and "[&saveDice[*T:t-id]]" -eqi "2d20kl1"|&saveDice[*T:t-id];1d20
    
-    -->LibSN_CHECK_STATUS_MARKER|[*[&loop]:t-id];[&BlessedMarker];BlessFlag;BlessCount
-    -->LibSN_CHECK_STATUS_MARKER|[*[&loop]:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&InspirationMarker];InspiredFlag[*T:t-id];InspiredCount[*T:t-id]
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BardicMarker];BardicFlag[*T:t-id];BardicCount[*T:t-id]
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BlessedMarker];BlessFlag[*T:t-id];BlessCount[*T:t-id]
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BaneMarker];BaneMarkerFlag[*T:t-id];BaneMarkerCount[*T:t-id]
+   
+   --?[&InspiredFlag[*T:t-id]] -ne 0 |>far_Inspiration;[*T:t-id];[&InspirationMarker];[&saveDice[*T:t-id]];saveDice[*T:t-id]
+   -->far_FIND_ACTIVE_GLOBAL_SAVE_MODS|[*T:character_id];GlobalSave[*T:t-id]
+   -->far_FIND_ACTIVE_GLOBAL_SKILL_MODS|[*T:character_id];GlobalSkill[*T:t-id]
+   
+   --=InitSave[*T:t-id]|[&saveDice[*T:t-id]]
+   --c[&saveDice[*T:t-id]]|2d20kh1:&DisplayDice[*T:t-id];Advantage|1d20:&DisplayDice[*T:t-id];1d20|2d20kl1:&DisplayDice[*T:t-id];Disadvantage
+   --?[$InitSave[*T:t-id].Base] -eq 20|>Crit
+   
+   --=attribSaveRoll[*T:t-id]|[$InitSave[*T:t-id]] + [*T:[&attrib]_save_bonus] [&Displayattrib]
+   --?[&BardicFlag[*T:t-id]] -eq 1|>far_Bardic;[*T:t-id];[&BardicMarker];[$Scriptcheck];[$InitSave[*T:t-id].Base];[$attribSaveRoll[*T:t-id]];BardRoll[*T:t-id]
+   --?[&BlessFlag[*T:t-id]] -eq 1|&Blessroll[*T:t-id];+ + 1d4 [Bless] |&Blessroll[*T:t-id];
+   --?[&BaneMarkerFlag[*T:t-id]] -eq 1|&Baneroll[*T:t-id];+ - 1d4 [Bane] |&Baneroll[*T:t-id];
+   
+   --=TargetSave[*T:t-id]|[$InitSave[*T:t-id]] + [*T:[&attrib]_save_bonus] [&obrac][&Displayattrib][&cbrac] [&GlobalSave[*T:t-id]] [&GlobalSkill[*T:t-id]] [&Blessroll[*T:t-id]] [&Baneroll[*T:t-id]] [&BardRoll[*T:t-id]]
 
-    --?[&BaneMarkerFlag] -eq 1|&Baneroll;+ - 1d4 [Bane] |&Baneroll;
+   --#whisper|
+   --?[$TargetSave[*T:t-id]] -ge [$DC]|>Pass |>Fail
    
-    --=TargetSave|[&saveDice] + [*[&loop]:[&attrib]_save_bonus] [&obrac][&Displayattrib][&cbrac] [&GlobalSave] [&GlobalSkill] [&Baneroll]
-	
-	--?[$Save] -ge [$DC]|Pass |Fail
-	
-   --:Pass|
-    --+|[t border=3 width=100%][tr][td style="width:100px"][c][*[&loop]:character_name][/c][/td][td style="width:40px"][c][$TargetSave][/c][/td][td style="width:40px"][c]P[/c][/td][td style="width:70px"][c][/c][/td][/tr]
-    --<|
-   
-   --:Fail|
-    --+|[t border=3 width=100%][tr][td style="width:100px"][c][*[&loop]:character_name][/c][/td][td style="width:40px"][c][$TargetSave][/c][/td][td style="width:40px"][c]F[/c][/td][td style="width:70px"][c]Held[/c][/td][/tr]
-	-->LibSN_ADD_STATUS_MARKER|[*[&loop]:t-id];[&HoldMarker]
-	--?[&SpawnScript] -eq 1|[
-	 --!ot:HoldTID|name:"[&HoldTokenName]"|left:[*[&loop]:t-left]|top:[*[&loop]:t-top]|width:[=[*[&loop]:t-width]*3]|height:[=[*[&loop]:t-height]*3]|imgsrc:"[&URLlink]"|bar1_value:1|represents:[&CharNameID]|showname:false
-	 --z:graphic:[&HoldTID]|toback
-	 --@CARRY_TOKENS_CARRY_BELOW|[*[&loop]:t-id] [&HoldTID]
-	 --]|
-	--=NumHeld|[$NumHeld]+1
-	--!a:[*S:character_id]|!ConcentrationSpell:[&SpellName]
-	--!a:[*S:character_id]|!ConcentrationSpellTargetToken:[&HoldTokenName]
-	--!a:[*[&loop]:character_id]|!MageID:[*S:character_id]
-	-->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];10
-	 --]|
-		
-	--?[$TargetSave] -ge [*S:spell_save_dc]|[
-	 --+|[t border=3 width=100%][tr][td style="width:100px"][c][*[&loop]:character_name][/c][/td][td style="width:40px"][c][$TargetSave][/c][/td][td style="width:40px"][c]P[/c][/td][td style="width:70px"][c][/c][/td][/tr]
-	 --]|
-   --<|	
+  --:Crit|
+   --&ResultLabel[*T:t-id]|[b]Critical Save![/b]
+   --&ResultText[*T:t-id]|[*T:t-name] rolled a [$InitSave[*T:t-id]] vs a DC [$DC] and cannot fail the saving throw.
+   --&SaveResult[*T:t-id]|Pass
+   --^BottomForEachTarget|
+  
+  --:Pass|
+   --&ResultLabel[*T:t-id]|[b]Pass[/b]
+   --&ResultText[*T:t-id]|[*T:t-name] rolled a [$TargetSave[*T:t-id]] vs a DC [$DC] and passed the saving throw.
+   --&SaveResult[*T:t-id]|Pass
+   --^BottomForEachTarget|
+
+  --:Fail|
+   --&ResultLabel[*T:t-id]|[b]Failed[/b]
+   --&ResultText[*T:t-id]|[*T:t-name] rolled a [$TargetSave[*T:t-id]] vs a DC [$DC] and failed the saving throw.
+   --&SaveResult[*T:t-id]|Fail
+   --^BottomForEachTarget|
+
+  --:Output|
+   --#whisper|
+   --%loop|foreach;Held
+    --#targettoken|[&loop]
+    --+|[c][b]Target: [*T:t-name][/b][/c]
+    --?"[&SaveResult[*T:t-id]]" -ne "Immune" -and "[&SaveResult[*T:t-id]]" -ne "Invalid"|[
+     --+Rolling [&DisplayDice[*T:t-id]]: |[$InitSave[*T:t-id]]
+     --+|[br]
+    --]|
+    --+[&ResultLabel[*T:t-id]]: |[&ResultText[*T:t-id]]
+    --?"[&SaveResult[*T:t-id]]" -eq "Fail"|[
+     -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&HoldMarker]
+     --?[&SpawnScript] -eq 1|[
+      --!ot:HoldTID|name:"[&HoldTokenName]"|left:[*T:t-left]|top:[*T:t-top]|width:[=[*T:t-width]*3]|height:[=[*T:t-height]*3]|imgsrc:"[&URLlink]"|bar1_value:1|represents:[&CharNameID]|showname:false
+      --z:graphic:[&HoldTID]|toback
+      --@CARRY_TOKENS_CARRY_BELOW|[*T:t-id] [&HoldTID]
+     --]|
+     --=NumHeld|[$NumHeld]+1
+     --!a:[*S:character_id]|!ConcentrationSpell:[&SpellName]
+     --!a:[*S:character_id]|!ConcentrationSpellTargetToken:[&HoldTokenName]
+     --!a:[*T:character_id]|!MageID:[*S:character_id]
+     -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];10
+    --]|
+    --+|[br]
+   --%|
+   --<|
   
   --:GetSpiritID|CharacterName;StringVariableForCharID
    --~|array;objects:character;SpiritCharArr;[%1%]
