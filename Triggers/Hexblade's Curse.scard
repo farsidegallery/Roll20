@@ -1,6 +1,6 @@
 !script {{
   --/|Script Name : Hexblade's Curse Trigger
-  --/|Version     : 1.0.0
+  --/|Version     : 1.1.5
   --/|Requires SC : ScriptCards 3.0.25+, 5Elib/snlib/Farsidelib handouts in Notes and Description
   --/|
   --/|Trigger setup (ScriptCards_Triggers character):
@@ -9,7 +9,7 @@
   --/|  If a token gmnote contains ScriptCards syntax, trigger parsing can break; keep gmnotes plain on cursed tokens.
   --/|
   --/|Ends Hexblade's Curse when the marker expires (Combat Master ticks badge 9 to 0), the cursed target dies,
-  --/|or the warlock dies or is incapacitated.
+  --/|or the warlock dies or is incapacitated. Death heal (far_HexHeal) is trigger-only; spell scripts no longer call it.
   
   --#hidecard|1
 
