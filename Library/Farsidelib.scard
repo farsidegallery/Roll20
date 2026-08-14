@@ -71,7 +71,8 @@
 --/|      Ends an active curse if the warlock is dead or incapacitated
 --/|
 --/|   far_HexHeal|cursed-target-token-id
---/|      If a cursed creature dies, heals the Warlock stored in CurseCaster (minimum 1 hp), then calls far_EndHexbladeCurse
+--/|      If a cursed creature dies, heals the Warlock stored in CurseCaster (minimum 1 hp), then calls far_EndHexbladeCurse.
+--/|      Trigger-only: call from Triggers/Hexblade's Curse.scard, not from individual spell/ability scripts.
 --/|  
 --/|   far_Inspiration|token-id;tokenmarker;attackstring;attackstringreturn
 --/|      Used if PC character has Inspiration to alter base roll.
