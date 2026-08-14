@@ -1,0 +1,100 @@
+﻿!script {{
+  +++5Elib;snlib;Farsidelib+++
+  
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|My Cool Script @{selected|character_id}
+  --#whisper|self,gm
+  --/|Script Name : Equip Shield
+  --/|Version     : 1.0.0
+  --/|Requires SC : ScriptCards
+  --/|Author      : Farsidegallery
+  --/|  
+  --/|  Lists shield items from the selected character's inventory (itemmodifiers includes "Shield"),
+  --/|  marks which shield is currently equipped, and lets the player equip a different shield.
+  --/|  Equipping sets the chosen item's equipped flag to 1 and clears the previously equipped shield.
+  --/|
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+ 
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+ 
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+ 
+  --#title|Equip Shield
+  --=NumShields|0
+ 
+  --+|[c]What Shield do you want to equip?[/c]
+   --~|array;fullrepeatingsection;Inventory;[*S:character_id];repeating_inventory;itemname:itemcount;♦
+   --~|array;sort;Inventory
+   --~Inventory|array;getfirst;Inventory
+   -->ItemConvert|
+ 
+  --Rfind|[*S:character_id];[&Itemnamewcost];repeating_inventory;itemname
+  --&ItemMods|[*R:itemmodifiers]
+  --?"[*R:itemmodifiers]" -ninc "Shield"|>Itemfindstart
+  --?[*R:equipped] -eq 1|=InUse;1
+  --?[$InUse] -eq 1|[
+   --+|[t border=0 width=100%][tr][td][&Itemname] [b](Equipped)[/b][/td][td style="width:60px"][r][&Itemcostd][/r][/td][td style="width:15px"][rbutton]Equip::EquipShield;[&Itemname][/rbutton][/td][/tr][/t]
+   --&CurrentShield|[&Itemname]
+  --]|[
+   --+|[t border=0 width=100%][tr][td][&Itemname][/td][td style="width:60px"][r][&Itemcostd][/r][/td][td style="width:15px"][rbutton]Equip::EquipShield;[&Itemname][/rbutton][/td][/tr][/t]
+  --]|
+  --=NumShields|[$NumShields]+1
+  --^Itemfindstart|
+ 
+  --:Itemfindstart|
+   --~Inventory|array;getnext;Inventory
+   --?"[&Inventory]" -eq ArrayError|Itemfinddone
+   -->ItemConvert|
+   
+   --Rfind|[*S:character_id];[&Itemnamewcost];repeating_inventory;itemname
+   --&ItemMods|
+   --?"[*R:itemmodifiers]" -ninc "Shield"|>Itemfindstart
+   --?[*R:equipped] -eq 1|=InUse;1|=InUse;0
+   --?[$InUse] -eq 1|[
+    --+|[t border=0 width=100%][tr][td][&Itemname] [b](Equipped)[/b][/td][td style="width:60px"][r][&Itemcostd][/r][/td][td style="width:15px"][rbutton]Equip::EquipShield;[&Itemname][/rbutton][/td][/tr][/t]
+    --&CurrentShield|[&Itemname]
+   --]|[
+    --+|[t border=0 width=100%][tr][td][&Itemname][/td][td style="width:60px"][r][&Itemcostd][/r][/td][td style="width:15px"][rbutton]Equip::EquipShield;[&Itemname][/rbutton][/td][/tr][/t]
+   --]|
+   --=NumShields|[$NumShields]+1
+   --^Itemfindstart|
+  
+  --:Itemfinddone|
+   --?[$NumShields] -eq 0|>NoInventory
+   --X|
+  
+  --:NoInventory|
+   --+|[c][b][*S:t-name]'s inventory has no shields available![/b][/c]
+   --X|
+  
+  --:EquipShield|
+   --#whisper|
+   --&ItemToEquip|[&reentryval]
+
+   --?"[&CurrentShield]" -eq "[&ItemToEquip]"|[
+    --+|[*S:t-name] already has [&ItemToEquip] equipped.
+    --]|[
+    --Rfind|[*S:character_id];[&CurrentShield];repeating_inventory;itemname
+    --!a:[*S:character_id]|![*R>equipped]:0
+
+    --Rfind|[*S:character_id];[&ItemToEquip];repeating_inventory;itemname
+    --!a:[*S:character_id]|![*R>equipped]:1
+
+    --+|[*S:t-name] unequips [&CurrentShield] and equips [&ItemToEquip].
+    --]|
+    --X| End Script
+  
+  --:ItemConvert|
+   --&Itemnamewcost|[&Inventory(before,♦)]
+   --&Itemname|[&Itemnamewcost(before,-)]
+   --&Itemcount|[&Inventory(after,♦)]
+   --<|
+}}
