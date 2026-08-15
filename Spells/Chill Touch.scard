@@ -6,14 +6,14 @@
   --#whisper|self,gm
   
   --/|Script Name : Chill Touch
-  --/|Version     : 1.2.1
+  --/|Version     : 1.2.2
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : 
   --/|Modified By : Farsidegallery
   --/|
-  --/|  Script prompts user of target and type of attack roll. Script rolls attack, compares to target's AC, and determines if spell hits.
-  --/|  Script finds Caster's level, scales and calculates damage, determines damage modifier (resistant, immune), and applies damage. 
-  --/|  If target dies due to damgae, the "Dead" token marker is applied.
+  --/|  Script prompts for target and attack roll type, makes a ranged spell attack, scales necrotic damage by caster level,
+  --/|  applies damage with resistance/immunity checks, and applies Disadvantage to undead targets on a hit. If the target
+  --/|  dies, the Dead token marker is applied.
   --/|
   
   --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
@@ -24,8 +24,6 @@
    
    --&hpBar|1
    --&tempHPbar|4
-   
-   --&attrib|constitution
    
    --/|What resource name is used for Sorcerer Points?
    --&SorcererResource|Sorcery Points
@@ -93,7 +91,13 @@
    --=TwinFlag|1
    -->far_BuildTargetList|2
    -->far_BuildTargetArray|Targets;2;TargetString
+   --?"X[&target1]" -ne "X" -and "X[&target2]" -ne "X" -and "[&target1]" -eq "[&target2]"|>DuplicateTwinTarget
+   --?[@Targets(length)] -lt 2|>DuplicateTwinTarget
    -->TargetInfo|
+
+  --:DuplicateTwinTarget|
+   --+|[c][b]Twinned Chill Touch requires two different creatures. Please select two different targets.[/b][/c]
+   --^BuildTwinArray|
   
   --:Target|
    --+Target|[rbutton]Click this button to select your target.::TargetArray;[&TB]target|token_id}[/rbutton]
@@ -132,6 +136,7 @@
    --=AttackRoll[*T:t-id]|[$AttackDiceBase[*T:t-id]] + [*S:spell_attack_bonus] [Spell Attack Bonus] [&GlobalAttack] [&Baneroll] [&BardRoll]
 
    --?[$AttackDiceBase[*T:t-id]] -eq 20|>Crit
+   --?[$AttackDiceBase[*T:t-id]] -eq 19 -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|>Crit
    --?[$AttackDiceBase[*T:t-id]] -eq 1|>Fumble
    --?[$AttackRoll[*T:t-id]] -ge [$TargetAC.Total] -and [$AttackDiceBase[*T:t-id]] -nei 20|>Hit
    --?[$AttackRoll[*T:t-id]] -lt [$TargetAC.Total] -and [$AttackDiceBase[*T:t-id]] -nei 1|>Miss
@@ -146,8 +151,8 @@
   --:Crit|
    -->DamageRoll|
    -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;1   
-   --?"X[&HexMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex[*T:t-id];+ + 1d6 [Hex] |&Hex[*T:t-id];
-   --?"X[&HexBladeMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade[*T:t-id];+ + [*S:pb] [Proficiency Bonus] |&HexBlade[*T:t-id];
+   --?"X[&HexMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex[*T:t-id]; + 1d6 [Hex] |&Hex[*T:t-id];
+   --?"X[&HexBladeMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade[*T:t-id]; + [*S:pb] [Hexblade Curse] |&HexBlade[*T:t-id];
    -->[&CustomCritCheck]|CustomCritFlag
     --?[&CustomCritFlag] -eq 1|[
     --=CritDice|[&DamageDice]+[&CritDamageDiceModifier]
@@ -162,22 +167,22 @@
     --=EmpoweredDamageFlag|1
     --]|
    --&ResultLabel[*T:t-id]|[b]Critical Hit!!![/b]
-   --&ResultText[*T:t-id]|The bolt did [$Damage[*T:t-id]] points of [&damageType] damage.
+   --&ResultText[*T:t-id]|Chill Touch dealt [$Damage[*T:t-id]] points of [&damageType] damage.
    --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$Damage[*T:t-id]];0;0;1
    -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$Damage[*T:t-id]];0;0;1
    --=FinalHP|[*T:t-bar[&hpBar]_value]+[*T:t-bar[&tempHPbar]_value]-[$Damage[*T:t-id]]
    --?[$FinalHP] -le 0|>Died
    
    --?"[*T:race]" -inc "Undead" -or "[*T:npc_type]" -inc "Undead"|[
-    -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&disadvantagemarker];1
+    -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DisadvantageMarker];1
 	--]|
    --^BottomForEachTarget|
 
   --:Hit|
    -->DamageRoll|
    -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0
-   --?"X[&HexMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex[*T:t-id];+ + 1d6 [Hex] |&Hex[*T:t-id];
-   --?"X[&HexBladeMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade[*T:t-id];+ + [*S:pb] [Proficiency Bonus] |&HexBlade[*T:t-id];
+   --?"X[&HexMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex[*T:t-id]; + 1d6 [Hex] |&Hex[*T:t-id];
+   --?"X[&HexBladeMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade[*T:t-id]; + [*S:pb] [Hexblade Curse] |&HexBlade[*T:t-id];
    --=Damage[*T:t-id]|[&DamageDice]d8 [&HexBlade[*T:t-id]] [&Hex[*T:t-id]][&GlobalDamage][&damageMod[*T:t-id]]
    --?"X[$EmpowerFeatFlag]" -eq "X1"|>far_EmpowerSelect;Damage[*T:t-id];Crit;DamageChangedFlag[*T:t-id];ChangedDamage[*T:t-id]
    --?"X[$DamageChangedFlag[*T:t-id]]" -eq "X1"|[
@@ -185,14 +190,14 @@
     --=EmpoweredDamageFlag|1
     --]|
    --&ResultLabel[*T:t-id]|[b]Hit![/b]
-   --&ResultText[*T:t-id]|The bolt did [$Damage[*T:t-id]] points of [&damageType] damage.
+   --&ResultText[*T:t-id]|Chill Touch dealt [$Damage[*T:t-id]] points of [&damageType] damage.
    --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$Damage];0;0;1
    -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$Damage[*T:t-id]];0;0;1
    --=FinalHP|[*T:t-bar[&hpBar]_value]+[*T:t-bar[&tempHPbar]_value]-[$Damage[*T:t-id]]
    --?[$FinalHP] -le 0|>Died
    
    --?"[*T:race]" -inc "Undead" -or "[*T:npc_type]" -inc "Undead"|[
-    -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&disadvantagemarker];1
+    -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DisadvantageMarker];1
 	--]|
    --^BottomForEachTarget|
 
@@ -229,12 +234,6 @@
 
   --:Died|
    -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DeathMarker]
-   --?[$HexBladeFlag] -eq 1 -and [&HexBladeMarkerFlag] -eq 1|>HexHeal
-   --<|
-  
-  --:HexHeal|
-   -->far_HexHeal|[*S:character_id];[*S:t-id]
-   -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexBladebladeMarker]
    --<|
   
   --:DamageRoll|
