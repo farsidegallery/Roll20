@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Disintegrate
-  --/|Version     : 2.1.2
+  --/|Version     : 2.1.3
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : 
   --/|Modified By : Farsidegallery
@@ -199,8 +199,8 @@
    
   --:Crit|
    -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage[*T:t-id];0
-   --?"X[&HexMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex[*T:t-id];+ + 1d6 [Hex] |&Hex[*T:t-id];
-   --?"X[&HexBladeMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade[*T:t-id];+ + [*S:pb] [Proficiency Bonus] |&HexBlade[*T:t-id];
+   --?"X[&HexMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex[*T:t-id]; + 1d6 [Hex] |&Hex[*T:t-id];
+   --?"X[&HexBladeMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade[*T:t-id]; + [*S:pb] [Hexblade Curse] |&HexBlade[*T:t-id];
    --=Damage[*T:t-id]|[$Damage] [&HexBlade[*T:t-id]] [&Hex[*T:t-id]][&GlobalDamage[*T:t-id]][&damageMod[*T:t-id]]\2
    --&ResultLabel[*T:t-id]|[b]Critical Save!!![/b]
    --&ResultText[*T:t-id]|[*T:t-name] rolled a [$InitSave[*T:t-id]] vs a DC [$DC] and cannot fail the saving throw. [*T:t-name] takes no damage.
@@ -209,8 +209,8 @@
   
   --:Pass|
    -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage[*T:t-id];0
-   --?"X[&HexMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex[*T:t-id];+ + 1d6 [Hex] |&Hex[*T:t-id];
-   --?"X[&HexBladeMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade[*T:t-id];+ + [*S:pb] [Proficiency Bonus] |&HexBlade[*T:t-id];
+   --?"X[&HexMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex[*T:t-id]; + 1d6 [Hex] |&Hex[*T:t-id];
+   --?"X[&HexBladeMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade[*T:t-id]; + [*S:pb] [Hexblade Curse] |&HexBlade[*T:t-id];
    --&ResultLabel[*T:t-id]|[b]Pass[/b]
    --&ResultText[*T:t-id]|[*T:t-name] rolled a [$TargetSave[*T:t-id]] vs a DC [$DC] and passed the saving throw. [*T:t-name] takes no damage.
    --%|
@@ -218,8 +218,8 @@
    
   --:Fail|
    -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage[*T:t-id];0
-   --?"X[&HexMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex[*T:t-id];+ + 1d6 [Hex] |&Hex[*T:t-id];
-   --?"X[&HexBladeMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade[*T:t-id];+ + [*S:pb] [Proficiency Bonus] |&HexBlade[*T:t-id];
+   --?"X[&HexMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex[*T:t-id]; + 1d6 [Hex] |&Hex[*T:t-id];
+   --?"X[&HexBladeMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade[*T:t-id]; + [*S:pb] [Hexblade Curse] |&HexBlade[*T:t-id];
    --=Damage[*T:t-id]|[$Damage] [&HexBlade[*T:t-id]] [&Hex[*T:t-id]][&GlobalDamage[*T:t-id]][&damageMod[*T:t-id]]
    --&ResultLabel[*T:t-id]|[b]Failed[/b]
    --&ResultText[*T:t-id]|[*T:t-name] rolled a [$TargetSave[*T:t-id]] vs a DC [$DC] and failed the saving throw. [*T:t-name] takes [$Damage[*T:t-id]] damage.
@@ -228,23 +228,15 @@
    
   --:Died|
    --#whisper|
-   --?[$HexBladeFlag[*T:t-id]] -eq 1 -and [&HexBladeMarkerFlag[*T:t-id]] -eq 1|>HexHeal
    --~|turnorder;removetoken;[*T:t-id]
    --?"X[&HexMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|[
     -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexMarker];0
 	  -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];0
 	  --]|
-   --?"X[&HexBladeMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|[
-    -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];0
-	  --]|
-   --+Disintigrated: |[*T:t-name] has been disintegrated by the spell. Everything [*T:t-name] is wearing and carrying, except magic items, are reduced to a pile of fine gray dust. 
+   --+Disintigrated: |[*T:t-name] has been disintegrated by the spell. Everything [*T:t-name] is wearing and carrying, except magic items, are reduced to a pile of fine gray dust.
    --+|[*T:t-name] can be restored to life only by means of a true resurrection or a wish spell.
    --+|[br]
    -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DeathMarker]
-   --<|
-  
-  --:HexHeal|
-   -->far_HexHeal|[*S:character_id];[*S:t-id]
    --<|
    
   --:Output|
