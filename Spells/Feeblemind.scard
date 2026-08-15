@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Feeblemind
-  --/|Version     : 1.1.1
+  --/|Version     : 1.1.2
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|  
@@ -71,6 +71,8 @@
    --#emotetext|[*S:t-name] casts [&SpellName] on [*T:t-name]!
    -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;0;0;0
    -->far_FindFeat|[*T:character_id];"Thought Shield";ThoughtFlag
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexMarker];HexMarkerFlag;HexMarkerCount
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];HexBladeMarkerFlag;HexBladeMarkerCount
    --?"[*T:npc]" -ne "1"|PCRoll |NPCRoll
    
   --:PCRoll|
@@ -111,8 +113,6 @@
    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&InspirationMarker];InspiredFlag;InspiredCount
    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BardicMarker];BardicFlag;BardicCount
    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
-   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexMarker];HexMarkerFlag;HexMarkerCount
-   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];HexBladeMarkerFlag;HexBladeMarkerCount
    
    --?[&InspiredFlag] -ne 0 |>far_Inspiration;[*T:t-id];[&InspirationMarker];[&saveDice];saveDice
    -->far_FIND_ACTIVE_GLOBAL_SAVE_MODS|[*T:character_id];GlobalSave
@@ -185,6 +185,7 @@
    
   --:Output|
    --#whisper|
+   -->far_DeductSpellSlot|[*S:t-id];[&MinimumSpellLevel]
    --=FinalHP|[*T:t-bar[&hpBar]_value]+[*T:t-bar[&tempHPbar]_value]-[$Damage]
    --?[$FinalHP] -le 0|>Died
    
@@ -192,7 +193,6 @@
 
    --+|[br]
    --+Desc: |[&desc]
-   -->far_DeductSpellSlot|[*S:t-id];[&MinimumSpellLevel]
    --X|
    
   --:Died|
