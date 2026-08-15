@@ -5,7 +5,7 @@
   --#reentrant|My Cool Script @{selected|character_id}
   
   --/|Script Name : Detect Magic
-  --/|Version     : 2.1.2
+  --/|Version     : 2.1.3
   --/|Requires SC : SelectManager, Radar, ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|  
@@ -46,10 +46,11 @@
   --X|
   
   --:ChooseFunction|
-   --?"[*S:class]" -inc "Wizard" -or "[*S:class]" -inc "Cleric" -or "[*S:class]" -inc "Druid" -or "[*S:class]" -inc "Bard" -or "[*S:class]" -inc "Artificer"|&ButtonChoice;[rbutton]New Cast::NewCast[/rbutton][rbutton]Ritual Cast::Ritual[/rbutton][rbutton]Refresh::RadarWave[/rbutton]|&ButtonChoice;[rbutton]New Cast::NewCast[/rbutton][rbutton]Refresh::RadarWave[/rbutton] 
+   --?"[*S:class]" -inc "Wizard" -or "[*S:class]" -inc "Cleric" -or "[*S:class]" -inc "Druid" -or "[*S:class]" -inc "Bard" -or "[*S:class]" -inc "Artificer"|&ButtonChoice;[rbutton]New Cast::NewCast[/rbutton][rbutton]Ritual Cast::Ritual[/rbutton][rbutton]Refresh::RadarWave[/rbutton][rbutton]Dismiss::Remove[/rbutton]|&ButtonChoice;[rbutton]New Cast::NewCast[/rbutton][rbutton]Refresh::RadarWave[/rbutton][rbutton]Dismiss::Remove[/rbutton] 
    -->far_FindFeat|[*S:t-id];Eldritch Invocation: Eldritch Sight;SightFlag
-   --?"[*S:class]" -inc "Warlock" -and [$SightFlag] -eq 1|&ButtonChoice;[rbutton]New Cast::NewCast[/rbutton][rbutton]Eldritch Sight::Ritual[/rbutton][rbutton]Refresh::RadarWave[/rbutton]
-   --+Choose Function: |[&ButtonChoice]
+   --?"[*S:class]" -inc "Warlock" -and [$SightFlag] -eq 1|&ButtonChoice;[rbutton]New Cast::NewCast[/rbutton][rbutton]Eldritch Sight::Ritual[/rbutton][rbutton]Refresh::RadarWave[/rbutton][rbutton]Dismiss::Remove[/rbutton]
+   --+|[c][b]Choose Function:[/b][/c]
+   --+|[c][&ButtonChoice][/c]
    --X|
   
   --:NewCast|
@@ -84,4 +85,16 @@
   --:RadarWave|
   --@forselected|radar _range|30 ft _pinglife|4000 _wavedelay|50 _wavespacing|35 _wavelife|200 _layers|gm,token,map _tokfilter|    gmnotes: abjuration#800080, conjuration#ffa500, divination#green, enchantment#yellow, evocation#ff0000, illusion#00ffff, necromancy#000000, transmutation#blue, wild#b6d7a8, dead#808080 _title|Detect Magic _silent|no gm _units|u, 5e _graphoptions|grid circle _output|graph table _LOS|yes
   --X|
+  
+  --:Remove|
+   --#emotetext|[*S:character_name] dismisses [&SpellName]!
+   --#whisper|
+   --?"X[*S:ConcentrationSpell]" -eq "X" -or "[*S:ConcentrationSpell]" -ne "[&SpellName]"|[
+    --+|[*S:character_name] is not concentrating on [&SpellName].
+    --X|
+   --]|
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];0
+   --!a:[*S:character_id]|!ConcentrationSpell:**
+   --+|[*S:character_name] is no longer concentrating on [&SpellName].
+   --X|
 }}
