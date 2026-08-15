@@ -6,14 +6,14 @@
   --#whisper|self,gm  
   
   --/|Script Name : Dissonant Whispers
-  --/|Version     : 1.0.1
+  --/|Version     : 1.0.2
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Arak Stoneboulder
   --/|Modified By : Farsidegallery
   --/|
-  --/|  Script prompts user of target and type of attack roll. Script rolls attack, compares to target's AC, and determines if spell hits.
-  --/|  Script finds Caster's level, scales and calculates damage, determines damage modifier (resistant, immune), and applies damage. 
-  --/|  If target dies due to damgae, the "Dead" token marker is applied.
+  --/|  Script prompts for target and spell level, rolls a Wisdom save, and applies psychic damage (half on success).
+  --/|  On a failed save, the target must use its reaction to move away. Deafened targets cannot hear the whispers and are unaffected.
+  --/|  If the target dies, the "Dead" token marker is applied.
   --/|
   
   --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
@@ -86,7 +86,11 @@
    --&damageroll|[$damagedice]d6
    
    -->far_FindFeat|[*T:character_id];"Thought Shield";ThoughtFlag
-   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damagemod;0;0;0
+   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;0;0;0
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexMarker];HexMarkerFlag;HexMarkerCount
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];HexBladeMarkerFlag;HexBladeMarkerCount
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&DeafenedMarker];DeafenedFlag;DeafenedCount
+   --?[&DeafenedFlag] -eq 1|>DisWhispersDeafened
    --?"[*T:npc]" -ne "1"|PCRoll |NPCRoll
    
   --:PCRoll|
@@ -115,7 +119,8 @@
    --=Save|[&saveDice] + [*T:[&Save]] [&Displayattrib]
    --#whisper|
    --?[$Save.Base] -eq 20|>Crit
-   --?[$Save] -ge [$DC]|>Pass |>Fail   
+   --?[$Save] -ge [$DC]|>Pass |>Fail
+   --X|
    
   --:PC| 
    --&saveDice|[&reentryval]
@@ -128,8 +133,6 @@
    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&InspirationMarker];InspiredFlag;InspiredCount
    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BardicMarker];BardicFlag;BardicCount
    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
-   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexMarker];HexMarkerFlag;HexMarkerCount
-   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];HexBladeMarkerFlag;HexBladeMarkerCount
    
    --?[&InspiredFlag] -ne 0 |>far_Inspiration;[*T:t-id];[&InspirationMarker];[&saveDice];saveDice
    -->far_FIND_ACTIVE_GLOBAL_SAVE_MODS|[*T:character_id];GlobalSave
@@ -149,20 +152,22 @@
 
    --#whisper|
    --?[$Save] -ge [$DC]|>Pass |>Fail
+   --X|
    
   --:Crit|
-   -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;1 
+   -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0
    --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex; + 1d6 [Hex] |&Hex;
    --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade; + [*S:pb] [Hexblade Curse] |&HexBlade;
    --=Damage|[&damageroll] [&HexBlade] [&Hex] [&GlobalDamage] [&damageMod]\2
    --+Save: |[*T:t-name] rolled a [$Save.Base] vs a DC [$DC] and cannot fail the saving throw. 
    --+|[br]
    --+Result: |[*T:t-name] takes [$Damage] hp of [&damageType] damage.
+   -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
    
    --?[$ThoughtFlag] -eq 1|[
     --+|[br]
     --+Additonal Result: |[*S:t-name] takes [$Damage] hp of [&damageType] damage due to [*T:t-name]'s mental defenses.
-    -->far_DamageTokenmod|[*S:t-id];[&bar];[&tempBar];-[$Damage];0;0;1
+    -->far_DamageTokenmod|[*S:t-id];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
    --]|
    -->Output|
   
@@ -174,11 +179,12 @@
    --+Save: |[*T:t-name] rolled a [$Save] vs a DC [$DC] and passed the saving throw. 
    --+|[br]
    --+Result: |[*T:t-name] takes [$Damage] hp of [&damageType] damage.
+   -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
    
    --?[$ThoughtFlag] -eq 1|[
     --+|[br]
     --+Additonal Result: |[*S:t-name] takes [$Damage] hp of [&damageType] damage due to [*T:t-name]'s mental defenses.
-    -->far_DamageTokenmod|[*S:t-id];[&bar];[&tempBar];-[$Damage];0;0;1
+    -->far_DamageTokenmod|[*S:t-id];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
    --]|
    -->Output|
    
@@ -189,41 +195,55 @@
    --=Damage|[&damageroll] [&HexBlade] [&Hex] [&GlobalDamage] [&damageMod]
    --+Save: |[*T:t-name] rolled a [$Save] vs a DC [$DC] and failed the saving throw. 
    --+|[br]
-   --+Result: |[*T:t-name] takes [$Damage] hp of [&damageType] damage.
+   --+Result: |[*T:t-name] takes [$Damage] hp of [&damageType] damage and must move away from [*S:t-name] as far as possible.
    -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
    --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$damageresult];0;0;1
    
    --?[$ThoughtFlag] -eq 1|[
     --+|[br]
     --+Additonal Result: |[*S:t-name] takes [$Damage] hp of [&damageType] damage due to [*T:t-name]'s mental defenses.
-    -->far_DamageTokenmod|[*S:t-id];[&bar];[&tempBar];-[$Damage];0;0;1
+    -->far_DamageTokenmod|[*S:t-id];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
    --]|
    -->Output|
+  
+  --:DisWhispersDeafened|
+   --#whisper|
+   --=Damage|0
+   --+Result: |[*T:t-name] is deafened and cannot hear the discordant melody. The spell has no effect.
+   -->Output|
    
-   --:Died|
-    --#whisper|
-    --~|turnorder;removetoken;[*T:t-id]
-    --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|[
-     -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexMarker];0
-	 -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];0
-	 --]|
-    -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DeathMarker]
-	--#emotetext|[*S:t-name] disintegrates [*T:t-name]!
-	--+|[br]
-	--+Disintegrated! |[*T:t-name], including all equipment, turns into a pile of ash on the ground.
-    --<|
-
+  --:DisWhispersDeathFinish|
+   --~|turnorder;removetoken;[*T:t-id]
+   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|[
+    -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexMarker];0
+	  -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];0
+	  --]|
+   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|[
+    -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];0
+	  --]|
+   -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DeathMarker]
+   --#emoteText|[*S:t-name]'s discordant melody overwhelms [*T:t-name]!
+   --+|[br]
+   --+|[*T:t-name] collapses, unable to withstand the psychic assault.
+   --<|
+  
+  --:DisWhispersDoHexHeal|
+   -->far_HexHeal|[*T:t-id]
+   --<| 
   
   --:Output|
-   --=FinalHP|[*T:t-bar[&hpBar]_value]+[*T:t-bar[&tempHPbar]_value]-[$Damage]
-   --?[$FinalHP] -le 0|>Died
-   
    -->far_PlayEffects|[*S:t-id];[*T:t-id];;burst-magic
 
+   --=FinalHP|[*T:t-bar[&hpBar]_value] + [*T:t-bar[&tempHPbar]_value] - [$Damage]
+   
+   --?[$FinalHP] -le 0 -and "X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|>DisWhispersDoHexHeal
+   --?[$FinalHP] -le 0|>DisWhispersDeathFinish
+    
    --+|[br]
    --+Duration: |[&duration]
    --+Desc: |[&desc]
    --+At Higher Levels: |[&higherdesc]
+   --+|[br]
    -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
    --X|
 }}
