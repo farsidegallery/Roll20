@@ -6,7 +6,7 @@
   --#whisper|self,gm
 
   --/|Script Name : Chaos Bolt
-  --/|Version     : 1.0.4
+  --/|Version     : 1.0.6
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|  
@@ -100,15 +100,20 @@
    
   --:ChooseAttackRoll| 
    --#targetToken|[&reentryval]
+   --&SelectedTarget|[&reentryval]
+   --?[$JumpCount] -gt 1|[
+    --~testvar|array;indexof;TargetList;[&SelectedTarget]
+    --?[&testvar] -ne ArrayError|>DuplicateTarget
+   --]|
    --?[$JumpCount] -eq 1|[
-	--&targets(1)|[*T:t-id]
-	--]|[
-	--&targets([@targets()])|[*T:t-id]
-	--]|
+    --~|array;define;TargetList;[&SelectedTarget]
+   --]|[
+    --~|array;add;TargetList;[&SelectedTarget]
+   --]|
+   --&targets([$JumpCount])|[&SelectedTarget]
    --?[*T:npc] -eq 1|=TargetAC;[*T:npc_ac]|=TargetAC;[*T:ac]
    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexMarker];HexMarkerFlag;HexMarkerCount
    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];HexBladeMarkerFlag;HexBladeMarkerCount
-   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;0;0;0
    --+|[c]Choose Attack Type:[/c]
    --+|[c][rbutton]Advantage::AttackType;2d20kh1[/rbutton][rbutton]Normal::AttackType;1d20[/rbutton][rbutton]Disadvantage::AttackType;2d20kl1[/rbutton][/c]
    --X|
@@ -156,8 +161,13 @@
    --+|[c][rbutton][&damageType(totitlecase)]::[&Function];[&damageType][/rbutton][rbutton][&damageType2(totitlecase)]::[&Function];[&damageType2][/rbutton][/c]
    --X|   
   
+  --:DuplicateTarget|
+   --+|[c][b][*T:t-name] has already been targeted by this casting. Choose a different creature.[/b][/c]
+   --^ChooseTarget|
+
   --:Crit|
    --&damageType|[&reentryval]
+   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;0;0;0
    --?[$JumpCount] -eq 1|[
 	--&type(1)|[&damageType]
 	--]|[
@@ -174,7 +184,7 @@
 	--&CritDamage|[$CritDice][&CritDamageDiceRollType]6[&CritDamageRollModifier] + [$CritDamageModifier]
 	--=Damage|[$DamageRoll]+[&DamageD6] [Hit] + [&CritDamage2] + [&CritDamage] [Crit] [&HexBlade] [&Hex] [&GlobalDamage][&damageMod]
 	--]|[
-	--=Damage|[$DamageRoll2]+[&DamageD6]+[&CritDamage2]+[&CritDamageD6] [&HexBlade] [&Hex] [&GlobalDamage][&damageMod]
+	--=Damage|[$DamageRoll]+[&DamageD6]+[&CritDamage2]+[&CritDamageD6] [&HexBlade] [&Hex] [&GlobalDamage][&damageMod]
 	--]|
    --&ResultText[$JumpCount]|[b]Critical Hit!!![/b]
    --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$Damage];0;0;1
@@ -190,6 +200,7 @@
 
   --:Hit|
    --&damageType|[&reentryval]
+   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;0;0;0
    --?[$JumpCount] -eq 1|[
 	--&type(1)|[&damageType]
 	--]|[
@@ -243,10 +254,11 @@
    --<|
   
   --:JumpCheck|
-   --?[$jumpflag] -eq 1|[
+   --?[$jumpflag.Total] -eq 1|[
 	--=JumpCount|[$JumpCount]+1
 	--^ChooseTarget|
-	--]|
+	--X|
+   --]|
    -->Done|
    
   --:Done| 
