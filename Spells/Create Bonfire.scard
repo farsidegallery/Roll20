@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Create Bonfire
-  --/|Version     : 1.1.0
+  --/|Version     : 1.1.1
   --/|Modified By : Farsidegallery
   --/|  
   --/|  Script prompts user for spell level used and makes sure the slot is available and spawn the designated token to the VTT.
@@ -206,8 +206,8 @@
     -->LibSN_CHECK_STATUS_MARKER|[*[&loop]:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
     
     -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0   
-    --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex;+ + 1d6 [Hex] |&Hex;
-    --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade;
+    --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex; + 1d6 [Hex] |&Hex;
+    --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade; + [*S:pb] [Hexblade Curse] |&HexBlade;
     --?[&BaneMarkerFlag] -eq 1|&Baneroll;+ - 1d4 [Bane] |&Baneroll;
    
     --=TargetSave|[&saveDice] + [*[&loop]:[&attrib]_save_bonus] [&obrac][&Displayattrib][&cbrac] [&GlobalSave] [&GlobalSkill] [&Baneroll]
