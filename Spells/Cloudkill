@@ -242,8 +242,8 @@
 	--?[$TargetSave] -lt [*S:spell_save_dc]|[
 	 --&DexSave|F
 	 --&FontColor|990000
-	 --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*[&loop]:t-id]"|&Hex;+ + 1d6 [Hex] |&Hex;
-     --?"X[&HexBladeMarkerFlag]" -eq 1 -and "X[*S:CurseTarget]" -eq "X[*[&loop]:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade;
+	 --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*[&loop]:t-id]"|&Hex; + 1d6 [Hex] |&Hex;
+     --?"X[&HexBladeMarkerFlag]" -eq 1 -and "X[*[&loop]:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade; + [*S:pb] [Hexblade Curse] |&HexBlade;
      --=Damage|[&DamageDice] [&HexBlade] [&GlobalDamage] [&Hex] [&DamageMod]
 	 --+|[t border=3 width=100%][tr][td style="width:100px"][c][*[&loop]:t-name][/c][/td][td style="width:50px"][c][$TargetSave][/c][/td][td style="width:50px"][#[&FontColor]][b][c][&DexSave][/c][/b][/#][/td][td style="width:50px"][c][$Damage][/c][/td][/tr]
 	 -->far_DamageTokenmod|[&loop];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
@@ -252,8 +252,8 @@
 	--?[$TargetSave] -ge [*S:spell_save_dc]|[
 	 --&DexSave|P
 	 --&FontColor|009900
-	 --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*[&loop]:t-id]"|&Hex;+ + 1d6 [Hex] |&Hex;
-     --?"X[&HexBladeMarkerFlag]" -eq 1 -and "X[*S:CurseTarget]" -eq "X[*[&loop]:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade;
+	 --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*[&loop]:t-id]"|&Hex; + 1d6 [Hex] |&Hex;
+     --?"X[&HexBladeMarkerFlag]" -eq 1 -and "X[*[&loop]:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade; + [*S:pb] [Hexblade Curse] |&HexBlade;
      --=Damage|[&DamageDice] [&HexBlade] [&GlobalDamage] [&Hex] [&DamageMod] \2
 	 --+|[t border=3 width=100%][tr][td style="width:100px"][c][*[&loop]:t-name][/c][/td][td style="width:50px"][c][$TargetSave][/c][/td][td style="width:50px"][#[&FontColor]][b][c][&DexSave][/c][/b][/#][/td][td style="width:50px"][c][$Damage][/c][/td][/tr]
 	 -->far_DamageTokenmod|[&loop];[&hpBar];[&tempHPbar];-[$Damage];0;0;1

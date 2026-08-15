@@ -1,4 +1,4 @@
-!scriptcard  {{
+!scriptcards {{
   +++5Elib;snlib;Farsidelib+++
   
   --#sourceToken|@{selected|token_id}
@@ -6,12 +6,12 @@
   --#whisper|self,gm
 
   --/|Script Name : Mind Sliver
-  --/|Version     : 1.0.1
+  --/|Version     : 1.0.5
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|  
   --/|  Script rolls saving throw, compares to caster's DC, and determines if spell hits. Script finds Caster's level, scales and calculates damage,
-  --/|  determines damage modifier (resistant, immune), and applies damage. If target dies due to damgae, the "Dead" token marker is applied.
+  --/|  determines damage modifier (resistant, immune), and applies damage. If target dies due to damage, the "Dead" token marker is applied.
   --/|
   --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
     
@@ -22,6 +22,7 @@
    --/| Bar used for HP
    --&bar|1
    --&tempBar|4
+   --&DeathMarker|dead
    
    --&attrib|intelligence
    
@@ -30,15 +31,6 @@
    
    --/|Are you using the matching Bardic Inspiration Script from FarsideGallery? (Default is No using 0. Change to 1 if using the script.)
    --=Scriptcheck|1
-  
-   --/|Enter the Token Markers you use for each condition
-   --&BardicMarker|BardicInspiration::7409920
-   --&BlessedMarker|angel-outfit
-   --&InspirationMarker|Inspiration::7409921
-   --&BaneMarker|Hexed3::7409911
-   --&HexMarker|Hexed::7409913
-   --&HexBladebladeMarker|Hexed2::7409912
-   --&DeathMarker|dead
    
   --/| ____________________ End Global User Variables ___________________________________________________________________________________________
  
@@ -51,6 +43,9 @@
   --&cbrac|]
   --&oparen|(
   --&cparen|)
+
+  -->far_LoadTokenMarkers|
+  -->far_FindFeat|[*S:character_id];"Hexblade's Curse";HexBladeFlag
   
   --~shortattrib|string;left;3;[&attrib]
   --~Displayattrib|string;touppercase;[&shortattrib]
@@ -64,7 +59,7 @@
   --#rightsub|Range: [*R:spellrange]
   --&range|[*R:spellrange]
   --&desc|[*R:spelldescription]
-  --=DC|[*S:spell_save_DC]
+  --=DC|[*S:spell_save_dc]
   --=SorceryPoints|0
   
   -->far_FIND_CLASS_LEVEL|[*S:character_id];Sorcerer;SLevel
@@ -102,8 +97,14 @@
    --%target|foreach;Targets
    --#targettoken|[&target]
    --#rightsub|[&Displayattrib] Save DC: [$DC]
-   --#emoteText|[*S:t-name] attacks [*T:t-name]!
+   --#emoteText|[*S:t-name] casts [&SpellName] on [*T:t-name]!
    -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod[*T:t-id];0;0;0
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&InspirationMarker];InspiredFlag[*T:t-id];InspiredCount
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BardicMarker];BardicFlag[*T:t-id];BardicCount
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BaneMarker];BaneMarkerFlag[*T:t-id];BaneMarkerCount
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexMarker];HexMarkerFlag[*T:t-id];HexMarkerCount
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];HexBladeMarkerFlag[*T:t-id];HexBladeMarkerCount
+   -->far_FindFeat|[*T:character_id];"Thought Shield";ThoughtFlag[*T:t-id]
    --?"[*T:npc]" -ne "1"|PCRoll |NPCRoll
    
   --:PCRoll|
@@ -128,11 +129,12 @@
   
   --:NPC|
    --&saveDice[*T:t-id]|[&reentryval]
-   --c[&saveDice[*T:t-id]]|2d20kh1:&DisplayDice[*T:t-id];Advantage|1d20:&DisplayDice[*T:t-id];1d20|2d20kl1:&DisplayDice[*T:t-id];Disadvantage
-   --=InitSave[*T:t-id]|[&saveDice[*T:t-id]]
+   --#whisper|
    --?[*T:npc] -eq 1 -and [*T:npc_[&shortattrib]_save_flag] -gt 0|&Save[*T:t-id];npc_[&shortattrib]_save |&Save[*T:t-id];[&attrib]_mod
-   --=Save[*T:t-id]|[$InitSave[*T:t-id]] + [*T:[&Save[*T:t-id][&cbrac]] [&obrac][&Displayattrib][&cbrac]
-   --?[$Save[*T:t-id].Base] -eq 20|>Crit
+   --=InitSave[*T:t-id]|[&saveDice[*T:t-id]]
+   --c[&saveDice[*T:t-id]]|2d20kh1:&DisplayDice[*T:t-id];Advantage|1d20:&DisplayDice[*T:t-id];1d20|2d20kl1:&DisplayDice[*T:t-id];Disadvantage
+   --?[$InitSave[*T:t-id].Base] -eq 20|>Crit
+   --=Save[*T:t-id]|[$InitSave[*T:t-id]] + [*T:[&attrib]_save_bonus] [&obrac][&Displayattrib][&cbrac]
    --?[$Save[*T:t-id]] -ge [$DC]|>Pass |>Fail   
    
   --:PC| 
@@ -142,14 +144,6 @@
    --?[&damageSave[*T:t-id]] -eq 1 -or [&attribSaveRoll[*T:t-id]] -eq 1 -and "[&saveDice[*T:t-id]]" -eqi "1d20"|&saveDice[*T:t-id];2d20kh1
    --?[&damageSave[*T:t-id]] -eq 1 -or [&attribSaveRoll[*T:t-id]] -eq 1 -and "[&saveDice[*T:t-id]]" -eqi "2d20kl1"|&saveDice[*T:t-id];1d20
    
-  
-   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&InspirationMarker];InspiredFlag[*T:t-id];InspiredCount
-   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BardicMarker];BardicFlag[*T:t-id];BardicCount
-   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BaneMarker];BaneMarkerFlag[*T:t-id];BaneMarkerCount
-   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexMarker];HexMarkerFlag[*T:t-id];HexMarkerCount
-   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];HexBladeMarkerFlag[*T:t-id];HexBladeMarkerCount
-   -->far_FindFeat|[*T:character_id];"Thought Shield";ThoughtFlag[*T:t-id] 
-   
    --?[&InspiredFlag[*T:t-id]] -ne 0 |>far_Inspiration;[*T:t-id];[&InspirationMarker];[&saveDice[*T:t-id]];saveDice[*T:t-id]
    -->far_FIND_ACTIVE_GLOBAL_SAVE_MODS|[*T:character_id];GlobalSave[*T:t-id]
    -->far_FIND_ACTIVE_GLOBAL_SKILL_MODS|[*T:character_id];GlobalSkill[*T:t-id]
@@ -157,7 +151,7 @@
    --=InitSave[*T:t-id]|[&saveDice[*T:t-id]]
    --c[&saveDice[*T:t-id]]|2d20kh1:&DisplayDice[*T:t-id];Advantage|1d20:&DisplayDice[*T:t-id];1d20|2d20kl1:&DisplayDice[*T:t-id];Disadvantage
    --?[$InitSave[*T:t-id].Base] -eq 20|>Crit 
-   --=attribSaveRoll[*T:t-id]|[$InitSave[*T:t-id]] + [*T:[&attrib]_save_bonus] [&Displayattrib]
+   --=attribSaveRoll[*T:t-id]|[$InitSave[*T:t-id]] + [*T:[&attrib]_save_bonus] [&obrac][&Displayattrib][&cbrac]
    --?[&BardicFlag[*T:t-id]] -eq 1|>far_Bardic;[*T:t-id];[&BardicMarker];[$Scriptcheck];[$InitSave[*T:t-id].Base];[$attribSaveRoll[*T:t-id]];BardRoll[*T:t-id]
    --?[&BaneMarkerFlag[*T:t-id]] -eq 1|&Baneroll[*T:t-id];+ - 1d4 [Bane] |&Baneroll[*T:t-id];
    
@@ -181,22 +175,31 @@
   --:Pass|
    --&ResultLabel[*T:t-id]|Save: 
    --&ResultText[*T:t-id]|[*T:t-name] rolled a [$Save[*T:t-id]] vs a DC [$DC] and passed the saving throw. 
-   --&ResultText2[*T:t-id]|[*T:t-name] sucessfully fights off the mental instrustion, taking no damage!
+   --&ResultText2[*T:t-id]|[*T:t-name] successfully fights off the mental instruction, taking no damage!
    --^BottomForEachTarget|
    
   --:Fail|
    -->DamageRoll|
-   --=Damage[*T:t-id]|[&DamageDice] [&damageMod[*T:t-id]]
-   --?"X[$EmpowerFeatFlag]" -eq "X1"|>far_EmpowerSelect;Damage[*T:t-id];Hit;DamageChangedFlag[*T:t-id];ChangedDamage[*T:t-id]
+   -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0
+   --?"X[&HexMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex[*T:t-id]; + 1d6 [Hex] |&Hex[*T:t-id];
+   --?"X[&HexBladeMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade[*T:t-id]; + [*S:pb] [Hexblade Curse] |&HexBlade[*T:t-id];
+   --=Damage[*T:t-id]|[&DamageDice] [&HexBlade[*T:t-id]] [&Hex[*T:t-id]][&GlobalDamage][&damageMod[*T:t-id]]
+   --?"X[$EmpowerFeatFlag]" -eq "X1" -and "[&damageMod[*T:t-id]]" -ninc "Immune"|>far_EmpowerSelect;Damage[*T:t-id];Crit;DamageChangedFlag[*T:t-id];ChangedDamage[*T:t-id]
    --?"X[$DamageChangedFlag[*T:t-id]]" -eq "X1"|[
-    --=Damage[*T:t-id]|[$ChangedDamage[*T:t-id]] [&HexBlade[*T:t-id]] [&Hex[*T:t-id]][&damageMod[*T:t-id]]
+    --=Damage[*T:t-id]|[$ChangedDamage[*T:t-id]] [&HexBlade[*T:t-id]] [&Hex[*T:t-id]][&GlobalDamage][&damageMod[*T:t-id]]
     --=EmpoweredDamageFlag|1
     --]|
-   --&ResultLabel[*T:t-id]|[b]Fail[/b]
+   --&ResultLabel[*T:t-id]|Fail
    --&ResultText[*T:t-id]|[*T:t-name] rolled a [$Save[*T:t-id]] vs a DC [$DC] and failed the saving throw. 
    --&ResultText2[*T:t-id]|[*S:t-name] was able to pierce [*T:t-name]'s mental defenses inflicting [$Damage[*T:t-id]] hp of [&damageType] damage!
    -->far_DamageTokenmod|[*T:t-id];[&bar];[&tempBar];-[$Damage[*T:t-id]];0;0;1
+   --=FinalHP|[*T:t-bar[&bar]_value]+[*T:t-bar[&tempBar]_value]-[$Damage[*T:t-id]]
+   --?[$FinalHP] -le 0|>Died
    --^BottomForEachTarget|
+  
+  --:Died|
+   -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DeathMarker]
+   --<|
   
   --:BottomForEachTarget|
    --%|
@@ -207,11 +210,11 @@
    --#rightsub|Range: [&range]
    --#whisper|
    --?"X[$TwinFlag]" -eq "X1"|[
-    --#emoteText|[*S:t-name] Twins [&SpellName] to attack multiple targets!
+    --#emoteText|[*S:t-name] Twins [&SpellName] on multiple targets!
 	--]|
    
    --%loop|foreach;Targets
-    -->far_PlayEffects|[*S:t-id];[*T:t-id];burn-magic;burst-smoke;
+    -->far_PlayEffects|[*S:t-id];[&loop];burn-magic;burst-smoke;
 	--+|[c][b]Target: [*[&loop]:t-name][/b][/c]
 	--+Rolling [&DisplayDice[&loop]]: |[$InitSave[&loop]]
 	--+[&ResultLabel[&loop]] |[&ResultText[&loop]]
@@ -220,9 +223,9 @@
 	--+|[br]
  
    --?"X[$ThoughtFlag[&loop]]" -eq "X1" -and "[&ResultLabel[&loop]]" -inc "Fail"|[
-    --+Additonal Result: |[*S:t-name] takes [$Damage[*T:t-id]] hp of [&damageType] damage due to [*T:t-name]'s mental defenses.
+    --+Additional Result: |[*S:t-name] takes [$Damage[&loop]] hp of [&damageType] damage due to [*[&loop]:t-name]'s mental defenses.
 	--+|[br]
-    -->far_DamageTokenmod|[*S:t-id];[&bar];[&tempBar];-[$Damage[*T:t-id]];0;0;1
+    -->far_DamageTokenmod|[*S:t-id];[&bar];[&tempBar];-[$Damage[&loop]];0;0;1
    --]|   
    --%|
    

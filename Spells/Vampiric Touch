@@ -6,7 +6,7 @@
   --#whisper|self,gm
 
   --/|Script Name : Vampiric Touch
-  --/|Version     : 2.0.1
+  --/|Version     : 2.0.2
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|  
@@ -132,6 +132,7 @@
    --+|[br]
 
    --?[$AttackDiceBase] -eq 20|>Crit
+   --?[$AttackDiceBase] -eq 19 -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|>Crit
    --?[$AttackDiceBase] -eq 1|>Fumble
    --?[$AttackRoll] -ge [$TargetAC.Total] -and [$AttackDiceBase] -nei 20|>Hit
    --?[$AttackRoll] -lt [$TargetAC.Total] -and [$AttackDiceBase] -nei 1|>Miss
@@ -168,8 +169,8 @@
    --!a:[*S:character_id]|!Vampiric_Level:[$SpellLevel]
    --!a:[*S:character_id]|!VampiricTargetToken:[*T:t-id]
    -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;1   
-   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex;+ + 1d6 [Hex] |&Hex;
-   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade;
+   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex; + 1d6 [Hex] |&Hex;
+   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade; + [*S:pb] [Hexblade Curse] |&HexBlade;
    -->[&CustomCritCheck]|CustomCritFlag
    --?[&CustomCritFlag] -eq 1|[
     --=CritDice|[$SpellLevel]+[&CritDamageDiceModifier]
@@ -195,8 +196,8 @@
    --!a:[*S:character_id]|!Vampiric_Level:[$SpellLevel]
    --!a:[*S:character_id]|!VampiricTargetToken:[*T:t-id]
    -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0
-  --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex;+ + 1d6 [Hex] |&Hex;
-   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade;
+  --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex; + 1d6 [Hex] |&Hex;
+   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade; + [*S:pb] [Hexblade Curse] |&HexBlade;
    --=Damage|[$SpellLevel]d6 [&HexBlade] [&Hex][&GlobalDamage][&damageMod]
    --=Heal|[$Damage]\2
    --+[b]Hit![/b] |[*S:t-name] did [$Damage] points of [&damageType] damage to [*T:t-name]. [*S:t-name] also heals for [$Heal] hp.
@@ -243,11 +244,11 @@
    -->LibSN_ADD_STATUS_MARKER|[*T:t-id];dead
    --!a:[*S:character_id]|Vampiric_Level:**
    --!a:[*S:character_id]|VampiricTargetToken:** 
-   --?[$HexBladeFlag] -eq 1 -and [&HexBladeMarkerFlag] -eq 1|>HexHeal
+   --?"X[*T:CurseCaster]" -ne "X"|>HexHeal
    -->Output|
   
   --:HexHeal|
-   -->far_HexHeal|[*S:character_id];[*S:t-id]
+   -->far_HexHeal|[*T:t-id]
    --<|
   
   --:Remove|

@@ -6,7 +6,7 @@
   --#whisper|self,gm  
   
   --/|Script Name : Ray of Sickness
-  --/|Version     : 1.1.0
+  --/|Version     : 1.1.2
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : 
   --/|Modified By : Farsidegallery
@@ -45,16 +45,6 @@
    --/|Are you using the matching Bardic Inspiration Script from FarsideGallery? (Default is No using 0. Change to 1 if using the script.)
    --=Scriptcheck|1
   
-   --/|Enter the Token Markers you use for each condition
-   --&BardicMarker|BardicInspiration::7409920
-   --&BlessedMarker|angel-outfit
-   --&InspirationMarker|Inspiration::7409921
-   --&BaneMarker|Hexed3::7409911
-   --&HexMarker|Hexed::7409913
-   --&HexBladebladeMarker|Hexed2::7409912
-   --&DeathMarker|dead
-   --&PoisonMarker|Poisoned::7409939
-  
   --/| ____________________ End Global User Variables ___________________________________________________________________________________________
 
   --/|Helper variable build up to allow us to include a target prompt in an rbutton
@@ -66,6 +56,8 @@
   --&cbrac|]
   --&oparen|(
   --&cparen|)
+
+  -->far_LoadTokenMarkers|
   
   --~shortattrib|string;left;3;[&attrib]
   --~Displayattrib|string;touppercase;[&shortattrib]
@@ -249,12 +241,6 @@
 
   --:Died|
    -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DeathMarker]
-   --?[$HexBladeFlag] -eq 1 -and [&HexBladeMarkerFlag] -eq 1|>HexHeal
-   --<|
-  
-  --:HexHeal|
-   -->far_HexHeal|[*S:character_id];[*S:t-id]
-   -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexBladebladeMarker]
    --<|
   
   --:DamageRoll|

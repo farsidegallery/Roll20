@@ -2,14 +2,15 @@
   +++5Elib;snlib;Farsidelib+++	
   
   --#sourceToken|@{selected|token_id}
-  --#reentrant|My Cool Script @{selected|character_id}
+  --#reentrant|My Cool Script @{selected|token_id}
+  --#whisper|self,gm
   
   --/|Script Name : Feeblemind
-  --/|Version     : 1.1.0
+  --/|Version     : 1.1.1
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|  
-  --/|  Script automatically creates radar wave to detect appropriate creatures and deducts spell slot from caster.
+  --/|  Script prompts for target, rolls an Intelligence save, applies psychic damage, and on a failed save sets Intelligence and Charisma to 1. Dismiss restores affected targets.
   --/|
   --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
     
@@ -68,6 +69,7 @@
    --#targetToken|[&reentryval]
    --#emotetext|[*S:t-name] casts [&SpellName] on [*T:t-name]!
    -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;0;0;0
+   -->far_FindFeat|[*T:character_id];"Thought Shield";ThoughtFlag
    --?"[*T:npc]" -ne "1"|PCRoll |NPCRoll
    
   --:PCRoll|
@@ -110,7 +112,6 @@
    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexMarker];HexMarkerFlag;HexMarkerCount
    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];HexBladeMarkerFlag;HexBladeMarkerCount
-   -->far_FindFeat|[*T:character_id];"Thought Shield";ThoughtFlag
    
    --?[&InspiredFlag] -ne 0 |>far_Inspiration;[*T:t-id];[&InspirationMarker];[&saveDice];saveDice
    -->far_FIND_ACTIVE_GLOBAL_SAVE_MODS|[*T:character_id];GlobalSave
@@ -132,10 +133,10 @@
    --?[$Save] -ge [$DC]|>Pass |>Fail
   
   --:Crit|
-   -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;1 
-   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex;+ + 1d6 [Hex] |&Hex;
-   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade;
-   --=Damage|[&DamageDice] [&HexBlade] [&Hex] [&GlobalDamage] [&damageMod]
+   -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0 
+   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex; + 1d6 [Hex] |&Hex;
+   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade; + [*S:pb] [Hexblade Curse] |&HexBlade;
+   --=Damage|[&DamageDice] [&HexBlade] [&Hex] [&GlobalDamage] [&damageMod]\2
    --+Save: |[*T:t-name] rolled a [$Save.Base] vs a DC [$DC] and cannot fail the saving throw. 
    --+|[br]
    --+Result: |[*T:t-name] takes [$Damage] hp of [&damageType] damage but their mind remains intact!
@@ -149,9 +150,9 @@
   
   --:Pass|
    -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0   
-   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex;+ + 1d6 [Hex] |&Hex;
-   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade;
-   --=Damage|[&DamageDice] [&HexBlade] [&Hex][&GlobalDamage][&damageMod]
+   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex; + 1d6 [Hex] |&Hex;
+   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade; + [*S:pb] [Hexblade Curse] |&HexBlade;
+   --=Damage|[&DamageDice] [&HexBlade] [&Hex] [&GlobalDamage] [&damageMod]\2
    --+Save: |[*T:t-name] rolled a [$Save] vs a DC [$DC] and passed the saving throw. 
    --+|[br]
    --+Result: |[*T:t-name] takes [$Damage] hp of [&damageType] damage but their mind remains intact!
@@ -165,9 +166,9 @@
    
   --:Fail|
    -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0  
-   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex;+ + 1d6 [Hex] |&Hex;
-   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade;
-   --=Damage|[&DamageDice] [&HexBlade] [&Hex][&GlobalDamage][&damageMod]
+   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex; + 1d6 [Hex] |&Hex;
+   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade; + [*S:pb] [Hexblade Curse] |&HexBlade;
+   --=Damage|[&DamageDice] [&HexBlade] [&Hex] [&GlobalDamage] [&damageMod]
    --+Save: |[*T:t-name] rolled a [$Save] vs a DC [$DC] and failed the saving throw. 
    --+|[br]
    --+Result: |[*T:t-name] takes [$Damage] hp of [&damageType] damage.
@@ -183,18 +184,37 @@
    
   --:Output|
    --#whisper|
-   --=FinalHP|[*T:t-bar[&hpBar]_value]-[$Damage]
+   --=FinalHP|[*T:t-bar[&hpBar]_value]+[*T:t-bar[&tempHPbar]_value]-[$Damage]
    --?[$FinalHP] -le 0|>Died
    
    -->far_PlayEffects|[*S:t-id];[*T:t-id];;burst-magic
-   --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$damageresult];0;0;1
 
    --+|[br]
    --+Desc: |[&desc]
    -->far_DeductSpellSlot|[*S:t-id];[&MinimumSpellLevel]
    --X|
    
+  --:Died|
+   --#whisper|
+   --?"X[*T:CurseCaster]" -ne "X"|>HexHeal
+   --~|turnorder;removetoken;[*T:t-id]
+   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|[
+    -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexMarker];0
+	-->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];0
+	--]|
+   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|[
+    -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];0
+	--]|
+   -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DeathMarker]
+   --<|
+  
+  --:HexHeal|
+   -->far_HexHeal|[*T:t-id]
+   --<|
+   
   --:ChangeInt|
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BrokenMarker];FeebleFlag;FeebleCount
+   --?[&FeebleFlag] -eq 1|--<|
    --=OrigINT|[*T:intelligence]
    --=OrigCHA|[*T:charisma]
    --!a:[*T:character_id]|!OrigINT: [$OrigINT]

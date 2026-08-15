@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Sunbeam
-  --/|Version     : 1.0.2
+  --/|Version     : 1.0.3
   --/|Modified By : Farsidegallery
   --/|  
   --/|  Script prompts user for spell level used and makes sure the slot is available and spawn the designated token to the VTT.
@@ -253,12 +253,6 @@
   
   --:Died|
    -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DeathMarker]
-   --?[$HexBladeFlag] -eq 1 -and [&HexBladeMarkerFlag] -eq 1|>HexHeal
-   --<|
-  
-  --:HexHeal|
-   -->far_HexHeal|[*S:character_id];[*S:t-id]
-   -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexBladebladeMarker]
    --<|
   
   --:Output|
