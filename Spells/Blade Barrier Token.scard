@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Blade Barrier Attack
-  --/|Version     : 1.1.0
+  --/|Version     : 1.1.1
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author	  : Farsidegallery
   --/|  
@@ -106,6 +106,5 @@
 	
   --:Died|
    -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DeathMarker]
-   --?[$HexBladeFlag] -eq 1 -and [&HexBladeMarkerFlag] -eq 1|>HexHeal
    --<|
 }}
