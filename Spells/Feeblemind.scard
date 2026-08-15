@@ -27,6 +27,7 @@
    --/|Are you using the matching Bardic Inspiration Script from FarsideGallery? (Default is No using 0. Change to 1 if using the script.)
    --=Scriptcheck|1
    
+
   --/| ____________________ End Global User Variables ___________________________________________________________________________________________
   
   --/|Helper variable build up to allow us to include a target prompt in an rbutton
