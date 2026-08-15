@@ -5,7 +5,7 @@
   --#reentrant|My Cool Script @{selected|character_id}
   
   --/|Script Name : Detect Magic
-  --/|Version     : 2.1.1
+  --/|Version     : 2.1.2
   --/|Requires SC : SelectManager, Radar, ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|  
@@ -39,17 +39,17 @@
   --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
   
   -->far_FIND_CLASS_LEVEL|[*S:character_id];Sorcerer;SLevel
-  --?"X[&SLevel]" -eq "X0"|ChooseLevel
+  --?"X[&SLevel]" -eq "X0"|>ChooseFunction
   -->far_FindFeat|[*S:character_id];"Wild Magic Surge";WildFeatFlag
   
   -->ChooseFunction|
   --X|
   
   --:ChooseFunction|
-   --?"[*S:class]" -inc "Wizard" -or "[*S:class]" -inc "Cleric" -or "[*S:class]" -inc "Druid" -or "[*S:class]" -inc "Bard" -or "[*S:class]" -inc "Artificer"|&ButtonCoice;[rbutton]New Cast::NewCast[/rbutton][rbutton]Ritual Cast::Ritual[/rbutton][rbutton]Refresh::RadarWave[/rbutton]|&ButtonCoice;[rbutton]New Cast::NewCast[/rbutton][rbutton]Refresh::RadarWave[/rbutton] 
+   --?"[*S:class]" -inc "Wizard" -or "[*S:class]" -inc "Cleric" -or "[*S:class]" -inc "Druid" -or "[*S:class]" -inc "Bard" -or "[*S:class]" -inc "Artificer"|&ButtonChoice;[rbutton]New Cast::NewCast[/rbutton][rbutton]Ritual Cast::Ritual[/rbutton][rbutton]Refresh::RadarWave[/rbutton]|&ButtonChoice;[rbutton]New Cast::NewCast[/rbutton][rbutton]Refresh::RadarWave[/rbutton] 
    -->far_FindFeat|[*S:t-id];Eldritch Invocation: Eldritch Sight;SightFlag
-   --?"[*S:class]" -inc "Warlock" -and [$SightFlag] -eq 1|&ButtonCoice;[rbutton]New Cast::NewCast[/rbutton][rbutton]Eldritch Sight::Ritual[/rbutton][rbutton]Refresh::RadarWave[/rbutton]
-   --+Choose Function: |[&ButtonCoice]
+   --?"[*S:class]" -inc "Warlock" -and [$SightFlag] -eq 1|&ButtonChoice;[rbutton]New Cast::NewCast[/rbutton][rbutton]Eldritch Sight::Ritual[/rbutton][rbutton]Refresh::RadarWave[/rbutton]
+   --+Choose Function: |[&ButtonChoice]
    --X|
   
   --:NewCast|
@@ -68,7 +68,7 @@
    --#whisper|
    --?"X[$WildFeatFlag]" -eq "X1" -and [&MinimumSpellLevel] -ge 1|>far_WildTable
 
-   --!a:[*S:character_id]|!ConcentrationSpell:[&TentacleName]
+   --!a:[*S:character_id]|!ConcentrationSpell:[&SpellName]
    -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];10
    --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
    --+|[br]
