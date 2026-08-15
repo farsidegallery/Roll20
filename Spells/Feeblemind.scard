@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Feeblemind
-  --/|Version     : 1.1.2
+  --/|Version     : 1.1.3
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|  
@@ -56,6 +56,9 @@
   
   --&desc|[*R:spelldescription]
   
+  -->ChooseFunction|
+  --X|
+  
   --:ChooseFunction|
    --+Choose Function: |[rbutton]New Cast::NewCast;&#64;{target|token_id}[/rbutton][rbutton]Dismiss::Remove[/rbutton]
    --X|
@@ -100,7 +103,8 @@
    --?[*T:npc] -eq 1 -and [*T:npc_[&shortattrib]_save_flag] -gt 0|&Save;npc_[&shortattrib]_save |&Save;[&attrib]_mod
    --=Save|[&saveDice] + [*T:[&Save]] [&Displayattrib]
    --?[$Save.Base] -eq 20|>Crit
-   --?[$Save] -ge [$DC]|>Pass |>Fail   
+   --?[$Save] -ge [$DC]|>Pass |>Fail
+   --X|
    
   --:PC| 
    --&saveDice|[&reentryval]
@@ -132,6 +136,7 @@
 
    --#whisper|
    --?[$Save] -ge [$DC]|>Pass |>Fail
+   --X|
   
   --:Crit|
    -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0 
@@ -185,14 +190,14 @@
    
   --:Output|
    --#whisper|
-   -->far_DeductSpellSlot|[*S:t-id];[&MinimumSpellLevel]
-   --=FinalHP|[*T:t-bar[&hpBar]_value]+[*T:t-bar[&tempHPbar]_value]-[$Damage]
-   --?[$FinalHP] -le 0|>Died
-   
    -->far_PlayEffects|[*S:t-id];[*T:t-id];;burst-magic
 
    --+|[br]
    --+Desc: |[&desc]
+   --+|[br]
+   -->far_DeductSpellSlot|[*S:t-id];[&MinimumSpellLevel]
+   --=FinalHP|[*T:t-bar[&hpBar]_value]+[*T:t-bar[&tempHPbar]_value]-[$Damage]
+   --?[$FinalHP] -le 0|>Died
    --X|
    
   --:Died|
@@ -214,37 +219,46 @@
    --<|
    
   --:ChangeInt|
-   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BrokenMarker];FeebleFlag;FeebleCount
-   --?[&FeebleFlag] -eq 1|--<|
+   --?"[*T:FeeblemindBy]" -inc "[*S:character_id]"|[
+     --<|
+     --]|
    --=OrigINT|[*T:intelligence]
    --=OrigCHA|[*T:charisma]
-   --!a:[*T:character_id]|!OrigINT: [$OrigINT]
-   --!a:[*T:character_id]|!intelligence: 1
-   --!a:[*T:character_id]|!OrigCHA: [$OrigCHA]
-   --!a:[*T:character_id]|!charisma: 1
+   --!a:[*T:character_id]|!OrigINT:[$OrigINT]
+   --!a:[*T:character_id]|!OrigCHA:[$OrigCHA]
+   --!a:[*T:character_id]|!FeeblemindBy:[*S:character_id]
+   --!a:[*T:character_id]|intelligence:1
+   --!a:[*T:character_id]|charisma:1
    -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&BrokenMarker]
    --<|
   
   --:Remove|
+   --#emotetext|[*S:t-name] dismisses [&SpellName]!
    --#whisper|
    --~|array;pagetokens;alltokens;[*S:t-id]
    --~|array;define;Feeble
    --%loop|foreach;alltokens
     -->LibSN_CHECK_STATUS_MARKER|[*[&loop]:t-id];[&BrokenMarker];FeebleFlag;FeebleCount
-    --?[&FeebleFlag] -eq 1|[
-    --&Feeble([@Feeble(length)])|[*[&loop]:t-id]
+    --?[&FeebleFlag] -eq 1 -and "[*[&loop]:FeeblemindBy]" -inc "[*S:character_id]"|[
+     --&Feeble([@Feeble(length)])|[*[&loop]:t-id]
     --]|
     --%|
    
+   --?[@Feeble(length)] -eq 0|[
+    --+|No feebleminded targets cast by [*S:t-name] were found to restore.
+    --X|
+   --]|
+   
    --%loop|foreach;Feeble
-    --=OrigINT|[*[&loop]:OrigINT]
-    --=OrigCHA|[*[&loop]:OrigCHA]
-    --+Restored: |[*[&loop]:t-name] has their intelligence restored to [$OrigINT]!
-    --+Restored: |[*[&loop]:t-name] has their charisma restored to [$OrigCHA]!
-    --!a:[*[&loop]:character_id]|intelligence:[$OrigINT]
-    --!a:[*[&loop]:character_id]|charisma:[$OrigCHA]
-    --!a:[*[&loop]:character_id]|OrigINT:** |!OrigCHA:**
-    -->LibSN_REMOVE_STATUS_MARKER|[*[&loop]:t-id];[&BrokenMarker]
+    --#targettoken|[&loop]
+    --=OrigINT|[*T:OrigINT]
+    --=OrigCHA|[*T:OrigCHA]
+    --+Restored: |[*T:character_name] has their intelligence restored to [$OrigINT]!
+    --+Restored: |[*T:character_name] has their charisma restored to [$OrigCHA]!
+    --!a:[*T:character_id]|intelligence:[$OrigINT]
+    --!a:[*T:character_id]|charisma:[$OrigCHA]
+    --!a:[*T:character_id]|!OrigINT:** |!OrigCHA:** |!FeeblemindBy:**
+    -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&BrokenMarker]
     --%|
    --X|
 }}
