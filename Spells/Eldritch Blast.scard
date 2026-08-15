@@ -2,7 +2,7 @@
   +++5Elib;snlib;Farsidelib+++	
   
   --/|Script Name : Eldritch Blast
-  --/|Version     : 2.0.5
+  --/|Version     : 2.0.6
   --/|Requires SC : TokenMod, SuperNotes (for template override only), ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : 
   --/|Modified By : Farsidegallery
@@ -257,12 +257,7 @@
 	--:DEAD|
       --+Congrats|You managed to kill [*T:character_name]
       -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DeathMarker]
-      --?"X[*T:CurseCaster]" -ne "X"|>HexHeal     
       --<|
-
-  --:HexHeal|
-   -->far_HexHeal|[*T:t-id]
-   --<|
   
   --:MOVE_TOKEN|STokenid, TTokenId, Units
    --&TId1|[%1%]

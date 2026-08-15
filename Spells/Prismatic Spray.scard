@@ -6,7 +6,7 @@
   --#whisper|self,gm  
   
   --/|Script Name : Prismatic Spray
-  --/|Version     : 2.1.0
+  --/|Version     : 2.1.1
   --/|Requires SC : TokenMod, SuperNotes (for template override only), ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|Base Code   : Base code taken from Matt M.'s Cone of Cold. That was in turn based on Kurt's Burning Hands script.
@@ -371,20 +371,12 @@
   
   --:Died|
    --#whisper|
-   --?[$HexBladeFlag] -eq 1 -and [&HexBladeMarkerFlag] -eq 1|>HexHeal
    --~|turnorder;removetoken;[*T:t-id]
    --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|[
     -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexMarker];0
 	-->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];0
 	--]|
-   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|[
-    -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];0
-	--]|
    -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DeathMarker]
-   --<|
-  
-  --:HexHeal|
-   -->far_HexHeal|[*S:character_id];[*S:t-id]
    --<|
   
   --:EmpowerArray|

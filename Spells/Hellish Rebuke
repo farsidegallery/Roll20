@@ -161,8 +161,8 @@
   
   --:Crit|
    -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;1  
-   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex;+ + 1d6 [Hex] |&Hex;
-   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade;
+   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex; + 1d6 [Hex] |&Hex;
+   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade; + [*S:pb] [Hexblade Curse] |&HexBlade;
    --=Damage|[&damageroll] [&HexBlade] [&Hex] [&GlobalDamage] [&damageMod]\2
    --+Save: |[*T:t-name] rolled a [$Save.Base] vs a DC [$DC] and cannot fail the saving throw. 
    --+|[br]
@@ -172,8 +172,8 @@
   
   --:Pass|
    -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0   
-   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex;+ + 1d6 [Hex] |&Hex;
-   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade;
+   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex; + 1d6 [Hex] |&Hex;
+   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade; + [*S:pb] [Hexblade Curse] |&HexBlade;
    --=Damage|[&damageroll] [&HexBlade] [&Hex][&GlobalDamage][&damageMod]\2
    --+Save: |[*T:t-name] rolled a [$Save] vs a DC [$DC] and passed the saving throw. 
    --+|[br]
@@ -183,8 +183,8 @@
    
   --:Fail|
    -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0  
-   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex;+ + 1d6 [Hex] |&Hex;
-   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade;
+   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex; + 1d6 [Hex] |&Hex;
+   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade; + [*S:pb] [Hexblade Curse] |&HexBlade;
    --=Damage|[&damageroll] [&HexBlade] [&Hex][&GlobalDamage][&damageMod]
    --+Save: |[*T:t-name] rolled a [$Save] vs a DC [$DC] and failed the saving throw. 
    --+|[br]
@@ -212,19 +212,19 @@
      
   --:Died|
    --#whisper|
-   --?[$HexBladeFlag] -eq 1 -and [&HexBladeMarkerFlag] -eq 1|>HexHeal
+   --?"X[*T:CurseCaster]" -ne "X"|>HexHeal
    --~|turnorder;removetoken;[*T:t-id]
    --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|[
     -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexMarker];0
 	-->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];0
 	--]|
-   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|[
+   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|[
     -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];0
 	--]|
    -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DeathMarker]
    --<|
   
   --:HexHeal|
-   -->far_HexHeal|[*S:character_id];[*S:t-id]
+   -->far_HexHeal|[*T:t-id]
    --<|
 }}

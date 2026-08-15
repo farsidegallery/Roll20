@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Scorching Ray
-  --/|Version     : 1.0.1
+  --/|Version     : 1.0.2
   --/|Requires SC : 1.3.7+, TokenMod
   --/|Author      : Will M.
   --/|Modified By : Farsidegallery
@@ -186,7 +186,7 @@
 	--+|[br]Total Attack Roll [b]#[$Shot][/b]: [$AttackRoll]
 	--+[br]|
     --?[$AttackDiceBase] -eq 20|>Crit
-    --?[$AttackDiceBase] -eq 19 -and [$HexBladeFlag] -eq 1 -and [&HexBladeMarkerFlag] -eq 1|>CRITICAL
+    --?[$AttackDiceBase] -eq 19 -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|>CRITICAL
     --?[$AttackDiceBase] -eq 1|>Fumble
     --?[$AttackRoll.Total] -ge [$TargetAC.Total] -and [$AttackRoll.Base] -nei 20|>HIT
     --?[$AttackRoll.Total] -lt [$TargetAC.Total] -and [$AttackRoll.Base] -nei 1|>MISS
@@ -218,8 +218,8 @@
     -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexMarker];HexMarkerFlag;HexMarkerCount
     -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];HexBladeMarkerFlag;HexBladeMarkerCount
    
-    --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex;+ + 1d6 [Hex] |&Hex;
-    --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade;
+    --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex; + 1d6 [Hex] |&Hex;
+    --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade; + [*S:pb] [Hexblade Curse] |&HexBlade;
    
     --=Damage|[$MissileDamage] [&HexBlade] [&Hex] [&GlobalDamage] [&damageMod]
 	--+Damage: |[$Damage]
@@ -235,8 +235,8 @@
    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexMarker];HexMarkerFlag;HexMarkerCount
    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];HexBladeMarkerFlag;HexBladeMarkerCount
    
-   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex;+ + 1d6 [Hex] |&Hex;
-   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade;
+   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex; + 1d6 [Hex] |&Hex;
+   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade; + [*S:pb] [Hexblade Curse] |&HexBlade;
    
    --=Damage|[$MissileDamage] [&HexBlade] [&Hex] [&GlobalDamage] [&damageMod]
    --+&#x1F3AF;Ray #[$DisplayCount.Raw] hits! |[*S:t-name] rolls [$AttackRoll] to attack and hits [*T:t-name] for [$Damage] [&DamageType] damage.
@@ -248,8 +248,8 @@
    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexMarker];HexMarkerFlag;HexMarkerCount
    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];HexBladeMarkerFlag;HexBladeMarkerCount
    
-   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex;+ + 1d6 [Hex] |&Hex;
-   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade;+ + [*S:pb] [Proficiency Bonus] |&HexBlade;
+   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex; + 1d6 [Hex] |&Hex;
+   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade; + [*S:pb] [Hexblade Curse] |&HexBlade;
    
    -->[&CustomCritCheck]|CustomCritFlag
    --?[&CustomCritFlag] -eq 1|[
@@ -279,6 +279,6 @@
     --:DEAD|
       --+Congrats|You managed to kill [*T:character_name]
       -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DeathMarker]
-      --?[$HexBladeFlag] -eq 1 -and [&HexBladeMarkerFlag] -eq 1|>HexHeal     
+      --?"X[*T:CurseCaster]" -ne "X"|>HexHeal     
       --<|
 }}
