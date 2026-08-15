@@ -6,7 +6,7 @@
   --#whisper|self,gm
 
   --/|Script Name : Chromatic Orb
-  --/|Version     : 1.3.1
+  --/|Version     : 1.3.3
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|  
@@ -153,6 +153,7 @@
    --=AttackRoll[*T:t-id]|[$AttackDiceBase[*T:t-id]] + [*S:spell_attack_bonus] [Spell Attack Bonus] [&GlobalAttack] [&Baneroll] [&BardRoll]
 
    --?[$AttackDiceBase[*T:t-id]] -eq 20|>Crit
+   --?[$AttackDiceBase[*T:t-id]] -eq 19 -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|>Crit
    --?[$AttackDiceBase[*T:t-id]] -eq 1|>Fumble
    --?[$AttackRoll[*T:t-id]] -ge [$TargetAC.Total] -and [$AttackDiceBase[*T:t-id]] -nei 20|>Hit
    --?[$AttackRoll[*T:t-id]] -lt [$TargetAC.Total] -and [$AttackDiceBase[*T:t-id]] -nei 1|>Miss
@@ -166,8 +167,8 @@
 
   --:Crit|
    -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;1   
-   --?"X[&HexMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex[*T:t-id];+ + 1d6 [Hex] |&Hex[*T:t-id];
-   --?"X[&HexBladeMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade[*T:t-id];+ + [*S:pb] [Proficiency Bonus] |&HexBlade[*T:t-id];
+   --?"X[&HexMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex[*T:t-id]; + 1d6 [Hex] |&Hex[*T:t-id];
+   --?"X[&HexBladeMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade[*T:t-id]; + [*S:pb] [Hexblade Curse] |&HexBlade[*T:t-id];
    -->[&CustomCritCheck]|CustomCritFlag
     --?[&CustomCritFlag] -eq 1|[
     --=CritDice|[$DamageDice]+[&CritDamageDiceModifier]
@@ -191,8 +192,8 @@
 
   --:Hit|
    -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0
-   --?"X[&HexMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex[*T:t-id];+ + 1d6 [Hex] |&Hex[*T:t-id];
-   --?"X[&HexBladeMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:CurseTarget]" -eq "X[*T:t-id]"|&HexBlade[*T:t-id];+ + [*S:pb] [Proficiency Bonus] |&HexBlade[*T:t-id];
+   --?"X[&HexMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex[*T:t-id]; + 1d6 [Hex] |&Hex[*T:t-id];
+   --?"X[&HexBladeMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade[*T:t-id]; + [*S:pb] [Hexblade Curse] |&HexBlade[*T:t-id];
    --=Damage[*T:t-id]|[$DamageDice]d8 [&HexBlade[*T:t-id]] [&Hex[*T:t-id]][&GlobalDamage][&damageMod[*T:t-id]]   
    --?"X[$EmpowerFeatFlag]" -eq "X1"|>far_EmpowerSelect;Damage[*T:t-id];Hit;DamageChangedFlag[*T:t-id];ChangedDamage[*T:t-id]
    --?"X[$DamageChangedFlag[*T:t-id]]" -eq "X1"|[
@@ -240,12 +241,6 @@
 
   --:Died|
    -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DeathMarker]
-   --?[$HexBladeFlag] -eq 1 -and [&HexBladeMarkerFlag] -eq 1|>HexHeal
-   --<|
-  
-  --:HexHeal|
-   -->far_HexHeal|[*S:character_id];[*S:t-id]
-   -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexBladebladeMarker]
    --<|
   
   --:Output|   
