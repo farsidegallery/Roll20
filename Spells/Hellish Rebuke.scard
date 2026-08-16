@@ -1,16 +1,16 @@
-!script {{
+!scriptcards {{
   +++5Elib;snlib;Farsidelib+++
   
   --#sourceToken|@{selected|token_id}
-  --#reentrant|My Cool Script @{selected|character_id}
+  --#reentrant|Hellish Rebuke @{selected|character_id}
   --#whisper|self,gm
   
   --/|Script Name : Hellish Rebuke
-  --/|Version     : 1.0.1
+  --/|Version     : 1.0.0
   --/|Modified By : Farsidegallery
   --/|  
-  --/|  Script prompts user for spell level used and makes sure the slot is available.  and spawn the designated token to the VTT. Script calculates
-  --/|  It will deduct 1 spell slot from the appropriate level
+  --/|  Reaction: prompts for spell level and attacker target, resolves a Dexterity save, and applies scaling fire damage (half on save).
+  --/|  Deducts one spell slot of the chosen level and spawns a reaction VFX graphic on the caster.
   --/|
   
   --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
@@ -27,15 +27,6 @@
    
   --/|Are you using the matching Bardic Inspiration Script from FarsideGallery? (Default is No using 0. Change to 1 if using the script.)
   --=Scriptcheck|1
-  
-  --/|Enter the Token Markers you use for each condition
-  --&BardicMarker|BardicInspiration::7409920
-  --&BlessedMarker|angel-outfit
-  --&InspirationMarker|Inspiration::7409921
-  --&BaneMarker|Hexed3::7409911
-  --&HexMarker|Hexed::7409913
-  --&HexBladeMarker|Hexed2::7409912
-  --&DeathMarker|dead
   
   --/|Enter name for Reaction Used Character.
   --&ReactName|Reaction Used
@@ -56,12 +47,14 @@
   --&cbrac|]
   --&oparen|(
   --&cparen|)
+
+  -->far_LoadTokenMarkers|
   
   --~shortattrib|string;left;3;[&attrib]
   --~Displayattrib|string;touppercase;[&shortattrib]
   
   --#title|[&SpellName]
-  --#emotetext|[*S:character_name] casts Hellish Rebuke!
+  --#emoteText|[*S:t-name] casts [&SpellName]!
   --=DC|[*S:spell_save_dc]
   
   --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
@@ -83,19 +76,18 @@
   --+|[c][&splvlMsg][/c]
   --X|
   
- 
   --:ChooseType|
    --#targetToken|[&reentryval(split,%,0)]
    --=SpellLevel|[&reentryval(split,%,1)]
    --&SpellLevel|[&reentryval(split,%,1)]
-   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;0;0;0
-   -->far_FindFeat|[*S:character_id];"Hexblade's Curse";HexBladeFlag
-   
-   -->ActionSpell|
-
-  --:ActionSpell|
    --=damagedice|[$SpellLevel]+1
    --&damageroll|[$damagedice]d10
+   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;0;0;0
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&InspirationMarker];InspiredFlag;InspiredCount
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BardicMarker];BardicFlag;BardicCount
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexMarker];HexMarkerFlag;HexMarkerCount
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];HexBladeMarkerFlag;HexBladeMarkerCount
    --?"[*T:npc]" -ne "1"|PCRoll |NPCRoll
    
   --:PCRoll|
@@ -120,11 +112,14 @@
   
   --:NPC|
    --&saveDice|[&reentryval]
-   --?[*T:npc] -eq 1 -and [*T:npc_[&shortattrib]_save_flag] -gt 0|&Save;npc_[&shortattrib]_save |&Save;[&attrib]_mod
-   --=Save|[&saveDice] + [*T:[&Save]] [&Displayattrib]
    --#whisper|
-   --?[$Save.Base] -eq 20|>Crit
-   --?[$Save] -ge [$DC]|>Pass |>Fail   
+   --?[*T:npc] -eq 1 -and [*T:npc_[&shortattrib]_save_flag] -gt 0|&Save;npc_[&shortattrib]_save |&Save;[&attrib]_mod
+   --=InitSave|[&saveDice]
+   --c[&saveDice]|2d20kh1:&DisplayDice;Advantage|1d20:&DisplayDice;1d20|2d20kl1:&DisplayDice;Disadvantage
+   --=Save|[$InitSave] + [*T:[&Save]] [&obrac][&Displayattrib][&cbrac]
+   --?[$InitSave.Base] -eq 20|>Crit
+   --?[$Save] -ge [$DC]|>Pass |>Fail
+   --X|
    
   --:PC| 
    --&saveDice|[&reentryval]
@@ -133,21 +128,12 @@
    --?[&damageSave] -eq 1 -or [&attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "1d20"|&saveDice;2d20kh1
    --?[&damageSave] -eq 1 -or [&attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "2d20kl1"|&saveDice;1d20
    
-  
-   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&InspirationMarker];InspiredFlag;InspiredCount
-   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BardicMarker];BardicFlag;BardicCount
-   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
-   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexMarker];HexMarkerFlag;HexMarkerCount
-   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];HexBladeMarkerFlag;HexBladeMarkerCount
-   
    --?[&InspiredFlag] -ne 0 |>far_Inspiration;[*T:t-id];[&InspirationMarker];[&saveDice];saveDice
    -->far_FIND_ACTIVE_GLOBAL_SAVE_MODS|[*T:character_id];GlobalSave
    -->far_FIND_ACTIVE_GLOBAL_SKILL_MODS|[*T:character_id];GlobalSkill
    
    --=InitSave|[&saveDice]
    --c[&saveDice]|2d20kh1:&DisplayDice;Advantage|1d20:&DisplayDice;1d20|2d20kl1:&DisplayDice;Disadvantage
-   --+Rolling [&DisplayDice]: |[$InitSave]
-   --+|[br]
    --?[$InitSave.Base] -eq 20|>Crit
    
    --=attribSaveRoll|[$InitSave] + [*T:[&attrib]_save_bonus] [&Displayattrib]
@@ -158,73 +144,82 @@
 
    --#whisper|
    --?[$Save] -ge [$DC]|>Pass |>Fail
+   --X|
   
   --:Crit|
-   -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;1  
-   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex; + 1d6 [Hex] |&Hex;
-   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade; + [*S:pb] [Hexblade Curse] |&HexBlade;
-   --=Damage|[&damageroll] [&HexBlade] [&Hex] [&GlobalDamage] [&damageMod]\2
-   --+Save: |[*T:t-name] rolled a [$Save.Base] vs a DC [$DC] and cannot fail the saving throw. 
-   --+|[br]
-   --+Result: |[*T:t-name] takes [$Damage] hp of [&damageType] damage.
-   -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
-   -->Output|
+   --&SaveText|[*T:t-name] rolled a [$Save] vs a DC [$DC] and cannot fail the saving throw.
+   -->ApplyHalfDamage|
+   -->AfterDamage|
+   --X|
   
   --:Pass|
-   -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0   
+   --&SaveText|[*T:t-name] rolled a [$Save] vs a DC [$DC] and passed the saving throw.
+   -->ApplyHalfDamage|
+   -->AfterDamage|
+   --X|
+   
+  --:Fail|
+   --&SaveText|[*T:t-name] rolled a [$Save] vs a DC [$DC] and failed the saving throw.
+   -->ApplyFullDamage|
+   -->AfterDamage|
+   --X|
+
+  --:ApplyHalfDamage|
+   -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0
    --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex; + 1d6 [Hex] |&Hex;
    --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade; + [*S:pb] [Hexblade Curse] |&HexBlade;
    --=Damage|[&damageroll] [&HexBlade] [&Hex][&GlobalDamage][&damageMod]\2
-   --+Save: |[*T:t-name] rolled a [$Save] vs a DC [$DC] and passed the saving throw. 
-   --+|[br]
-   --+Result: |[*T:t-name] takes [$Damage] hp of [&damageType] damage.
-   -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
-   -->Output|
-   
-  --:Fail|
-   -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0  
+   --?"[&damageMod]" -inc "Immune"|&Damage;0
+   --<|
+
+  --:ApplyFullDamage|
+   -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0
    --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex; + 1d6 [Hex] |&Hex;
    --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade; + [*S:pb] [Hexblade Curse] |&HexBlade;
    --=Damage|[&damageroll] [&HexBlade] [&Hex][&GlobalDamage][&damageMod]
-   --+Save: |[*T:t-name] rolled a [$Save] vs a DC [$DC] and failed the saving throw. 
-   --+|[br]
-   --+Result: |[*T:t-name] takes [$Damage] hp of [&damageType] damage.
+   --?"[&damageMod]" -inc "Immune"|&Damage;0
+   --<|
+
+  --:AfterDamage|
+   --?"[&damageMod]" -inc "Immune"|[
+    --&ResultText|[*T:t-name] is [b]IMMUNE[/b] to [&damageType] damage.
+    --]|[
+    --&ResultText|[*T:t-name] takes [$Damage] [&damageType] damage.
+    --]|
    -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
+   --=FinalHP|[*T:t-bar[&hpBar]_value]+[*T:t-bar[&tempHPbar]_value]-[$Damage]
+   --?[$FinalHP] -le 0|>Died
+   -->Output|
+   
+  --:Died|
+   --~|turnorder;removetoken;[*T:t-id]
+   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|[
+    -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexMarker];0
+    -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];0
+    --]|
+   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|[
+    -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];0
+    --]|
+   -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DeathMarker]
    -->Output|
    
   --:Output|
    --#whisper|
+   --+Rolling [&DisplayDice]: |[$InitSave]
+   --+|[br]
+   --+Save: |[&SaveText]
+   --+|[br]
+   --+Result: |[&ResultText]
    -->far_PlayEffects|[*S:t-id];[*T:t-id];burn-magic;burn-fire;;
-   --=FinalHP|[*T:t-bar[&hpBar]_value]-[$Damage]
-   --?[$FinalHP] -le 0|>Died
-   
-   --!ot:ReactTID|name:"[&ReactName]"|left:[*S:t-left]|top:[*S:t-top]|width:[=[*S:t-width]*3]|height:[=[*S:t-height]*3]|imgsrc:"[&Reactlink]"|bar1_value:1|represents:[&ReactID]|showname:0
+   --!ot:ReactTID|name:"[&ReactName]"|left:[*S:t-left]|top:[*S:t-top]|width:[=[*S:t-width]*3]|height:[=[*S:t-height]*3]|imgsrc:"[&Reactlink]"|bar1_value:1|represents:[&ReactName]|showname:0
    --z:graphic:[&ReactTID]|toback
    --@CARRY_TOKENS_CARRY_BELOW|[*S:t-id] [&ReactTID]
-   
-   --#leftsub|Spell Level: [&MinimumSpellLevel]
+   --#leftsub|Spell Level: [&SpellLevel]
    --#rightsub|Range: [&range]
    --+|[br]
    --+Desc: |[&desc]
    --+At Higher Levels: |[&higherdesc]
+   --+|[br]
    -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
    --X|
-     
-  --:Died|
-   --#whisper|
-   --?"X[*T:CurseCaster]" -ne "X"|>HexHeal
-   --~|turnorder;removetoken;[*T:t-id]
-   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|[
-    -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexMarker];0
-	-->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];0
-	--]|
-   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|[
-    -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];0
-	--]|
-   -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DeathMarker]
-   --<|
-  
-  --:HexHeal|
-   -->far_HexHeal|[*T:t-id]
-   --<|
 }}
