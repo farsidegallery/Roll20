@@ -1,0 +1,183 @@
+!script {{
+  +++5Elib;snlib;Farsidelib+++
+
+  --#sourceToken|@{selected|token_id}
+  --&SavedSourceToken|@{selected|token_id}
+  --#reentrant|Blade Barrier @{selected|character_id}
+  --#whisper|self,gm
+
+  --/|Script Name : Blade Barrier
+  --/|Version     : 2.0.0
+  --/|Requires SC : ScriptCards 3.0.25+, 5Elib/snlib/Farsidelib v1.5.1+, AuraTriggers 0.9+, TokenMod, Carry Tokens API
+  --/|Author      : Farsidegallery using Cursor AI
+  --/|
+  --/|  Prompts for wall or circle shape and places the barrier via spell-token targeting. AuraTriggers apply a DEX save
+  --/|  (6d10 slashing, half on pass) when creatures enter or start their turn in the barrier (once per turn). Supports
+  --/|  concentration tracking and dismiss. Save processing is handled by Farsidelib far_AuraTriggerSaveHalfDamage.
+  --/|
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+
+  --&SpellName|Blade Barrier
+  --&MinimumSpellLevel|6
+  --&damageType|slashing
+  --&damageDice|6d10
+  --&saveAttrib|dexterity
+
+  --&hpBar|1
+  --&tempHPbar|4
+  --&turnFlagBar|3
+  --&dcBar|3
+
+  --&CharName|Blade Barrier
+  --&ATColor|#cccccc
+
+  --&SpellTargetToken|Spell Token
+  --&URLlink|https://files.d20.io/images/469753332/ew1SU1DcQK4eborJlOqNQw/original.png
+
+  --&WallLink|https://files.d20.io/images/466433791/QujYB2H3cDLYFJmtW0ucDg/med.webm?1764788816
+  --&CircleLink|https://files.d20.io/images/466433790/srPN_FGthxfT1hnlhT0BPg/med.webm?1764788816
+
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+
+  -->far_LoadTokenMarkers|
+
+  --#title|[&SpellName]
+  --&TokenName|[*S:t-name] [&CharName]
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+  --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+
+  --#leftsub|[*R:spellcastingtime]
+  --#rightsub|[*R:spellrange]
+  --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+  --&desc|[*R:spelldescription]
+
+  --+Choose Function: |[rbutton]New Cast::NewCast[/rbutton][rbutton]Dismiss::Remove[/rbutton]
+  --X|
+
+  --:NewCast|
+   --+|[b][c]What Shape is the Barrier?[/c][/b]
+   --+|[c][rbutton]Wall::ChooseType;Wall[/rbutton][rbutton]Circle::ChooseType;Circle[/rbutton][/c]
+   --X|
+
+  --:ChooseType|
+   --#sourceToken|[&SavedSourceToken]
+   --&Shape|[&reentryval]
+   --?"[&Shape]" -eq "Circle"|[
+    --=size1|15
+    --=size2|15
+    --&BarrierLink|[&CircleLink]
+    --&BarrierShape|Blade Barrier Circle
+   --]|
+   --?"[&Shape]" -eq "Wall"|[
+    --=size1|3
+    --=size2|22
+    --&BarrierLink|[&WallLink]
+    --&BarrierShape|Blade Barrier Wall
+   --]|
+   --&CasterToken|[*S:t-id]
+   -->GetCharID|[&BarrierShape];ShapeID
+   --!a:[&ShapeID]|!SaveDC:[*S:spell_save_dc]
+   --#emoteText|[*S:t-name] casts [&SpellName]!
+   --!a:[*S:character_id]|!ConcentrationSpell:[&TokenName]
+   -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];10
+
+   --&Player|[*O:[*S:t-represents]:character:controlledby]
+   --&controllers|[*O:[*[&ShapeID]:t-represents]:character:controlledby]
+   --?"[&controllers]" -ninc "-"|&controllers;None
+   --?[&controllers] -eq None|&newcontrollers;[&Player] |&newcontrollers;[&controllers],[&Player]
+   --!c:[*[&ShapeID]:character_id]|controlledby:[&newcontrollers]
+
+   -->CAST_SPELL|
+   --X|
+
+  --:CAST_SPELL|
+   --#sourceToken|[&CasterToken]
+   -->GetCharID|"[&SpellTargetToken]";AOETargetID
+   --+|Move the spell token to the barrier center, then click Target.
+   --!ot:NewTID|name:"[&SpellTargetToken]"|_pageid:[*S:t-_pageid]|left:[=[*S:t-left]+70]|top:[*S:t-top]|width:[*S:t-width]|height:[*S:t-height]|imgsrc:"[&URLlink]"|bar1_value:1|represents:"[&SpellTargetToken]"|showname:0
+   --&PlacementTID|[&NewTID]
+   --z:graphic:[&NewTID]|toback
+   -->SetAbility|
+   --+Target: |[rbutton]Place [&SpellName]::SetTarget;[&TB]target|token_id}[/rbutton]
+   --X|
+
+  --:SetTarget|
+   --#sourceToken|[&CasterToken]
+   --?"X[&reentryval]" -eq "X"|>far_FatalError;Wrong Target;ERROR;Click Place [&SpellName], then target the placement token.
+   --#targettoken|[&reentryval]
+   --?"[&reentryval]" -eq "[&PlacementTID]"|SpawnBarrier
+   --&TargetName|[*T:t-name]
+   --?"[&TargetName]" -eq "[&SpellTargetToken]"|SpawnBarrier
+   -->far_FatalError;Wrong Target;ERROR;Target the spell placement token.
+   --<|
+
+  --:SpawnBarrier|
+   --#sourceToken|[&CasterToken]
+   --&PlaceTID|[&reentryval]
+   --&SpawnLeft|[*[&PlaceTID]:t-left]
+   --&SpawnTop|[*[&PlaceTID]:t-top]
+   --=tWidth|[*[&PlaceTID]:t-width]
+   --=tHeight|[*[&PlaceTID]:t-height]
+   --=BarrierWidth|[$tWidth] * [$size2]
+   --=BarrierHeight|[$tHeight] * [$size1]
+   --#targettoken|notoken
+   --!ot:BarrierTID|name:"[&TokenName]"|left:[&SpawnLeft]|top:[&SpawnTop]|width:[$BarrierWidth.Raw]|height:[$BarrierHeight.Raw]|imgsrc:"[&BarrierLink]"|bar1_value:1|bar3_value:[*S:spell_save_dc]|represents:[&ShapeID]|showname:false|tooltip:DC [*S:spell_save_dc] [&damageDice] [&damageType]|show_tooltip:true|aura1_radius:"-0.01"|aura1_color:"#cccccc"|aura1_square:"true"|gmnotes:${[{"color":"#cccccc","name":"Blade Barrier","toNPCs":true,"toPCs":true,"toGraphics":false,"applySelf":false,"removeOnExit":false,"toLayers":"objects,gmlayer","ignoreWalls":false,"targetVfxOnEnter":"burst-chop","chatActionOnEnter":"!script !{!{ +++5Elib;snlib;Farsidelib+++ --#sourcetoken|[ATID] --#targettoken|[TID] --#hideTitleCard|1 --#emoteTargetTokenSize|75 -->far_AuraTriggerTurnGate|[TID];3 -->far_AuraTriggerSaveHalfDamage|6d10;slashing;dexterity;1;4;3;Blade Barrier -->far_AuraTriggerTurnMark|[TID];3 --X| !}!} ","chatActionOnStartTurn":"!script !{!{ +++5Elib;snlib;Farsidelib+++ --#targettoken|[TID] --!t:[TID]|bar3_value:0 --#sourcetoken|[ATID] --#targettoken|[TID] --#hideTitleCard|1 --#emoteTargetTokenSize|75 -->far_AuraTriggerTurnGate|[TID];3 -->far_AuraTriggerSaveHalfDamage|6d10;slashing;dexterity;1;4;3;Blade Barrier -->far_AuraTriggerTurnMark|[TID];3 --X| !}!} ","chatActionOnEndTurn":"!script !{!{ +++5Elib;snlib;Farsidelib+++ --#targettoken|[TID] --#hideTitleCard|1 -->far_AuraTriggerTurnClear|[TID];3 --X| !}!} ","chatActionOnExit":"!script !{!{ +++5Elib;snlib;Farsidelib+++ --#targettoken|[TID] --#hideTitleCard|1 --#emoteText|[TNAME] leaves [ANAME] -->far_AuraTriggerTurnClear|[TID];3 --X| !}!} " }]$}
+   --z:graphic:[&BarrierTID]|toback
+
+   --~|object;token;delete;[&NewTID]
+   --?[*S:npc] -eq 1|[
+    --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&TokenName]
+    --!graphic:[@tokens(0)]|gm_only_tooltip:1
+   --]|
+   -->Output|
+   --X|
+
+  --:Output|
+   --#whisper|
+   --#sourceToken|[&CasterToken]
+   -->far_PlayEffects|[*S:t-id];;burn-magic;;;
+   --+|[*S:t-name] summons a [&SpellName] in the shape of a [&Shape] ([&damageDice] [&damageType], DEX save for half)!
+   --+|[br]
+   --+Duration: |[&duration]
+   --+Desc: |[&desc]
+   --+|[br]
+   -->far_DeductSpellSlot|[*S:t-id];[&MinimumSpellLevel]
+   --X|
+
+  --:Remove|
+   --#whisper|
+   --#sourceToken|@{selected|token_id}
+   --&TokenName|[*S:t-name] [&CharName]
+   --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&TokenName]
+   --~|object;token;delete;[@tokens(0)]
+   --#emoteText|[&TokenName] vanishes!
+   --+|[*S:t-name] is no longer concentrating on [&SpellName].
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker]
+   --!a:[*S:character_id]|!ConcentrationSpell:**
+   --X|
+
+  --:GetCharID|CharacterName;StringVariableForCharID
+   --~|array;objects:character;SpiritCharArr;[%1%]
+   --?[@SpiritCharArr(length)] -ne 1|>far_FatalError;Character Not Found;ERROR;Could not find character named [%1%]
+   --&[%2%]|[@SpiritCharArr(0)]
+   --<|
+
+  --:SetAbility|
+   --~|array;objects:ability;AbilityArr;;[&AOETargetID]
+   --!ability:[@AbilityArr(0)]|istokenaction:False
+   --!ability:[@AbilityArr(1)]|istokenaction:False
+   --!ability:[@AbilityArr(2)]|istokenaction:False
+   --!ability:[@AbilityArr(3)]|istokenaction:False
+   --<|
+}}
