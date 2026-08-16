@@ -2,18 +2,16 @@
   +++5Elib;snlib;Farsidelib+++	
   
   --#sourceToken|@{selected|token_id}
-  --#reentrant|My Cool Script @{selected|token_id}
+  --#reentrant|Guiding Bolt @{selected|character_id}
   --#whisper|self,gm
   
   --/|Script Name : Guiding Bolt
-  --/|Version     : 1.0.1
+  --/|Version     : 1.0.0
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
-  --/|Author      : 
-  --/|Modified By : Farsidegallery
+  --/|Author      : Farsidegallery
   --/|
-  --/|  Script prompts user of target and type of attack roll. Script rolls attack, compares to target's AC, and determines if spell hits.
-  --/|  Script finds Caster's level, scales and calculates damage, determines damage modifier (resistant, immune), and applies damage. 
-  --/|  If target dies due to damgae, the "Dead" token marker is applied.
+  --/|  Prompts for spell level and target, resolves a ranged spell attack, and applies scaling radiant damage on a hit.
+  --/|  On a hit the next attack roll against the target has advantage before the end of the caster's next turn (card text only; no token marker).
   --/|
   
   --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
@@ -30,9 +28,6 @@
    --&CustomCritCheck|far_CustomCritCheck
    
    --/|Define your custom crit damage dice roll modifier, roll type, roll modifier, and extra damage modifier
-   --/|ex 1: 2d8+8 is -1 dicemodifier (making 2d8), d dicerolltype, blank rollmodifier, and with +8 damagemodifier
-   --/|ex 2: 3d8 keep highest one is blank dicemodifier, with d dicerolltype, kh1 for rollmodifier, and blank for damagemodifier
-   --/|ex 3: 3d8 max all dice is blank dicemodifier, m dicerolltype, blank rollmodifier, and blank damagemodifier
    --&CritDamageDiceModifier|-1
    --&CritDamageDiceRollType|d
    --&CritDamageRollModifier|
@@ -40,15 +35,6 @@
    
    --/|Are you using the matching Bardic Inspiration Script from FarsideGallery? (Default is No using 0. Change to 1 if using the script.)
    --=Scriptcheck|1
-  
-   --/|Enter the Token Markers you use for each condition
-   --&BardicMarker|BardicInspiration::7409920
-   --&BlessedMarker|angel-outfit
-   --&InspirationMarker|Inspiration::7409921
-   --&BaneMarker|Hexed3::7409911
-   --&HexMarker|Hexed::7409913
-   --&HexBladebladeMarker|Hexed2::7409912
-   --&DeathMarker|dead
   
   --/| ____________________ End Global User Variables ___________________________________________________________________________________________
 
@@ -61,12 +47,25 @@
   --&cbrac|]
   --&oparen|(
   --&cparen|)
+
+  -->far_LoadTokenMarkers|
   
   --#title|[&SpellName]
   --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
   --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
   -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
   --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+  
+  --#leftsub|[*R:spellcastingtime]
+  --#rightsub|Range: [*R:spellrange]
+  --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+  --&desc|[*R:spelldescription]
+  --&higherdesc|[*R:spellathigherlevels]
+  
+  -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&InspirationMarker];InspiredFlag;InspiredCount
+  -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&BardicMarker];BardicFlag;BardicCount
+  -->far_FIND_ACTIVE_GLOBAL_ATTACK_MODS|[*S:character_id];GlobalAttack
+  -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
   
   --+|[c][b]Cast At What Level and What Target?[/b][/c]
     --&splvlMsg|
@@ -80,25 +79,10 @@
    --#targetToken|[&reentryval(split,%,0)]
    --=SpellLevel|[&reentryval(split,%,1)]
    --&SpellLevel|[&reentryval(split,%,1)]
-   
-   --#leftsub|[*R:spellcastingtime]
-   --#rightsub|[*R:spellrange]
-   --#emoteText|[*S:character_name] Casts [&SpellName] at Spell Level [&SpellLevel] using [&damageType] damage!
-   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
-   --&desc|[*R:spelldescription]
-   --&higherdesc|[*R:spellathigherlevels]
-   
    --=DamageDice|[$SpellLevel]+3
-   -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&InspirationMarker];InspiredFlag;InspiredCount
-   -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&BardicMarker];BardicFlag;BardicCount
-   -->far_FIND_ACTIVE_GLOBAL_ATTACK_MODS|[*S:character_id];GlobalAttack
-   -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
-   -->far_FindFeat|[*S:character_id];"Hexblade's Curse";HexBladeFlag
+   --#emoteText|[*S:t-name] casts [&SpellName] at spell level [&SpellLevel] at [*T:t-name]!
    --?[*T:npc] -eq 1|=TargetAC;[*T:npc_ac]|=TargetAC;[*T:ac]
    -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;0;0;0
-   
-   --=TargetHP|[*T:t-bar1_value]
-   --?[*T:npc] -eq 1|=TargetAC;[*T:npc_ac]|=TargetAC;[*T:ac]
    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexMarker];HexMarkerFlag;HexMarkerCount
    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];HexBladeMarkerFlag;HexBladeMarkerCount
    
@@ -112,17 +96,12 @@
    --c[&AttackDice]|2d20kh1:&DisplayDice;Advantage|1d20:&DisplayDice;1d20|2d20kl1:&DisplayDice;Disadvantage
 
    --=AttackDiceBase|[&AttackDice]
-   --+Rolling [&DisplayDice]: |[$AttackDiceBase]
-   --+|[br]
    --=AttackRollMod|[$AttackDiceBase] + [*S:spell_attack_bonus] [Spell Attack Bonus]
    
    --?[&BardicFlag] -eq 1|>far_Bardic;[*S:t-id];[&BardicMarker];[$Scriptcheck];[$AttackDiceBase];[$AttackRollMod];BardRoll
    --?[&BaneMarkerFlag] -eq 1|&Baneroll;+ - 1d4 [Bane] |&Baneroll;
    
    --=AttackRoll|[$AttackDiceBase] + [*S:spell_attack_bonus] [Spell Attack Bonus] [&GlobalAttack] [&Baneroll] [&BardRoll]
-   
-   --+Total Attack Roll |[b]#[$Shot][/b]: [$AttackRoll]
-   --+|[br]
 
    --?[$AttackDiceBase] -eq 20|>Crit
    --?[$AttackDiceBase] -eq 19 -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|>Crit
@@ -132,10 +111,12 @@
    --X|
 
   --/| ____________________ Procedures_______________________________________________________________________________________
-  
+
+  --:ApplyGuidingEffect|
+   --&ResultText2|The next attack roll against [*T:t-name] has advantage before the end of [*S:t-name]'s next turn.
+   --<|
 
   --:Crit|
-   --#whisper|
    -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;1   
    --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex; + 1d6 [Hex] |&Hex;
    --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade; + [*S:pb] [Hexblade Curse] |&HexBlade;
@@ -147,37 +128,45 @@
 	--]|[
 	--=Damage|[$DamageDice]d6 [Hit] + [$DamageDice]d6 [Crit] [&HexBlade] [&Hex] [&GlobalDamage][&damageMod]
 	--]|
-   --+[b]Critical Hit!!![/b] |The bolt did [$Damage] points of [&damageType] damage.
-   --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$Damage];0;0;1
+   --?"[&damageMod]" -inc "Immune"|&Damage;0
+   --&ResultLabel|[b]Critical Hit!!![/b]
+   --?"[&damageMod]" -inc "Immune"|[
+    --&ResultText|The bolt hit, but [*T:t-name] is [b]IMMUNE[/b] to [&damageType] damage.
+    --]|[
+    --&ResultText|The bolt did [$Damage] points of [&damageType] damage.
+    --]|
    -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
    --=FinalHP|[*T:t-bar[&hpBar]_value]+[*T:t-bar[&tempHPbar]_value]-[$Damage]
    --?[$FinalHP] -le 0|>Died
+   -->ApplyGuidingEffect|
    -->Output|
-   --X|
 
   --:Hit|
-   --#whisper|
    -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0
    --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex; + 1d6 [Hex] |&Hex;
    --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade; + [*S:pb] [Hexblade Curse] |&HexBlade;
    --=Damage|[$DamageDice]d6 [&HexBlade] [&Hex][&GlobalDamage][&damageMod]
-   --+[b]Hit![/b] |The bolt did [$Damage] points of [&damageType] damage.
-   --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$Damage];0;0;1
+   --?"[&damageMod]" -inc "Immune"|&Damage;0
+   --&ResultLabel|[b]Hit![/b]
+   --?"[&damageMod]" -inc "Immune"|[
+    --&ResultText|The bolt hit, but [*T:t-name] is [b]IMMUNE[/b] to [&damageType] damage.
+    --]|[
+    --&ResultText|The bolt did [$Damage] points of [&damageType] damage.
+    --]|
    -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
    --=FinalHP|[*T:t-bar[&hpBar]_value]+[*T:t-bar[&tempHPbar]_value]-[$Damage]
    --?[$FinalHP] -le 0|>Died
+   -->ApplyGuidingEffect|
    -->Output|
-   --X|
 
   --:Miss|
-   --#whisper|
-   --+[b]Missed![/b] |So close but they ducked just in time. Better luck next time (if there is a next time).
+   --&ResultLabel|[b]Missed![/b]
+   --&ResultText|So close but they ducked just in time. Better luck next time (if there is a next time).
    -->Output|
-   --X|
 
   --:Fumble|
-   --#whisper|
-   --+[b]Critical Fail!!![/b] |The attack went horribly wrong.
+   --&ResultLabel|[b]Critical Fail!!![/b]
+   --&ResultText|The attack went horribly wrong.
    --=Fail|[T#Damage-Spell-Fail]
    --&failText|[$Fail.tableEntryText]
    --?"[&failText]" -inc "[&obrac][&obrac]"|[
@@ -188,27 +177,41 @@
 	--=failRoll|[&roll]
 	--&failText|[&failText1][$failRoll][&failText2]
 	--]|
-   --+|[br]
-   --+|[&failText]
+   --&ResultText2|[&failText]
    --?"[&failText]" -inc "Roll for damage"|[
-    --=Damage|[&DamageDice]d6
-	--+|[br]
-	--+Damage: |[$Damage]
-	--]|
+    --=Damage|[$DamageDice]d6
+    --&ResultText2|[&failText][br]Wild magic damage: [$Damage] [&damageType]
+    --]|
    -->Output|
-   --X|  
 
   --:Died|
+   --~|turnorder;removetoken;[*T:t-id]
+   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|[
+    -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexMarker];0
+    -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];0
+    --]|
+   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|[
+    -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];0
+    --]|
    -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DeathMarker]
    --<|
 
   --:Output|
    --#whisper|
+   --+Rolling [&DisplayDice]: |[$AttackDiceBase]
+   --+Total Attack Roll: |[$AttackRoll]
+   --+|[br]
+   --+[&ResultLabel]: |[&ResultText]
+   --?"X[&ResultText2]" -ne "X"|[
+    --+|[br]
+    --+|[&ResultText2]
+    --]|
    --+|[br]
    --+Duration: |[&duration]
    --+Desc: |[&desc]
    --+At Higher Levels: |[&higherdesc]
+   --+|[br]
    -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
-   -->far_PlayEffects|[*S:t-id];[*T:t-id];burn-magic;burst-fire;
+   -->far_PlayEffects|[*S:t-id];[*T:t-id];burn-magic;burst-holy;
    --X|
 }}
