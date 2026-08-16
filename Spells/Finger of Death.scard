@@ -1,8 +1,8 @@
-!scriptcard  {{
+!scriptcards {{
   +++5Elib;snlib;Farsidelib+++
   
   --#sourceToken|@{selected|token_id}
-  --#reentrant|My Cool Script @{selected|character_id}
+  --#reentrant|Finger of Death @{selected|character_id}
   --#whisper|self,gm
   
   --/|Script Name : Finger of Death
@@ -11,7 +11,7 @@
   --/|Author      : Farsidegallery
   --/|  
   --/|  Script prompts for target, resolves a Constitution saving throw, and applies 7d8+30 necrotic damage (half on save).
-  --/|  If a humanoid is killed by the damage, it rises as a zombie at the start of the caster's next turn.
+  --/|  If a humanoid is killed by the damage, it rises as a zombie at the start of the casters next turn.
   --/|
   --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
     
@@ -43,7 +43,6 @@
   --&cparen|)
   
   -->far_LoadTokenMarkers|
-  
   --~shortattrib|string;left;3;[&attrib]
   --~Displayattrib|string;touppercase;[&shortattrib]
 
@@ -55,33 +54,35 @@
   
   --=SpellLevel|[&MinimumSpellLevel]
   --&SpellLevel|[&MinimumSpellLevel]
-  
   --=DC|[*S:spell_save_dc]
-  
   --#leftsub|Range: [*R:spellrange]
   --#rightsub|[&Displayattrib] Save DC: [$DC]
   --&range|[*R:spellrange]
   --&desc|[*R:spelldescription]
   --=Damage|7d8+30
-  -->far_FindFeat|[*S:character_id];"Hexblade's Curse";HexBladeFlag
   
-  -->far_FIND_CLASS_LEVEL|[*S:character_id];Sorcerer;SLevel
-  --?"X[&SLevel]" -eq "X0"|Target
-  -->far_FindFeat|[*S:character_id];"Metamagic: Twinned Spell";TwinFeatFlag
-  -->far_FindFeat|[*S:character_id];"Metamagic: Empowered Spell";EmpowerFeatFlag
-  -->far_FindFeat|[*S:character_id];"Wild Magic Surge";WildFeatFlag
-  --=EmpowerDice|[*S:charisma_mod]
-  --=SorceryPoints|0
-  --=ChangeCount|0
-   
-  -->Lib5E_FIND_RESOURCE|[*S:character_id];[&SorcererResource];Pointsname;PointsAmmo
-  --?"[&MinimumSpellLevel(toLowerCase)]" -eq "cantrip"|=TwinCost;1 |=TwinCost;[$SpellLevel]\2 {MIN:1}
-  --?"X[$TwinFeatFlag]" -ne "X1"|Target
-  --?"X[$PointsAmmo]" -le "X0" -or "[&Pointsname]" -eq "Not Found" -or [$PointsAmmo] -lt [$TwinCost]|Target
-  
-  --+|[c]Do you want to spend [$TwinCost.Raw] [&SorcererResource] to Twin the spell?[/c]
-  --+|[c][rbutton]Yes::BuildTwinArray[/rbutton]  [rbutton]No::Target[/rbutton][/c]
+  --+|[c][b]Cast [&SpellName] at level [$SpellLevel.Raw]?[/b][/c]
+  --+|[c][rbutton]Cast::CastSpell[/rbutton][/c]
   --X|
+  
+  --:CastSpell|
+   -->far_FIND_CLASS_LEVEL|[*S:character_id];Sorcerer;SLevel
+   --?"X[&SLevel]" -eq "X0"|Target
+   -->far_FindFeat|[*S:character_id];"Metamagic: Twinned Spell";TwinFeatFlag
+   -->far_FindFeat|[*S:character_id];"Metamagic: Empowered Spell";EmpowerFeatFlag
+   -->far_FindFeat|[*S:character_id];"Wild Magic Surge";WildFeatFlag
+   --=EmpowerDice|[*S:charisma_mod]
+   --=SorceryPoints|0
+   --=ChangeCount|0
+   
+   -->Lib5E_FIND_RESOURCE|[*S:character_id];[&SorcererResource];Pointsname;PointsAmmo
+   --?"[&MinimumSpellLevel(toLowerCase)]" -eq "cantrip"|=TwinCost;1 |=TwinCost;[$SpellLevel]\2 {MIN:1}
+   --?"X[$TwinFeatFlag]" -ne "X1"|Target
+   --?"X[$PointsAmmo]" -le "X0" -or "[&Pointsname]" -eq "Not Found" -or [$PointsAmmo] -lt [$TwinCost]|Target
+   
+   --+|[c]Do you want to spend [$TwinCost.Raw] [&SorcererResource] to Twin the spell?[/c]
+   --+|[c][rbutton]Yes::BuildTwinArray[/rbutton]  [rbutton]No::Target[/rbutton][/c]
+   --X|
   
   --:BuildTwinArray|
    --=SorceryPoints|[$TwinCost]
@@ -105,19 +106,12 @@
     --=Damage|[$ChangedDamage]
     --=EmpoweredDamageFlag|1
     --]|
-   -->TargetInfo| 
+   -->TargetInfo|
   
   --:TargetInfo|
    --%target|foreach;Targets
-    --#targettoken|[&target]
-    --#emoteText|[*S:t-name] casts [&SpellName] at [*T:t-name]!
-    -->ActionSpell|
-    --%|
-   -->Output|
-
- --/| ____________________ Procedures_______________________________________________________________________________________
-
-  --:ActionSpell|
+   --#targettoken|[&target]
+   --#emoteText|[*S:t-name] casts [&SpellName] at [*T:t-name]!
    -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod[*T:t-id];0;0;0
    --?"[*T:npc]" -ne "1"|PCRoll |NPCRoll
    
@@ -132,7 +126,7 @@
    -->ChooseRoll|PC
   
   --:NPCRoll|
-   --#whisper|gm
+   --#whisper|self,gm
    -->ChooseRoll|NPC
   
   --:ChooseRoll| 
@@ -148,8 +142,9 @@
    --=InitSave[*T:t-id]|[&saveDice[*T:t-id]]
    --c[&saveDice[*T:t-id]]|2d20kh1:&DisplayDice[*T:t-id];Advantage|1d20:&DisplayDice[*T:t-id];1d20|2d20kl1:&DisplayDice[*T:t-id];Disadvantage
    --?[$InitSave[*T:t-id].Base] -eq 20|>Crit
-   --=TargetSave[*T:t-id]|[$InitSave[*T:t-id]] + [*T:[&attrib]_save_bonus] [&obrac][&Displayattrib][&cbrac]
-   --?[$TargetSave[*T:t-id]] -ge [$DC]|>Pass |>Fail   
+   --=TargetSave[*T:t-id]|[$InitSave[*T:t-id]] + [*T:[&Save]] [&obrac][&Displayattrib][&cbrac]
+   --?[$TargetSave[*T:t-id]] -ge [$DC]|>Pass |>Fail
+   --X|
    
   --:PC| 
    --&saveDice[*T:t-id]|[&reentryval]
@@ -158,7 +153,6 @@
    --?[&damageSave[*T:t-id]] -eq 1 -or [&attribSaveRoll[*T:t-id]] -eq 1 -and "[&saveDice[*T:t-id]]" -eqi "1d20"|&saveDice[*T:t-id];2d20kh1
    --?[&damageSave[*T:t-id]] -eq 1 -or [&attribSaveRoll[*T:t-id]] -eq 1 -and "[&saveDice[*T:t-id]]" -eqi "2d20kl1"|&saveDice[*T:t-id];1d20
    
-  
    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&InspirationMarker];InspiredFlag[*T:t-id];InspiredCount[*T:t-id]
    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BardicMarker];BardicFlag[*T:t-id];BardicCount[*T:t-id]
    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BaneMarker];BaneMarkerFlag[*T:t-id];BaneMarkerCount[*T:t-id]
@@ -181,6 +175,7 @@
 
    --#whisper|
    --?[$TargetSave[*T:t-id]] -ge [$DC]|>Pass |>Fail
+   --X|
    
   --:Crit|
    -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage[*T:t-id];0
@@ -189,8 +184,7 @@
    --=Damage[*T:t-id]|[$Damage] [&HexBlade[*T:t-id]] [&Hex[*T:t-id]][&GlobalDamage[*T:t-id]][&damageMod[*T:t-id]]\2
    --&ResultLabel[*T:t-id]|[b]Critical Save!!![/b]
    --&ResultText[*T:t-id]|[*T:t-name] rolled a [$InitSave[*T:t-id]] vs a DC [$DC] and cannot fail the saving throw. [*T:t-name] takes [$Damage[*T:t-id]] damage.
-   --%|
-   -->Output|
+   --^BottomForEachTarget|
   
   --:Pass|
    -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage[*T:t-id];0
@@ -199,8 +193,7 @@
    --=Damage[*T:t-id]|[$Damage] [&HexBlade[*T:t-id]] [&Hex[*T:t-id]][&GlobalDamage[*T:t-id]][&damageMod[*T:t-id]]\2
    --&ResultLabel[*T:t-id]|[b]Pass[/b]
    --&ResultText[*T:t-id]|[*T:t-name] rolled a [$TargetSave[*T:t-id]] vs a DC [$DC] and passed the saving throw. [*T:t-name] takes [$Damage[*T:t-id]] damage.
-   --%|
-   -->Output|
+   --^BottomForEachTarget|
 
   --:Fail|
    -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage[*T:t-id];0
@@ -209,18 +202,30 @@
    --=Damage[*T:t-id]|[$Damage] [&HexBlade[*T:t-id]] [&Hex[*T:t-id]][&GlobalDamage[*T:t-id]][&damageMod[*T:t-id]]
    --&ResultLabel[*T:t-id]|[b]Failed[/b]
    --&ResultText[*T:t-id]|[*T:t-name] rolled a [$TargetSave[*T:t-id]] vs a DC [$DC] and failed the saving throw. [*T:t-name] takes [$Damage[*T:t-id]] damage.
+   --^BottomForEachTarget|
+
+  --:BottomForEachTarget|
    --%|
    -->Output|
 
   --:Died|
-   -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DeathMarker]
-   --?"[*T:npc]" -ne "1"|[
-    --+|[br]
-    --+|[*T:t-name] has died due to the damage from [&SpellName] and next turn will rise as a zombie under the control of [*S:t-name]!
+   --~|turnorder;removetoken;[*T:t-id]
+   --?"X[&HexMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|[
+    -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexMarker];0
+    -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];0
     --]|
-   --?"[*T:npc]" -eq "1" -and "[*T:npc_type]" -inc "humanoid"|[
-    --+|[br]
-    --+|[*T:t-name] has died due to the damage from [&SpellName] and next turn will rise as a zombie under the control of [*S:t-name]!
+   --?"X[&HexBladeMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|[
+    -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];0
+    --]|
+   -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DeathMarker]
+   --&FoDZombieMsg[*T:t-id]|
+   --?"X[*T:npc]" -eq "X1"|[
+    --~FoDType|string;tolowercase;[*T:npc_type]
+    --?"[&FoDType]" -inc "humanoid"|&FoDZombieMsg[*T:t-id];[*T:t-name] has died due to the damage from [&SpellName] and next turn will rise as a zombie under the control of [*S:t-name]!
+    --?"[&FoDType]" -inc "goblinoid"|&FoDZombieMsg[*T:t-id];[*T:t-name] has died due to the damage from [&SpellName] and next turn will rise as a zombie under the control of [*S:t-name]!
+    --]|
+   --?"X[*T:npc]" -ne "X1"|[
+    --?"[*T:race]" -ninc "Undead" -and "[*T:race]" -ninc "Construct"|&FoDZombieMsg[*T:t-id];[*T:t-name] has died due to the damage from [&SpellName] and next turn will rise as a zombie under the control of [*S:t-name]!
     --]|
    --<|
   
@@ -238,9 +243,15 @@
     --+|[br]
     --+[&ResultLabel[*T:t-id]]: |[&ResultText[*T:t-id]]
     -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$Damage[*T:t-id]];0;0;1
+    --?"[&damageMod[*T:t-id]]" -inc "Immune"|[
+     --+Immune! |[*T:t-name] is [b]IMMUNE[/b] to [&damageType] damage!
+    --]|
     --+|[br]
     --=FinalHP[*T:t-id]|[*T:t-bar[&hpBar]_value]+[*T:t-bar[&tempHPbar]_value]-[$Damage[*T:t-id]]
     --?[$FinalHP[*T:t-id]] -le 0|>Died
+    --?"X[&FoDZombieMsg[*T:t-id]]" -ne "X"|[
+     --+|[&FoDZombieMsg[*T:t-id]]
+     --]|
     --%|
    
    --?"X[$WildFeatFlag]" -eq "X1" -and [&MinimumSpellLevel] -ge 1|>far_WildTable
