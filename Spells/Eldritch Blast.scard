@@ -7,9 +7,8 @@
   --/|Author      : 
   --/|Modified By : Farsidegallery
   --/|
-  --/|  Script automatically finds Warlock level (including multiclass characters) and then determines number of beams for spell. Script determines if character has Agonizing Blast feat and adds the additional
-  --/|  damage. Script loops through shots and outputs results. If target dies, script will terminate and inform player/GM how many beams it took and how many beams remain for Warlock to use on 
-  --/|  the next target.
+  --/|  Script finds Warlock level (including multiclass characters), determines beam count, and loops through each beam with separate attack rolls. Agonizing Blast,
+  --/|  Hex, Hexblade's Curse, and Repelling Blast are applied when applicable. If a target is reduced to 0 hp, the dead marker is applied; remaining beams may still be fired at other targets.
   --/|
   
   --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
@@ -37,27 +36,24 @@
    --/|Are you using the matching Bardic Inspiration Script from FarsideGallery? (Default is No using 0. Change to 1 if using the script.)
    --=Scriptcheck|1
   
-   --/|Enter the Token Markers you use for each condition
-   --&BardicMarker|BardicInspiration::7409920
-   --&BlessedMarker|angel-outfit
-   --&InspirationMarker|Inspiration::7409921
-   --&BaneMarker|Hexed3::7409911
-   --&HexMarker|Hexed::7409913
-   --&HexBladebladeMarker|Hexed2::7409912
-   --&DeathMarker|dead
-  
   --/| ____________________ End Global User Variables ___________________________________________________________________________________________
 
   --/|Helper variable build up to allow us to include a target prompt in an rbutton
   --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
   --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
   --&obrac|[ 
   --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+
+  -->far_LoadTokenMarkers|
   
   --#title|[&SpellName]
   --#sourceToken|@{selected|token_id}
-  --#reentrant|My Cool Script @{selected|character_id}
-  --#emoteText|[*S:character_name] Casts [&SpellName]!
+  --#reentrant|Eldritch Blast @{selected|character_id}
+  --#emoteText|[*S:t-name] Casts [&SpellName]!
 
   --#titleCardBackground|#932729
   --#oddRowBackground|#FFFFFF
@@ -83,19 +79,20 @@
    
    --+|You create [&ShotCnt] beams of crackling energy and hurl them at targets within range. You can hurl them at one target or several.  Make a ranged spell attack for each beam. On a hit, the target takes 1d10 force damage.
    --+|[br]
-   --+|[c][b]Spell Save DC: [#FF0000][*S:spell_save_dc][/#]   Damage: [#FF0000][$MissileDamage][/#][/b][/c]
+   --+|[t border=0 width=100%][tr][td][c][b]Spell Attack: [#FF0000]+[*S:spell_attack_bonus][/#][/b][/c][/td][td style="width5px"][/td][td][c][b] Damage: [#FF0000][$MissileDamage][/#][/b][/c][/td][/tr]
    --+|[br]
    --&splvlMsg|[rbutton]Cast Spell::STEP2[/rbutton]
    --+|[c][&splvlMsg][/c]
    --+|[br]
    --+|After clicking the button above, you will be asked to select a series of targets until all your beams are delivered - [b]Good Luck![/b]
-
    --X|
 
   --:STEP2|
+   -->FindShotCnt|
    --=MissileCount|[&ShotCnt]
+   --=DisplayCount|0
 
-  --:MissileLoop| 
+  --:MissileLoop|
     --=DisplayCount|[$DisplayCount] + 1
 
     --?[$DisplayCount] -gt [$MissileCount]|EndMacro
@@ -104,31 +101,29 @@
       --+|[br]
       --+|[c][rbutton]Next Target::NEXT_TARGET[/rbutton][/c]
       --+|[br]
-      --+|[c][b]Spell Save DC: [#FF0000][*S:spell_save_dc][/#]   Damage: [#FF0000][$MissileDamage.Raw][/#][/b][/c]
+      --+|[t border=0 width=100%][tr][td][c][b]Spell Attack: [#FF0000]+[*S:spell_attack_bonus][/#][/b][/c][/td][td style="width:5px"][/td][td][c][b] Damage: [#FF0000][$MissileDamage.Raw][/#][/b][/c][/td][/tr]
       --+|[br]
       --X|
     --]|
 
-    --:NEXT_TARGET|
-
-    --&HexMarkerFlag|
-    --&HexBladeMarkerFlag|
-    --&HexBlade|
-    --&Hex|
-    --&Blast|
-    --I Select the target of your Eldritch Blast.;Eldritch Blast #[$DisplayCount].|t;ThisTarget;Eldritch Blast #[$DisplayCount]:
-    --#targetToken|[&ThisTarget]
-    --#leftsub|Blast # [$DisplayCount.Raw]
-    --#rightsub|[*T:t-name]
-    --#emoteText|[*S:character_name] attacks [*T:character_name]!
-	  -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&InspirationMarker];InspiredFlag;InspiredCount
-    -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&BardicMarker];BardicFlag;BardicCount
-    -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
-    -->far_FIND_ACTIVE_GLOBAL_ATTACK_MODS|[*S:character_id];GlobalAttack
-    -->far_FindFeat|[*S:character_id];"Hexblade's Curse";HexBladeFlag
-    --?[*T:npc] -eq 1|=TargetAC;[*T:npc_ac]|=TargetAC;[*T:ac]
-    -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;0;0;0
-	-->GetAttackType|
+  --:NEXT_TARGET|
+   --&HexMarkerFlag|
+   --&HexBladeMarkerFlag|
+   --&HexBlade|
+   --&Hex|
+   --&Blast|
+   --I Select the target of your Eldritch Blast.;Eldritch Blast #[$DisplayCount].|t;ThisTarget;Eldritch Blast #[$DisplayCount]:
+   --#targetToken|[&ThisTarget]
+   --#leftsub|Blast # [$DisplayCount.Raw]
+   --#rightsub|[*T:t-name]
+   --#emoteText|[*S:t-name] attacks [*T:t-name]!
+	 -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&InspirationMarker];InspiredFlag;InspiredCount
+   -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&BardicMarker];BardicFlag;BardicCount
+   -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
+   -->far_FIND_ACTIVE_GLOBAL_ATTACK_MODS|[*S:character_id];GlobalAttack
+   --?[*T:npc] -eq 1|=TargetAC;[*T:npc_ac]|=TargetAC;[*T:ac]
+   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;0;0;0
+	 -->GetAttackType|
 	
 	--:GetAttackType|
 	 --#whisper|self,gm
@@ -136,47 +131,50 @@
      --+|[c][rbutton]Advantage::AttackReentry;2d20kh1[/rbutton][rbutton]Normal::AttackReentry;1d20[/rbutton][rbutton]Disadvantage::AttackReentry;2d20kl1[/rbutton][/c]
 	 --X|
 
-   --:AttackReentry|
-	-->far_PlayEffects|[*S:t-id]; [*T:t-id]; ; burst-magic; beam-magic;
-    --&AttackDice|[&reentryval]
-	--?[&InspiredFlag] -ne 0 |>far_Inspiration;[*S:t-id];[&InspirationMarker];[&AttackDice];AttackDice
+  --:AttackReentry|
+   --&AttackDice|[&reentryval]
+   --?[&InspiredFlag] -ne 0 |>far_Inspiration;[*S:t-id];[&InspirationMarker];[&AttackDice];AttackDice
    
-    --#whisper|
-    --=AttackDiceBase|[&AttackDice]
-    --c[&AttackDice]|2d20kh1:&DisplayDice;Advantage|1d20:&DisplayDice;1d20|2d20kl1:&DisplayDice;Disadvantage
-    --+Rolling [&DisplayDice]: |[$AttackDiceBase]
-    --=AttackRollMod|[$AttackDiceBase] + [*S:spell_attack_bonus] [Spell Attack Bonus]
+   --#whisper|
+   --=AttackDiceBase|[&AttackDice]
+   --c[&AttackDice]|2d20kh1:&DisplayDice;Advantage|1d20:&DisplayDice;1d20|2d20kl1:&DisplayDice;Disadvantage
+   --+Rolling [&DisplayDice]: |[$AttackDiceBase]
+   --=AttackRollMod|[$AttackDiceBase] + [*S:spell_attack_bonus] [Spell Attack Bonus]
    
-    --?[&BardicFlag] -eq 1|>far_Bardic;[*S:t-id];[&BardicMarker];[$Scriptcheck];[$AttackDiceBase];[$AttackRollMod];BardRoll
-    --?[&BaneMarkerFlag] -eq 1|&Baneroll;+ - 1d4 [Bane] |&Baneroll;
+   --?[&BardicFlag] -eq 1|>far_Bardic;[*S:t-id];[&BardicMarker];[$Scriptcheck];[$AttackDiceBase];[$AttackRollMod];BardRoll
+   --?[&BaneMarkerFlag] -eq 1|&Baneroll;+ - 1d4 [Bane] |&Baneroll;
    
-    --=AttackRoll|[$AttackDiceBase] + [*S:spell_attack_bonus] [Spell Attack Bonus] [&GlobalAttack] [&Baneroll] [&BardRoll]
+   --=AttackRoll|[$AttackDiceBase] + [*S:spell_attack_bonus] [Spell Attack Bonus] [&GlobalAttack] [&Baneroll] [&BardRoll]
 
-    --/|Determine results|
-	--+|[br]Total Attack Roll [b]#[$Shot][/b]: [$AttackRoll]
-	--+[br]|
-    --?[$AttackDiceBase] -eq 20|>Crit
-    --?[$AttackDiceBase] -eq 19 -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|>Crit
-    --?[$AttackDiceBase] -eq 1|>Fumble
-    --?[$AttackRoll.Total] -ge [$TargetAC.Total] -and [$AttackRoll.Base] -nei 20|>Hit
-    --?[$AttackRoll.Total] -lt [$TargetAC.Total] -and [$AttackRoll.Base] -nei 1|>Miss
-    --X|
+   --/|Determine results|
+	 --+|[br]Total Attack Roll [b]#[$DisplayCount.Raw][/b]: [$AttackRoll]
+	 --+[br]|
+   
+   --?[$AttackDiceBase] -eq 20|>Crit
+   --?[$AttackDiceBase] -eq 19 -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|>Crit
+   --?[$AttackDiceBase] -eq 1|>Fumble
+   --?[$AttackRoll.Total] -ge [$TargetAC.Total] -and [$AttackRoll.Base] -nei 20|>Hit
+   --?[$AttackRoll.Total] -lt [$TargetAC.Total] -and [$AttackRoll.Base] -nei 1|>Miss
+   --X|
 
   --:EndMacro|
+   --+|[br]
+   --+All beams delivered.|
    --X|
 
   --/| ____________________ Procedures_______________________________________________________________________________________
 
   --:FindShotCnt|
-   --=Level|[*S:level]
-   --?[$Level] -ge 17 |&ShotCnt;4
+   -->far_FIND_CLASS_LEVEL|[*S:character_id];Warlock;WLevel
+   --=Level|[&WLevel]
+   --?[$Level] -ge 17|&ShotCnt;4
    --?[$Level] -le 16 -and [$Level] -ge 11|&ShotCnt;3
    --?[$Level] -lt 11 -and [$Level] -ge 5|&ShotCnt;2
-   --?[$Level] -lt 5 |&ShotCnt;1
+   --?[$Level] -lt 5|&ShotCnt;1
    --<|
 
   --:Fumble|
-   --+&#x1F613;Ray #[$DisplayCount.Raw] Fumbles! |[*S:character_name] rolls [$AttackRoll] to attack [*T:t-name] and something went horribly wrong.
+   --+&#x1F613;Ray #[$DisplayCount.Raw] Fumbles! |[*S:t-name] rolls [$AttackRoll] to attack [*T:t-name] and something went horribly wrong.
    --=Fail|[T#Damage-Spell-Fail]
    --&failText|[$Fail.tableEntryText]
    --?"[&failText]" -inc "[&obrac][&obrac]"|[
@@ -191,31 +189,33 @@
    --+|[&failText]
    --?"[&failText]" -inc "Roll for damage"|[
     -->DamageRoll|
-    --=Damage|[&DamageDice]
 	--+Damage: |[$Damage]
 	--]|
+  -->PlayBeamVFX|
   --^MissileLoop|
 
   --:Miss|
-      --+&#x274C;Ray #[$DisplayCount.Raw] Misses! |[*S:character_name] rolls [$AttackRoll] to attack [*T:t-name] and missed.
+      --+&#x274C;Ray #[$DisplayCount.Raw] Misses! |[*S:t-name] rolls [$AttackRoll] to attack [*T:t-name] and missed.
+  -->PlayBeamVFX|
   --^MissileLoop|
 
-  --:Hit| pass Damage string 
-   -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0
-   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexMarker];HexMarkerFlag;HexMarkerCount
-   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];HexBladeMarkerFlag;HexBladeMarkerCount
-   
-   --?[$BlastFlag] -eq 1|&Blast; + [*S:charisma_mod] [Agonizing Blast] |&Blast;
-   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex; + 1d6 [Hex] |&Hex;
-   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade; + [*S:pb] [Hexblade Curse] |&HexBlade;
-   
-   --=Damage|[$MissileDamage] [&Blast] [&HexBlade] [&Hex] [&GlobalDamage] [&damageMod]
-   --+|&#x1F3AF;[b]Hit![/b] The blast did [$Damage] points of Force damage.
-   -->ApplyDamage|
-   --?[$RepelFlag] -eq 1|[
-    -->MOVE_TOKEN|[*S:t-id];[*T:t-id];2
-	--]|
-   --^MissileLoop|
+ --:Hit| pass Damage string 
+  -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0
+  -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexMarker];HexMarkerFlag;HexMarkerCount
+  -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];HexBladeMarkerFlag;HexBladeMarkerCount
+  
+  --?[$BlastFlag] -eq 1|&Blast; + [*S:charisma_mod] [Agonizing Blast] |&Blast;
+  --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex; + 1d6 [Hex] |&Hex;
+  --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade; + [*S:pb] [Hexblade Curse] |&HexBlade;
+  
+  --=Damage|[$MissileDamage] [&Blast] [&HexBlade] [&Hex] [&GlobalDamage] [&damageMod]
+  --+|&#x1F3AF;[b]Hit![/b] The blast did [$Damage] points of Force damage.
+  -->ApplyDamage|
+  -->PlayBeamVFX|
+  --?[$RepelFlag] -eq 1|[
+   -->MOVE_TOKEN|[*S:t-id];[*T:t-id];2
+   --]|
+  --^MissileLoop|
 
   --:Crit|
    -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;1
@@ -236,28 +236,51 @@
 	--]|
   --+|&#x2757;[b]Critical Hit!!![/b] The blast did [$Damage] points of Force damage.
   -->ApplyDamage|
+  -->PlayBeamVFX|
   --?[$RepelFlag] -eq 1|[
    -->MOVE_TOKEN|[*S:t-id];[*T:t-id];2
    --]|
   --^MissileLoop|
 
+  --:PlayBeamVFX|
+   -->far_PlayEffects|[*S:t-id];[*T:t-id]; ; burst-magic; beam-magic;
+   --<|
+
   --:ApplyDamage|
-    
-    --=CurrentHP|[*T:t-bar1_value]
-    --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$Damage];0;0;1
 	-->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
+	--?"[&damageMod]" -inc "Immune"|[
+	 --+Immune! |[*T:t-name] is [b]IMMUNE[/b] to [&damageType] damage!
+	--]|
+	--=FinalHP|[*T:t-bar[&hpBar]_value]+[*T:t-bar[&tempHPbar]_value]
+	--?[$FinalHP] -gt 0|EBAlive|EBDead
 
-    --/|Did that kill them?
-    --?[$CurrentHP.Raw] -gt [$Damage.Raw]|ALIVE|DEAD
-
-    --:ALIVE|
-      --/+|[*T:character_name] is still alive and kicking!
-      --<|
+  --:EBAlive|
+   --<|
     
-	--:DEAD|
-      --+Congrats|You managed to kill [*T:character_name]
-      -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DeathMarker]
-      --<|
+	--:EBDead|
+   --+|[br]
+   --+Congrats|You managed to kill [*T:t-name]
+   --?"X[*T:CurseCaster]" -ne "X"|>EBDoHexHeal
+   --^EBDeathFinish|
+   
+  --:EBDoHexHeal|
+   -->far_HexHeal|[*T:t-id]
+  
+  --:EBDeathFinish|
+   --~|turnorder;removetoken;[*T:t-id]
+   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|[
+    -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexMarker];0
+	  -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];0
+	  --]|
+   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|[
+    -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];0
+	  --]|
+   -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DeathMarker]
+   --<|
+  
+  --:DamageRoll|
+   --=Damage|[$MissileDamage] [&damageMod]
+   --<|
   
   --:MOVE_TOKEN|STokenid, TTokenId, Units
    --&TId1|[%1%]
@@ -296,6 +319,6 @@
 
    --*Angles|[&Angle] ([&A]) ([$Ar]) 
    --/| Time to call the magic TokenMod function to make the target token move across the screen
-   --@token-mod|_move =[&Angle]|[$U.Raw]g _ids [&TId2] _ignore-selected
+   --w1:@token-mod|_move =[&Angle]|[$U.Raw]g _ids [&TId2] _ignore-selected
    --<|
 }}
