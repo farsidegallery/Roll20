@@ -2,14 +2,12 @@
   +++5Elib;snlib;Farsidelib+++	
   
   --#sourceToken|@{selected|token_id}
-  --#reentrant|My Cool Script @{selected|token_id}
-  --#whisper|self,gm
+  --#reentrant|Fire Bolt @{selected|character_id}
   
   --/|Script Name : Fire Bolt
-  --/|Version     : 1.0.7
+  --/|Version     : 1.0.6
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
-  --/|Author      : 
-  --/|Modified By : Farsidegallery
+  --/|Author      : Farsidegallery
   --/|
   --/|  Script prompts user of target and type of attack roll. Script rolls attack, compares to target's AC, and determines if spell hits.
   --/|  Script finds Caster's level, scales and calculates damage, determines damage modifier (resistant, immune), and applies damage. 
@@ -44,16 +42,7 @@
    --/|Are you using the matching Bardic Inspiration Script from FarsideGallery? (Default is No using 0. Change to 1 if using the script.)
    --=Scriptcheck|1
   
-   --/|Enter the Token Markers you use for each condition
-   --&BardicMarker|BardicInspiration::7409920
-   --&BlessedMarker|angel-outfit
-   --&InspirationMarker|Inspiration::7409921
-   --&BaneMarker|Hexed3::7409911
-   --&HexMarker|Hexed::7409913
-   --&HexBladebladeMarker|Hexed2::7409912
-   --&DeathMarker|dead
-  
-  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+ --/| ____________________ End Global User Variables ___________________________________________________________________________________________
 
   --/|Helper variable build up to allow us to include a target prompt in an rbutton
   --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
@@ -64,6 +53,8 @@
   --&cbrac|]
   --&oparen|(
   --&cparen|)
+  
+  -->far_LoadTokenMarkers|
   
   --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
   --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
@@ -76,7 +67,6 @@
   -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&BardicMarker];BardicFlag;BardicCount
   -->far_FIND_ACTIVE_GLOBAL_ATTACK_MODS|[*S:character_id];GlobalAttack
   -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
-  -->far_FindFeat|[*S:character_id];"Hexblade's Curse";HexBladeFlag
   
   -->far_FIND_CLASS_LEVEL|[*S:character_id];Sorcerer;SLevel
   --?"X[&SLevel]" -eq "X0"|Target
@@ -88,6 +78,7 @@
    
   -->Lib5E_FIND_RESOURCE|[*S:character_id];[&SorcererResource];Pointsname;PointsAmmo
   --?"[&MinimumSpellLevel(toLowerCase)]" -eq "cantrip"|=TwinCost;1 |=TwinCost;[$SpellLevel]\2 {MIN:1}
+  --?"X[$TwinFeatFlag]" -ne "X1"|Target
   --?"X[$PointsAmmo]" -le "X0" -or "[&Pointsname]" -eq "Not Found" -or [$PointsAmmo] -lt [$TwinCost]|Target
   
   --+|[c]Do you want to spend [$TwinCost.Raw] [&SorcererResource] to Twin the spell?[/c]
@@ -113,8 +104,7 @@
   --:TargetInfo|
    --%target|foreach;Targets
    --#targettoken|[&target]
-   --#emoteText|[*S:t-name] attacks [*T:t-name]!
-   --=TargetHP|[*T:t-bar1_value]
+   --#emoteText|[*S:t-name] casts [&SpellName] at [*T:t-name]!
    --?[*T:npc] -eq 1|=TargetAC;[*T:npc_ac]|=TargetAC;[*T:ac]
    -->far_CheckDamageModifiers|[*T:character_id];[&damageType1];damageMod[*T:t-id];0;0;0
    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexMarker];HexMarkerFlag[*T:t-id];HexMarkerCount
@@ -182,7 +172,7 @@
    --?"X[&HexMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex[*T:t-id]; + 1d6 [Hex] |&Hex[*T:t-id];
    --?"X[&HexBladeMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade[*T:t-id]; + [*S:pb] [Hexblade Curse] |&HexBlade[*T:t-id];
    --=Damage[*T:t-id]|[&DamageDice]d10 [&HexBlade[*T:t-id]] [&Hex[*T:t-id]][&GlobalDamage][&damageMod[*T:t-id]]
-   --?"X[$EmpowerFeatFlag]" -eq "X1"|>far_EmpowerSelect;Damage[*T:t-id];Crit;DamageChangedFlag[*T:t-id];ChangedDamage[*T:t-id]
+   --?"X[$EmpowerFeatFlag]" -eq "X1"|>far_EmpowerSelect;Damage[*T:t-id];Hit;DamageChangedFlag[*T:t-id];ChangedDamage[*T:t-id]
    --?"X[$DamageChangedFlag[*T:t-id]]" -eq "X1"|[
     --=Damage[*T:t-id]|[$ChangedDamage[*T:t-id]] [&HexBlade[*T:t-id]] [&Hex[*T:t-id]][&GlobalDamage][&damageMod[*T:t-id]]
     --=EmpoweredDamageFlag|1
@@ -205,28 +195,15 @@
    --&ResultText[*T:t-id]|The attack went horribly wrong.
    --^BottomForEachTarget|
    
-  --:FailTable| 
-   --=Fail|[T#Damage-Spell-Fail]
-   --&failText|[$Fail.tableEntryText]
-   --?"[&failText]" -inc "[&obrac][&obrac]"|[
-	--~failText1|string;before;[&obrac][&obrac];[&failText]
-	--~failText2|string;after;[&cbrac][&cbrac];[&failText]
-	--~roll|string;before;[&cbrac][&cbrac];[&failText]
-	--~roll|string;after;[&obrac][&obrac];[&roll]
-	--=failRoll|[&roll]
-	--&failText|[&failText1][$failRoll][&failText2]
-	--]|
-   --+|[br]
-   --+|[&failText]
-   --?"[&failText]" -inc "Roll for damage"|[
-    -->DamageRoll|
-    --=Damage|[&DamageDice]
-	--+|[br]
-	--+Damage: |[$Damage]
-	--]|
-   --<| 
-
   --:Died|
+   --~|turnorder;removetoken;[*T:t-id]
+   --?"X[&HexMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|[
+    -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexMarker];0
+    -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];0
+    --]|
+   --?"X[&HexBladeMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|[
+    -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];0
+    --]|
    -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DeathMarker]
    --<|
 
@@ -235,7 +212,6 @@
    --?[*S:level] -lt 17 -and [*S:level] -ge 11 |&DamageDice;3
    --?[*S:level] -lt 11 -and [*S:level] -ge 5 |&DamageDice;2
    --?[*S:level] -lt 5 |&DamageDice;1
-   -->far_CheckDamageModifiers|[*T:character_id];[&damageType1];damageMod;0;0;0
    --<|
   
   --:Output|
@@ -248,11 +224,10 @@
     -->far_PlayEffects|[*S:t-id];[&loop];burn-magic;burst-fire;
 	--+|[c][b]Target: [*[&loop]:t-name][/b][/c]
 	--+Rolling [&DisplayDice[&loop]]: |[$AttackDiceBase[&loop]]
-	--+Total Attack Roll |[b]#[$Shot][/b]: [$AttackRoll[&loop]]
+	--+Total Attack Roll: |[$AttackRoll[&loop]]
 	--+|[br]
 	--+[&ResultLabel[&loop]] |[&ResultText[&loop]]
 	--+|[br]
-	--?"[&ResultLabel[&loop]]" -inc "Fail"|>FailTable
     --%|
    
    --+|[br]
@@ -264,6 +239,5 @@
     --+|[br]
 	--+[&SorcererResource]: |Used: [$SorceryPoints] / Remaining: [$FinalPointsAmmo]
     --]|
-   --X|
    --X|
 }}
