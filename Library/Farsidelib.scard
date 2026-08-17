@@ -1,4 +1,4 @@
---/|ScriptCards Library: Farsidelib  version 1.4.0
+--/|ScriptCards Library: Farsidelib  version 1.6.1
 --/|Provides various utility procedures for Roll20
 
 --/|This library contains a number of functions that are customized to meet the different needs of spell or ability
@@ -110,6 +110,47 @@
 --/|      PreserveFlatBonus (optional, default off): pass 1 when ChangedDamage is used directly (e.g. 7d8+30 save spells).
 --/|      Omit or leave blank when the caller re-appends Hex/GlobalDamage modifiers after ChangedDamage (attack spells).
 --/|      Sub-functions: far_EmpowerYes, far_EmpowerNo, far_DieSelect, far_EmpowerParseDieSize
+--/|
+--/|   far_AuraTriggerTurnGate|target-token-id;flag-bar#
+--/|      Used by AuraTrigger embedded scripts. Exits the script if target flag bar equals 1 (already resolved this turn).
+--/|
+--/|   far_AuraTriggerTurnMark|target-token-id;flag-bar#
+--/|      Sets target flag bar to 1 after aura damage resolves for the turn.
+--/|
+--/|   far_AuraTriggerTurnClear|target-token-id;flag-bar#
+--/|      Clears target flag bar (typically on end turn or exit aura).
+--/|
+--/|   far_AuraTriggerSaveHalfDamage|damageDice;damageType;saveAttrib;hpBar;tempHPbar;dcBar;spellName
+--/|      Requires #sourceToken (aura token) and #targettoken already set. Calls far_LoadTokenMarkers first
+--/|      (embedded aura scripts do not run spell setup). Rolls an automatic save vs DC on aura bar (dcBar),
+--/|      applies half damage on pass and full on fail, then applies damage/death cleanup.
+--/|      Sub-function: far_AuraTriggerDied
+--/|
+--/|   far_EvardTentaclesAuraStrike|damageDice;damageType;saveAttrib;hpBar;tempHPbar
+--/|      Evard's Black Tentacles AuraTrigger effect. Requires #sourceToken (tentacle aura token with SaveDC on
+--/|      represents character) and #targettoken. Restrained targets take automatic damage. Others roll a DEX save
+--/|      vs SaveDC — pass avoids damage; fail takes full damage and gains Restrained. Sub-function: far_AuraTriggerDied
+--/|
+--/|   far_EvardTentaclesAuraExit|target-token-id
+--/|      AuraTrigger onExit handler. Clears turn flags and removes Restrained from the leaving token.
+--/|
+--/|   far_EvardTentaclesMarkEntered|target-token-id
+--/|      AuraTrigger onEnter helper. Sets EvardTentaclesEntered on the target character so onStartTurn skips.
+--/|
+--/|   far_EvardTentaclesSkipIfEntered|target-token-id
+--/|      AuraTrigger onStartTurn helper. Exits if onEnter already ran this turn (character attribute).
+--/|
+--/|   far_EvardTentaclesTurnEnd|target-token-id
+--/|      AuraTrigger onEndTurn helper. Clears bar 3 turn flag and EvardTentaclesEntered.
+--/|
+--/|   far_EvardTentaclesSkipIfHitThisTurn|target-token-id
+--/|      Deprecated — use far_AuraTriggerTurnGate instead (sets bar 3 before the strike).
+--/|
+--/|   far_EvardTentaclesMarkHitThisTurn|target-token-id
+--/|      Deprecated — use far_AuraTriggerTurnGate instead.
+--/|
+--/|   far_EvardTentaclesAuraEnter|target-token-id;flag-bar#
+--/|      AuraTrigger onEnter/onStartTurn handler. Turn gate, strike, and turn mark in one call.
 
 --/| =============================== BEGIN LIBRARY CODE ===============================================
 
@@ -147,7 +188,7 @@
   
   --/|This is used for Hunter's Mark spell.  If you use a different marker, change it here.
   --&HunterMarker|Marked::7409918
-  
+
   --&IncapacitatedMarker|Incapacitated::7409943
   --&InspirationMarker|Inspiration::7409921
   --&InvisibilityMarker|Invisible::7409942
@@ -748,4 +789,210 @@
    --~EmpowerDieSize|string;trim;[&EmpowerDieSize]
    --~EmpowerDieSize|string;after;d;[&EmpowerDieSize]
    --]|
+  --<|
+
+ --:far_AuraTriggerTurnGate|target-token-id;flag-bar#
+  --?"X[*[%1%]:t-bar[%2%]_value]" -eq "X1"|[
+   --#hideTitleCard|1
+   --X|
+  --]|
+  --!t:[%1%]|bar[%2%]_value:1
+  --<|
+
+ --:far_AuraTriggerTurnMark|target-token-id;flag-bar#
+  --!t:[%1%]|bar[%2%]_value:1
+  --<|
+
+ --:far_AuraTriggerTurnClear|target-token-id;flag-bar#
+  --!t:[%1%]|bar[%2%]_value:0
+  --<|
+
+ --:far_AuraTriggerSaveHalfDamage|damageDice;damageType;saveAttrib;hpBar;tempHPbar;dcBar;spellName
+  -->far_LoadTokenMarkers|
+  --&ATDamageDice|[%1%]
+  --&ATDamageType|[%2%]
+  --&ATSaveAttrib|[%3%]
+  --&ATHpBar|[%4%]
+  --&ATTmpBar|[%5%]
+  --&ATDcBar|[%6%]
+  --=ATDC|[*S:t-bar[&ATDcBar]_value]
+  --~ATShortAttrib|string;left;3;[&ATSaveAttrib]
+  --~ATDisplayAttrib|string;touppercase;[&ATShortAttrib]
+  --#emoteText|[%7%] strikes [*T:t-name]!
+  -->far_CheckDamageModifiers|[*T:character_id];[&ATDamageType];ATDamageMod;0;0;0
+  --&ATSaveDice|1d20
+  --&ATGlobalSave|
+  --&ATGlobalSkill|
+  --&ATBaneroll[*T:t-id]|
+  --&ATBlessRoll[*T:t-id]|
+  --&ATBaneFlag[*T:t-id]|0
+  --&ATBlessFlag[*T:t-id]|0
+  --?"X[*T:race]" -ne "X"|[
+   -->far_Check_GLOBAL_MOD_EXISTS|[*T:character_id]; save; [&ATDamageType]; ATDamageSave
+   -->far_Check_GLOBAL_ATTRIB_SAVE_EXISTS|[*T:character_id]; [&ATSaveAttrib]; ATAttribSaveRoll
+   --?[&ATDamageSave] -eq 1 -or [&ATAttribSaveRoll] -eq 1|&ATSaveDice;2d20kh1
+   -->far_FIND_ACTIVE_GLOBAL_SAVE_MODS|[*T:character_id];ATGlobalSave
+   -->far_FIND_ACTIVE_GLOBAL_SKILL_MODS|[*T:character_id];ATGlobalSkill
+  --]|
+  -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BaneMarker];ATBaneFlag[*T:t-id];ATBaneCount[*T:t-id]
+  -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BlessedMarker];ATBlessFlag[*T:t-id];ATBlessCount[*T:t-id]
+  --?[&ATBaneFlag[*T:t-id]] -eq 1|[
+   --&ATBaneroll[*T:t-id]|+ - 1d4 [Bane]
+  --]|
+  --?[&ATBlessFlag[*T:t-id]] -eq 1|[
+   --&ATBlessRoll[*T:t-id]|+ + 1d4 [Blessed]
+  --]|
+  --?[*T:npc] -eq 1|[
+   --?[*T:npc] -eq 1 -and [*T:npc_[&ATShortAttrib]_save_flag] -gt 0|&ATSave;npc_[&ATShortAttrib]_save |&ATSave;[&ATSaveAttrib]_mod
+   --=ATSaveRoll|[&ATSaveDice] + [*T:[&ATSave]] [&obrac][&ATDisplayAttrib][&cbrac] [&ATBaneroll[*T:t-id]] [&ATBlessRoll[*T:t-id]]
+  --]|[
+   --=ATSaveRoll|[&ATSaveDice] + [*T:[&ATSaveAttrib]_save_bonus] [&obrac][&ATDisplayAttrib][&cbrac] [&ATGlobalSave] [&ATGlobalSkill] [&ATBaneroll[*T:t-id]] [&ATBlessRoll[*T:t-id]]
+  --]|
+  --?"[$ATSaveRoll.Total]" -ge [$ATDC]|[
+   --=ATDamage|[&ATDamageDice] \2 [Saved] [&ATDamageMod]
+   --+Save:|[*T:t-name] rolled [$ATSaveRoll] vs DC [$ATDC] and passed.
+  --]|[
+   --=ATDamage|[&ATDamageDice] [&ATDamageMod]
+   --+Save:|[*T:t-name] rolled [$ATSaveRoll] vs DC [$ATDC] and failed.
+  --]|
+  --?"[&ATDamageMod]" -inc "Immune"|[
+   --&ATDamage|0
+   --+Result:|[*T:t-name] is [b]IMMUNE[/b] to [&ATDamageType] damage.
+  --]|[
+   --+Result:|[*T:t-name] takes [$ATDamage] [&ATDamageType] damage.
+  --]|
+  -->far_DamageTokenmod|[*T:t-id];[&ATHpBar];[&ATTmpBar];-[$ATDamage];0;0;1
+  --=ATFinalHP|[*T:t-bar[&ATHpBar]_value]+[*T:t-bar[&ATTmpBar]_value]-[$ATDamage]
+  --?[$ATFinalHP] -le 0|>far_AuraTriggerDied
+  --<|
+
+ --:far_EvardTentaclesAuraStrike|damageDice;damageType;saveAttrib;hpBar;tempHPbar
+  -->far_LoadTokenMarkers|
+  --&ETDamageDice|[%1%]
+  --&ETDamageType|[%2%]
+  --&ETSaveAttrib|[%3%]
+  --&ETHpBar|[%4%]
+  --&ETTmpBar|[%5%]
+  --=ETDC|[*S:SaveDC]
+  --~ETShortAttrib|string;left;3;[&ETSaveAttrib]
+  --~ETDisplayAttrib|string;touppercase;[&ETShortAttrib]
+  -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&RestrainedMarker];ETRestrainedFlag;ETRestrainedCount
+  --?[&ETRestrainedFlag] -eq 1|>ETRestrainedHit|>ETSaveCheck
+  --<|
+
+ --:ETRestrainedHit|
+  --#emoteText|[*T:t-name] is pummeled by [*S:t-name]!
+  -->far_CheckDamageModifiers|[*T:character_id];[&ETDamageType];ETDamageMod;0;0;0
+  --=ETDamage|[&ETDamageDice] [&ETDamageMod]
+  --+Damage:|[*T:t-name] is restrained and takes [$ETDamage] [&ETDamageType] damage.
+  --?"[&ETDamageMod]" -inc "Immune"|[
+   --&ETDamage|0
+   --+Result:|[*T:t-name] is [b]IMMUNE[/b] to [&ETDamageType] damage.
+  --]|
+  -->far_DamageTokenmod|[*T:t-id];[&ETHpBar];[&ETTmpBar];-[$ETDamage];0;0;1
+  --=ETFinalHP|[*T:t-bar[&ETHpBar]_value]+[*T:t-bar[&ETTmpBar]_value]-[$ETDamage]
+  --?[$ETFinalHP] -le 0|>far_AuraTriggerDied
+  --<|
+
+ --:ETSaveCheck|
+  --#emoteText|Evard's Black Tentacles grasp at [*T:t-name]!
+  -->far_CheckDamageModifiers|[*T:character_id];[&ETDamageType];ETDamageMod;0;0;0
+  --&ETSaveDice|1d20
+  --&ETGlobalSave|
+  --&ETGlobalSkill|
+  --&ETBaneroll|
+  --&ETBlessRoll|
+  --&ETBaneFlag|0
+  --&ETBlessFlag|0
+  --?"X[*T:race]" -ne "X"|[
+   -->far_Check_GLOBAL_MOD_EXISTS|[*T:character_id]; save; [&ETDamageType]; ETDamageSave
+   -->far_Check_GLOBAL_ATTRIB_SAVE_EXISTS|[*T:character_id]; [&ETSaveAttrib]; ETAttribSaveRoll
+   --?[&ETDamageSave] -eq 1 -or [&ETAttribSaveRoll] -eq 1|&ETSaveDice;2d20kh1
+   -->far_FIND_ACTIVE_GLOBAL_SAVE_MODS|[*T:character_id];ETGlobalSave
+   -->far_FIND_ACTIVE_GLOBAL_SKILL_MODS|[*T:character_id];ETGlobalSkill
+  --]|
+  -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BaneMarker];ETBaneFlag;ETBaneCount
+  -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BlessedMarker];ETBlessFlag;ETBlessCount
+  --?[&ETBaneFlag] -eq 1|&ETBaneroll;+ - 1d4 [Bane] |&ETBaneroll;
+  --?[&ETBlessFlag] -eq 1|&ETBlessRoll;+ + 1d4 [Blessed] |&ETBlessRoll;
+  --?[*T:npc] -eq 1|[
+   --?[*T:npc_[&ETShortAttrib]_save_flag] -gt 0|&ETSave;npc_[&ETShortAttrib]_save |&ETSave;[&ETSaveAttrib]_mod
+   --=ETSaveRoll|[&ETSaveDice] + [*T:[&ETSave]] [&obrac][&ETDisplayAttrib][&cbrac] [&ETBaneroll] [&ETBlessRoll]
+  --]|[
+   --=ETSaveRoll|[&ETSaveDice] + [*T:[&ETSaveAttrib]_save_bonus] [&obrac][&ETDisplayAttrib][&cbrac] [&ETGlobalSave] [&ETGlobalSkill] [&ETBaneroll] [&ETBlessRoll]
+  --]|
+  --?"[$ETSaveRoll.Base]" -eq 20|[
+   --+Save:|[*T:t-name] rolled a natural 20 vs DC [$ETDC] and avoids the tentacles.
+   --+Result:|[*T:t-name] takes no damage.
+  --]|
+  --?"[$ETSaveRoll.Base]" -ne 20|[
+   --?"[$ETSaveRoll.Total]" -ge [$ETDC]|[
+    --+Save:|[*T:t-name] rolled [$ETSaveRoll] vs DC [$ETDC] and passed.
+    --+Result:|[*T:t-name] takes no damage.
+   --]|
+   --?"[$ETSaveRoll.Total]" -lt [$ETDC]|[
+    --=ETDamage|[&ETDamageDice] [&ETDamageMod]
+    --+Save:|[*T:t-name] rolled [$ETSaveRoll] vs DC [$ETDC] and failed.
+    --+Result:|[*T:t-name] takes [$ETDamage] [&ETDamageType] damage and is [b]Restrained[/b].
+    --?"[&ETDamageMod]" -inc "Immune"|[
+     --&ETDamage|0
+     --+Result:|[*T:t-name] is [b]IMMUNE[/b] to [&ETDamageType] damage but is still [b]Restrained[/b].
+    --]|
+    -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&RestrainedMarker];
+    -->far_DamageTokenmod|[*T:t-id];[&ETHpBar];[&ETTmpBar];-[$ETDamage];0;0;1
+    --=ETFinalHP|[*T:t-bar[&ETHpBar]_value]+[*T:t-bar[&ETTmpBar]_value]-[$ETDamage]
+    --?[$ETFinalHP] -le 0|>far_AuraTriggerDied
+   --]|
+  --]|
+  --<|
+
+ --:far_EvardTentaclesAuraExit|target-token-id
+  -->far_LoadTokenMarkers|
+  -->far_AuraTriggerTurnClear|[%1%];3
+  --!a:[*[%1%]:character_id]|!EvardTentaclesEntered:0
+  -->LibSN_REMOVE_STATUS_MARKER|[%1%];[&RestrainedMarker];0
+  --<|
+
+ --:far_EvardTentaclesMarkEntered|target-token-id
+  --!a:[*[%1%]:character_id]|!EvardTentaclesEntered:1
+  --<|
+
+ --:far_EvardTentaclesSkipIfEntered|target-token-id
+  --?"X[*[%1%]:EvardTentaclesEntered]" -eq "X1"|[
+   --#hideTitleCard|1
+   --X|
+  --]|
+  --<|
+
+ --:far_EvardTentaclesTurnEnd|target-token-id
+  -->far_AuraTriggerTurnClear|[%1%];3
+  --!a:[*[%1%]:character_id]|!EvardTentaclesEntered:0
+  --<|
+
+ --:far_EvardTentaclesSkipIfHitThisTurn|target-token-id
+  --?"X[*[%1%]:t-bar3_value]" -eq "X1"|[
+   --#hideTitleCard|1
+   --X|
+  --]|
+  --<|
+
+ --:far_EvardTentaclesMarkHitThisTurn|target-token-id
+  --!t:[%1%]|bar3_value:1
+  --<|
+
+ --:far_EvardTentaclesAuraEnter|target-token-id;flag-bar#
+  -->far_AuraTriggerTurnGate|[%1%];[%2%]
+  -->far_EvardTentaclesAuraStrike|3d6;bludgeoning;dexterity;1;4
+  --<|
+
+ --:far_AuraTriggerDied|
+  --~|turnorder;removetoken;[*T:t-id]
+  --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|[
+   -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexMarker];0
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];0
+  --]|
+  --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|[
+   -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];0
+  --]|
+  -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DeathMarker]
   --<|
