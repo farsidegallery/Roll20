@@ -1,0 +1,173 @@
+!script {{
+  +++5Elib;snlib;Farsidelib+++
+
+  --#sourceToken|@{selected|token_id}
+  --&SavedSourceToken|@{selected|token_id}
+  --&CasterToken|[*S:t-id]
+  --#reentrant|Evard's Black Tentacles @{selected|character_id}
+  --#whisper|self,gm
+
+  --/|Script Name : Evard's Black Tentacles
+  --/|Version     : 2.0.0
+  --/|Requires SC : ScriptCards 3.0.25+, 5Elib/snlib/Farsidelib, AuraTriggers 0.9+, TokenMod
+  --/|Author      : Farsidegallery
+  --/|
+  --/|  Casts Evard's Black Tentacles as a 20-foot square via spell-token placement. AuraTriggers apply a DEX save (or
+  --/|  automatic damage if already restrained) when creatures enter or start their turn in the area (once per turn).
+  --/|  Failed saves deal 3d6 bludgeoning and apply Restrained; leaving the area removes Restrained. Requires a per-caster
+  --/|  character named "[Caster Name] Evard's Black Tentacles" with SaveDC set at cast. Replaces the separate Token script.
+  --/|
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+
+  --&SpellName|Evard's Black Tentacles
+  --&MinimumSpellLevel|4
+  --&damageType|bludgeoning
+
+  --/|Enter name for Evard's Black Tentacles Character (script prepends caster name at cast).
+  --&TentacleSuffix|Evard's Black Tentacles
+
+  --&ATColor|#00000050
+
+  --&SpellTargetToken|Spell Token
+  --&URLlink|https://files.d20.io/images/469753332/ew1SU1DcQK4eborJlOqNQw/original.png
+  --&Evardlink|https://files.d20.io/images/467973190/edLerYdADmvNAlqYgQY6kw/med.webm?1765852892
+
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+
+  -->far_LoadTokenMarkers|
+
+  --#title|[&SpellName]
+  --&TentacleName|[*S:character_name] [&TentacleSuffix]
+
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+
+  --#leftsub|[*R:spellcastingtime]
+  --#rightsub|[*R:spellrange]
+  --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+  --&desc|[*R:spelldescription]
+
+  --+Choose Function: |[rbutton]New Cast::New[/rbutton][rbutton]Dismiss::Remove[/rbutton]
+  --X|
+
+  --:New|
+   -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+   --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+
+   --#sourceToken|[&CasterToken]
+   --#emoteText|[*S:character_name] casts [&SpellName]!
+   -->GetCharID|"[&TentacleName]";SummonID
+   --!a:[&SummonID]|!SaveDC:[*S:spell_save_dc]
+   --!a:[&SummonID]|!CasterCharID:[*S:character_id]
+   --!a:[&SummonID]|!CasterTokenID:[*S:t-id]
+   --!a:[*S:character_id]|!ConcentrationSpell:[&TentacleName]
+   -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];10
+   --&Player|[*O:[*S:t-represents]:character:controlledby]
+   --&controllers|[*O:[&SummonID]:character:controlledby]
+   --?"[&controllers]" -ninc "-"|&controllers;None
+   --?[&controllers] -eq None|&newcontrollers;[&Player] |&newcontrollers;[&controllers],[&Player]
+   --!c:[&SummonID]|controlledby:[&newcontrollers]
+   -->CAST_SPELL|
+   --X|
+
+  --:CAST_SPELL|
+   --#sourceToken|[&CasterToken]
+   -->GetCharID|"[&SpellTargetToken]";AOETargetID
+   --+|Move the spell token to the center of the 20-foot square, then click Target.
+   --!ot:NewTID|name:"[&SpellTargetToken]"|_pageid:[*S:t-_pageid]|left:[=[*S:t-left]+70]|top:[*S:t-top]|width:[*S:t-width]|height:[*S:t-height]|imgsrc:"[&URLlink]"|bar1_value:1|represents:"[&SpellTargetToken]"|showname:0|t-aura1_radius:10|t-aura1_color:[&ATColor]|t-aura1_square:true
+   --&PlacementTID|[&NewTID]
+   --z:graphic:[&NewTID]|toback
+   -->SetAbility|
+   --+Target: |[rbutton]Target the Spell Token::SetTarget;[&TB]target|token_id}[/rbutton]
+   --X|
+
+  --:SetTarget|
+   --#sourceToken|[&CasterToken]
+   --?"X[&reentryval]" -eq "X"|>far_FatalError;Wrong Target;ERROR;Click Target the Spell Token, then select the placement token.
+   --#targettoken|[&reentryval]
+   --?"[&reentryval]" -eq "[&PlacementTID]"|SpawnTentacles
+   --&TargetName|[*T:t-name]
+   --?"[&TargetName]" -eq "[&SpellTargetToken]"|SpawnTentacles
+   -->far_FatalError;Wrong Target;ERROR;Target the spell placement token.
+   --<|
+
+  --:SpawnTentacles|
+   --#sourceToken|[&CasterToken]
+   --&PlaceTID|[&reentryval]
+   --&PlaceLeft|[*[&PlaceTID]:t-left]
+   --&PlaceTop|[*[&PlaceTID]:t-top]
+   --&CellW|[*[&PlaceTID]:t-width]
+   --&CellH|[*[&PlaceTID]:t-height]
+   --&TentLeft|[&PlaceLeft]
+   --&TentTop|[&PlaceTop]
+   --&TentWidth|[=[&CellW]*5]
+   --&TentHeight|[=[&CellH]*5]
+   --#targettoken|notoken
+   --!ot:TentacleTID|name:"[&TentacleName]"|left:[&TentLeft]|top:[&TentTop]|width:[&TentWidth]|height:[&TentHeight]|imgsrc:"[&Evardlink]"|bar1_value:3d6|represents:[&SummonID]|showname:false|tooltip:"DC [*S:spell_save_dc] - 3d6 bludgeoning"|show_tooltip:true|aura1_radius:-0.01|aura1_color:"#00000050"|aura1_square:true|gmnotes:${[{"color":"#00000050","name":"Evard Black Tentacles","toNPCs":true,"toPCs":true,"toGraphics":false,"applySelf":false,"removeOnExit":true,"toLayers":"objects,gmlayer","ignoreWalls":false,"targetVfxOnEnter":"shield-death","chatActionOnEnter":"!script !{!{ +++5Elib;snlib;Farsidelib+++ --#sourcetoken|[ATID] --#targettoken|[TID] --#hideTitleCard|1 --#emoteTargetTokenSize|75 -->far_EvardTentaclesMarkEntered|[TID] -->far_AuraTriggerTurnGate|[TID];3 --#emoteText|[*T:t-name] enters [*S:t-name]! -->far_EvardTentaclesAuraStrike|3d6;bludgeoning;dexterity;1;4 --X| !}!} ","chatActionOnStartTurn":"!script !{!{ +++5Elib;snlib;Farsidelib+++ --#sourcetoken|[ATID] --#targettoken|[TID] --#hideTitleCard|1 --#emoteTargetTokenSize|75 -->far_EvardTentaclesSkipIfEntered|[TID] -->far_AuraTriggerTurnGate|[TID];3 --#emoteText|[*T:t-name] starts their turn in [*S:t-name]! -->far_EvardTentaclesAuraStrike|3d6;bludgeoning;dexterity;1;4 --X| !}!} ","chatActionOnEndTurn":"!script !{!{ +++5Elib;snlib;Farsidelib+++ --#targettoken|[TID] --#hideTitleCard|1 -->far_EvardTentaclesTurnEnd|[TID] --X| !}!} ","chatActionOnExit":"!script !{!{ +++5Elib;snlib;Farsidelib+++ --#targettoken|[TID] --#hideTitleCard|1 --#emoteText|[*T:t-name] escapes [*S:t-name] -->far_EvardTentaclesAuraExit|[TID] --X| !}!} " }]$}
+   --!t:[&TentacleTID]|aura1_radius:-0.01|aura1_square:true|width:[&TentWidth]|height:[&TentHeight]
+   --z:graphic:[&TentacleTID]|toback
+   --~|object;token;delete;[&PlacementTID]
+   --?[*S:npc] -eq 1|[
+    --!graphic:[&TentacleTID]|gm_only_tooltip:1
+   --]|
+   -->Output|
+   --X|
+
+  --:Output|
+   --#whisper|
+   --#sourceToken|[&CasterToken]
+   -->far_PlayEffects|[*S:t-id];;burn-magic;;;
+   --+|[*S:character_name] summons [&SpellName]!
+   --+|[br]
+   --+Duration: |[&duration]
+   --+Desc: |[&desc]
+   -->far_DeductSpellSlot|[*S:t-id];[&MinimumSpellLevel]
+   --X|
+
+  --:Remove|
+   --#whisper|
+   --#sourceToken|[&SavedSourceToken]
+   --&TentacleName|[*S:character_name] [&TentacleSuffix]
+   --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&TentacleName]
+   --?[@tokens(length)] -ge 1|[
+    --%DelLoop|foreach;tokens
+     --~|object;token;delete;[*[&DelLoop]:t-id]
+    --%|
+   --]|
+   --#emoteText|[&TentacleName] vanishes!
+   --+|[*S:character_name] is no longer concentrating on [&SpellName].
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker]
+   --!a:[*S:character_id]|!ConcentrationSpell:**
+   --X|
+
+  --:GetCharID|CharacterName;StringVariableForCharID
+   --~|array;objects:character;SpiritCharArr;[%1%]
+   --?[@SpiritCharArr(length)] -ne 1|>far_FatalError;Character Not Found;ERROR;Could not find character named [%1%]
+   --&[%2%]|[@SpiritCharArr(0)]
+   --<|
+
+  --:SetAbility|
+   --~|array;objects:ability;AbilityArr;;[&AOETargetID]
+   --?[@AbilityArr(length)] -ge 1|[
+    --!ability:[@AbilityArr(0)]|istokenaction:False
+   --]|
+   --?[@AbilityArr(length)] -ge 2|[
+    --!ability:[@AbilityArr(1)]|istokenaction:False
+   --]|
+   --?[@AbilityArr(length)] -ge 3|[
+    --!ability:[@AbilityArr(2)]|istokenaction:False
+   --]|
+   --?[@AbilityArr(length)] -ge 4|[
+    --!ability:[@AbilityArr(3)]|istokenaction:False
+   --]|
+   --<|
+}}

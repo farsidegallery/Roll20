@@ -6,12 +6,13 @@
   --#whisper|self,gm
   
   --/|Script Name : Evard's Black Tentacles
-  --/|Version     : 1.0.2
+  --/|Version     : 1.0.3
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author	  : Farsidegallery
   --/|  
-  --/|  Script prompts user for spell level used and makes sure the slot is available.  and spawn the designated token to the VTT. Script calculates
-  --/|  It will deduct 1 spell slot from the appropriate level
+  --/|  DEPRECATED — Superseded by AuraTrigger Spells/Evard's Black Tentacles.scard (AuraTriggers 0.9+).
+  --/|  This legacy cast script spawns a token for manual Token-action saves. Use the AuraTrigger version for
+  --/|  automatic enter/start-turn resolution via far_EvardTentaclesAuraStrike (Farsidelib 1.5.2+).
   --/|
   
   --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
