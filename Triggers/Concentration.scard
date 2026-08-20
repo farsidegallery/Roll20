@@ -1,14 +1,14 @@
 !script {{
   --/|Script Name : Concentration
-  --/|Version     : 1.2.0
+  --/|Version     : 1.3.0
   --/|Requires SC : ScriptCards 3.0.25+, 5Elib/snlib/Farsidelib
   --/|
   --/|Trigger setup (ScriptCards_Triggers character):
   --/|  Ability name must be exactly: change:graphic
-  --/|  Attribute listen_to_tokenmod must be 0 or unset. When set to 1, TokenMod injects gmnotes
-  --/|  into trigger replacements without escaping embedded double-hyphen text, which breaks ScriptCards
-  --/|  parsing and posts this entire script to chat (common when bulk-heal uses @token-mod).
-  --/|  Bulk heal macros should use !t: bar updates instead of @token-mod, or disable listen_to_tokenmod.
+  --/|  Requires listen_to_tokenmod|1 on ScriptCards_Triggers. Triggers run on TokenMod announcements, not ScriptCards !t bar updates.
+  --/|  When listen_to_tokenmod is 1, TokenMod injects gmnotes into trigger replacements without escaping embedded
+  --/|  double-hyphen text, which breaks ScriptCards parsing (common when bulk-heal uses @token-mod). Bulk heal should
+  --/|  use !t bar updates instead of @token-mod, or temporarily disable listen_to_tokenmod.
   --/|
   --/|This example watches for graphics objects (in this case tokens) to change. if the value that changed is the current hit points
   --/|(as specified by the hitPointBar variable below), it will be checked to see if it has hit 0. If so, the token will be marked 
@@ -50,6 +50,9 @@
   --/|are picked up automatically via far_FIND_ACTIVE_GLOBAL_SAVE_MODS. Guidance uses far_FIND_ACTIVE_GLOBAL_SKILL_MODS.
   --&attrib|constitution
 
+  --/|Set to 1 to print bar old/new damage breakdown on concentration cards (for validating temp HP / trigger timing).
+  --&ConcDebugOutput|0
+
   --/|Helper brackets for save roll display.
   --&obrac|[ 
   --&cbrac|]
@@ -64,22 +67,16 @@
   --&tempHPBar|4
 
   -->far_LoadTokenMarkers|
+  -->ConcResolveBars|
+  -->ConcCalcDamage|
 
-  --?[&GraphicOldbar[&hitPointBar]_value] -eq [&GraphicNewbar[&hitPointBar]_value]|SKIP
-  --?[&GraphicNewbar[&hitPointBar]_value] -gt [&GraphicOldbar[&hitPointBar]_value]|SKIP
-  --?"[&GraphicNewbar[&hitPointBar]_max]" -eq ""|SKIP
+  --/|Gate: damage taken only (ConcCalcDamage never counts increases).
+  --?[$ConcRawTotal] -le 0|SKIP
   --?"[&GraphicOldstatusmarkers]" -inc "dead"|SKIP
 
-  --?"X[&GraphicOldbar[&tempHPBar]_value]" -eq "X" -and "X[&GraphicNewbar[&tempHPBar]_value]" -eq "X"|SKIPTEMP
-  --?[&GraphicOldbar[&tempHPBar]_value] -gt 0 -and [&GraphicOldbar[&tempHPBar]_value] -eq [&GraphicNewbar[&tempHPBar]_value]|SKIPTEMP
-  --?[&GraphicOldbar[&tempHPBar]_value] -gt 0 -and [&GraphicOldbar[&tempHPBar]_value] -ne [&GraphicNewbar[&tempHPBar]_value]|Concentration
-  --?[&GraphicNewbar[&tempHPBar]_value] -gt 0|Concentration
-  --:SKIPTEMP|
-
   --&newstatus|[&GraphicOldstatusmarkers],dead
-  --?[&GraphicNewbar[&hitPointBar]_value] -le 0|SETSTATUS
-  --?[&GraphicNewbar[&hitPointBar]_value] -gt 0|Concentration
-  --?"X[&GraphicOldstatusmarkers]" -eq "X"|SETSTATUS
+  --?[&ConcHPnew] -le 0|SETSTATUS
+  --^Concentration|
   
   --:SETSTATUS|
    --#hidecard|0
@@ -90,6 +87,35 @@
  
   --:SKIP|
    --X|
+
+  --:ConcResolveBars|
+   --&ConcHPold|[&GraphicOldbar[&hitPointBar]_value]
+   --&ConcTempold|[&GraphicOldbar[&tempHPBar]_value]
+   --&ConcHPnew|[&GraphicNewbar[&hitPointBar]_value]
+   --&ConcTempnew|[&GraphicNewbar[&tempHPBar]_value]
+   --/|When GraphicNew is missing (batched !t), use live token as post-change value.
+   --?"X[&ConcHPnew]" -eq "X"|&ConcHPnew;[*[&GraphicOld_id]:t-bar[&hitPointBar]_value]
+   --?"[&ConcHPnew]" -eq ""|&ConcHPnew;[*[&GraphicOld_id]:t-bar[&hitPointBar]_value]
+   --?"X[&ConcTempnew]" -eq "X"|&ConcTempnew;[*[&GraphicOld_id]:t-bar[&tempHPBar]_value]
+   --?"[&ConcTempnew]" -eq ""|&ConcTempnew;0
+   --/|TokenMod listen_to_tokenmod often sets GraphicNew equal to GraphicOld; live token has the real post-damage value.
+   --?[&ConcHPold] -eq [&ConcHPnew]|&ConcHPnew;[*[&GraphicOld_id]:t-bar[&hitPointBar]_value]
+   --?[&ConcTempold] -eq [&ConcTempnew]|&ConcTempnew;[&GraphicOldbar[&tempHPBar]_value]
+   --<|
+
+  --:ConcCalcDamage|
+   --=ConcHPdam|0
+   --=ConcTempdam|0
+   --/|Count decreases only (healing increases are ignored by the old>new check).
+   --?"X[&ConcTempold]" -ne "X" -and "[&ConcTempold]" -ne "" -and [&ConcTempold] -gt [&ConcTempnew]|=ConcTempdam;[&ConcTempold]-[&ConcTempnew]
+   --?"X[&ConcHPold]" -ne "X" -and "[&ConcHPold]" -ne "" -and [&ConcHPold] -gt [&ConcHPnew]|=ConcHPdam;[&ConcHPold]-[&ConcHPnew]
+   --?[*[&GraphicOld_id]:hp_temp] -ne [&ConcTempnew]|[
+    --!a:[*[&GraphicOld_id]:character_id]|hp_temp:[&ConcTempnew]
+    --]|
+   --=ConcRawTotal|[$ConcHPdam] + [$ConcTempdam]
+   --=damage|[$ConcRawTotal]\2
+   --~DC|math;max;10;[$damage]
+   --<|
   
   --:Concentration|
    --?"[&GraphicOldstatusmarkers]" -ninc "[&ConcentrationMarker]"|SKIP
@@ -98,12 +124,12 @@
    --#hidecard|0
    --#title|Concentration Check
    --&SpellTokenName|[*[&GraphicOld_id]:ConcentrationSpell]
-   --=damage|[&GraphicOldbar[&hitPointBar]_value]-[&GraphicNewbar[&hitPointBar]_value]+[&GraphicOldbar[&tempHPBar]_value]-[&GraphicNewbar[&tempHPBar]_value]\2
-   --~DC|math;max;10;[$damage]
+   --&ConcSheetTemp|[*[&GraphicOld_id]:hp_temp]
    --~shortattrib|string;left;3;[&attrib]
    --~Displayattrib|string;touppercase;[&shortattrib]
    --?"[*[&GraphicOld_id]:npc]" -ne "1"|PC
    --?[*[&GraphicOld_id]:npc] -eq 1 -and [*[&GraphicOld_id]:npc_con_save_flag] -gt 0|&Save;npc_con_save |&Save;constitution_mod
+   -->ConcDebugCard|
    --=InitSave|1d20
    --c1d20|&DisplayDice;1d20
    --?[$InitSave.Base] -eq 20|>Crit
@@ -120,9 +146,10 @@
    -->far_FindFeat|[*[&GraphicOld_id]:character_id];War Caster;WarCasterFlag
    -->far_FindFeat|[*[&GraphicOld_id]:character_id];Eldritch Invocation: Eldritch Mind;EldritchMindFlag
    -->far_FindFeat|[*[&GraphicOld_id]:character_id];Bend Luck;BendLuckFlag
-   -->far_FindFeat|[*[&GraphicOld_id]:character_id];Dark One's Own Luck;DarkOneLuckFlag
+   -->far_FindFeat|[*[&GraphicOld_id]:character_id];"Dark One's Own Luck";DarkOneLuckFlag
+   -->ConcDebugCard|
    --?[&PCConcen] -eq 1|[
-    --+Concentration: |[*[&GraphicOld_id]:character_name] took [$damage] hp of damage and needs to make a DC [$DC] Constitution saving throw to maintain concentration!
+    --+Concentration: |[*[&GraphicOld_id]:character_name] took [$ConcRawTotal] hp of damage ([$ConcHPdam] HP bar + [$ConcTempdam] temp bar) and needs to make a DC [$DC] Constitution saving throw to maintain concentration!
     --+|[br]
     --+|[b]Click here to roll the Concentration Saving Throw![/b]
     --+|[rbutton]Roll Saving Throw::PCContinue[/rbutton]
@@ -135,6 +162,12 @@
    --+|[c][rbutton]Advantage::RollSave;2d20kh1[/rbutton][rbutton]Normal::RollSave;1d20[/rbutton][rbutton]Disadvantage::RollSave;2d20kl1[/rbutton][/c]
    --X|
 
+  --:ConcDebugCard|
+   --?[&ConcDebugOutput] -ne 1|<|
+   --+Debug: |Bar [&hitPointBar] [&ConcHPold]→[&ConcHPnew] (HP loss [$ConcHPdam]) · Bar [&tempHPBar] [&ConcTempold]→[&ConcTempnew] (temp loss [$ConcTempdam]) · Sheet hp_temp [&ConcSheetTemp] · Raw total [$ConcRawTotal] · DC base [$damage] · DC [$DC]
+   --+|[br]
+   --<|
+   
   --:RollSave|
    --&saveDice|[&reentryval]
    --&GlobalSave|
@@ -167,7 +200,7 @@
    -->ConcentrationFinishSave|
 
   --:ConcentrationBendLuck|
-   --+Bend Luck|Spend a Sorcery Point to add or subtract 1d4 from this concentration save?
+   --+Bend Luck: |Spend a Sorcery Point to add or subtract 1d4 from this concentration save?
    --+|[rbutton]+1d4::ConcentrationBendLuckApply;add[/rbutton][rbutton]-1d4::ConcentrationBendLuckApply;sub[/rbutton][rbutton]No::ConcentrationDarkOneLuckCheck[/rbutton]
    --X|
 
@@ -180,7 +213,7 @@
    -->ConcentrationFinishSave|
 
   --:ConcentrationDarkOneLuck|
-   --+Dark One's Own Luck|Add 1d10 to this concentration save?
+   --+Dark One's Own Luck: |Add 1d10 to this concentration save?
    --+|[rbutton]Yes::ConcentrationDarkOneLuckApply[/rbutton][rbutton]No::ConcentrationFinishSave[/rbutton]
    --X|
 
