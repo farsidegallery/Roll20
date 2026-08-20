@@ -1,4 +1,4 @@
---/|ScriptCards Library: Farsidelib  version 1.5.0
+--/|ScriptCards Library: Farsidelib  version 1.5.1
 --/|Provides various utility procedures for Roll20
 
 --/|This library contains a number of functions that are customized to meet the different needs of spell or ability
@@ -542,28 +542,29 @@
 
  --:far_DamageTokenmod|tokenid;bar#;tempHPbar;amount;display (0 or 1);allow overheal (0 or 1);allow negative hp (0 or 1)
   --=_applyValue|[%4%]
-  --=TempHP|[*[%1%]:hp_temp]
+  --=StartHP|[*[%1%]:t-bar[%2%]_value]
+  --=TempHP|[*[%1%]:t-bar[%3%]_value]
   --~damageValue|math;abs;[$_applyValue]
   --?"X[$TempHP]" -nei "X" -and [$TempHP] -gt 0 -and [$TempHP] -ge [$damageValue]|[
    --=newTempHP|[$TempHP]-[$damageValue]
-   --@token-mod|_ignore-selected _ids [%1%] _set bar[%3%]_value|[$newTempHP.Raw]
-   --w2:!a:[*[%1%]:character_id]|!hp_temp:[$newTempHP.Raw]
+   --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[$StartHP] bar[%3%]_value|[$newTempHP.Raw]
    --<|
    --]|
   --?"X[$TempHP]" -nei "X" -and [$TempHP] -gt 0 -and [$TempHP] -lt [$damageValue]|[
    --=_applyValue|[$_applyValue]+[$TempHP]
-   --@token-mod|_ignore-selected _ids [%1%] _set bar[%3%]_value|0
-   --w2:!a:[*[%1%]:character_id]|!hp_temp:0
+   --=_newValue|[$StartHP] + [$_applyValue]
+   --?[$_newValue] -lt 0 -and "X[%7%]" -ne "X1"|=_newValue;0
+   --?"X[%6%]" -ne "X1" -and [$_newValue] -gt [*[%1%]:t-bar[%2%]_max]|=_newValue;[*[%1%]:t-bar[%2%]_max]
+   --?"X[%5%]" -eq "X1"|+Applying;[%4%] HP to [*[%1%]:t-name]
+   --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[$_newValue.Raw] bar[%3%]_value|0
+   --<|
    --]|
-  --=_newValue|[*[%1%]:t-bar[%2%]_value] + [$_applyValue]
-  --?[$_newValue] -lt 0 -and "X[%7%]" -ne "X1"|=_newValue;0
-  --?"X[%6%]" -ne "X1" -and [$_newValue] -gt [*[%1%]:t-bar[%2%]_max]|=_newValue;[*[%1%]:t-bar[%2%]_max]
-  --?"X[%5%]" -eq "X1"|+Applying;[%4%] HP to [*[%1%]:t-name]
-  --?[$_newValue] -lt 0|[
-   --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|=[$_newValue.Raw]
-   --]|[
-   --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[$_newValue.Raw]
-   --]|
+   --=_newValue|[$StartHP] + [$_applyValue]
+   --?[$_newValue] -lt 0 -and "X[%7%]" -ne "X1"|=_newValue;0
+   --?"X[%6%]" -ne "X1" -and [$_newValue] -gt [*[%1%]:t-bar[%2%]_max]|=_newValue;[*[%1%]:t-bar[%2%]_max]
+   --?"X[%5%]" -eq "X1"|+Applying;[%4%] HP to [*[%1%]:t-name]
+   --=currentTemp|[*[%1%]:t-bar[%3%]_value]
+   --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[$_newValue.Raw] bar[%3%]_value|0
   --<| 
  
  --:far_LogFatalError|EmoteText;ErrorHeader;ErrorMessage
