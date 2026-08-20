@@ -97,7 +97,7 @@
    --?"X[&ConcHPnew]" -eq "X"|&ConcHPnew;[*[&GraphicOld_id]:t-bar[&hitPointBar]_value]
    --?"[&ConcHPnew]" -eq ""|&ConcHPnew;[*[&GraphicOld_id]:t-bar[&hitPointBar]_value]
    --?"X[&ConcTempnew]" -eq "X"|&ConcTempnew;[*[&GraphicOld_id]:t-bar[&tempHPBar]_value]
-   --?"[&ConcTempnew]" -eq ""|&ConcTempnew;[&ConcTempold]
+   --?"[&ConcTempnew]" -eq ""|&ConcTempnew;0
    --/|TokenMod listen_to_tokenmod often sets GraphicNew equal to GraphicOld; live token has the real post-damage value.
    --?[&ConcHPold] -eq [&ConcHPnew]|&ConcHPnew;[*[&GraphicOld_id]:t-bar[&hitPointBar]_value]
    --?[&ConcTempold] -eq [&ConcTempnew]|&ConcTempnew;[&ConcTempold]
