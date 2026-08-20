@@ -2,16 +2,16 @@
   +++5Elib;snlib;Farsidelib+++	
  
   --#sourceToken|@{selected|token_id}
-  --#reentrant|My Cool Script @{selected|character_id}
+  --#reentrant|Ice Knife @{selected|character_id}
   --#whisper|self,gm
 
   --/|Script Name : Ice Knife
-  --/|Version     : 1.0.2
+  --/|Version     : 1.2.0
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|  
-  --/|  Script prompts for spell level, checks availability, and deducts a spell slot. User is prompted to select the damage type.
-  --/|  A ranged attack roll is made, checked to see if it hits, checks for damgae resistance/immunity, and applies damage to target.
+  --/|  Script prompts for spell level, checks availability, and deducts a spell slot.
+  --/|  A ranged attack roll is made; on hit or miss the shard explodes for cold damage in a 5 ft radius (SmartAOE).
   --/|
   --/|
   --/|
@@ -20,7 +20,7 @@
    --&SpellName|Ice Knife
    --&MinimumSpellLevel|1
    
-   --&damageType|cold
+   --&damageType2|cold
    
    --&hpBar|1
    --&tempHPbar|4
@@ -40,15 +40,6 @@
    --/|Are you using the matching Bardic Inspiration Script from FarsideGallery? (Default is No using 0. Change to 1 if using the script.)
    --=Scriptcheck|1
   
-   --/|Enter the Token Markers you use for each condition
-   --&BardicMarker|BardicInspiration::7409920
-   --&BlessedMarker|angel-outfit
-   --&InspirationMarker|Inspiration::7409921
-   --&BaneMarker|Hexed3::7409911
-   --&HexMarker|Hexed::7409913
-   --&HexBladebladeMarker|Hexed2::7409912
-   --&DeathMarker|dead
-  
   --/| ____________________ End Global User Variables ___________________________________________________________________________________________
 
   --/|Helper variable build up to allow us to include a target prompt in an rbutton
@@ -60,6 +51,8 @@
   --&cbrac|]
   --&oparen|(
   --&cparen|)
+
+  -->far_LoadTokenMarkers|
 
   --#title|[&SpellName]
   --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
@@ -82,20 +75,23 @@
    
    --#leftsub|[*R:spellcastingtime]
    --#rightsub|[*R:spellrange]
-   --#emoteText|[*S:character_name] Casts [&SpellName] at Spell Level [&SpellLevel] using [&damageType] damage!
+   --#emoteText|[*S:character_name] Casts [&SpellName] at Spell Level [&SpellLevel]!
    --&desc|[*R:spelldescription]
    --&higherdesc|[*R:spellathigherlevels]
    --&DamageDice|1
    
-   -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;0;0;0
+   -->far_CheckDamageModifiers|[*T:character_id];[&damageType2];damageMod2;0;0;0
    -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&InspirationMarker];InspiredFlag;InspiredCount
    -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&BardicMarker];BardicFlag;BardicCount
    -->far_FIND_ACTIVE_GLOBAL_ATTACK_MODS|[*S:character_id];GlobalAttack
    -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
-   -->far_FindFeat|[*S:character_id];"Hexblade's Curse";HexBladeFlag
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexMarker];HexMarkerFlag;HexMarkerCount
+   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];HexBladeMarkerFlag;HexBladeMarkerCount
+   
+   --?[*T:npc] -eq 1|=TargetAC;[*T:npc_ac]|=TargetAC;[*T:ac]
    
    --+|[c]Choose Attack Type:[/c]
-   --+|[c][rbutton]Advantage::Cast;2d20kh1[/rbutton][rbutton]Normal::Cast;1d20[/rbutton][rbutton]Disadvantage::Cast;2d20kl1[/rbutton][/c]
+   --+|[c][rbutton]Advantage::AttackType;2d20kh1[/rbutton][rbutton]Normal::AttackType;1d20[/rbutton][rbutton]Disadvantage::AttackType;2d20kl1[/rbutton][/c]
    --X|
    
   --:AttackType|
@@ -113,21 +109,15 @@
    
    --=AttackRoll|[$AttackDiceBase] + [*S:spell_attack_bonus] [Spell Attack Bonus] [&GlobalAttack] [&Baneroll] [&BardRoll]
    
-   --+Total Attack Roll |[b]#[$Shot][/b]: [$AttackRoll]
+   --+Total Attack Roll: |[$AttackRoll]
    --+|[br]
 
    --?[$AttackDiceBase] -eq 20|>Crit
    --?[$AttackDiceBase] -eq 19 -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|>Crit
    --?[$AttackDiceBase] -eq 1|>Fumble
-   --?[$AttackRoll] -ge [*T:ac] -and [$AttackDiceBase] -nei 20|>Hit
-   --?[$AttackRoll] -lt [*T:ac] -and [$AttackDiceBase] -nei 1|>Miss
-   
-   --+|[br]
-   --+Desc: |[&desc]
-   --+At Higher Levels: |[&higherdesc]
-   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
-   -->Explosion|
-   --X|
+   --?[$AttackRoll] -ge [$TargetAC.Total] -and [$AttackDiceBase] -nei 20 -and [$AttackDiceBase] -nei 1|>Hit
+   --?[$AttackRoll] -lt [$TargetAC.Total] -and [$AttackDiceBase] -nei 1|>Miss
+   --^FinishCast|
 
   --/| ____________________ Procedures_______________________________________________________________________________________
   
@@ -141,36 +131,46 @@
    --?[&CustomCritFlag] -eq 1|[
     --=CritDice|[&DamageDice]+[&CritDamageDiceModifier]
     --&CritDamage|[$CritDice][&CritDamageDiceRollType]10[&CritDamageRollModifier] + [$CritDamageModifier]
-    --=Damage|[&DamageDice]d10 [Hit] + [&CritDamage] [Crit] [&HexBlade] [&Hex] [&GlobalDamage][&damageMod]
+    --=Damage|[&DamageDice]d10 [Hit] + [&CritDamage] [Crit] [&HexBlade] [&Hex] [&GlobalDamage][&damageMod2]
 	--]|[
-	--=Damage|[&DamageDice]d10 [Hit] + [&DamageDice]d10 [Crit] [&HexBlade] [&Hex] [&GlobalDamage][&damageMod]
+	--=Damage|[&DamageDice]d10 [Hit] + [&DamageDice]d10 [Crit] [&HexBlade] [&Hex] [&GlobalDamage][&damageMod2]
 	--]|
-   --+[b]Critical Hit!!![/b] |The bolt did [$Damage] points of [&damageType] damage.
+   --?"[&damageMod2]" -inc "Immune"|&Damage;0
+   --?"[&damageMod2]" -inc "Immune"|[
+    --+[b]Critical Hit!!![/b] |[*T:t-name] is [b]IMMUNE[/b] to [&damageType2] damage from the bolt.
+    --]|[
+    --+[b]Critical Hit!!![/b] |The bolt did [$Damage] points of [&damageType2] damage.
+    --]|
    --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$Damage];0;0;1
    -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
    -->far_PlayEffects|[*S:t-id]; [*T:t-id]; ; burn-frost; beam-frost;
    --=FinalHP|[*T:t-bar[&hpBar]_value]+[*T:t-bar[&tempHPbar]_value]-[$Damage]
    --?[$FinalHP] -le 0|>Died
-   --<|
+   --^FinishCast|
 
   --:Hit|
    --#whisper|
    -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0
    --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex; + 1d6 [Hex] |&Hex;
    --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade; + [*S:pb] [Hexblade Curse] |&HexBlade;
-   --=Damage|[&DamageDice]d10 [&HexBlade] [&Hex] [&GlobalDamage][&damageMod]
-   --+[b]Hit![/b] |The bolt did [$Damage] points of [&damageType] damage.
+   --=Damage|[&DamageDice]d10 [&HexBlade] [&Hex] [&GlobalDamage][&damageMod2]
+   --?"[&damageMod2]" -inc "Immune"|&Damage;0
+   --?"[&damageMod2]" -inc "Immune"|[
+    --+[b]Hit![/b] |[*T:t-name] is [b]IMMUNE[/b] to [&damageType2] damage from the bolt.
+    --]|[
+    --+[b]Hit![/b] |The bolt did [$Damage] points of [&damageType2] damage.
+    --]|
    --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;-[$Damage];0;0;1
    -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
    -->far_PlayEffects|[*S:t-id]; [*T:t-id]; ; burn-frost; beam-frost;
    --=FinalHP|[*T:t-bar[&hpBar]_value]+[*T:t-bar[&tempHPbar]_value]-[$Damage]
    --?[$FinalHP] -le 0|>Died
-   --<|
+   --^FinishCast|
 
   --:Miss|
    --#whisper|
    --+[b]Missed![/b] |So close but they ducked just in time. Better luck next time (if there is a next time).
-   --<|
+   --^FinishCast|
 
   --:Fumble|
    --#whisper|
@@ -192,16 +192,27 @@
 	--+|[br]
 	--+Damage: |[$Damage]
 	--]|
-   --<| 
+   --^FinishCast|
 
   --:Died|
+   --~|turnorder;removetoken;[*T:t-id]
+   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|[
+    -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexMarker];0
+    -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];0
+    --]|
+   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|[
+    -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];0
+    --]|
    -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DeathMarker]
-   --?"X[*T:CurseCaster]" -ne "X"|>HexHeal
    --<|
   
-  --:HexHeal|
-   -->far_HexHeal|[*T:t-id]
-   --<|
+  --:FinishCast|
+   --+|[br]
+   --+Desc: |[&desc]
+   --+At Higher Levels: |[&higherdesc]
+   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+   -->Explosion|
+   --X|
   
   --:Explosion|   
    --=IceDice|[$SpellLevel]+1
@@ -222,7 +233,7 @@
 	 _fx|burst-frost 
 	 _dc|[*S:spell_save_dc] 
 	 _saveFormula|5eDex _damageFormula1|[&IceDamage] 
-	 _damageType1|cold 
+	 _damageType1|[&damageType2] 
 	 _autoApply|1 
 	 _bar|1 
 	 _instant|1 
