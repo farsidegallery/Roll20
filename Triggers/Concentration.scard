@@ -1,6 +1,6 @@
 !script {{
   --/|Script Name : Concentration
-  --/|Version     : 1.3.0
+  --/|Version     : 1.3.1
   --/|Requires SC : ScriptCards 3.0.25+, 5Elib/snlib/Farsidelib
   --/|
   --/|Trigger setup (ScriptCards_Triggers character):
@@ -115,6 +115,7 @@
    --=ConcRawTotal|[$ConcHPdam] + [$ConcTempdam]
    --=damage|[$ConcRawTotal]\2
    --~DC|math;max;10;[$damage]
+    --#leftsub|DC: [$DC]
    --<|
   
   --:Concentration|
@@ -224,10 +225,12 @@
   --:ConcentrationFinishSave|
    --=Save|[$InitSave] + [*[&GraphicOld_id]:constitution_save_bonus] [&obrac][&Displayattrib][&cbrac] [&GlobalSave] [&GlobalSkill] [&Baneroll] [&BardRoll] [&BendLuckRoll] [&DarkOneRoll]
    --#whisper|
+   --#leftsub|
    --?[$Save] -ge [$DC]|>Success |>Fail
   
   --:Crit|
    --#whisper|
+   --#leftsub|
    --+Save: |[*[&GraphicOld_id]:character_name] rolled a [$InitSave] (natural 20) vs a DC [$DC] and cannot fail the saving throw.
    --+|[br]
    --+Result: |[*[&GraphicOld_id]:character_name] is still concentrating.

@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Armor of Agathys
-  --/|Version     : 1.0.3
+  --/|Version     : 1.0.4
   --/|Modified By : Farsidegallery
   --/|  
   --/|  Script checks for spell level used and makes sure the slot is available. Script will check for existence of global mod and create if necessary.
@@ -21,7 +21,8 @@
    
   --/|Enter name for Armor of Agathys Character.
   --&CharName|Armor of Agathys
-    
+   --&tempHPbar|4
+   
   --/|Use ScriptCards (1) or SpawnDefaultToken (2) to place the Charm Person Character on the VTT?
   --&SpawnScript|1
   
@@ -64,7 +65,7 @@
   
   --:CreateMod| 
    --=TotalPoints|[&SpellLevel]*5
-   --!a:[*S:character_id]|!hp_temp:[$TotalPoints]
+   -->far_SetTempHP|[*S:t-id];[&tempHPbar];[$TotalPoints]
    --!a:[*S:character_id]|!TotalPoints:[$TotalPoints]
    -->Finish|
    

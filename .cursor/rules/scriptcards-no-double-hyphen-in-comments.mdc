@@ -1,0 +1,53 @@
+---
+description: ScriptCards comment syntax — never embed double-hyphen in comment text
+globs: "**/*.scard"
+alwaysApply: false
+---
+
+# ScriptCards: No `--` Inside Comments
+
+ScriptCards treats `--` as the start of a statement. Embedded double-hyphens in comment **content** (after `--/|`) are parsed as new commands and cause errors such as `Line N is missing a | character`.
+
+## Rule
+
+- **Allowed**: `--` only at the **beginning** of a line as the statement prefix (e.g. `--/|`, `--+`, `--@token-mod|`).
+- **Forbidden**: `--` anywhere in the text after `--/|` on the same line.
+
+This also applies to ScriptCards blocks in macro `.txt` files and to strings injected into trigger replacements (e.g. TokenMod + `listen_to_tokenmod` + gmnotes).
+
+## Examples
+
+```scard
+--/| BAD: use --!t bar updates
+--/| GOOD: use ScriptCards !t bar updates
+
+--/| BAD: not on --!t bar updates
+--/| GOOD: not on !t bar updates
+
+--/| BAD: the --#hidecard parameter
+--/| GOOD: the hidecard parameter (#hidecard)
+```
+
+## Wording substitutes
+
+| Avoid | Use instead |
+|-------|-------------|
+| `--!t` | `!t` or `ScriptCards !t` |
+| `--@token-mod` | `@token-mod` |
+| `--#param` | `#param` or "parameter" |
+| `--?` | "conditional" or `?` |
+| generic `--` | "double hyphen" or rephrase |
+
+## Conditional actions and colons
+
+In `--?condition|trueAction|falseAction`, a colon in the true/false action is treated as a **label jump** (e.g. `conc_predamage_temp:0` → label `conc_predamage_temp`).
+
+Use a bracket block for `!a:` / attribute writes inside conditionals:
+
+```scard
+--?"X[&Var]" -ne "X"|[
+ --!a:[*T:character_id]|conc_predamage_temp:0
+--]|
+```
+
+Do not write: `--?...|!a:...|conc_predamage_temp:0`
