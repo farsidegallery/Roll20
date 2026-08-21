@@ -185,7 +185,7 @@
    -->far_Check_GLOBAL_ATTRIB_SAVE_EXISTS|[*[&GraphicOld_id]:character_id]; [&attrib]; attribSaveRoll
    --?[&damageSave] -eq 1 -or [&attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "1d20"|&saveDice;2d20kh1
    --?[&damageSave] -eq 1 -or [&attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "2d20kl1"|&saveDice;1d20
-   --?[&InspiredFlag] -ne 0 |>far_Inspiration|[*[&GraphicOld_id]:t-id];[&InspirationMarker];[&saveDice];saveDice
+   --?[&InspiredFlag] -ne 0 |>far_Inspiration;[*[&GraphicOld_id]:t-id];[&InspirationMarker];[&saveDice];saveDice
    -->far_FIND_ACTIVE_GLOBAL_SAVE_MODS|[*[&GraphicOld_id]:character_id];GlobalSave
    -->far_FIND_ACTIVE_GLOBAL_SKILL_MODS|[*[&GraphicOld_id]:character_id];GlobalSkill
    --=InitSave|[&saveDice]
@@ -195,7 +195,7 @@
    --?[&BaneMarkerFlag] -eq 1|&Baneroll;+ - 1d4 [Bane] |&Baneroll;
    --+Rolling [&DisplayDice]: |[$InitSave]
    --+|[br]
-   --?[&BardicFlag] -eq 1|>far_Bardic|[*[&GraphicOld_id]:t-id];[&BardicMarker];[$Scriptcheck];[$InitSave.Base];[$PartialSave];BardRoll
+   --?[&BardicFlag] -eq 1|>far_Bardic;[*[&GraphicOld_id]:t-id];[&BardicMarker];[$Scriptcheck];[$InitSave.Base];[$PartialSave];BardRoll
    --?"X[$BendLuckFlag]" -eq "X1"|>ConcentrationBendLuck
    --?"X[$DarkOneLuckFlag]" -eq "X1"|>ConcentrationDarkOneLuck
    -->ConcentrationFinishSave|
