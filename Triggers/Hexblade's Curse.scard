@@ -1,7 +1,7 @@
 !script {{
   --/|Script Name : Hexblade's Curse Trigger
-  --/|Version     : 1.1.0
-  --/|Requires SC : ScriptCards 3.0.25+, 5Elib/snlib/Farsidelib handouts in Notes and Description
+  --/|Version     : 1.2.4
+  --/|Requires SC : ScriptCards 3.0.25+, 5Elib/snlib/Farsidelib 1.5.2+ handouts in Notes and Description
   --/|
   --/|Trigger setup (ScriptCards_Triggers character):
   --/|  Ability name must be exactly: change:graphic
@@ -13,19 +13,32 @@
   
   --#hidecard|1
 
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+
+  --/|What token marker is used for Hexblade's Curse? Must match HexBladeMarker in Farsidelib and PC Abilities/Hexblade's Curse.scard.
+  --&HexBladeMarker|Hexed2::7409912
+
+  --/|What token marker is used for Incapacitated? Must match IncapacitatedMarker in Farsidelib.
+  --&IncapacitatedMarker|Incapacitated::7409943
+
+  --/|Name of the hex graphic token placed on the warlock. Must match CharName in PC Abilities/Hexblade's Curse.scard and HexCharName in Farsidelib.
+  --&HexCharName|Hex
+
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
   --/|TRIGGER_REPLACEMENTS
   +++5Elib;snlib;Farsidelib+++
   
-  -->far_LoadTokenMarkers|
-  --&HexMarkerTag|7409912
-  
   --/|Route cursed target by hex marker; route warlock by CurseTarget. Avoid reading CurseCaster on the warlock sheet.
-  --?"X[&GraphicOldstatusmarkers]" -inc "[&HexMarkerTag]"|>TargetCurseCheck
-  --?"X[*[&GraphicOld_id]:CurseTarget]" -ne "X"|>WarlockCurseCheck
+  -->HexGetTokenCharAttr|[&GraphicOld_id];CurseTarget;;WarlockCurseTargetCheck
+  --?"X[&GraphicOldstatusmarkers]" -ninc "[&HexBladeMarker]" -and "X[&WarlockCurseTargetCheck]" -eq "X"|SKIP
+  --?"X[&GraphicOldstatusmarkers]" -inc "[&HexBladeMarker]"|>TargetCurseCheck
+  --?"X[&WarlockCurseTargetCheck]" -ne "X"|>WarlockCurseCheck
   --X|
   
   --:TargetCurseCheck|
-   --?"X[*[&GraphicOld_id]:CurseCaster]" -eq "X"|SKIP
+   -->HexGetTokenCharAttr|[&GraphicOld_id];CurseCaster;;TargetCurseCaster
+   --?"X[&TargetCurseCaster]" -eq "X"|SKIP
    --?"X[&GraphicOldstatusmarkers]" -inc "dead"|>CheckMarkerExpiry
    --?"X[&GraphicOldbar1_value]" -ne "X"|[
     --?[&GraphicOldbar1_value] -gt 0|[
@@ -45,14 +58,14 @@
     --^SKIP|
    --]|
    --:CheckMarkerExpiry|
-   --?"X[&GraphicOldstatusmarkers]" -inc "[&HexMarkerTag]" -and "X[&GraphicNewstatusmarkers]" -ninc "[&HexMarkerTag]"|[
+   --?"X[&GraphicOldstatusmarkers]" -inc "[&HexBladeMarker]" -and "X[&GraphicNewstatusmarkers]" -ninc "[&HexBladeMarker]"|[
     -->AnnounceCurseEnd|[&GraphicOld_id]
-    -->far_EndHexbladeCurse|[&GraphicOld_id];[*[&GraphicOld_id]:CurseCaster]
+    -->far_EndHexbladeCurse|[&GraphicOld_id];[&TargetCurseCaster]
    --]|
    --^SKIP|
   
   --:CallHexHeal|
-   --&WarlockToken|[*[&GraphicOld_id]:CurseCaster]
+   --&WarlockToken|[&TargetCurseCaster]
    --#hidecard|0
    --#whisper|
    --#title|Hexblade Curse
@@ -61,8 +74,8 @@
    --<|
   
   --:WarlockCurseCheck|
-   --?"X[*[&GraphicOld_id]:CurseTarget]" -eq "X"|SKIP
-   --&CurseTargetToken|[*[&GraphicOld_id]:CurseTarget]
+   --?"X[&WarlockCurseTargetCheck]" -eq "X"|SKIP
+   --&CurseTargetToken|[&WarlockCurseTargetCheck]
    --?"X[&CurseTargetToken]" -eq "X"|SKIP
    --?"X[*[&CurseTargetToken]:t-id]" -eq "X"|SKIP
    --?"X[&GraphicOldstatusmarkers]" -inc "dead"|>WarlockRecoverSkip
@@ -108,4 +121,27 @@
   
   --:SKIP|
    --X|
+
+  --/|Local helpers for optional character attrs (same logic as Farsidelib 1.5.2+ far_HasCharAttr / far_GetCharAttr / far_GetTokenCharAttr).
+  --:HexHasCharAttr|character-id;attribute-name;return-var
+   --&[%3%]|0
+   --?"X[%1%]" -eq "X"|<|
+   --~|array;attributes;AttrCheckList;[%1%];[%2%]
+   --?[@AttrCheckList(length)] -ge 1|&[%3%];1
+   --<|
+
+  --:HexGetCharAttr|character-id;attribute-name;default-value;return-var
+   -->HexHasCharAttr|[%1%];[%2%];AttrExistsFlag
+   --?"X[&AttrExistsFlag]" -eq "X1"|[
+    --&[%4%]|[*[%1%]:[%2%]]
+   --]|[
+    --&[%4%]|[%3%]
+   --]|
+   --<|
+
+  --:HexGetTokenCharAttr|token-id;attribute-name;default-value;return-var
+   --&[%4%]|[%3%]
+   --?"X[*[%1%]:character_id]" -eq "X"|<|
+   -->HexGetCharAttr|[*[%1%]:character_id];[%2%];[%3%];[%4%]
+   --<|
 }}
