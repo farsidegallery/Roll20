@@ -1,4 +1,4 @@
---/|ScriptCards Library: Farsidelib  version 1.5.1
+--/|ScriptCards Library: Farsidelib  version 1.5.5
 --/|Provides various utility procedures for Roll20
 
 --/|This library contains a number of functions that are customized to meet the different needs of spell or ability
@@ -63,6 +63,21 @@
 --/|   
 --/|   far_PlayEffects|Parameters are : sourcetoken; targettoken; source effect; target effect; line effect; sound effect
 --/|      Used to display vfx in one referencing call
+--/|
+--/|   far_HasCharAttr|character-id;attribute-name;return-var
+--/|      Returns 1 if the character has the named attribute, else 0. Avoids API log noise for optional attrs.
+--/|
+--/|   far_GetCharAttr|character-id;attribute-name;default-value;return-var
+--/|      Reads a character attribute when present; otherwise sets return-var to default-value.
+--/|
+--/|   far_GetTokenCharAttr|token-id;attribute-name;default-value;return-var
+--/|      Same as far_GetCharAttr using the token's represents character.
+--/|
+--/|   far_IsHexbladeCurseFrom|target-token-id;caster-token-id;return-var
+--/|      Returns 1 when target has Hexblade marker and CurseCaster matches caster token id.
+--/|
+--/|   far_IsHexTargetOfCaster|target-token-id;caster-token-id;return-var
+--/|      Returns 1 when target has Hex marker and caster ConcentrationSpellTargetToken matches target.
 --/| 
 --/|   far_EndHexbladeCurse|cursed-target-token-id; optional-warlock-token-id
 --/|      Removes Hexblade's Curse marker, CurseCaster, warlock CurseTarget/CurseHexToken, and hex graphic token without healing
@@ -408,26 +423,88 @@
   --vtoken|[%2%] [%4%]
   --vbetweentokens|[%1%] [%2%] [%5%]
   --<|
+
+ --:far_HasCharAttr|character-id;attribute-name;return-var
+  --&[%3%]|0
+  --?"X[%1%]" -eq "X"|[
+   --<|
+  --]|
+  --~|array;attributes;AttrCheckList;[%1%];[%2%]
+  --?[@AttrCheckList(length)] -ge 1|&[%3%];1
+  --<|
+
+ --:far_GetCharAttr|character-id;attribute-name;default-value;return-var
+  -->far_HasCharAttr|[%1%];[%2%];AttrExistsFlag
+  --?"X[&AttrExistsFlag]" -eq "X1"|[
+   --&[%4%]|[*[%1%]:[%2%]]
+  --]|[
+   --&[%4%]|[%3%]
+  --]|
+  --<|
+
+ --:far_GetTokenCharAttr|token-id;attribute-name;default-value;return-var
+  --&[%4%]|[%3%]
+  --?"X[*[%1%]:character_id]" -eq "X"|<|
+  -->far_GetCharAttr|[*[%1%]:character_id];[%2%];[%3%];[%4%]
+  --<|
+
+ --:far_IsHexbladeCurseFrom|target-token-id;caster-token-id;return-var
+  --&[%3%]|0
+  --?"X[%1%]" -eq "X"|[
+   --<|
+  --]|
+  -->LibSN_CHECK_STATUS_MARKER|[%1%];[&HexBladeMarker];HexbladeCurseCheck;HexbladeCurseCount
+  --?[&HexbladeCurseCheck] -ne 1|[
+   --<|
+  --]|
+  -->far_GetTokenCharAttr|[%1%];CurseCaster;;CurseCasterToken
+  --?"X[&CurseCasterToken]" -eqi "X[%2%]"|&[%3%];1
+  --<|
+
+ --:far_IsHexTargetOfCaster|target-token-id;caster-token-id;return-var
+  --&[%3%]|0
+  --?"X[%1%]" -eq "X"|[
+   --<|
+  --]|
+  -->LibSN_CHECK_STATUS_MARKER|[%1%];[&HexMarker];HexTargetCheck;HexTargetCount
+  --?[&HexTargetCheck] -ne 1|[
+   --<|
+  --]|
+  -->far_GetCharAttr|[*[%2%]:character_id];ConcentrationSpellTargetToken;;ConcHexTargetToken
+  --?"X[&ConcHexTargetToken]" -eqi "X[%1%]"|&[%3%];1
+  --<|
   
  --:far_EndHexbladeCurse|cursed-target-token-id; optional-warlock-token-id
   --&CurseTargetToken|[%1%]
   --?"X[&CurseTargetToken]" -eq "X"|[
      --^EndHexbladeReturn|
      --]|
-  --&WarlockToken|[*[&CurseTargetToken]:CurseCaster]
-  --?"X[&WarlockToken]" -eq "X" -and "X[%2%]" -ne "X"|&WarlockToken;[%2%]
+  --&WarlockToken|[%2%]
+  --?"X[&WarlockToken]" -eq "X"|[
+   -->far_GetTokenCharAttr|[&CurseTargetToken];CurseCaster;;WarlockToken
+  --]|
   -->LibSN_REMOVE_STATUS_MARKER|[&CurseTargetToken];[&HexBladeMarker]
   --?"X[*[&CurseTargetToken]:character_id]" -ne "X"|[
-   --!a:[*[&CurseTargetToken]:character_id]|!CurseCaster:**
+   -->far_HasCharAttr|[*[&CurseTargetToken]:character_id];CurseCaster;HasCurseCasterAttr
+   --?"X[&HasCurseCasterAttr]" -eq "X1"|[
+    --!a:[*[&CurseTargetToken]:character_id]|!CurseCaster:**
+   --]|
   --]|
   --?"X[&WarlockToken]" -ne "X"|[
    --?"X[*[&WarlockToken]:character_id]" -ne "X"|[
-    --!a:[*[&WarlockToken]:character_id]|!CurseTarget:**
+    -->far_HasCharAttr|[*[&WarlockToken]:character_id];CurseTarget;HasCurseTargetAttr
+    --?"X[&HasCurseTargetAttr]" -eq "X1"|[
+     --!a:[*[&WarlockToken]:character_id]|!CurseTarget:**
+    --]|
    --]|
-   --?"X[*[&WarlockToken]:CurseHexToken]" -ne "X"|[
-    --~|object;token;delete;[*[&WarlockToken]:CurseHexToken]
+   -->far_GetTokenCharAttr|[&WarlockToken];CurseHexToken;;CurseHexTokenValue
+   --?"X[&CurseHexTokenValue]" -ne "X"|[
+    --~|object;token;delete;[&CurseHexTokenValue]
     --?"X[*[&WarlockToken]:character_id]" -ne "X"|[
-     --!a:[*[&WarlockToken]:character_id]|!CurseHexToken:**
+     -->far_HasCharAttr|[*[&WarlockToken]:character_id];CurseHexToken;HasCurseHexTokenAttr
+     --?"X[&HasCurseHexTokenAttr]" -eq "X1"|[
+      --!a:[*[&WarlockToken]:character_id]|!CurseHexToken:**
+     --]|
     --]|
     --^HexTokenDeleted|
    --]|
@@ -442,7 +519,8 @@
   --<|
  
  --:far_CheckWarlockHexbladeCurse|warlock-token-id
-  --?"X[*[%1%]:CurseTarget]" -eq "X"|[
+  -->far_GetTokenCharAttr|[%1%];CurseTarget;;WarlockCurseTarget
+  --?"X[&WarlockCurseTarget]" -eq "X"|[
      --<|
      --]|
   --?"X[*[%1%]:bar1_value]" -le "X0"|>far_ClearWarlockCurse
@@ -452,21 +530,19 @@
   --<|
  
  --:far_ClearWarlockCurse|
-  -->far_EndHexbladeCurse|[*[%1%]:CurseTarget];[%1%]
+  -->far_GetTokenCharAttr|[%1%];CurseTarget;;WarlockCurseTarget
+  -->far_EndHexbladeCurse|[&WarlockCurseTarget];[%1%]
   --<|
  
  --:far_HexHeal|cursed-target-token-id
-  --?"X[*[%1%]:CurseCaster]" -eq "X"|[
+  -->far_GetTokenCharAttr|[%1%];CurseCaster;;WarlockToken
+  --?"X[&WarlockToken]" -eq "X"|[
    --<|
   --]|
   --?"X[*[%1%]:bar1_value]" -ne "X" -and [*[%1%]:bar1_value] -gt 0|[
    --?"X[*[%1%]:statusmarkers]" -ninc "dead"|[
     --<|
    --]|
-  --]|
-  --&WarlockToken|[*[%1%]:CurseCaster]
-  --?"X[&WarlockToken]" -eq "X"|[
-   --<|
   --]|
   -->Lib5E_FIND_CLASS_LEVEL|[*[&WarlockToken]:character_id];Warlock;WarlockLevel
   --=WarlockHeal|[&WarlockLevel][Level] + [*[&WarlockToken]:charisma_mod] [Cha Mod] {MIN:1}
@@ -988,11 +1064,13 @@
 
  --:far_AuraTriggerDied|
   --~|turnorder;removetoken;[*T:t-id]
-  --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|[
+  -->far_IsHexTargetOfCaster|[*T:t-id];[*S:t-id];HexTargetMatch
+  --?"X[&HexTargetMatch]" -eq "X1"|[
    -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexMarker];0
    -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];0
   --]|
-  --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|[
+  -->far_IsHexbladeCurseFrom|[*T:t-id];[*S:t-id];HexbladeCurseMatch
+  --?"X[&HexbladeCurseMatch]" -eq "X1"|[
    -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];0
   --]|
   -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DeathMarker]
