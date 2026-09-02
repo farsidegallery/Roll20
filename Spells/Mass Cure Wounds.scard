@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Mass Cure Wounds
-  --/|Version     : 2.0
+  --/|Version     : 2.0.1
   --/|Requires SC : TokenMod, SuperNotes (for template override only), ScriptCards Library snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|  
@@ -67,7 +67,7 @@
    --~|array;define;Count;1;2;3;4;5;6
    
    --+|[c][b]Select number of companions.[/b][/c]
-   --+|[c][b]Each MUST be within 30ft of you.[/b][/c]
+   --+|[c][b]Each MUST be within 30ft of a point you choose (up to 60ft away).[/b][/c]
     --&splvlMsg|
     --%splvl|foreach;Count
      --&splvlMsg|+ [rbutton][&splvl]::CompanionIdentity;[&splvl][/rbutton]
@@ -117,16 +117,21 @@
   --:HealLoop|
    --#whisper|
    --%loop|foreach;Healed
-    --=Missing|[*[&loop]:hp^] - [*[&loop]:hp]
-    --?[$HPRecovered.Total] -gt [$Missing]|=HealAmount;[$Missing]|=HealAmount;[$HPRecovered.Total]
-	--+|[t border=3 width=100%][tr][td style="width:150px"][c][*[&loop]:t-name][/c][/td][td style="width:100px"][c][$HealAmount][/c][/td][/tr]
-    -->far_PlayEffects|[*S:t-id]; [&loop]; ; burst-holy; ; 
-    -->LibSN_APPLY_DAMAGE_OR_HEALING|[&loop];1;[$HealAmount];0
+    --?"[*[&loop]:npc_type]" -inc "undead" -or "[*[&loop]:npc_type]" -inc "construct"|[
+      --+|[t border=3 width=100%][tr][td style="width:150px"][c][*[&loop]:t-name][/c][/td][td style="width:100px"][c]No effect[/c][/td][/tr]
+    --]|[
+      --=Missing|[*[&loop]:hp^] - [*[&loop]:hp]
+      --?[$HPRecovered.Total] -gt [$Missing]|=HealAmount;[$Missing]|=HealAmount;[$HPRecovered.Total]
+      --+|[t border=3 width=100%][tr][td style="width:150px"][c][*[&loop]:t-name][/c][/td][td style="width:100px"][c][$HealAmount][/c][/td][/tr]
+      -->far_PlayEffects|[*S:t-id]; [&loop]; ; burst-holy; ; 
+      -->LibSN_APPLY_DAMAGE_OR_HEALING|[&loop];1;[$HealAmount];0
+    --]|
 	--%|
    --+|[/t]
    --+|[br]
    --+Desc: |[*R:spelldescription]
    --+At Higher Levels: |[*R:spellathigherlevels]
+   --+|[br]
    -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
    --X|
   
