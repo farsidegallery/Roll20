@@ -1,7 +1,7 @@
 !script {{
   --/|Script Name : Concentration
-  --/|Version     : 1.3.1
-  --/|Requires SC : ScriptCards 3.0.25+, 5Elib/snlib/Farsidelib
+  --/|Version     : 1.3.9
+  --/|Requires SC : ScriptCards 3.0.25+, 5Elib/snlib/Farsidelib 1.5.2+
   --/|
   --/|Trigger setup (ScriptCards_Triggers character):
   --/|  Ability name must be exactly: change:graphic
@@ -67,8 +67,7 @@
   --&tempHPBar|4
 
   -->far_LoadTokenMarkers|
-  -->ConcResolveBars|
-  -->ConcCalcDamage|
+  -->ConcSkipIfNoDamageEvent|
 
   --/|Gate: damage taken only (ConcCalcDamage never counts increases).
   --?[$ConcRawTotal] -le 0|SKIP
@@ -88,9 +87,45 @@
   --:SKIP|
    --X|
 
+  --/|Skip position-only moves before optional sheet attrs (conc_*). Still run when Action Menu left a damage snapshot.
+  --:ConcSkipIfNoDamageEvent|
+   -->ConcHasCharAttr|[*[&GraphicOld_id]:character_id];conc_predamage_temp;HasConcPendingTemp
+   -->ConcHasCharAttr|[*[&GraphicOld_id]:character_id];conc_damage_total;HasConcDamageTotal
+   --?"X[&HasConcPendingTemp]" -eq "X1" -and "X[&HasConcDamageTotal]" -eq "X1"|[
+    --&ConcMoveHPold|[&GraphicOldbar[&hitPointBar]_value]
+    --&ConcMoveTempold|[&GraphicOldbar[&tempHPBar]_value]
+    --&ConcMoveHPnew|[&GraphicNewbar[&hitPointBar]_value]
+    --&ConcMoveTempnew|[&GraphicNewbar[&tempHPBar]_value]
+    --?"X[&ConcMoveHPnew]" -eq "X"|&ConcMoveHPnew;[&ConcMoveHPold]
+    --?"X[&ConcMoveTempnew]" -eq "X"|&ConcMoveTempnew;[&ConcMoveTempold]
+    --?"[&ConcMoveHPnew]" -eq ""|&ConcMoveHPnew;[&ConcMoveHPold]
+    --?"[&ConcMoveTempnew]" -eq ""|&ConcMoveTempnew;[&ConcMoveTempold]
+    --?[&ConcMoveHPold] -eq [&ConcMoveHPnew] -and [&ConcMoveTempold] -eq [&ConcMoveTempnew]|SKIP
+   --]|
+   -->ConcResolveBars|
+   -->ConcCalcDamage|
+   --<|
+
   --:ConcResolveBars|
    --&ConcHPold|[&GraphicOldbar[&hitPointBar]_value]
    --&ConcTempold|[&GraphicOldbar[&tempHPBar]_value]
+   --&ConcPendingTemp|0
+   --&ConcDamageTotal|0
+   -->ConcHasCharAttr|[*[&GraphicOld_id]:character_id];conc_predamage_temp;HasConcPendingTemp
+   --?"X[&HasConcPendingTemp]" -eq "X1"|[
+    -->ConcGetCharAttr|[*[&GraphicOld_id]:character_id];conc_predamage_temp;0;ConcPendingTemp
+   --]|
+   -->ConcHasCharAttr|[*[&GraphicOld_id]:character_id];conc_damage_total;HasConcDamageTotal
+   --?"X[&HasConcDamageTotal]" -eq "X1"|[
+    -->ConcGetCharAttr|[*[&GraphicOld_id]:character_id];conc_damage_total;0;ConcDamageTotal
+   --]|
+   --?"X[&ConcPendingTemp]" -ne "X" -and "[&ConcPendingTemp]" -ne "" -and [&ConcPendingTemp] -gt [&ConcTempold]|&ConcTempold;[&ConcPendingTemp]
+   --?"X[&HasConcPendingTemp]" -eq "X1"|[
+    --!a:[*[&GraphicOld_id]:character_id]|conc_predamage_temp:0
+   --]|
+   --?"X[&HasConcDamageTotal]" -eq "X1"|[
+    --!a:[*[&GraphicOld_id]:character_id]|conc_damage_total:0
+   --]|
    --&ConcHPnew|[&GraphicNewbar[&hitPointBar]_value]
    --&ConcTempnew|[&GraphicNewbar[&tempHPBar]_value]
    --/|When GraphicNew is missing (batched !t), use live token as post-change value.
@@ -100,7 +135,7 @@
    --?"[&ConcTempnew]" -eq ""|&ConcTempnew;0
    --/|TokenMod listen_to_tokenmod often sets GraphicNew equal to GraphicOld; live token has the real post-damage value.
    --?[&ConcHPold] -eq [&ConcHPnew]|&ConcHPnew;[*[&GraphicOld_id]:t-bar[&hitPointBar]_value]
-   --?[&ConcTempold] -eq [&ConcTempnew]|&ConcTempnew;[&ConcTempold]
+   --?[&ConcTempold] -eq [&ConcTempnew]|&ConcTempnew;[*[&GraphicOld_id]:t-bar[&tempHPBar]_value]
    --<|
 
   --:ConcCalcDamage|
@@ -109,6 +144,12 @@
    --/|Count decreases only (healing increases are ignored by the old>new check).
    --?"X[&ConcTempold]" -ne "X" -and "[&ConcTempold]" -ne "" -and [&ConcTempold] -gt [&ConcTempnew]|=ConcTempdam;[&ConcTempold]-[&ConcTempnew]
    --?"X[&ConcHPold]" -ne "X" -and "[&ConcHPold]" -ne "" -and [&ConcHPold] -gt [&ConcHPnew]|=ConcHPdam;[&ConcHPold]-[&ConcHPnew]
+   --/|When TokenMod reports stale HP (common on partial temp+HP), use Action Menu conc_damage_total snapshot.
+   --=ConcBarTotal|[$ConcHPdam] + [$ConcTempdam]
+   --?"X[&ConcDamageTotal]" -ne "X" -and "[&ConcDamageTotal]" -ne "" -and [&ConcDamageTotal] -gt [$ConcBarTotal]|[
+    --=ConcHPdam|[&ConcDamageTotal]-[$ConcTempdam]
+    --=ConcHPnew|[&ConcHPold]-[$ConcHPdam]
+   --]|
    --?[*[&GraphicOld_id]:hp_temp] -ne [&ConcTempnew]|[
     --!a:[*[&GraphicOld_id]:character_id]|hp_temp:[&ConcTempnew]
     --]|
@@ -541,5 +582,22 @@
    --!a:[*[&GraphicOld_id]:character_id]|!ConcentrationSpell:**
    -->LibSN_REMOVE_STATUS_MARKER|[*[&GraphicOld_id]:t-id];[&zephyr]
    -->Lib5E_SET_GLOBAL_MOD_STATUS|[*[&GraphicOld_id]:t-id]; damage; [&zephyrstrike]; 0
+   --<|
+
+  --/|Local helpers for optional character attrs (same logic as far_HasCharAttr / far_GetCharAttr in Farsidelib 1.5.2+).
+  --:ConcHasCharAttr|character-id;attribute-name;return-var
+   --&[%3%]|0
+   --?"X[%1%]" -eq "X"|<|
+   --~|array;attributes;AttrCheckList;[%1%];[%2%]
+   --?[@AttrCheckList(length)] -ge 1|&[%3%];1
+   --<|
+
+  --:ConcGetCharAttr|character-id;attribute-name;default-value;return-var
+   -->ConcHasCharAttr|[%1%];[%2%];AttrExistsFlag
+   --?"X[&AttrExistsFlag]" -eq "X1"|[
+    --&[%4%]|[*[%1%]:[%2%]]
+   --]|[
+    --&[%4%]|[%3%]
+   --]|
    --<|
 }}
