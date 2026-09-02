@@ -1,186 +1,237 @@
 !script {{
-  +++5Elib;Farsidelib+++
+  +++5Elib;snlib;Farsidelib+++
   
   --/|Script Name : Mage Armor
-  --/|Version     : 1.2.1
+  --/|Version     : 2.0.0
   --/|Modified By : Farsidegallery
   --/|  
-  --/|  Script checks for spell level used and makes sure the slot is available. Script will check for existence of global mod and create if necessary.
-  --/|  Script turns on Global Mod specified and plays visual effect. It will deduct 1 spell slot from the appropriate level.
-  --/|
+  --/|  Mage Armor is a 1st-level Sorcerer/Wizard spell. It sets the target's base AC to 13 + Dex mod,
+  --/|  it cannot be cast on a creature wearing armor (inventory rows with armor modifiers count as worn
+  --/|  unless equipped is exactly 0 — blank counts as worn; ScriptCards treats empty as 0), and Sorcerer
+  --/|  features such as Twinned Spell and Wild Magic Surge are supported when the caster has them.
   
   --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
   
-  --/|What is the name of the Global AC Mod used for Mage Armor.
+  --&SpellName|Mage Armor
+  --&MinimumSpellLevel|1
   --&ModName|Mage Armor
-     
-  --/|Enter name for Mage Armor Character.
   --&CharName|Mage Armor
-    
-  --/|What resource name is used for Sorcerer Points?
   --&SorcererResource|Sorcery Points
-  
-  --/|Use ScriptCards (1) or SpawnDefaultToken (2) to place the Charm Person Character on the VTT?
   --&SpawnScript|1
-  
   --&URLlink|https://files.d20.io/images/466431848/xlusyJ4QtFqO3OFvpwlnDw/med.webm?1764787651
+  --&ConcentrationMarker|Concentrating::7409928
   
   --/| ____________________ End Global User Variables ___________________________________________________________________________________________
 
-  --/|Helper variable build up to allow us to include a target prompt in an rbutton
   --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
   --&SPACE|X X --&SPACE|[&SPACE(1,1)]
   --&brace|{
   --&cbrace|}
-  --&obrac|[ 
+  --&obrac|[
   --&cbrac|]
   --&oparen|(
-  --&cparen|)  
+  --&cparen|)
 
-  --#title|[&ModName]
+  --#title|[&SpellName]
   --#sourceToken|@{selected|token_id}
   --#whisper|self,gm
 
-  --=SpellLevel|1
-  --&SpellLevel|1
-  --Rfind|[*S:character_id];[&ModName];repeating_spell-[&SpellLevel];spellname
-  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&SpellLevel] spell named [&ModName]
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  --=SpellLevel|[&MinimumSpellLevel]
   -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
-  
+
   --#leftsub|[*R:spellcastingtime]
   --#rightsub|[*R:spellrange]
   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
   --&spelldesc|[*R:spelldescription]
-  
+
   --:ChooseFunction|
    --+Choose Function: |[rbutton]New Cast::New[/rbutton][rbutton]Dismiss::Remove[/rbutton]
    --X|
-  
-  --:New| 
+
+  --:New|
+   --=TwinFlag|0
+   --=SorceryPoints|0
    -->far_FIND_CLASS_LEVEL|[*S:character_id];Sorcerer;SLevel
    --?"X[&SLevel]" -eq "X0"|Target
    -->far_FindFeat|[*S:character_id];"Metamagic: Twinned Spell";TwinFeatFlag
-   -->far_FindFeat|[*S:character_id];"Metamagic: Empowered Spell";EmpowerFeatFlag
    -->far_FindFeat|[*S:character_id];"Wild Magic Surge";WildFeatFlag
-   
    -->Lib5E_FIND_RESOURCE|[*S:character_id];[&SorcererResource];Pointsname;PointsAmmo
-   --?"[&MinimumSpellLevel(toLowerCase)]" -eq "cantrip"|=TwinCost;1 |=TwinCost;[$SpellLevel]\2 {MIN:1}
-   --?"X[$PointsAmmo]" -le "X0" -or "[&Pointsname]" -eq "Not Found" -or [$PointsAmmo] -lt [$TwinCost]|Target
-   
-   --+|[c]Do you want to spend [$TwinCost.Raw] [&SorcererResource] to Twin the spell?[/c]
-   --+|[c][rbutton]Yes::BuildTwinArray[/rbutton]  [rbutton]No::Target[/rbutton][/c]
+   --?"X[$TwinFeatFlag]" -ne "X1"|Target
+   --?"X[$PointsAmmo]" -le "X0" -or "[&Pointsname]" -eq "Not Found"|Target
+   --+|[c]Do you want to spend 1 [&SorcererResource] to Twin the spell?[/c]
+   --+|[c][rbutton]Yes::TwinTarget[/rbutton]  [rbutton]No::Target[/rbutton][/c]
    --X|
-  
-  --:BuildTwinArray|
-   --=SorceryPoints|[$TwinCost]
+
+  --:TwinTarget|
    --=TwinFlag|1
+   --=SorceryPoints|1
    -->far_BuildTargetList|2
    -->far_BuildTargetArray|Targets;2;TargetString
    -->TargetInfo|
-  
+
   --:Target|
    --+Target|[rbutton]Click this button to select your target.::TargetArray;[&TB]target|token_id}[/rbutton]
    --X|
-  
+
   --:TargetArray|
    --&SingleTarget|[&reentryval]
    --~|array;define;Targets;[&SingleTarget]
    -->TargetInfo|
-  
+
   --:TargetInfo|
+   --~|array;define;ValidTargets
    --%target|foreach;Targets
-   --#targettoken|[&target]   
-   --=AC|[*T:ac]
-   --=DexMod|[*T:dexterity_mod]
-   --=NewAC|13+[$DexMod]
-   --=ACDifference|[$NewAC]-[$AC]
+    --#targettoken|[&target]
+    --&TargetName|[*[&target]:t-name]
+    -->CheckTargetArmor|[&target]
+    --?"[&ArmorFlag]" -eq "1"|[
+      -->ArmorError|[&target]
+    --]|[
+      --=AC|[*[&target]:ac]
+      --=DexMod|[*[&target]:dexterity_mod]
+      --=NewAC|13+[$DexMod]
+      --=ACDifference|[$NewAC]-[$AC]
+      -->CheckForMod|[&target]
+      --~|array;add;ValidTargets;[&target]
+      --+|[&TargetName] is now protected by Mage Armor!
+      --+|[br]
+    --]|
+   --%|
+   --?[@ValidTargets(length)] -eq 0|NoValidTargets
+   --~MageArmorTargets|array;stringify;ValidTargets;!@!
+   --!a:[*S:character_id]|!MageArmorID:[&MageArmorTargets]
+   -->Finish|
+
+  --:NoValidTargets|
    --#whisper|
-   -->CheckForMod|
-   --<|
-  
-  --:CheckForMod|
-   -->far_Check_GLOBAL_MOD_EXISTS|[*T:t-id]; ac; [&ModName]; Exists
-   --?[&Exists] -eq 1|>SetMod 
-   --?[&Exists] -eq 0|[
-    --!a:[*T:character_id]|global_ac_mod_flag:1
-	--!or:[*T:character_id]:acmod|
-	  global_ac_name:[&ModName]|
-	  global_ac_val:[$ACDifference]|
-	  options-flag:0
-    -->SetMod|
-	--]|
-   --<|
-  
-  --:SetMod|  
-   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*T:character_id];ac;[&ModName];1
-   --?"X[$TwinFlag]" -eq "X1" -and "X[$Target2Flag]" -eq "X1"|[
-    --&Target|[*S:MageArmorID]
-	--!a:[*S:character_id]|!MageArmorID:[&Target]!@![*T:t-id]
-	--]|[
-	--!a:[*S:character_id]|!MageArmorID:[*T:t-id]
-	--=Target2Flag|1
-	--]|
-   -->far_PlayEffects|[*S:t-id];[*T:t-id];;burn-holy
-   -->GetCharID|[&CharName];ShieldID
-   
-   --:SpawnToken|
-	--?[&SpawnScript] -eq 2|[
-	 --@forselected+|Spawn _name|[&CharName] _qty|1 _targets|1,Click to spawn spell FX. _offset|0,0 _force|yes _size|3 _tokenProps|name:[&ModName],showname:true,showplayers_name:true _order|toBack _bar1|KeepLink _fx|nova-magic _expand|15,30 {^&select @{selected|token_id}}
-	 --]|
-	
-	--?[&SpawnScript] -eq 1|[
-	 --!ot:ShieldTID|name:"[&CharName]"|left:[*T:t-left]|top:[*T:t-top]|width:[=[*T:t-width]*3]|height:[=[*T:t-height]*3]|imgsrc:"[&URLlink]"|bar1_value:1|represents:[&ShieldID]|showname:false
-	 --z:graphic:[&ShieldTID]|toback
-	 --@CARRY_TOKENS_CARRY_BELOW|[*T:t-id] [&ShieldTID]
-	 --]|
-    --%|
-	-->Finish|
-  
-  --:Finish|
-   --#emotetext|[*S:character_name] casts Mage Armor!
-   
-   --?"X[$WildFeatFlag]" -eq "X1" -and [&MinimumSpellLevel] -ge 1|>far_WildTable
-   
+   --+|[b]The spell fizzles.[/b] No target could receive [&SpellName] (a creature cannot be wearing armor).
+   --!a:[*S:character_id]|!MageArmorID:**
+   --!a:[*S:character_id]|!ConcentrationSpell:**
+   --!a:[*S:character_id]|!ConcentrationSpellTargetToken:**
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker]
    --+|[br]
+   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+   --?"X[$TwinFlag]" -eq "X1" -and "X[$PointsAmmo]" -gt "X0"|[
+    --=FinalPointsAmmo|[$PointsAmmo]-[$SorceryPoints]
+    --!a:[*S:character_id]|[&SorcererResource]:[$FinalPointsAmmo]
+    --+|[br]
+    --+[&SorcererResource]: |Used: [$SorceryPoints] / Remaining: [$FinalPointsAmmo]
+   --]|
+   --X|
+
+  --:CheckTargetArmor|tokenid
+   --&ArmorFlag|0
+   --&CharID|[*[%1%]:character_id]
+   --Rfirst|[&CharID];repeating_inventory
+   --:ArmorLoop|
+    --?"[*R:itemname]" -eq "NoRepeatingAttributeLoaded"|ArmorDone
+    --&ItemMods|[*R:itemmodifiers]
+    --?"[&ItemMods]" -inc "Heavy Armor" -or "[&ItemMods]" -inc "Medium Armor" -or "[&ItemMods]" -inc "Light Armor"|CheckArmorItem|ArmorLoopNext
+    --^ArmorLoopNext|
+   --:CheckArmorItem|
+    --&EquippedVal|[*R:equipped]
+    --?"X0" -eq "X[&EquippedVal]"|ArmorLoopNext
+    --^SetArmorFlag|
+   --:ArmorLoopNext|
+    --Rnext|
+    --^ArmorLoop|
+   --:SetArmorFlag|
+    --&ArmorFlag|1
+    --^ArmorDone|
+   --:ArmorDone|
+   --<|
+
+  --:CheckForMod|tokenid
+   --&TargetToken|[%1%]
+   -->far_Check_GLOBAL_MOD_EXISTS|[*[%1%]:t-id]; ac; [&ModName]; Exists
+   --?"[&Exists]" -eq "1"|>SetMod
+   --?"[&Exists]" -eq "0"|[
+    --!a:[*[&TargetToken]:character_id]|global_ac_mod_flag:1
+    --!or:[*[&TargetToken]:character_id]:acmod|
+      global_ac_name:[&ModName]|
+      global_ac_val:[$ACDifference]|
+      options-flag:0
+    -->SetMod|
+   --]|
+   --<|
+
+  --:SetMod|
+   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*[&TargetToken]:character_id];ac;[&ModName];1
+   --Rfind|[*[&TargetToken]:character_id];[&ModName];repeating_acmod;global_ac_name
+   --?"[*R:global_ac_name]" -ne "NoRepeatingAttributeLoaded"|[
+    --?"[*R:global_ac_val]" -ne [$ACDifference]|[
+     --!a:[*[&TargetToken]:character_id]|![*R>global_ac_val]:[$ACDifference]
+    --]|
+   --]| 
+   -->far_PlayEffects|[*S:t-id];[*[&TargetToken]:t-id];;burn-holy
+   -->GetCharID|[&CharName];ShieldID
+   -->SpawnToken|
+   --<|
+
+  --:SpawnToken|
+   --?[&SpawnScript] -eq 2|[
+    --@forselected+|Spawn _name|[&CharName] _qty|1 _targets|1,Click to spawn spell FX. _offset|0,0 _force|yes _size|3 _tokenProps|name:[&ModName],showname:true,showplayers_name:true _order|toBack _bar1|KeepLink _fx|nova-magic _expand|15,30 {^&select @{selected|token_id}}
+   --]|
+
+   --?[&SpawnScript] -eq 1|[
+    --!ot:ShieldTID|name:"[&CharName]"|left:[*[*[&TargetToken]:t-id]:t-left]|top:[*[*[&TargetToken]:t-id]:t-top]|width:[=[*[*[&TargetToken]:t-id]:t-width]*3]|height:[=[*[*[&TargetToken]:t-id]:t-height]*3]|imgsrc:"[&URLlink]"|bar1_value:1|represents:[&ShieldID]|showname:false
+    --z:graphic:[&ShieldTID]|toback
+    --@CARRY_TOKENS_CARRY_BELOW|[*[&TargetToken]:t-id] [&ShieldTID]
+   --]|
+   --<|
+
+  --:Finish|
+   --#whisper|
+   --#emotetext|[*S:character_name] casts Mage Armor!
+   --!a:[*S:character_id]|!ConcentrationSpell:[&SpellName]
+   -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];10
+   --?"X[$WildFeatFlag]" -eq "X1" -and [&MinimumSpellLevel] -ge 1|>far_WildTable
+
    --+Duration: |[&duration]
    --+Desc: |[&spelldesc]
    -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
-   
-   --?"X[$EmpoweredDamageFlag]" -eq "X1" -or "X[$TwinFlag]" -eq "X1"|[
+   --?"X[$TwinFlag]" -eq "X1" -and "X[$PointsAmmo]" -gt "X0"|[
     --=FinalPointsAmmo|[$PointsAmmo]-[$SorceryPoints]
-    --!a:[*S:character_id]|[&PointsAmmo]:[$FinalPointsAmmo]
+    --!a:[*S:character_id]|[&SorcererResource]:[$FinalPointsAmmo]
     --+|[br]
-	--+[&SorcererResource]: |Used: [$SorceryPoints] / Remaining: [$FinalPointsAmmo]
-    --]|
+    --+[&SorcererResource]: |Used: [$SorceryPoints] / Remaining: [$FinalPointsAmmo]
+   --]|
    --X|
-  
+
   --:Remove|
    --&Target|[*S:MageArmorID]
    --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&CharName]
    --%loop|foreach;tokens
     --~|object;token;delete;[&loop]
-	--%|
+	  --%|
    --#whisper|
-   --?"[&Target]" -inc "!@!"|[
-    --~Shield1|string;before;!@!;[&Target]
-    --~Shield2|string;after;!@!;[&Target]
-	--#emotetext|[*S:t-name] is no longer concentrating on Mage Armor!
-	--+|The inivisible barrier vanishes! The AC for both [b][*[&Shield1]:t-name][/b] and [b][*[&Shield2]:t-name][/b] returns to normal.
-	-->Lib5E_SET_GLOBAL_MOD_STATUS|[&Shield1];ac;[&ModName];0
-	-->Lib5E_SET_GLOBAL_MOD_STATUS|[&Shield2];ac;[&ModName];0
-	--]|[
-    --#emotetext|[*[&Target]:t-name] no longer has Mage Armor!
-	--+|The inivisible barrier vanishes! [*[&Target]:t-name]'s AC returns to normal.
-	-->Lib5E_SET_GLOBAL_MOD_STATUS|[&Target];ac;[&ModName];0
-	--]|
-	--!a:[*S:character_id]|!MageArmorID:**
+   --~|array;fromstring;Armored;!@!;[&Target]
+   --#emotetext|[*S:t-name] is no longer concentrating on Mage Armor!
+   --+|The inivisible barrier(s) vanish!
+   --+|[br]
+   --%Armorloop|foreach;Armored 
+    --+|The AC for [b][*[&Armorloop]:t-name][/b] returns to normal.
+    --+|[br]
+    -->Lib5E_SET_GLOBAL_MOD_STATUS|[&Armorloop];ac;[&ModName];0
+   --%|
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker]
+   --!a:[*S:character_id]|!ConcentrationSpell:**
+   --!a:[*S:character_id]|!ConcentrationSpellTargetToken:**
+   --!a:[*S:character_id]|!MageArmorID:**
    --X|
 
- --/| ____________________ Procedures_______________________________________________________________________________________
-  
+  --/| ____________________ Procedures_______________________________________________________________________________________
+
   --:GetCharID|CharacterName;StringVariableForCharID
    --~|array;objects:character;SpiritCharArr;[%1%]
    --?[@SpiritCharArr(length)] -ne 1|>far_LogFatalError;Could not find character named [%1%]
    --&[%2%]|[@SpiritCharArr(0)]
+   --<|
+  
+  --:ArmorError|targetid
+   --+Error: |[*[%1%]:t-name] is wearing armor and cannot make use of Mage Armor.
+   --+|[br]
    --<|
 }}
