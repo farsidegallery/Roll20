@@ -6,13 +6,15 @@
   --#whisper|self,gm
  
   --/|Script Name : Life Transference
-  --/|Version     : 2.0
+  --/|Version     : 2.0.2
   --/|Requires SC : TokenMod, Chatsetattr, SuperNotes (for template override only), ScriptCards Library snlib
   --/|Author      : Farsidegallery
   --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
       
    --&SpellName|Life Transference
    --&MinimumSpellLevel|3
+   --&hpBar|1
+   --&tempHPbar|4
   
   --/| ____________________ End Global User Variables ___________________________________________________________________________________________
 
@@ -44,18 +46,20 @@
    --#targetToken|[&reentryval(split,%,0)]
    --=SpellLevel|[&reentryval(split,%,1)]
    --&SpellLevel|[&reentryval(split,%,1)]
+   --?"X[*T:t-id]" -eq "X"|>far_FatalError;Invalid Target;ERROR;Choose a valid target within range.
    -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
    
    --#leftsub|[*R:spellcastingtime]
    --#rightsub|[*R:spellrange]
    --&damageType|[*R:spelldamagetype]
-   --#emotetext|[*S:character_name] casts [&SpellName] at [&SpellLevel]!
+   --#emotetext|[*S:t-name] casts [&SpellName] at [&SpellLevel]!
 
    -->HealerDamage|
    -->TargetHeal|
    --+|[br]
    --+Desc: |[*R:spelldescription]
    --+At Higher Levels: |[*R:spellathigherlevels]
+   --+|[br]
    -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
    --X|
  
@@ -63,16 +67,16 @@
  --:HealerDamage|
   --=Dice|[$SpellLevel]+1
   --=Damage|[$Dice]d8
-  --+|[*S:character_name] loses [$Damage] hp.
-  --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*S:t-id];1;-[$Damage];0
-  -->far_DamageTokenmod|[*S:t-id];1;4;-[$Damage];0;0;1
+  --+|[*S:t-name] loses [$Damage] hp.
+  --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[*S:t-id];1;-[$Damage];0;0;1
+  -->far_DamageTokenmod|[*S:t-id];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
   --<|
  
  --:TargetHeal|
   --=Heal|[$Damage] * 2
   --=Missing|[*T:hp^] - [*T:hp]
   --?[$Heal] -gt [$Missing]|=HealAmount;[$Missing]|=HealAmount;[$Heal]
-  --+|[*T:character_name] gains [$HealAmount] hp.
-  -->LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;[$HealAmount];0
+  --+|[*T:t-name] gains [$HealAmount] hp.
+  -->LibSN_APPLY_DAMAGE_OR_HEALING|[*T:t-id];1;[$HealAmount];0;0;0
   --<|
 }}
