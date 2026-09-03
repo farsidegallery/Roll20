@@ -1,6 +1,6 @@
 !script {{
   --/|Script Name : 5E Action Menu
-  --/|Version     : 2.8.1
+  --/|Version     : 2.8.2
   --/|Requires SC : 2.7.15+
   --/|Author      : Kurt Jaegers
   --/|Modified By : Farsidegallery
@@ -512,15 +512,24 @@
   --X|
 
   --:EXEC_NPC_BONUS_ACTION|action_name
-  --~action_name|string;before;|;[&reentryval]
+  --~action_part|string;before;|;[&reentryval]
   --~action_target|string;after;|;[&reentryval]
+  --~action_name|string;before;###;[&action_part]
+  --~action_rowid|string;after;###;[&action_part]
+  --&action_name|[&action_name(replace,-!-!-,;)]
+  --&action_name|[&action_name(replace,-!lpar!-,(,)]
+  --&action_name|[&action_name(replace,-!rpar!-,))]
   --&whisperTarget|
   --?[*S:npc] -eq 1 -and [&AllNPCActionsToSender] -eq 1|&whisperTarget;self
   --#whisper|[&whisperTarget]
   --#emotestate|visible
   --#targettoken|[&action_target]
   --#emotetext|[*S:t-name] uses [&action_name] against [*T:t-name]
-  --Rfind|[*S:character_id];[&action_name];repeating_npcbonusaction;name
+  --?"X[&action_rowid]" -ne "X" -and "[&action_rowid]" -ne ""|[
+   --Rbysectionid|[*S:character_id];repeating_npcbonusaction;[&action_rowid]
+  --]|[
+   --Rfind|[*S:character_id];[&action_name];repeating_npcbonusaction;name
+  --]|
   --#leftsub|[*R:name]
   --#rightsub|
   --?"[*R:attack_flag]" -eq on|NPCA_MAKE_AN_ATTACK
@@ -528,15 +537,24 @@
   --X|
 
   --:EXEC_NPC_REACTION|action_name
-  --~action_name|string;before;|;[&reentryval]
+  --~action_part|string;before;|;[&reentryval]
   --~action_target|string;after;|;[&reentryval]
+  --~action_name|string;before;###;[&action_part]
+  --~action_rowid|string;after;###;[&action_part]
+  --&action_name|[&action_name(replace,-!-!-,;)]
+  --&action_name|[&action_name(replace,-!lpar!-,(,)]
+  --&action_name|[&action_name(replace,-!rpar!-,))]
   --&whisperTarget|
   --?[*S:npc] -eq 1 -and [&AllNPCActionsToSender] -eq 1|&whisperTarget;self
   --#whisper|[&whisperTarget]
   --#emotestate|visible
   --#targettoken|[&action_target]
   --#emotetext|[*S:t-name] uses [&action_name] against [*T:t-name]
-  --Rfind|[*S:character_id];[&action_name];repeating_npcreaction;name
+  --?"X[&action_rowid]" -ne "X" -and "[&action_rowid]" -ne ""|[
+   --Rbysectionid|[*S:character_id];repeating_npcreaction;[&action_rowid]
+  --]|[
+   --Rfind|[*S:character_id];[&action_name];repeating_npcreaction;name
+  --]|
   --#leftsub|[*R:name]
   --#rightsub|
   --?"[*R:attack_flag]" -eq on|NPCA_MAKE_AN_ATTACK
@@ -548,11 +566,20 @@
   --?[*S:npc] -eq 1 -and [&AllNPCActionsToSender] -eq 1|&whisperTarget;self
   --#whisper|[&whisperTarget]
   --#emotestate|visible
-  --~action_name|string;before;|;[&reentryval]
+  --~action_part|string;before;|;[&reentryval]
   --~action_target|string;after;|;[&reentryval]
+  --~action_name|string;before;###;[&action_part]
+  --~action_rowid|string;after;###;[&action_part]
+  --&action_name|[&action_name(replace,-!-!-,;)]
+  --&action_name|[&action_name(replace,-!lpar!-,(,)]
+  --&action_name|[&action_name(replace,-!rpar!-,))]
   --#targettoken|[&action_target]
   --#emotetext|[*S:t-name] uses [&action_name] against [*T:t-name]  
-  --Rfind|[*S:character_id];[&action_name];repeating_npcaction-l;name
+  --?"X[&action_rowid]" -ne "X" -and "[&action_rowid]" -ne ""|[
+   --Rbysectionid|[*S:character_id];repeating_npcaction-l;[&action_rowid]
+  --]|[
+   --Rfind|[*S:character_id];[&action_name];repeating_npcaction-l;name
+  --]|
   --#leftsub|[*R:name]
   --#righsub|
   --?"[*R:attack_flag]" -eq on|NPCA_MAKE_AN_ATTACK
@@ -668,8 +695,13 @@
   --#emotestate|visible
   --&vfx|
   --&sfx|
-  --~attack_name|string;before;|;[&reentryval]
+  --~attack_part|string;before;|;[&reentryval]
   --~attack_target|string;after;|;[&reentryval]
+  --~attack_name|string;before;###;[&attack_part]
+  --~attack_rowid|string;after;###;[&attack_part]
+  --&attack_name|[&attack_name(replace,-!-!-,;)]
+  --&attack_name|[&attack_name(replace,-!lpar!-,(,)]
+  --&attack_name|[&attack_name(replace,-!rpar!-,))]
   --#targettoken|[&attack_target]
   -->DETERMINE_NPC_STATUS_MODIFIERS|[*T:t-id];T
   --/\|Emote in PC Attack|[*S:t-name] uses [&attack_name] against [*T:t-name]
@@ -677,7 +709,15 @@
   -->Find_Active_Global_Attack_Modifiers|[*S:character_id];PC_GAM
   -->Find_Active_Global_Damage_Modifiers|[*S:character_id];PC_GDM
   -->Find_Active_Global_Damage_Modifiers|[*S:character_id];PC_GDM_CRIT;1
-  --Rfind|[*S:character_id];[&attack_name];repeating_attack;atkname
+  --?"X[&attack_rowid]" -ne "X" -and "[&attack_rowid]" -ne ""|[
+   --Rbysectionid|[*S:character_id];repeating_attack;[&attack_rowid]
+  --]|[
+   --Rfind|[*S:character_id];[&attack_name];repeating_attack;atkname
+  --]|
+  --?"[*R:atkname]" -eq "NoRepeatingAttributeLoaded"|[
+   --+Attack Not Found|The attack "[&attack_name]" could not be loaded from [*S:character_name]'s sheet.
+   --X|
+  --]|
   --?[*R:attack_flag] -ne 1|
   --?[&requireAmmo] -eq 0|NoAmmoNeededPC_Attack
   --?"[*R:ammo]" -eq ""|NoAmmoNeededPC_Attack
@@ -687,7 +727,7 @@
   --:NoAmmoNeededPC_Attack|
   --#title|[*R:atkname]
   --#leftsub|[*S:character_name]
-  --#rightsub|[rbutton][&RepeatImage]::EXEC_PC_ATTACK;[&attack_name]|[&TB]target|token_id}[/rbutton]
+  --#rightsub|[rbutton][&RepeatImage]::EXEC_PC_ATTACK;[&attack_name]###[&attack_rowid]|[&TB]target|token_id}[/rbutton]
   --~|array;fromstring;fx;$;[*R:atk_desc]
   --%loop|foreach;fx
     --?"[&loop]" -inc "sfx:"|&sfx;[&loop(after,:)]
