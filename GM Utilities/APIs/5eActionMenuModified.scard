@@ -1,6 +1,6 @@
 !script {{
   --/|Script Name : 5E Action Menu
-  --/|Version     : 2.8.2
+  --/|Version     : 2.9.0
   --/|Requires SC : 2.7.15+
   --/|Author      : Kurt Jaegers
   --/|Modified By : Farsidegallery
@@ -82,7 +82,11 @@
   --&showAdvantageModeText|0            --/|Used with SelfHandleAdvantageMode. 0=Button color coding only. 1=Show "Normal", "Advantage", "Disadvantage" text
   --&compactGlobalModDisplay|1          --/|If set to 1, Global X Mods will use more compact display layouts
   --&EnablePerCharacterConfiguration|1  --/|If set to 1, the Action Menu will create attributes on the character sheet the first time it is executed for a character. It will then use these attributes to generate a configuration menu to allow players to enable/disable some features
-  --&UseResistances|1                   --/|If set to 1, damage immunity, vulnerability, and resistance will be included in damage rolls
+  --&UseResistances|1                   --/|If set to 1, damage immunity, vulnerability, and resistance will be included in damage rolls.
+  --/|Resistance calc requires the target character sheet (PC or NPC) to have npc_resistances, npc_immunities, and/or npc_vulnerabilities populated with the relevant damage types.
+  --&FailTableMelee|Damage-Melee-Fail   --/|Full Roll20 rollable table name for melee weapon attack critical fails (natural 1)
+  --&FailTableRanged|Damage-Range-Fail  --/|Full Roll20 rollable table name for ranged weapon attack critical fails (natural 1)
+  --&FailTableSpell|Damage-Spell-Fail   --/|Full Roll20 rollable table name for spell attack critical fails (natural 1)
   --&ConcentrationMarkerName|Concentrating::7409928           --/|If set to a non-blank value, this will be used as the name of the conditional marker to be set on the caster if the cast spell requires concentration
   --&DetectPlayersToken|1               --/|If set to a non-zero value, the script will attempt to resolve a character for a player that runs it without a selected token
   --&ShowRestButtons|1                  --/|If set to 1, rest buttons will be shown in the title bar
@@ -477,9 +481,9 @@
 	--:NPCA_FAIL|
     --+Critical Fail! | You rolled a [$ToHit.Base] on your attack roll.
 	--+|[br]
-	--?"[*R:attack_type]" -inc "Melee"|&table;Melee
-	--?"[*R:attack_type]" -inc "Ranged"|&table;Range
-	--=Fail|[T#Damage-[&table]-Fail]
+	--?"[*R:attack_type]" -inc "Melee"|&failTable;[&FailTableMelee]
+	--?"[*R:attack_type]" -inc "Ranged"|&failTable;[&FailTableRanged]
+	--=Fail|[T#[&failTable]]
     --&failText|[$Fail.tableEntryText]
     --?"[&failText]" -inc "[&obrac][&obrac]"|[
 	--~failText1|string;before;[&obrac][&obrac];[&failText]
@@ -858,11 +862,11 @@
   --^ATTACK_DONE|
   
   --:ATTACK_FAIL|
-   --+Critical Fail! | You rolled a [$ToHit.Base] on your attack roll.
+   --+Critical Fail! | You rolled a [$attackRoll.Base] on your attack roll.
    --+|[br]
-   --?"[&dmgAttrName]" -inc "STR"|&table;Melee
-   --?"[&dmgAttrName]" -inc "DEX"|&table;Range
-   --=Fail|[T#Damage-[&table]-Fail]
+   --?"[&dmgAttrName]" -inc "STR"|&failTable;[&FailTableMelee]
+   --?"[&dmgAttrName]" -inc "DEX"|&failTable;[&FailTableRanged]
+   --=Fail|[T#[&failTable]]
    --&failText|[$Fail.tableEntryText]
    --?"[&failText]" -inc "[&obrac][&obrac]"|[
 	--~failText1|string;before;[&obrac][&obrac];[&failText]
@@ -968,7 +972,7 @@
   --+|[br]
   --&damageRoll|[*R:spelldamage]
   -->CheckDamageModifiersNPC|[*T:character_id];dmgModType1;[*R:spelldamagetype];1;0;0
-  --=Fail|[T#Damage-Spell-Fail]
+  --=Fail|[T#[&FailTableSpell]]
    --&failText|[$Fail.tableEntryText]
    --?"[&failText]" -inc "[&obrac][&obrac]"|[
 	--~failText1|string;before;[&obrac][&obrac];[&failText]
@@ -1147,7 +1151,7 @@
   --+|[br]
   --&damageRoll|[*R:spelldamage]
   -->CheckDamageModifiersNPC|[*T:character_id];dmgModType1;[*R:spelldamagetype];1;0;0
-  --=Fail|[T#Damage-Spell-Fail]
+  --=Fail|[T#[&FailTableSpell]]
    --&failText|[$Fail.tableEntryText]
    --?"[&failText]" -inc "[&obrac][&obrac]"|[
 	--~failText1|string;before;[&obrac][&obrac];[&failText]
