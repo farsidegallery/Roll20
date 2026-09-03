@@ -84,9 +84,10 @@
   --&EnablePerCharacterConfiguration|1  --/|If set to 1, the Action Menu will create attributes on the character sheet the first time it is executed for a character. It will then use these attributes to generate a configuration menu to allow players to enable/disable some features
   --&UseResistances|1                   --/|If set to 1, damage immunity, vulnerability, and resistance will be included in damage rolls.
   --/|Resistance calc requires the target character sheet (PC or NPC) to have npc_resistances, npc_immunities, and/or npc_vulnerabilities populated with the relevant damage types.
-  --&FailTableMelee|Damage-Melee-Fail   --/|Full Roll20 rollable table name for melee weapon attack critical fails (natural 1)
-  --&FailTableRanged|Damage-Range-Fail  --/|Full Roll20 rollable table name for ranged weapon attack critical fails (natural 1)
-  --&FailTableSpell|Damage-Spell-Fail   --/|Full Roll20 rollable table name for spell attack critical fails (natural 1)
+  --&UseFailTables|1                    --/|If set to 1, natural 1 attack rolls use the Roll20 fail tables configured below. Any other value uses a simple critical-fail message only.
+  --&FailTableMelee|Damage-Melee-Fail   --/|Full Roll20 rollable table name for melee weapon attack critical fails (natural 1). Leave blank to skip fail tables for melee attacks.
+  --&FailTableRanged|Damage-Range-Fail  --/|Full Roll20 rollable table name for ranged weapon attack critical fails (natural 1). Leave blank to skip fail tables for ranged attacks.
+  --&FailTableSpell|Damage-Spell-Fail   --/|Full Roll20 rollable table name for spell attack critical fails (natural 1). Leave blank to skip fail tables for spell attacks.
   --&ConcentrationMarkerName|Concentrating::7409928           --/|If set to a non-blank value, this will be used as the name of the conditional marker to be set on the caster if the cast spell requires concentration
   --&DetectPlayersToken|1               --/|If set to a non-zero value, the script will attempt to resolve a character for a player that runs it without a selected token
   --&ShowRestButtons|1                  --/|If set to 1, rest buttons will be shown in the title bar
@@ -480,9 +481,12 @@
 	
 	--:NPCA_FAIL|
     --+Critical Fail! | You rolled a [$ToHit.Base] on your attack roll.
-	--+|[br]
+	--?"[&UseFailTables]" -ne "1"|^NPCA_DONE|
+	--&failTable|
 	--?"[*R:attack_type]" -inc "Melee"|&failTable;[&FailTableMelee]
 	--?"[*R:attack_type]" -inc "Ranged"|&failTable;[&FailTableRanged]
+	--?"[&failTable]" -eq ""|^NPCA_DONE|
+	--+|[br]
 	--=Fail|[T#[&failTable]]
     --&failText|[$Fail.tableEntryText]
     --?"[&failText]" -inc "[&obrac][&obrac]"|[
@@ -863,9 +867,12 @@
   
   --:ATTACK_FAIL|
    --+Critical Fail! | You rolled a [$attackRoll.Base] on your attack roll.
-   --+|[br]
+   --?"[&UseFailTables]" -ne "1"|ATTACK_FAIL_SIMPLE|
+   --&failTable|
    --?"[&dmgAttrName]" -inc "STR"|&failTable;[&FailTableMelee]
    --?"[&dmgAttrName]" -inc "DEX"|&failTable;[&FailTableRanged]
+   --?"[&failTable]" -eq ""|ATTACK_FAIL_SIMPLE|
+   --+|[br]
    --=Fail|[T#[&failTable]]
    --&failText|[$Fail.tableEntryText]
    --?"[&failText]" -inc "[&obrac][&obrac]"|[
@@ -882,7 +889,11 @@
 	--=attackDamage|[&dmgroll]
 	--+Damage: |[$attackDamage] [*R:dmgtype] damage
 	--+|[br]
-	--]|
+   --]|
+  --^ATTACK_DONE|
+
+  --:ATTACK_FAIL_SIMPLE|
+   --+|[br][br]
   --^ATTACK_DONE|
 
   --:ATTACK_DONE|
@@ -969,6 +980,8 @@
   --^PC_CARD_CANTRIP|
   --:CANTRIP_ATTACK_FAIL|
   --+Critical Fail! | You rolled a [$attackRoll.Base] on your attack roll.
+  --?"[&UseFailTables]" -ne "1"|CANTRIP_ATTACK_FAIL_SIMPLE|
+  --?"[&FailTableSpell]" -eq ""|CANTRIP_ATTACK_FAIL_SIMPLE|
   --+|[br]
   --&damageRoll|[*R:spelldamage]
   -->CheckDamageModifiersNPC|[*T:character_id];dmgModType1;[*R:spelldamagetype];1;0;0
@@ -989,6 +1002,9 @@
 	--+Damage: |[$Damage]
 	--]|
   --+|[br]
+  --^PC_CARD_CANTRIP|
+  --:CANTRIP_ATTACK_FAIL_SIMPLE|
+  --+|[br][br]
   --^PC_CARD_CANTRIP|
   --:PC_CARD_CANTRIP|
   --#title|[&cantrip_name]
@@ -1148,6 +1164,8 @@
 
   --:SPELL_ATTACK_FAIL|
   --+Critical Fail! | You rolled a [$attackRoll.Base] on your attack roll.
+  --?"[&UseFailTables]" -ne "1"|SPELL_ATTACK_FAIL_SIMPLE|
+  --?"[&FailTableSpell]" -eq ""|SPELL_ATTACK_FAIL_SIMPLE|
   --+|[br]
   --&damageRoll|[*R:spelldamage]
   -->CheckDamageModifiersNPC|[*T:character_id];dmgModType1;[*R:spelldamagetype];1;0;0
@@ -1167,6 +1185,10 @@
 	--+Damage: |[$Damage]
 	--]|
   --+|[br]
+  --^PC_CARD_SPELL|
+  
+  --:SPELL_ATTACK_FAIL_SIMPLE|
+  --+|[br][br]
   --^PC_CARD_SPELL|
   
   --:SPELL_ATTACK_MISS|
