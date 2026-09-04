@@ -1,117 +1,200 @@
-!script{{
-  +++5Elib;snlib;Farsidelib+++	
- 
+!script {{
+  +++5Elib;snlib;Farsidelib+++
+
   --#sourceToken|@{selected|token_id}
-  --#reentrant|My Cool Script @{selected|character_id}
+  --&SavedSourceToken|@{selected|token_id}
+  --&CasterToken|[*S:t-id]
+  --#reentrant|Dimension Door @{selected|character_id}
   --#whisper|self,gm
 
   --/|Script Name : Dimension Door
-  --/|Version     : 1.1.0
+  --/|Version     : 2.0.0
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
-  --/|Author      : Farsidegallery
-  --/|  
-  --/|  Script checks spell slot availability, summons teleport token, and deducts a spell slot. 
+  --/|Author      : Farsidegallery (cast); Arak Stoneboulder (teleport flow)
   --/|
-  --/|
-  --/|
+  --/|  Move the Spell Token to your destination, then target it to teleport.
+  --/|  Optional companion is chosen before placement; both arrive at the target point.
+
   --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
-      
-   --&SpellName|Dimension Door
-   --&MinimumSpellLevel|4
-   
-   --/|Use ScriptCards (1) or SpawnDefaultToken (2) to place the Charm Person Character on the VTT?
-   --&SpawnScript|1
-   
-   --/| Place the name and URL of your spell target token here.
-   --&DoorToken|Spell Token
-   --&URLlink|https://files.d20.io/images/469753332/ew1SU1DcQK4eborJlOqNQw/original.png
-   
+
+  --&SpellName|Dimension Door
+  --&MinimumSpellLevel|4
+  --&SpellTargetToken|Spell Token
+  --&dot|.
+
+  --/| Image for the placement Spell Token.
+  --&URLlink|https://files.d20.io/images/469753332/ew1SU1DcQK4eborJlOqNQw/original.png
+
   --/| ____________________ End Global User Variables ___________________________________________________________________________________________
 
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+
+  --^Cast|
+
+  --/| ==================== CAST ===================================================================================
+
+  --:Cast|
   --#title|[&SpellName]
   --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
   --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
   -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
   --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
-    
+
   --#leftsub|[*R:spellcastingtime]
   --#rightsub|[*R:spellrange]
   --#emoteText|[*S:character_name] Casts Dimension Door.
-  -->GetCharID|[&DoorToken];DoorID
+  --&desc|[*R:spelldescription]
+  -->GetCharID|[&SpellTargetToken];DoorID
   --=CompanionFlag|
-  
+
   -->far_FIND_CLASS_LEVEL|[*S:character_id];Sorcerer;SLevel
-  --?"X[&SLevel]" -eq "X0"|ChooseLevel
+  --?"X[&SLevel]" -eq "X0"|SkipSorcerer
   -->far_FindFeat|[*S:character_id];"Metamagic: Twinned Spell";TwinFeatFlag
   -->far_FindFeat|[*S:character_id];"Metamagic: Empowered Spell";EmpowerFeatFlag
   -->far_FindFeat|[*S:character_id];"Wild Magic Surge";WildFeatFlag
-  
-  -->SetAbility|
-  
+
+  --:SkipSorcerer|
+
   --+|[b][c]Are you taking a companion with you? (You will target the companion after clicking yes.)[/c][/b]
   --+|[c][rbutton]Yes::CompanionIdentity;&#64;{target|token_id}[/rbutton][rbutton]No::StoreTID[/rbutton][/c]
   --X|
-  
+
   --:CompanionIdentity|
-   --&CompanionTID|[&reentryval]
-   --=CompanionFlag|1
-   --=CompTop|[*[&CompanionTID]:t-top]
-   --=CompLeft|[*[&CompanionTID]:t-left]
-   -->FindOffset|
-  
+  --&CompanionTID|[&reentryval]
+  --=CompanionFlag|1
+  --=CompTop|[*[&CompanionTID]:t-top]
+  --=CompLeft|[*[&CompanionTID]:t-left]
+  -->FindOffset|
+
   --:StoreTID|
-   --?[$CompanionFlag] -eq 1|&TokenID;[*S:t-id].[&CompanionTID] |&TokenID;[*S:t-id]
-   --!a:[&DoorID]|!caster_ID:[&TokenID]
-  
-  --/|SPAWN Dimension Door TOKEN
-  --:SpawnToken|
-   --?[&SpawnScript] -eq 2|[
-    --@forselected+|Spawn _name|[&DoorToken] _qty|1 _offset|0,0 _force|yes _tokenProps|name:Dimension Door,showname:true,showplayers_name:true _order|toFront _fx|nova-magic _expand|15,30 {^&select @{selected|token_id}}
-    --]|
-  
-   --?[&SpawnScript] -eq 1|[
-    --!ot:NewTID|name:"[&SpellName]"|_pageid:[*S:t-_pageid]|left:[=[*S:t-left]+70]|top:[*S:t-top]|width:[*S:t-width]|height:[*S:t-height]|imgsrc:"[&URLlink]"|bar1_value:1|represents:"[&DoorID]"|showname:0|t-aura1_radius:500|t-aura1_color:#d0e0e3
-    --z:graphic:[&NewTID]|tofront
-    --]|
-  
+  --#sourceToken|[&CasterToken]
+  --?[$CompanionFlag] -eq 1|&TokenID;[*S:t-id].[&CompanionTID] |&TokenID;[*S:t-id]
+  --&StoredTokenID|[&TokenID]
+  --!a:[*S:character_id]|!DD_tokenID:[&TokenID]
+  --!a:[*S:character_id]|!DD_casterToken:[&CasterToken]
+  -->CAST_SPELL|
+  --X|
+
+  --/| ____________________ Procedures_______________________________________________________________________________________
+
+  --:CAST_SPELL|
+  --#sourceToken|[&CasterToken]
+  --+|Move Spell Token to your destination, then target it to complete the teleport.
+  --!ot:NewTID|name:"[&SpellTargetToken]"|_pageid:[*S:t-_pageid]|left:[=[*S:t-left]+70]|top:[*S:t-top]|width:[*S:t-width]|height:[*S:t-height]|imgsrc:"[&URLlink]"|bar1_value:1|represents:"[&SpellTargetToken]"|showname:0|t-aura1_radius:500|t-aura1_color:#d0e0e3
+  --&PlacementTID|[&NewTID]
+  --z:graphic:[&NewTID]|tofront
+  -->SetAbility|
+  --+Target: |[rbutton]Target the Spell Token.::SetTarget;[&TB]target|token_id}[/rbutton]
+  --X|
+
+  --:SetTarget|
+  --#sourceToken|[&CasterToken]
+  --?"X[&CasterToken]" -eq "X" -or "[&CasterToken]" -eq ""|&CasterToken;[*S:DD_casterToken]
+  --?"X[&reentryval]" -eq "X"|>far_FatalError;Wrong Target;ERROR;Click Target the Spell Token, then select the placement token.
+  --#targettoken|[&reentryval]
+  --&TargetName|[*T:character_name]
+  --?"[&TargetName]" -eq "[&SpellTargetToken]"|Teleport
+  --?"X[&PlacementTID]" -ne "X" -and "[&PlacementTID]" -ne "" -and "[&reentryval]" -eq "[&PlacementTID]"|Teleport
+  -->far_FatalError;Wrong Target;ERROR;Target the spell placement token.
+  --<|
+
+  --:Teleport|
+  --#sourceToken|[&CasterToken]
+  --?"X[&CasterToken]" -eq "X" -or "[&CasterToken]" -eq ""|&CasterToken;[*S:DD_casterToken]
+  --&PlaceTop|[*T:t-top]
+  --&PlaceLeft|[*T:t-left]
+  --&DoorTID|[*T:t-id]
+
+  --&TokenID|[&StoredTokenID]
+  --?"X[&TokenID]" -eq "X" -or "[&TokenID]" -eq ""|&TokenID;[*S:DD_tokenID]
+  --?"X[&TokenID]" -eq "X" -or "[&TokenID]" -eq ""|>far_FatalError;Teleport Failed;ERROR;Could not resolve stored caster token. Cast the spell again.
+  --=OffsetTop|[*S:DD_offsetTop]
+  --=OffsetLeft|[*S:DD_offsetLeft]
+  --?"X[$OffsetTop]" -eq "X"|=OffsetTop;[&StoredOffsetTop]
+  --?"X[$OffsetLeft]" -eq "X"|=OffsetLeft;[&StoredOffsetLeft]
+  --?"[&TokenID]" -inc "[&dot]"|[
+  --=CompanionFlag|1
+  --~CasterTID|string;before;[&dot];[&TokenID]
+  --~CompanionTID|string;after;[&dot];[&TokenID]
+  --]|[
+  --&CasterTID|[&TokenID]
+  --]|
+  --!a:[*S:character_id]|!DD_tokenID:**
+  --!a:[*S:character_id]|!DD_casterToken:**
+  --!a:[*S:character_id]|!DD_offsetTop:**
+  --!a:[*S:character_id]|!DD_offsetLeft:**
+
+  --vtoken|[&CasterTID] burst-magic
+  --?[$CompanionFlag] -eq 1|[
+  --vtoken|[&CompanionTID] burst-magic
+  --]|
+  --vtoken|[&DoorTID] burst-magic
+
+  --!t:[&CasterTID]|layer:gmlayer
+  --?[$CompanionFlag] -eq 1|[
+  --!t:[&CompanionTID]|layer:gmlayer
+  --]|
+  --!t:[&CasterTID]|top:[&PlaceTop]|left:[&PlaceLeft]
+  --?[$CompanionFlag] -eq 1|[
+  --!t:[&CompanionTID]|top:[=[&PlaceTop]-[$OffsetTop]]|left:[=[&PlaceLeft]-[$OffsetLeft]]
+  --]|
+
+  --~|object;token;delete;[&DoorTID]
+
+  --w1:!t:[&CasterTID]|layer:objects
+  --vtoken|[&CasterTID] burst-magic
+  --?[$CompanionFlag] -eq 1|[
+  --w1:!t:[&CompanionTID]|layer:objects
+  --vtoken|[&CompanionTID] burst-magic
+  --]|
+
   --#whisper|
   --?[$CompanionFlag] -eq 1|[
-   --+Spell! |[*S:character_name] casts Dimension Door on [*[&CompanionTID]:character_name] and [*S:character_name]!
-   --+[br]|
-   --]|[
-   --+Spell! |[*S:character_name] casts Dimension Door!
-   --+[br]|
-   --]|
-  
+  --+Spell! |[*S:character_name] casts Dimension Door on [*[&CompanionTID]:character_name] and [*S:character_name]!
+  --+[br]|
+  --]|[
+  --+Spell! |[*S:character_name] casts Dimension Door!
+  --+[br]|
+  --]|
+
   --?"X[$WildFeatFlag]" -eq "X1" -and [&MinimumSpellLevel] -ge 1|>far_WildTable
 
-  --+Desc: |[*R:spelldescription]
+  --+Desc: |[&desc]
   --+[br]|
   -->far_DeductSpellSlot|[*S:t-id];[&MinimumSpellLevel]
-  --X|	
-  
-  --/| ____________________ Procedures_______________________________________________________________________________________
-  
+  --X|
+
   --:GetCharID|CharacterName;StringVariableForCharID
-   --~|array;objects:character;SpiritCharArr;[%1%]
-   --?[@SpiritCharArr(length)] -ne 1|>far_LogFatalError;Could not find character named [%1%]
-   --&[%2%]|[@SpiritCharArr(0)]
-   --<|
-  
+  --~|array;objects:character;SpiritCharArr;[%1%]
+  --?[@SpiritCharArr(length)] -ne 1|>far_LogFatalError;Could not find character named [%1%]
+  --&[%2%]|[@SpiritCharArr(0)]
+  --<|
+
   --:FindOffset|
-   --=CasterTop|[*S:t-top]
-   --=CasterLeft|[*S:t-left]
-   --=OffsetTop|[$CasterTop]-[$CompTop]
-   --=OffsetLeft|[$CasterLeft]-[$CompLeft]
-   --!a:[&DoorID]|!OffsetTop:[$OffsetTop]
-   --!a:[&DoorID]|!OffsetLeft:[$OffsetLeft]
-   --<|
-  
+  --#sourceToken|[&CasterToken]
+  --=CasterTop|[*S:t-top]
+  --=CasterLeft|[*S:t-left]
+  --=OffsetTop|[$CasterTop]-[$CompTop]
+  --=OffsetLeft|[$CasterLeft]-[$CompLeft]
+  --&StoredOffsetTop|[$OffsetTop]
+  --&StoredOffsetLeft|[$OffsetLeft]
+  --!a:[*S:character_id]|!DD_offsetTop:[$OffsetTop]
+  --!a:[*S:character_id]|!DD_offsetLeft:[$OffsetLeft]
+  --<|
+
   --:SetAbility|
-   --~|array;objects:ability;AbilityArr;;[&DoorID]
-   --!ability:[@AbilityArr(0)]|istokenaction:True
-	--!ability:[@AbilityArr(1)]|istokenaction:False
-	--!ability:[@AbilityArr(2)]|istokenaction:False
-	--!ability:[@AbilityArr(3)]|istokenaction:False
-   --<|
+  --~|array;objects:ability;AbilityArr;;[&DoorID]
+  --!ability:[@AbilityArr(0)]|istokenaction:False
+  --!ability:[@AbilityArr(1)]|istokenaction:False
+  --!ability:[@AbilityArr(2)]|istokenaction:False
+  --!ability:[@AbilityArr(3)]|istokenaction:False
+  --<|
+
 }}
