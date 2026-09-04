@@ -1,6 +1,6 @@
 !script {{
   --/|Script Name : 5E Action Menu
-  --/|Version     : 2.9.0
+  --/|Version     : 2.9.1
   --/|Requires SC : 2.7.15+
   --/|Author      : Kurt Jaegers
   --/|Modified By : Farsidegallery
@@ -712,8 +712,6 @@
   --&attack_name|[&attack_name(replace,-!rpar!-,))]
   --#targettoken|[&attack_target]
   -->DETERMINE_NPC_STATUS_MODIFIERS|[*T:t-id];T
-  --/\|Emote in PC Attack|[*S:t-name] uses [&attack_name] against [*T:t-name]
-  --#emotetext|[*S:t-name] uses [&attack_name] against [*T:t-name]
   -->Find_Active_Global_Attack_Modifiers|[*S:character_id];PC_GAM
   -->Find_Active_Global_Damage_Modifiers|[*S:character_id];PC_GDM
   -->Find_Active_Global_Damage_Modifiers|[*S:character_id];PC_GDM_CRIT;1
@@ -726,6 +724,14 @@
    --+Attack Not Found|The attack "[&attack_name]" could not be loaded from [*S:character_name]'s sheet.
    --X|
   --]|
+  --&attack_name|[*R:atkname]
+  --&attack_name|[&attack_name(replace,;,-!-!-)]
+  --&attack_name|[&attack_name(replace,(,-!lpar!-)]
+  --&attack_name|[&attack_name(replace,),-!rpar!-)]
+  --&emoteActionName|[*R:atkname]
+  --~emoteActionName|string;replace;(;[;[&emoteActionName]
+  --~emoteActionName|string;replace;);];[&emoteActionName]
+  --#emotetext|[*S:t-name] uses [&emoteActionName] against [*T:t-name]
   --?[*R:attack_flag] -ne 1|
   --?[&requireAmmo] -eq 0|NoAmmoNeededPC_Attack
   --?"[*R:ammo]" -eq ""|NoAmmoNeededPC_Attack
@@ -869,8 +875,10 @@
    --+Critical Fail! | You rolled a [$attackRoll.Base] on your attack roll.
    --?"[&UseFailTables]" -ne "1"|ATTACK_FAIL_SIMPLE|
    --&failTable|
-   --?"[&dmgAttrName]" -inc "STR"|&failTable;[&FailTableMelee]
-   --?"[&dmgAttrName]" -inc "DEX"|&failTable;[&FailTableRanged]
+   --?"[*R:attack_type]" -inc "Melee"|&failTable;[&FailTableMelee]
+   --?"[*R:attack_type]" -inc "Ranged"|&failTable;[&FailTableRanged]
+   --?"[&failTable]" -eq "" -and "[*R:atkrange]" -inc "/"|&failTable;[&FailTableRanged]
+   --?"[&failTable]" -eq ""|&failTable;[&FailTableMelee]
    --?"[&failTable]" -eq ""|ATTACK_FAIL_SIMPLE|
    --+|[br]
    --=Fail|[T#[&failTable]]
@@ -1451,6 +1459,7 @@
   --<|  
 
   --:Get_Ability_Modifier|attribute_string;returnnumericvalue;returnnamestring
+  --?"[%1%]" -eq ""|<|
   --=[%2%]|
   --&[%3%]|
   --?"[%1%]" -eq "strength_mod"|=[%2%];[*S:strength_mod]
