@@ -1,10 +1,10 @@
 ﻿// Modified SmartAoE.js — unofficial Farsidegallery modifications on SmartAoE v0.30
 // Not authored or endorsed by djmoorehead. See "SmartAOE Changelog for DJMooreHead.md".
 // Source: https://github.com/djmoorehead/SmartAoE (v0.30)
-// Changes: TokenMod damage (Concentration trigger), control-token layering, cone face origin, map-layer AoE paths
+// Changes: TokenMod damage (Concentration trigger), control-token layering, cone face/corner origin, objects-layer AoE z-order, spawn/aim deferral
 const SmartAoE = (() => {
  const scriptName = "SmartAoE";
- const version = '0.30.1-farside';
+ const version = '0.30.2-farside';
  const schemaVersion = '0.1';
  
  var cardParameters = {};
@@ -118,13 +118,8 @@ const SmartAoE = (() => {
  return true;
  };
 
- // AoE control tokens live on objects; default aoelayer is objects too, which buries the token.
- // Render those paths on map (below objects). Explicit map/gm layers are unchanged.
- const getAoEPathLayer = function(requestedLayer) {
- return requestedLayer === 'objects' ? 'map' : requestedLayer;
- };
-
- // Roll20 API: serial toBack() with delay is reliable; toFront() on graphics often is not.
+ // Default aoelayer is objects (token layer). Paths go toBack; control tokens go toFront via TokenMod.
+ // Keeps AoE above full-map map-layer art while control tokens stay draggable on top of the squares.
  const sendPathsToBackSerial = function(pathIDs, delayMs, onComplete) {
  const paths = (pathIDs || []).map(id => getObj('path', id)).filter(p => p);
  if (paths.length === 0) {
@@ -174,12 +169,26 @@ const SmartAoE = (() => {
  setTimeout(() => applyAoELayering(link), 400);
  };
 
- const layerInitialAoESpawn = function(controlTok, originTok, path) {
- if (path) { toBack(path); }
+ const layerInitialControlTokens = function(controlTok, originTok) {
  if (originTok && controlTok && controlTok.get('_id') !== originTok.get('_id')) {
  toBack(originTok);
  }
  bringControlTokensForward({ controlTokID: controlTok && controlTok.get('_id'), originTokID: originTok && originTok.get('_id') });
+ };
+
+ // Separate control token still on the caster center — wait until the user aims it.
+ const shouldDeferAoEUntilAimed = function(link) {
+ if (!link || link.controlTokID === link.originTokID) {
+ return false;
+ }
+ let oTok = getObj('graphic', link.originTokID);
+ let cTok = getObj('graphic', link.controlTokID);
+ if (!oTok || !cTok) {
+ return false;
+ }
+ let dx = cTok.get('left') - oTok.get('left');
+ let dy = cTok.get('top') - oTok.get('top');
+ return Math.abs(dx) < 1 && Math.abs(dy) < 1;
  };
  //---------------------------------------------------------------------------------------
  //---------------------------------------------------------------------------------------
@@ -952,7 +961,11 @@ const SmartAoE = (() => {
  //const makeAoELink = function(aoeType, aoeColor, radius, originType, originPt, minGridArea, minTokArea, originTokID, controlTokID, pathIDs, pageID, fxType, saveFormula, saveName, DC) {
  //log(originTokID + ',' + controlTokID + ',' + pathIDs + ',' + pageID);
  let pathArr = [];
+ if (Array.isArray(pathIDs)) {
+ pathArr = pathIDs.slice();
+ } else if (pathIDs) {
  pathArr.push(pathIDs);
+ }
  let link = {
  //tokName: state[scriptName].links.length.toString(),
  controlTokID: controlTokID,
@@ -1502,14 +1515,13 @@ const SmartAoE = (() => {
  const createPath = function(pathstring, pageID, layer, fillColor, strokeColor, strokeWidth, height, width, left, top) {
  //let promise = new Promise(resolve => {
  //log('about to create path');
- const pathLayer = getAoEPathLayer(layer);
 
  let path = createObj("path", { 
  pageid: pageID,
  path: pathstring,
  fill: fillColor,
  stroke: strokeColor,
- layer: pathLayer,
+ layer: layer,
  stroke_width: strokeWidth,
  width: width,
  height: height,
@@ -3460,6 +3472,44 @@ const SmartAoE = (() => {
  return new pt(oPt.x, oPt.y + (dy >= 0 ? oHeight / 2 : -oHeight / 2));
  };
 
+ // 8-way alignment (N/NE/E/SE/S/SW/W/NW): angle within tolerance of a 45deg spoke.
+ const isControlAlignedFromOriginCenter = function(oPt, cPt, toleranceDeg) {
+ toleranceDeg = toleranceDeg || 15;
+ let angle = getAngle2ControlToken(oPt, cPt);
+ if (angle === undefined || isNaN(angle)) {
+ return false;
+ }
+ angle = normalizeTo360deg(angle);
+ for (let i = 0; i < 8; i++) {
+ let spoke = i * 45;
+ let diff = Math.abs(angle - spoke);
+ if (diff > 180) { diff = 360 - diff; }
+ if (diff <= toleranceDeg) {
+ return true;
+ }
+ }
+ return false;
+ };
+
+ // When 8-way aligned: cardinals attach at face center, diagonals at token corner.
+ const getAlignedFaceOrCornerOriginPt = function(oPt, oWidth, oHeight, cPt) {
+ let angle = normalizeTo360deg(getAngle2ControlToken(oPt, cPt));
+ let dir = Math.round(angle / 45) % 8;
+ let hw = oWidth / 2;
+ let hh = oHeight / 2;
+ switch (dir) {
+ case 0: return new pt(oPt.x, oPt.y - hh);
+ case 1: return new pt(oPt.x + hw, oPt.y - hh);
+ case 2: return new pt(oPt.x + hw, oPt.y);
+ case 3: return new pt(oPt.x + hw, oPt.y + hh);
+ case 4: return new pt(oPt.x, oPt.y + hh);
+ case 5: return new pt(oPt.x - hw, oPt.y + hh);
+ case 6: return new pt(oPt.x - hw, oPt.y);
+ case 7: return new pt(oPt.x - hw, oPt.y - hh);
+ default: return getFaceCenterOriginPt(oPt, oWidth, oHeight, cPt);
+ }
+ };
+
  //The following finds the intersection of the control line with the origin token (always thru center of token)
  // then finds the closest possiblePt (corners or faces) to that intersection pt 
  const getNearestOriginPt = function(cPt, minX, minY, maxX, maxY, possiblePts) {
@@ -3554,6 +3604,12 @@ const SmartAoE = (() => {
  
  //allPts.push({x: oPt.x-width/2, y: j});
  //allPts.push({x: oPt.x+width/2, y: j});
+ }
+ if (allowFaces) {
+ pushUniquePtToArray(allPts, {x: oPt.x - width / 2, y: oPt.y - height / 2});
+ pushUniquePtToArray(allPts, {x: oPt.x + width / 2, y: oPt.y - height / 2});
+ pushUniquePtToArray(allPts, {x: oPt.x + width / 2, y: oPt.y + height / 2});
+ pushUniquePtToArray(allPts, {x: oPt.x - width / 2, y: oPt.y + height / 2});
  }
  //sort the points clockwise
  allPts = sortPtsClockwise(allPts);
@@ -3713,9 +3769,20 @@ const SmartAoE = (() => {
  oX = originPtPx.x;
  oY = originPtPx.y;
  if (aoeLinks.links[a].originType.match(/face/i)) {
+ if (isControlAlignedFromOriginCenter(originPtPx, controlPtPx)) {
+ originPtPx = getAlignedFaceOrCornerOriginPt(originPtPx, oWidth, oHeight, controlPtPx);
+ let alignedIndex = getIndexFromPtArray(possibleOrigins, originPtPx);
+ if (alignedIndex >= 0) {
+ aoeLinks.links[a].originIndex = alignedIndex;
+ } else {
+ aoeLinks.links[a].originPts = [originPtPx];
+ aoeLinks.links[a].originIndex = 0;
+ }
+ } else {
  originPtPx = getFaceCenterOriginPt(originPtPx, oWidth, oHeight, controlPtPx);
  aoeLinks.links[a].originPts = [originPtPx];
  aoeLinks.links[a].originIndex = 0;
+ }
  } else {
  originPtPx = getNearestOriginPt(controlPtPx, originPtPx.x-oWidth/2, originPtPx.y-oHeight/2, originPtPx.x+oWidth/2, originPtPx.y+oHeight/2, possibleOrigins);
  aoeLinks.links[a].originIndex = getIndexFromPtArray(possibleOrigins, originPtPx);
@@ -3934,6 +4001,14 @@ const SmartAoE = (() => {
  }
  
  if (aoeLinks && obj) {
+ let deferAoE = aoeLinks.links.some(link => shouldDeferAoEUntilAimed(link));
+ if (deferAoE) {
+ aoeLinks.links.forEach(link => {
+ deleteLinkedPaths(link.pathIDs);
+ link.pathIDs = [];
+ });
+ return;
+ }
  //optional sound fx during move
  let trackName = aoeLinks.links[0].moveSound;
  if (trackName !== '') {
@@ -5949,24 +6024,13 @@ const SmartAoE = (() => {
  if (turnName !== '') {
  modifyTurnTracker('add', turnName, turnValue, turnFormula, oTok.get("_id"), pageID, linkTurnToToken);
  }
- 
- let pathstring = buildSquarePath(35*pageGridIncrement);
- let path = createPath(pathstring, pageID, aoeLayer, aoeColor, gridColor, 2, 70*pageGridIncrement, 70*pageGridIncrement, controlTok.get("left"), controlTok.get("top"));
- 
- if (path) {
- layerInitialAoESpawn(controlTok, oTok, path);
- 
+
+ layerInitialControlTokens(controlTok, oTok);
+
  //create a link between the source and control tokens (stored in state object)
  let oPt = new pt(oTok.get('left'), oTok.get('top'))
- 
- let newLink = makeAoELink(controlTokName, controlTok.get("_id"), aoeType, coneWidth, aoeFloat, instant, forceIntersection, aoeColor, aoeOutlineColor, gridColor, radius, wallWidth, originType, oPt, minGridArea, minTokArea, oTok.get('_id'), path.get('_id'), controlTok.get('_pageid'), fxType, saveFormula, saveName, ignoreAttr, ignoreVal, DC, noSave, damageBar, autoApply, damageFormula1, damageFormula2, damageBase1, damageBase2, damageType1, damageType2, rollDamage1, rollDamage2, damageSaveRule, resistanceRule, vulnerableRule, immunityRule, resistAttrs, vulnerableAttrs, immunityAttrs, conditionPass, conditionFail, zeroHPmarker, removeAtZero, hideNames, spawnSound, moveSound, triggerSound, deleteSound, cardParameters, whisperString, whisperAll, whisperResults, outlineOnly, aoeLayer, casterCondition, casterConditionOnFail, affectsCaster);
- 
- //Immediately trigger a "change:graphic" event on the origin/controlTok to generate the AoE
- smartAoE_handleTokenChange (controlTok,controlTok)
- } else {
- sendChat(scriptName, `${whisperString} Unknown error. createObj failed. AoE path not created.`);
- return;
- }
+
+ let newLink = makeAoELink(controlTokName, controlTok.get("_id"), aoeType, coneWidth, aoeFloat, instant, forceIntersection, aoeColor, aoeOutlineColor, gridColor, radius, wallWidth, originType, oPt, minGridArea, minTokArea, oTok.get('_id'), [], controlTok.get('_pageid'), fxType, saveFormula, saveName, ignoreAttr, ignoreVal, DC, noSave, damageBar, autoApply, damageFormula1, damageFormula2, damageBase1, damageBase2, damageType1, damageType2, rollDamage1, rollDamage2, damageSaveRule, resistanceRule, vulnerableRule, immunityRule, resistAttrs, vulnerableAttrs, immunityAttrs, conditionPass, conditionFail, zeroHPmarker, removeAtZero, hideNames, spawnSound, moveSound, triggerSound, deleteSound, cardParameters, whisperString, whisperAll, whisperResults, outlineOnly, aoeLayer, casterCondition, casterConditionOnFail, affectsCaster);
  } else {
  let spawnObj = getCharacterFromName(controlTokName);
  //log(spawnObj);
@@ -5994,29 +6058,21 @@ const SmartAoE = (() => {
  if (turnName !== '') {
  modifyTurnTracker('add', turnName, turnValue, turnFormula, controlToks[0].get("_id"), pageID, linkTurnToToken);
  }
- 
- let pathstring = buildSquarePath(35*pageGridIncrement);
- let path = createPath(pathstring, pageID, aoeLayer, aoeColor, gridColor, 2, 70*pageGridIncrement, 70*pageGridIncrement, controlToks[0].get("left"), controlToks[0].get("top"));
- 
- if (path) {
- layerInitialAoESpawn(controlToks[0], oTok, path);
+
+ layerInitialControlTokens(controlToks[0], oTok);
  if (controlToks.length > 1) {
  bringControlTokensForward({ controlTokID: controlToks[0].get('_id'), originTokID: controlToks[1].get('_id') });
  }
- 
+
  if (controlToks.length > 1) {
  //create a link between the source and control tokens (stored in state object).
  //in this case, the origin token is now the 2nd "controlTok" spawned
  let oPt = new pt(controlToks[1].get('left'), controlToks[1].get('top'))
- let newLink = makeAoELink(controlTokName, controlToks[0].get("_id"), aoeType, coneWidth, aoeFloat, instant, forceIntersection, aoeColor, aoeOutlineColor, gridColor, radius, wallWidth, originType, oPt, minGridArea, minTokArea, controlToks[1].get('_id'), path.get('_id'), controlToks[0].get('_pageid'), fxType, saveFormula, saveName, ignoreAttr, ignoreVal, DC, noSave, damageBar, autoApply, damageFormula1, damageFormula2, damageBase1, damageBase2, damageType1, damageType2, rollDamage1, rollDamage2, damageSaveRule, resistanceRule, vulnerableRule, immunityRule, resistAttrs, vulnerableAttrs, immunityAttrs, conditionPass, conditionFail, zeroHPmarker, removeAtZero, hideNames, spawnSound, moveSound, triggerSound, deleteSound, cardParameters, whisperString, whisperAll, whisperResults, outlineOnly, aoeLayer, casterCondition, casterConditionOnFail, affectsCaster);
+ let newLink = makeAoELink(controlTokName, controlToks[0].get("_id"), aoeType, coneWidth, aoeFloat, instant, forceIntersection, aoeColor, aoeOutlineColor, gridColor, radius, wallWidth, originType, oPt, minGridArea, minTokArea, controlToks[1].get('_id'), [], controlToks[0].get('_pageid'), fxType, saveFormula, saveName, ignoreAttr, ignoreVal, DC, noSave, damageBar, autoApply, damageFormula1, damageFormula2, damageBase1, damageBase2, damageType1, damageType2, rollDamage1, rollDamage2, damageSaveRule, resistanceRule, vulnerableRule, immunityRule, resistAttrs, vulnerableAttrs, immunityAttrs, conditionPass, conditionFail, zeroHPmarker, removeAtZero, hideNames, spawnSound, moveSound, triggerSound, deleteSound, cardParameters, whisperString, whisperAll, whisperResults, outlineOnly, aoeLayer, casterCondition, casterConditionOnFail, affectsCaster);
  } else {
  //create a link between the source and control tokens (stored in state object)
  let oPt = new pt(oTok.get('left'), oTok.get('top'))
- let newLink = makeAoELink(controlTokName, controlToks[0].get("_id"), aoeType, coneWidth, aoeFloat, instant, forceIntersection, aoeColor, aoeOutlineColor, gridColor, radius, wallWidth, originType, oPt, minGridArea, minTokArea, oTok.get('_id'), path.get('_id'), controlToks[0].get('_pageid'), fxType, saveFormula, saveName, ignoreAttr, ignoreVal, DC, noSave, damageBar, autoApply, damageFormula1, damageFormula2, damageBase1, damageBase2, damageType1, damageType2, rollDamage1, rollDamage2, damageSaveRule, resistanceRule, vulnerableRule, immunityRule, resistAttrs, vulnerableAttrs, immunityAttrs, conditionPass, conditionFail, zeroHPmarker, removeAtZero, hideNames, spawnSound, moveSound, triggerSound, deleteSound, cardParameters, whisperString, whisperAll, whisperResults, outlineOnly, aoeLayer, casterCondition, casterConditionOnFail, affectsCaster);
- }
- } else {
- sendChat(scriptName, `${whisperString} Unknown error. createObj failed. AoE path not created.`);
- return;
+ let newLink = makeAoELink(controlTokName, controlToks[0].get("_id"), aoeType, coneWidth, aoeFloat, instant, forceIntersection, aoeColor, aoeOutlineColor, gridColor, radius, wallWidth, originType, oPt, minGridArea, minTokArea, oTok.get('_id'), [], controlToks[0].get('_pageid'), fxType, saveFormula, saveName, ignoreAttr, ignoreVal, DC, noSave, damageBar, autoApply, damageFormula1, damageFormula2, damageBase1, damageBase2, damageType1, damageType2, rollDamage1, rollDamage2, damageSaveRule, resistanceRule, vulnerableRule, immunityRule, resistAttrs, vulnerableAttrs, immunityAttrs, conditionPass, conditionFail, zeroHPmarker, removeAtZero, hideNames, spawnSound, moveSound, triggerSound, deleteSound, cardParameters, whisperString, whisperAll, whisperResults, outlineOnly, aoeLayer, casterCondition, casterConditionOnFail, affectsCaster);
  }
  });
  }
