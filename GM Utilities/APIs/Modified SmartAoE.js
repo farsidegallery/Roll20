@@ -4,7 +4,7 @@
 // Changes: TokenMod damage (Concentration trigger), control-token layering, cone face/corner origin, objects-layer AoE z-order, spawn/aim deferral
 const SmartAoE = (() => {
  const scriptName = "SmartAoE";
- const version = '0.30.2-farside';
+ const version = '0.30.3-farside';
  const schemaVersion = '0.1';
  
  var cardParameters = {};
@@ -120,16 +120,17 @@ const SmartAoE = (() => {
 
  // Default aoelayer is objects (token layer). Paths go toBack; control tokens go toFront via TokenMod.
  // Keeps AoE above full-map map-layer art while control tokens stay draggable on top of the squares.
+ // Roll20 often needs staggered toBack(); one batch is not enough for reliable z-order.
  const sendPathsToBackSerial = function(pathIDs, delayMs, onComplete) {
  const paths = (pathIDs || []).map(id => getObj('path', id)).filter(p => p);
  if (paths.length === 0) {
- if (onComplete) onComplete();
+ if (onComplete) { onComplete(); }
  return;
  }
  let index = 0;
  const step = () => {
  if (index >= paths.length) {
- if (onComplete) onComplete();
+ if (onComplete) { onComplete(); }
  return;
  }
  toBack(paths[index]);
@@ -2322,6 +2323,32 @@ const SmartAoE = (() => {
  });
  return arr[idx];
  }
+
+ // Grid cell centers sit at 35 + n*70 (× pageGridIncrement). Avoid building the full-page center array.
+ const getGridCellStep = function(pageGridIncrement) {
+ return 70 * pageGridIncrement;
+ };
+
+ const snapCoordToGridCenterMin = function(coord, pageGridIncrement) {
+ const halfCell = 35 * pageGridIncrement;
+ const cellStep = getGridCellStep(pageGridIncrement);
+ return Math.floor((coord - halfCell) / cellStep) * cellStep + halfCell;
+ };
+
+ const snapCoordToGridCenterMax = function(coord, pageGridIncrement) {
+ const halfCell = 35 * pageGridIncrement;
+ const cellStep = getGridCellStep(pageGridIncrement);
+ return Math.ceil((coord - halfCell) / cellStep) * cellStep + halfCell;
+ };
+
+ const getGridBoundsForBBox = function(minPt, maxPt, pageGridIncrement) {
+ return {
+ minX: snapCoordToGridCenterMin(minPt.x, pageGridIncrement),
+ maxX: snapCoordToGridCenterMax(maxPt.x, pageGridIncrement),
+ minY: snapCoordToGridCenterMin(minPt.y, pageGridIncrement),
+ maxY: snapCoordToGridCenterMax(maxPt.y, pageGridIncrement),
+ };
+ };
  
  //function taken from https://stackoverflow.com/questions/37224912/circle-line-segment-collision/37225895
  const getLineCircleIntersections = function (pt1, pt2, centerPt, rad){
@@ -2373,7 +2400,7 @@ const SmartAoE = (() => {
  return d <= rad;
  }
  
- const getCircleLocations = function(pageGridCenters, aoeType, aoeFloat, minGridArea, oPt, cPt, rad, pageGridIncrement, pageScaleNumber, offsetX, offsetY, forceIntersection) {
+ const getCircleLocations = function(aoeType, aoeFloat, minGridArea, oPt, cPt, rad, pageGridIncrement, pageScaleNumber, offsetX, offsetY, forceIntersection) {
  let circleCoords = {
  xVals: [],
  yVals: []
@@ -2394,12 +2421,9 @@ const SmartAoE = (() => {
  let grid = [];
  
  let minX, maxX, minY, maxY;
- let minPt = new pt(oPt.x-bbRadX-offsetX, oPt.y-bbRadX-offsetX);
- let maxPt = new pt(oPt.x+bbRadX-offsetX, oPt.y+bbRadX-offsetX);
- minX = getClosestGridPt(minPt, pageGridCenters, pageGridIncrement).x;
- maxX = getClosestGridPt(maxPt, pageGridCenters, pageGridIncrement).x;
- minY = getClosestGridPt(minPt, pageGridCenters, pageGridIncrement).y;
- maxY = getClosestGridPt(maxPt, pageGridCenters, pageGridIncrement).y;
+ let minPt = new pt(oPt.x-bbRadX-offsetX, oPt.y-bbRadY-offsetY);
+ let maxPt = new pt(oPt.x+bbRadX-offsetX, oPt.y+bbRadY-offsetY);
+ ({minX, maxX, minY, maxY} = getGridBoundsForBBox(minPt, maxPt, pageGridIncrement));
  
  //log('x range = ' + minX + ' to ' + maxX);
  //log('y range = ' + minY + ' to ' + maxY);
@@ -2588,7 +2612,7 @@ const SmartAoE = (() => {
  
  }
  
- const getWallLocations = function(pageGridCenters, minGridArea, oPt, cPt, wallParams, pageGridIncrement) {
+ const getWallLocations = function(minGridArea, oPt, cPt, wallParams, pageGridIncrement) {
  /*
  let wallCoords = {
  xVals: [35],
@@ -2622,10 +2646,10 @@ const SmartAoE = (() => {
  
  log(pageGridCenters)
  */
- let minX = getClosestGridPt(wallParams.pMinX, pageGridCenters, pageGridIncrement).x;
- let maxX = getClosestGridPt(wallParams.pMaxX, pageGridCenters, pageGridIncrement).x;
- let minY = getClosestGridPt(wallParams.pMinY, pageGridCenters, pageGridIncrement).y;
- let maxY = getClosestGridPt(wallParams.pMaxY, pageGridCenters, pageGridIncrement).y;
+ let minX = snapCoordToGridCenterMin(wallParams.pMinX.x, pageGridIncrement);
+ let maxX = snapCoordToGridCenterMax(wallParams.pMaxX.x, pageGridIncrement);
+ let minY = snapCoordToGridCenterMin(wallParams.pMinY.y, pageGridIncrement);
+ let maxY = snapCoordToGridCenterMax(wallParams.pMaxY.y, pageGridIncrement);
  
  //log('x range = ' + minX + ' to ' + maxX);
  //log('y range = ' + minY + ' to ' + maxY);
@@ -2881,7 +2905,7 @@ const SmartAoE = (() => {
  
  }
  
- const getSquareLocations = function(pageGridCenters, aoeType, aoeFloat, minGridArea, oPt, cPt, rad, pageGridIncrement, offsetX, offsetY) {
+ const getSquareLocations = function(aoeType, aoeFloat, minGridArea, oPt, cPt, rad, pageGridIncrement, offsetX, offsetY) {
  let squareCoords = {
  xVals: [],
  yVals: []
@@ -2901,12 +2925,9 @@ const SmartAoE = (() => {
  let grid = [];
  
  let minX, maxX, minY, maxY;
- let minPt = new pt(oPt.x-bbRadX-offsetX, oPt.y-bbRadX-offsetX);
- let maxPt = new pt(oPt.x+bbRadX-offsetX, oPt.y+bbRadX-offsetX);
- minX = getClosestGridPt(minPt, pageGridCenters, pageGridIncrement).x;
- maxX = getClosestGridPt(maxPt, pageGridCenters, pageGridIncrement).x;
- minY = getClosestGridPt(minPt, pageGridCenters, pageGridIncrement).y;
- maxY = getClosestGridPt(maxPt, pageGridCenters, pageGridIncrement).y;
+ let minPt = new pt(oPt.x-bbRadX-offsetX, oPt.y-bbRadY-offsetY);
+ let maxPt = new pt(oPt.x+bbRadX-offsetX, oPt.y+bbRadY-offsetY);
+ ({minX, maxX, minY, maxY} = getGridBoundsForBBox(minPt, maxPt, pageGridIncrement));
  
  
  //log('x range = ' + minX + ' to ' + maxX);
@@ -3115,7 +3136,7 @@ const SmartAoE = (() => {
  return squareCoords;
  }
  
- const getConeLocations = function(pageGridCenters, aoeType, minGridArea, oPt, cPt, coneDirection, coneWidth, rad, pageGridIncrement, pageScaleNumber, offsetX, offsetY, oWidth, oHeight) {
+ const getConeLocations = function(aoeType, minGridArea, oPt, cPt, coneDirection, coneWidth, rad, pageGridIncrement, pageScaleNumber, offsetX, offsetY, oWidth, oHeight) {
  let coneCoords = {
  xVals: [],
  yVals: []
@@ -3158,12 +3179,9 @@ const SmartAoE = (() => {
  //cell objects are comprised of an area scalar and an array of points(endpoints plus intersections) in clockwise order (for area calcs)
  let grid = [];
  let minX, maxX, minY, maxY;
- let minPt = new pt(oPt.x-bbRadX-offsetX, oPt.y-bbRadX-offsetX);
- let maxPt = new pt(oPt.x+bbRadX-offsetX, oPt.y+bbRadX-offsetX);
- minX = getClosestGridPt(minPt, pageGridCenters, pageGridIncrement).x;
- maxX = getClosestGridPt(maxPt, pageGridCenters, pageGridIncrement).x;
- minY = getClosestGridPt(minPt, pageGridCenters, pageGridIncrement).y;
- maxY = getClosestGridPt(maxPt, pageGridCenters, pageGridIncrement).y;
+ let minPt = new pt(oPt.x-bbRadX-offsetX, oPt.y-bbRadY-offsetY);
+ let maxPt = new pt(oPt.x+bbRadX-offsetX, oPt.y+bbRadY-offsetY);
+ ({minX, maxX, minY, maxY} = getGridBoundsForBBox(minPt, maxPt, pageGridIncrement));
  
  //log('x range = ' + minX + ' to ' + maxX);
  //log('y range = ' + minY + ' to ' + maxY);
@@ -3631,17 +3649,7 @@ const SmartAoE = (() => {
  //let maxTokSize = Math.max(oTok.get('height'), oTok.get('width'));
  
  let page = getObj("page", link.pageID);
- let pageGridCenters = [];
- let pageWidth = page.get('width');
- let pageHeight = page.get('height');
  
- for (let i=0-pageWidth; i<2*pageWidth*(1/pageGridIncrement); i++) {
- for (let j=0-pageHeight; j<2*pageHeight*(1/pageGridIncrement); j++) {
- pageGridCenters.push(new pt(35*pageGridIncrement+i*70*pageGridIncrement, 35*pageGridIncrement+j*70*pageGridIncrement))
- }
- }
- //log('pageGridCenters');
- //log(pageGridCenters.length);
  if (page) {
  
  let originPtU = convertPtPixels2Units(originPtPx, pageGridIncrement);
@@ -3665,18 +3673,18 @@ const SmartAoE = (() => {
  } else {
  rad = link.radius;
  }
- locationsArr = getConeLocations(pageGridCenters, link.aoeType, link.minGridArea, originPtPx, controlPtPx, coneDirection, link.coneWidth, rad, pageGridIncrement, pageScaleNumber, offsetX, offsetY, oWidth, oHeight);
+ locationsArr = getConeLocations(link.aoeType, link.minGridArea, originPtPx, controlPtPx, coneDirection, link.coneWidth, rad, pageGridIncrement, pageScaleNumber, offsetX, offsetY, oWidth, oHeight);
  break;
  case 'square':
  rad = link.radius;
  if (link.radius === 'variable' && !link.aoeFloat) {
  rad = Math.max(Math.abs(originPtPx.x - controlPtPx.x), Math.abs(originPtPx.y - controlPtPx.y));
  }
- locationsArr = getSquareLocations(pageGridCenters, link.aoeType, link.aoeFloat, link.minGridArea, originPtPx, controlPtPx, rad, pageGridIncrement, offsetX, offsetY)
+ locationsArr = getSquareLocations(link.aoeType, link.aoeFloat, link.minGridArea, originPtPx, controlPtPx, rad, pageGridIncrement, offsetX, offsetY)
  break;
  case 'wall':
  //walls are a bit different. We passed wallParams into this function, which includes radius, so we don't have to calculate again.
- locationsArr = getWallLocations(pageGridCenters, link.minGridArea, originPtPx, controlPtPx, wallParams, pageGridIncrement)
+ locationsArr = getWallLocations(link.minGridArea, originPtPx, controlPtPx, wallParams, pageGridIncrement)
  break;
  case 'PFcircle':
  //Fall through
@@ -3685,7 +3693,7 @@ const SmartAoE = (() => {
  if (link.radius === 'variable' && !link.aoeFloat) {
  rad = distBetweenPts(originPtPx, controlPtPx);
  }
- locationsArr = getCircleLocations(pageGridCenters, link.aoeType, link.aoeFloat, link.minGridArea, originPtPx, controlPtPx, rad, pageGridIncrement, pageScaleNumber, offsetX, offsetY, link.forceIntersection)
+ locationsArr = getCircleLocations(link.aoeType, link.aoeFloat, link.minGridArea, originPtPx, controlPtPx, rad, pageGridIncrement, pageScaleNumber, offsetX, offsetY, link.forceIntersection)
  break;
  case 'line':
  //pass through. 'line' is the default
@@ -3831,12 +3839,7 @@ const SmartAoE = (() => {
  
  for (let p=0; p<pathLocations.xVals.length; p++) {
  pathstring = buildSquarePath(35*pageGridIncrement);
- path = await new Promise(function(resolve){
- //let thePath = createPath(pathstring, pageID, 'gmlayer', '#ff000050', '#000000', 2, cHeight, cWidth, pathLocations.xVals[p], pathLocations.yVals[p]);
- //let thePath = createPath(pathstring, pageID, 'objects', '#ff000050', '#000000', 2, cHeight, cWidth, pathLocations.xVals[p], pathLocations.yVals[p]);
- let thePath = createPath(pathstring, pageID, aoeLinks.links[a].aoeLayer, aoeLinks.links[a].aoeColor, aoeLinks.links[a].gridColor, 2, 70*pageGridIncrement, 70*pageGridIncrement, pathLocations.xVals[p], pathLocations.yVals[p]);
- resolve(thePath);
- });
+ path = createPath(pathstring, pageID, aoeLinks.links[a].aoeLayer, aoeLinks.links[a].aoeColor, aoeLinks.links[a].gridColor, 2, 70*pageGridIncrement, 70*pageGridIncrement, pathLocations.xVals[p], pathLocations.yVals[p]);
  newPaths.push(path.get('_id'));
  }
  }
@@ -3854,18 +3857,9 @@ const SmartAoE = (() => {
  let coneWidth = 53.14; //hardcode
  let z = (rad / (2* Math.sin(Math.atan(0.5)))) - rad;
 
- let outline;
- if (aoeLinks.links[a].originType.match(/face/i)) {
- outline = build5eConeOutlineWorld(originPtPx, rad, z, coneWidth, coneDirection);
- } else {
- let pathstring = build5eCone(rad, z, coneWidth, coneDirection, false);
- outline = { pathstring, left: originPtPx.x - z, top: originPtPx.y - z, width: rad * 2, height: rad * 2 };
- }
+ let outline = build5eConeOutlineWorld(originPtPx, rad, z, coneWidth, coneDirection);
 
- path = await new Promise(function(resolve){
- let thePath = createPath(outline.pathstring, pageID, aoeLinks.links[a].aoeLayer, 'transparent', aoeLinks.links[a].aoeOutlineColor, 3, outline.height, outline.width, outline.left, outline.top);
- resolve(thePath);
- });
+ path = createPath(outline.pathstring, pageID, aoeLinks.links[a].aoeLayer, 'transparent', aoeLinks.links[a].aoeOutlineColor, 3, outline.height, outline.width, outline.left, outline.top);
  newPaths.push(path.get('_id'));
  } else if (aoeLinks.links[a].aoeType==='cone' || aoeLinks.links[a].aoeType==='PFcone') {
  //
@@ -3878,11 +3872,7 @@ const SmartAoE = (() => {
  }
  //log(rad)
  pathstring = buildCirclePath(rad, aoeLinks.links[a].coneWidth, coneDirection);
- path = await new Promise(function(resolve){
- //let thePath = createPath(pathstring, pageID, 'gmlayer', 'transparent', '#ff0000', 3, rad*2, rad*2, originPtPx.x-z, originPtPx.y-z);
- let thePath = createPath(pathstring, pageID, aoeLinks.links[a].aoeLayer, 'transparent', aoeLinks.links[a].aoeOutlineColor, 3, rad*2, rad*2, originPtPx.x, originPtPx.y);
- resolve(thePath);
- });
+ path = createPath(pathstring, pageID, aoeLinks.links[a].aoeLayer, 'transparent', aoeLinks.links[a].aoeOutlineColor, 3, rad*2, rad*2, originPtPx.x, originPtPx.y);
  newPaths.push(path.get('_id'));
  } else if (aoeLinks.links[a].aoeType==='square') {
  //
@@ -3893,11 +3883,7 @@ const SmartAoE = (() => {
  } 
  
  pathstring = buildSquarePath(rad)
- path = await new Promise(function(resolve){
- //let thePath = createPath(pathstring, pageID, 'gmlayer', 'transparent', '#ff0000', 3, rad*2, rad*2, originPtPx.x-z, originPtPx.y-z);
- let thePath = createPath(pathstring, pageID, aoeLinks.links[a].aoeLayer, 'transparent', aoeLinks.links[a].aoeOutlineColor, 3, rad*2, rad*2, originPtPx.x, originPtPx.y);
- resolve(thePath);
- });
+ path = createPath(pathstring, pageID, aoeLinks.links[a].aoeLayer, 'transparent', aoeLinks.links[a].aoeOutlineColor, 3, rad*2, rad*2, originPtPx.x, originPtPx.y);
  newPaths.push(path.get('_id'));
  } else if (aoeLinks.links[a].aoeType==='circle' || aoeLinks.links[a].aoeType==='PFcircle') {
  //
@@ -3909,20 +3895,13 @@ const SmartAoE = (() => {
  }
  //log(rad)
  pathstring = buildCirclePath(rad, 360, 0);
- path = await new Promise(function(resolve){
- //let thePath = createPath(pathstring, pageID, 'gmlayer', 'transparent', '#ff0000', 3, rad*2, rad*2, originPtPx.x-z, originPtPx.y-z);
- let thePath = createPath(pathstring, pageID, aoeLinks.links[a].aoeLayer, 'transparent', aoeLinks.links[a].aoeOutlineColor, 3, rad*2, rad*2, originPtPx.x, originPtPx.y);
- resolve(thePath);
- });
+ path = createPath(pathstring, pageID, aoeLinks.links[a].aoeLayer, 'transparent', aoeLinks.links[a].aoeOutlineColor, 3, rad*2, rad*2, originPtPx.x, originPtPx.y);
  newPaths.push(path.get('_id'));
  } else if (aoeLinks.links[a].aoeType==='wall') {
  //
  //log('~~~~~~~~~~~~~~~~~~~~ WALL PATH~~~~~~~~~~~~~~~~~~~~');
  pathstring = buildWallPath(wallParams);
- path = await new Promise(function(resolve){
- let thePath = createPath(pathstring, pageID, aoeLinks.links[a].aoeLayer, 'transparent', aoeLinks.links[a].aoeOutlineColor, 3, wallParams.heightBB, wallParams.widthBB, wallParams.pCenter.x, wallParams.pCenter.y);
- resolve(thePath);
- });
+ path = createPath(pathstring, pageID, aoeLinks.links[a].aoeLayer, 'transparent', aoeLinks.links[a].aoeOutlineColor, 3, wallParams.heightBB, wallParams.widthBB, wallParams.pCenter.x, wallParams.pCenter.y);
  newPaths.push(path.get('_id'));
  }
 
@@ -4100,6 +4079,121 @@ const SmartAoE = (() => {
  }
  }
  
+ // libInline (required) + msg.inlinerolls fallback for cast-time $[[N]] substitution.
+ const getParsedInlinesFromMsg = function(msg) {
+ let parsedInlines = [];
+ if (typeof libInline !== 'undefined' && libInline.getRollData) {
+ parsedInlines = libInline.getRollData(msg) || [];
+ }
+ if ((!parsedInlines || !parsedInlines.length) && msg.inlinerolls && msg.inlinerolls.length) {
+ parsedInlines = msg.inlinerolls.map(r => ({
+ expression: (r && r.expression) ? r.expression : '',
+ total: (r && r.results && r.results.total !== undefined) ? r.results.total : ((r && r.total !== undefined) ? r.total : 0)
+ }));
+ }
+ return parsedInlines;
+ };
+
+ // Strip outer [[ ]] layers and simplify common level-scaled dice (e.g. (5+3)d6 -> 8d6).
+ const stripInlineRollBrackets = function(text) {
+ let s = String(text).trim();
+ while (/^\[\[(.+)\]\]$/s.test(s)) {
+ s = s.replace(/^\[\[|\]\]$/g, '').trim();
+ }
+ return s;
+ };
+
+ const simplifyDiceArithmetic = function(inner) {
+ if (!inner) { return inner; }
+ let m = inner.match(/^\(\s*(\d+)\s*\+\s*(\d+)\s*\)\s*d(\d+)$/i);
+ if (m) {
+ return `${parseInt(m[1], 10) + parseInt(m[2], 10)}d${m[3]}`;
+ }
+ m = inner.match(/^\(\s*(\d+)\s*-\s*(\d+)\s*\)\s*d(\d+)$/i);
+ if (m) {
+ return `${Math.max(parseInt(m[1], 10) - parseInt(m[2], 10), 0)}d${m[3]}`;
+ }
+ return inner.replace(/\s+/g, '');
+ };
+
+ // One well-formed [[...]] roll string for sendChat, or null if unusable.
+ // Wiki examples: [[8d6]], [[(5+3)d6]], [[-1*2d6]]
+ const canonicalizeDiceRollFormula = function(formula) {
+ if (formula === undefined || formula === null) { return null; }
+ let s = String(formula).trim();
+ if (!s || s === 'damageFormula1' || s === 'damageFormula2') { return null; }
+ if (/\?\{|\$\[\[|@\{/i.test(s)) { return null; }
+ let inner = stripInlineRollBrackets(s);
+ if (!inner || inner.indexOf('[[') !== -1) { return null; }
+ inner = simplifyDiceArithmetic(inner).replace(/\s+/g, '');
+ if (!inner || /^NaN$/i.test(inner) || /^\[\[\s*\]\]$/.test(`[[${inner}]]`)) { return null; }
+ return `[[${inner}]]`;
+ };
+
+ // Resolve --damageFormulaN: libInline $[[N]], wiki literal [[...]], <<...>>, or NdM text.
+ const normalizeDamageRollFormula = function(param, inlines, rawParam) {
+ const tryLiteralSources = function() {
+ let sources = [];
+ if (rawParam !== undefined && rawParam !== null) { sources.push(rawParam); }
+ if (param !== undefined && param !== null && param !== rawParam) { sources.push(param); }
+ for (let i = 0; i < sources.length; i++) {
+ let trimmed = String(sources[i]).trim();
+ if (/^\[\[/.test(trimmed) || /<<.*>>/.test(trimmed)) {
+ return trimmed.replace(/<<([^>]*)>>/g, '[[$1]]').replace(/\s+/g, '');
+ }
+ if (/d\d+/i.test(trimmed) && !/^\d+$/.test(trimmed)) {
+ return `[[${trimmed.replace(/\s+/g, '')}]]`;
+ }
+ }
+ return null;
+ };
+
+ // Prefer raw [[...]] text (wiki standard) even when libInline replaced param with a rolled total.
+ let literal = tryLiteralSources();
+ if (literal) {
+ let canonical = canonicalizeDiceRollFormula(literal.replace(/<<([^>]*)>>/g, '[[$1]]'));
+ if (canonical) { return canonical; }
+ }
+
+ if (inlines && inlines.length > 0) {
+ for (let i = 0; i < inlines.length; i++) {
+ if (!inlines[i]) { continue; }
+ let expr = inlines[i].expression;
+ if (expr === undefined || expr === null || String(expr).trim() === '') {
+ continue;
+ }
+ expr = String(expr).replace(/\[/g,'[').replace(/\]/g,']').trim();
+ let candidate = /^\[\[/.test(expr) ? expr.replace(/\s+/g, '') : `[[${expr.replace(/\s+/g, '')}]]`;
+ let canonical = canonicalizeDiceRollFormula(candidate);
+ if (canonical) { return canonical; }
+ }
+ }
+ return null;
+ };
+
+ // Returns a roll string safe for sendChat, or null if none available.
+ const resolveTriggerRollFormula = function(useRollFlag, formula, base) {
+ if (useRollFlag && formula) {
+ let canonical = canonicalizeDiceRollFormula(formula);
+ if (canonical) { return canonical; }
+ }
+ if (isNumber(base) && isFinite(base)) {
+ return `[[${base}]]`;
+ }
+ return null;
+ };
+
+ // 5e save templates use [[d0 + @{}]]; empty attrs or d0 can break the ModScript dice parser.
+ const prepareSaveRollFormulaForSendChat = function(formula) {
+ if (!formula) { return null; }
+ let s = String(formula).trim();
+ s = s.replace(/\[\[d0\s*\+\s*\]\]/gi, '[[0]]');
+ s = s.replace(/\[\[d0\s*\+\s*([+-]?\d+(?:\.\d+)?)\]\]/gi, '[[$1]]');
+ if (/@\{|\?\{|\$\[\[/.test(s)) { return null; }
+ if (/\[\[\s*\]\]/.test(s)) { return null; }
+ return s.replace(/\s+/g, ' ');
+ };
+
  const processInlinerolls2 = function(str, parsedInlines) {
  let index;
  let inlineArr = [];
@@ -4108,9 +4202,11 @@ const SmartAoE = (() => {
  let foundInlines = str.match(reg) || [];
  
  foundInlines.forEach((inline) => {
- index = inline.replace(/\$\[\[/,'').replace(/\]\]/,'')
+ index = parseInt(inline.replace(/\$\[\[/,'').replace(/\]\]/,''), 10);
+ if (parsedInlines[index] !== undefined) {
  str = str.replace(inline, parsedInlines[index].total);
  inlineArr.push(parsedInlines[index]);
+ }
  });
  return {text:str, inlines:inlineArr};
  }
@@ -4120,19 +4216,22 @@ const SmartAoE = (() => {
  .replace(/<br\/>\n/g, ' ')
  .replace(/(\{\{(.*?)\}\})/g," $2 ")
  
- let parsedInlines = libInline.getRollData(msg) || [];
+ let parsedInlines = getParsedInlinesFromMsg(msg);
  
  //Check for inline rolls
  //inlineContent = processInlinerolls(msg);
  let args = msg.content.split(/\s+--/);
  args.shift();
  args = args.map(arg=>{
- let cmds = arg.split('|');
- let retVals = processInlinerolls2(cmds[1], parsedInlines);
- 
+ let pipeIdx = arg.indexOf('|');
+ let cmd = (pipeIdx >= 0 ? arg.slice(0, pipeIdx) : arg).toLowerCase().trim();
+ let rawParam = pipeIdx >= 0 ? arg.slice(pipeIdx + 1) : '';
+ let retVals = processInlinerolls2(rawParam, parsedInlines);
+
  return {
- cmd: cmds.shift().toLowerCase().trim(),
+ cmd: cmd,
  params: retVals.text,
+ rawParams: rawParam,
  inlines: retVals.inlines
  };
  });
@@ -4146,7 +4245,8 @@ const SmartAoE = (() => {
  if (typeof result === "number") {
  return String(result);
  } else {
- return result || "";
+ // Empty save-bonus attrs break nested [[d0 + ]] rolls; treat as 0.
+ return (result === "" || result === undefined || result === null) ? "0" : String(result);
  }
  }
  const replacer = (_, attrName) => myGetAttrByName(attrName);
@@ -4226,6 +4326,8 @@ const SmartAoE = (() => {
  computedFormula = '[[0]]'
  } else {
  computedFormula = replaceAttributes(link.saveFormula, charID);
+ computedFormula = prepareSaveRollFormulaForSendChat(computedFormula);
+ if (!computedFormula) { return null; }
  }
  } else {
  return null;
@@ -4319,7 +4421,8 @@ const SmartAoE = (() => {
  
  if (tokenRolls.length > 0) {
  Promise.all(tokenRolls.map(o => new Promise((resolve) => {
- sendChat("", `${o.formula}${o.roll2x ? ` ${o.formula}` : ""}`, resolve);
+ let saveRoll = prepareSaveRollFormulaForSendChat(o.formula) || o.formula;
+ sendChat("", `${saveRoll}${o.roll2x ? ` ${saveRoll}` : ""}`, resolve);
  })))
  .then(async(messages) => processFinalMessages(messages, damageRolls, tokenRolls, aoeLink))
  .catch(err => sendErrorMessage(err));
@@ -4758,7 +4861,7 @@ const SmartAoE = (() => {
  let selected = msg.selected;
  let radius = 'variable'; //maximum radius, in pixels
  let wallWidth = 70;
- let originType = 'center'; //"nearest" corner/face, "center"
+ let originType = 'center'; //"nearest" corner/face, "center" (wiki default when omitted)
  let aoeType = 'line';
  let offsetX = 0;
  let offsetY = 0;
@@ -5262,13 +5365,16 @@ const SmartAoE = (() => {
  }
  
  //define roll associated with base damage
- if (aoeLinks.links[a].rollDamage1) {
- damageRolls.push({formula:aoeLinks.links[a].damageFormula1});
- if (aoeLinks.links[a].rollDamage2) {
- damageRolls.push({formula:aoeLinks.links[a].damageFormula2});
+ let triggerFormula1 = resolveTriggerRollFormula(aoeLinks.links[a].rollDamage1, aoeLinks.links[a].damageFormula1, aoeLinks.links[a].damageBase1);
+ if (triggerFormula1) {
+ damageRolls.push({formula: triggerFormula1});
  }
- } else {
- damageRolls.push({formula:"[[" + aoeLinks.links[a].damageBase1 + "]]"});
+ let triggerFormula2 = resolveTriggerRollFormula(aoeLinks.links[a].rollDamage2, aoeLinks.links[a].damageFormula2, aoeLinks.links[a].damageBase2);
+ if (triggerFormula2) {
+ damageRolls.push({formula: triggerFormula2});
+ }
+ if (damageRolls.length === 0 && (aoeLinks.links[a].rollDamage1 || aoeLinks.links[a].rollDamage2 || aoeLinks.links[a].damageBase1 || aoeLinks.links[a].damageBase2)) {
+ sendChat(scriptName, `${whisperString} Warning: Could not resolve a valid damage roll formula for this AoE.`, null, {noarchive:true});
  }
  
  let foundIndex = -1;
@@ -5279,7 +5385,10 @@ const SmartAoE = (() => {
  //only add unique tokenids to the array of "hit" tokens
  foundIndex = tokenRolls.findIndex((e) => e.id === thisValidToks[t].tok.get("_id"));
  if (foundIndex === -1) {
- tokenRolls.push(processTokenRolls(thisValidToks[t].tok, aoeLinks.links[a]));
+ let tokenRoll = processTokenRolls(thisValidToks[t].tok, aoeLinks.links[a]);
+ if (tokenRoll) {
+ tokenRolls.push(tokenRoll);
+ }
  }
  }
  }
@@ -5289,7 +5398,8 @@ const SmartAoE = (() => {
  if (tokenRolls.length > 0) {
  tokenRolls = sortTokenRollsByLayer(tokenRolls);
  }
- 
+
+ if (damageRolls.length > 0) {
  Promise.all(damageRolls.map(o => new Promise((resolve) => {
  sendChat("", `${o.formula}`, resolve);
  //sendChat("", `${o.formula}${o.roll2 ? ` ${o.formula}` : ""}`, resolve);
@@ -5297,6 +5407,9 @@ const SmartAoE = (() => {
  })))
  .then(async(messages) => processMessagesMaster(messages, damageRolls, tokenRolls, aoeLinks.links[a]))
  .catch(err => sendErrorMessage(err));
+ } else if (tokenRolls.length > 0) {
+ processMessagesMaster([], damageRolls, tokenRolls, aoeLinks.links[a]);
+ }
  
  //finally, check for instantaneous AoE and set flag for deletion
  if (aoeLinks.links[a].instant) {
@@ -5339,6 +5452,7 @@ const SmartAoE = (() => {
  
  //Parse msg into an array of argument objects [{cmd:params}]
  let args = parseArgs(msg);
+ let msgInlines = getParsedInlinesFromMsg(msg);
  //args.shift();
  //log(args);
  //assign values to our params arrray based on args
@@ -5535,12 +5649,20 @@ const SmartAoE = (() => {
  rollDamage1 = true;
  //example: "<<(8+?{Cast at what level?|3,0|4,1|5,2|6,3|7,4|8,5|9,6})d6>>"" becomes something like "[[(8+1)d6]]"
  } else {
- if (inlines[0] === undefined) {
- damageBase1 = parseInt(d1);
- } else {
- //damageFormula1 = `[[${inlines[0].expression}]]`;
- damageFormula1 = `[[${inlines[0].expression.replace(/[/g,'[').replace(/]/g,']')}]]`;
+ let normalized1 = normalizeDamageRollFormula(param, (inlines && inlines.length) ? inlines : msgInlines, arg.rawParams);
+ if (normalized1) {
+ damageFormula1 = normalized1;
  rollDamage1 = true;
+ } else if (/d\d+/i.test(param) || param.indexOf('[[') !== -1 || param.indexOf('<<') !== -1) {
+ let deferred = param.trim().replace(/<<([^>]*)>>/g, '[[$1]]').replace(/\s+/g, '');
+ if (!/^\[\[/.test(deferred)) {
+ deferred = `[[${deferred}]]`;
+ }
+ damageFormula1 = canonicalizeDiceRollFormula(deferred) || deferred;
+ rollDamage1 = true;
+ } else {
+ damageBase1 = parseInt(d1, 10);
+ if (isNaN(damageBase1)) { damageBase1 = 0; }
  }
  }
  break;
@@ -5552,16 +5674,25 @@ const SmartAoE = (() => {
  rollDamage2 = true;
  //example: "<<(8+?{Cast at what level?|3,0|4,1|5,2|6,3|7,4|8,5|9,6})d6>>"" becomes something like "[[(8+1)d6]]"
  } else {
- if (inlines[0] === undefined) {
- damageBase1 = parseInt(d2);
- } else {
- //damageFormula2 = `[[${inlines[0].expression}]]`;
- damageFormula2 = `[[${inlines[0].expression.replace(/[/g,'[').replace(/]/g,']')}]]`;
+ let normalized2 = normalizeDamageRollFormula(param, (inlines && inlines.length) ? inlines : msgInlines, arg.rawParams);
+ if (normalized2) {
+ damageFormula2 = normalized2;
  rollDamage2 = true;
+ } else if (/d\d+/i.test(param) || param.indexOf('[[') !== -1 || param.indexOf('<<') !== -1) {
+ let deferred = param.trim().replace(/<<([^>]*)>>/g, '[[$1]]').replace(/\s+/g, '');
+ if (!/^\[\[/.test(deferred)) {
+ deferred = `[[${deferred}]]`;
+ }
+ damageFormula2 = canonicalizeDiceRollFormula(deferred) || deferred;
+ rollDamage2 = true;
+ } else {
+ damageBase2 = parseInt(d2, 10);
+ if (isNaN(damageBase2)) { damageBase2 = 0; }
  }
  }
  break;
  case "damagetype1":
+ case "damagetype":
  damageType1 = param;
  break;
  case "damagetype2":
