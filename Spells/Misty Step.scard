@@ -1,87 +1,139 @@
-!script{{
-  +++5Elib;snlib;Farsidelib+++	
- 
+!script {{
+  +++5Elib;snlib;Farsidelib+++
+
   --#sourceToken|@{selected|token_id}
-  --#reentrant|My Cool Script @{selected|character_id}
+  --&SavedSourceToken|@{selected|token_id}
+  --&CasterToken|[*S:t-id]
+  --#reentrant|Misty Step @{selected|character_id}
+  --#whisper|self,gm
 
   --/|Script Name : Misty Step
-  --/|Version     : 1.1.0
+  --/|Version     : 2.0.0
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Arak Stoneboulder
   --/|Modified By : Farsidegallery
-  --/|  
-  --/|  Script checks spell slot availability, summons teleport token, and deducts a spell slot. 
   --/|
-  --/|
-  --/|
+  --/|  Move the Spell Token to your destination (within 30 ft), then target it to teleport.
+
   --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
-      
-   --&SpellName|Misty Step
-   --&MinimumSpellLevel|2
-   
-   --/|Name of Misty Step TokenID
-   --&MistyToken|Spell Token
-   
-   --/|Use ScriptCards (1) or SpawnDefaultToken (2) to place the Charm Person Character on the VTT?
-   --&SpawnScript|1
-   
-   --&URLlink|https://files.d20.io/images/469753332/ew1SU1DcQK4eborJlOqNQw/original.png
-   
+
+  --&SpellName|Misty Step
+  --&MinimumSpellLevel|2
+  --&SpellTargetToken|Spell Token
+
+  --/| Image for the placement Spell Token.
+  --&URLlink|https://files.d20.io/images/469753332/ew1SU1DcQK4eborJlOqNQw/original.png
+
   --/| ____________________ End Global User Variables ___________________________________________________________________________________________
 
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+
+  --^Cast|
+
+  --/| ==================== CAST ===================================================================================
+
+  --:Cast|
   --#title|[&SpellName]
   --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
   --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
   -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
   --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
-    
-  --&desc|[*R:spelldescription]
-  
-  -->far_FIND_CLASS_LEVEL|[*S:character_id];Sorcerer;SLevel
-  --?"X[&SLevel]" -eq "X0"|Skip
-  -->far_FindFeat|[*S:character_id];"Wild Magic Surge";WildFeatFlag
-  
-  --:Skip|
+
   --#leftsub|1 Bonus Action
   --#rightsub|Range: 30 ft
   --#emoteText|[*S:character_name] Casts Misty Step.
-  -->GetCharID|[&MistyToken];MistyID
-  -->SetAbility|
-  
-  --:SPAWN MISTY STEP TOKEN USING SMARTAOE API|
-  --?[&SpawnScript] -eq 2|[
-   ---@forselected+|Spawn _name|[&MistyToken] _qty|1 _offset|0,0 _force|yes _tokenProps|name:Misty Step,showname:true,showplayers_name:true _order|toFront _fx|nova-magic _expand|15,30 {^&select @{selected|token_id}}
-   --]|
-   
-  --?[&SpawnScript] -eq 1|[
-   --!ot:NewTID|name:"[&SpellName]"|_pageid:[*S:t-_pageid]|left:[=[*S:t-left]+70]|top:[*S:t-top]|width:[*S:t-width]|height:[*S:t-height]|imgsrc:"[&URLlink]"|bar1_value:1|represents:"[&MistyID]"|showname:0|t-aura1_radius:30|t-aura1_color:#d0e0e3
-   --z:graphic:[&NewTID]|tofront
-   --]|
-	
-  --:GET AND STORE CASTER TOKEN ID ONTO MISTY STEP TOKEN FOR LATER USE|
-   --&TokenID|[*S:t-id]
-   --!a:[*[&MistyID]:character_id]|!caster_ID:[&TokenID]
-  
-  --+|[br]
-  --?"X[$WildFeatFlag]" -eq "X1" -and [&MinimumSpellLevel] -ge 1|>far_WildTable
-   
-  --+Desc: |[&desc]
-  -->far_DeductSpellSlot|[*S:t-id];[&MinimumSpellLevel]
+  --&desc|[*R:spelldescription]
+  -->GetCharID|[&SpellTargetToken];MistyID
+
+  -->far_FIND_CLASS_LEVEL|[*S:character_id];Sorcerer;SLevel
+  --?"X[&SLevel]" -eq "X0"|SkipSorcerer
+  -->far_FindFeat|[*S:character_id];"Wild Magic Surge";WildFeatFlag
+
+  --:SkipSorcerer|
+  --&StoredTokenID|[*S:t-id]
+  --!a:[*S:character_id]|!MS_tokenID:[&StoredTokenID]
+  --!a:[*S:character_id]|!MS_casterToken:[&CasterToken]
+  -->CAST_SPELL|
   --X|
 
   --/| ____________________ Procedures_______________________________________________________________________________________
-  
+
+  --:CAST_SPELL|
+  --#sourceToken|[&CasterToken]
+  --+|Move Spell Token to your destination (within 30 ft), then target it to complete the teleport.
+  --!ot:NewTID|name:"[&SpellTargetToken]"|_pageid:[*S:t-_pageid]|left:[=[*S:t-left]+70]|top:[*S:t-top]|width:[*S:t-width]|height:[*S:t-height]|imgsrc:"[&URLlink]"|bar1_value:1|represents:"[&SpellTargetToken]"|showname:0|t-aura1_radius:30|t-aura1_color:#d0e0e3
+  --&PlacementTID|[&NewTID]
+  --z:graphic:[&NewTID]|tofront
+  -->SetAbility|
+  --+Target: |[rbutton]Target the Spell Token.::SetTarget;[&TB]target|token_id}[/rbutton]
+  --X|
+
+  --:SetTarget|
+  --#sourceToken|[&CasterToken]
+  --?"X[&CasterToken]" -eq "X" -or "[&CasterToken]" -eq ""|&CasterToken;[*S:MS_casterToken]
+  --?"X[&reentryval]" -eq "X"|>far_FatalError;Wrong Target;ERROR;Click Target the Spell Token, then select the placement token.
+  --#targettoken|[&reentryval]
+  --&TargetName|[*T:character_name]
+  --?"[&TargetName]" -eq "[&SpellTargetToken]"|Teleport
+  --?"X[&PlacementTID]" -ne "X" -and "[&PlacementTID]" -ne "" -and "[&reentryval]" -eq "[&PlacementTID]"|Teleport
+  -->far_FatalError;Wrong Target;ERROR;Target the spell placement token.
+  --<|
+
+  --:Teleport|
+  --#sourceToken|[&CasterToken]
+  --?"X[&CasterToken]" -eq "X" -or "[&CasterToken]" -eq ""|&CasterToken;[*S:MS_casterToken]
+  --&PlaceTop|[*T:t-top]
+  --&PlaceLeft|[*T:t-left]
+  --&MistyTID|[*T:t-id]
+
+  --&CasterTID|[&StoredTokenID]
+  --?"X[&CasterTID]" -eq "X" -or "[&CasterTID]" -eq ""|&CasterTID;[*S:MS_tokenID]
+  --?"X[&CasterTID]" -eq "X" -or "[&CasterTID]" -eq ""|>far_FatalError;Teleport Failed;ERROR;Could not resolve stored caster token. Cast the spell again.
+  --!a:[*S:character_id]|!MS_tokenID:**
+  --!a:[*S:character_id]|!MS_casterToken:**
+
+  --vtoken|[&CasterTID] burst-magic
+  --vtoken|[&MistyTID] burst-magic
+
+  --!t:[&CasterTID]|aura1_radius:0
+  --!t:[&CasterTID]|layer:gmlayer
+  --!t:[&CasterTID]|top:[&PlaceTop]|left:[&PlaceLeft]
+
+  --~|object;token;delete;[&MistyTID]
+
+  --w1:!t:[&CasterTID]|layer:objects
+  --vtoken|[&CasterTID] burst-magic
+
+  --#whisper|
+  --+|[*S:character_name] used Misty Step!
+  --+[br]|
+
+  --?"X[$WildFeatFlag]" -eq "X1" -and [&MinimumSpellLevel] -ge 1|>far_WildTable
+
+  --+Desc: |[&desc]
+  --+[br]|
+  -->far_DeductSpellSlot|[*S:t-id];[&MinimumSpellLevel]
+  --X|
+
   --:GetCharID|CharacterName;StringVariableForCharID
-   --~|array;objects:character;SpiritCharArr;[%1%]
-   --?[@SpiritCharArr(length)] -ne 1|>far_LogFatalError;Could not find character named [%1%]
-   --&[%2%]|[@SpiritCharArr(0)]
-   --<|
-  
+  --~|array;objects:character;SpiritCharArr;[%1%]
+  --?[@SpiritCharArr(length)] -ne 1|>far_LogFatalError;Could not find character named [%1%]
+  --&[%2%]|[@SpiritCharArr(0)]
+  --<|
+
   --:SetAbility|
-   --~|array;objects:ability;AbilityArr;;[&MistyID]
-    --!ability:[@AbilityArr(0)]|istokenaction:False
-	--!ability:[@AbilityArr(1)]|istokenaction:True
-	--!ability:[@AbilityArr(2)]|istokenaction:False
-	--!ability:[@AbilityArr(3)]|istokenaction:False
-   --<|
+  --~|array;objects:ability;AbilityArr;;[&MistyID]
+  --!ability:[@AbilityArr(0)]|istokenaction:False
+  --!ability:[@AbilityArr(1)]|istokenaction:False
+  --!ability:[@AbilityArr(2)]|istokenaction:False
+  --!ability:[@AbilityArr(3)]|istokenaction:False
+  --<|
+
 }}
