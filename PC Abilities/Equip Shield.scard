@@ -5,7 +5,7 @@
   --#reentrant|My Cool Script @{selected|character_id}
   --#whisper|self,gm
   --/|Script Name : Equip Shield
-  --/|Version     : 1.0.0
+  --/|Version     : 1.1.0
   --/|Requires SC : ScriptCards
   --/|Author      : Farsidegallery
   --/|  
@@ -31,10 +31,11 @@
   --=NumShields|0
  
   --+|[c]What Shield do you want to equip?[/c]
-   --~|array;fullrepeatingsection;Inventory;[*S:character_id];repeating_inventory;itemname:itemcount;♦
-   --~|array;sort;Inventory
-   --~Inventory|array;getfirst;Inventory
-   -->ItemConvert|
+  --+|[br]
+  --~|array;fullrepeatingsection;Inventory;[*S:character_id];repeating_inventory;itemname:itemcount;♦
+  --~|array;sort;Inventory
+  --~Inventory|array;getfirst;Inventory
+  -->ItemConvert|
  
   --Rfind|[*S:character_id];[&Itemnamewcost];repeating_inventory;itemname
   --&ItemMods|[*R:itemmodifiers]
@@ -69,6 +70,8 @@
   
   --:Itemfinddone|
    --?[$NumShields] -eq 0|>NoInventory
+   --+|[br]
+   --+|[c][rbutton]Unequip Shield::UnEquipShield[/rbutton] [/c]
    --X|
   
   --:NoInventory|
@@ -79,6 +82,14 @@
    --#whisper|
    --&ItemToEquip|[&reentryval]
 
+   --?"[&CurrentShield]" -eq ""|[
+    --Rfind|[*S:character_id];[&ItemToEquip];repeating_inventory;itemname
+    --!a:[*S:character_id]|![*R>equipped]:1
+
+    --+|[*S:t-name] equips a [&ItemToEquip].
+    --X|
+    --]|
+
    --?"[&CurrentShield]" -eq "[&ItemToEquip]"|[
     --+|[*S:t-name] already has [&ItemToEquip] equipped.
     --]|[
@@ -88,9 +99,23 @@
     --Rfind|[*S:character_id];[&ItemToEquip];repeating_inventory;itemname
     --!a:[*S:character_id]|![*R>equipped]:1
 
-    --+|[*S:t-name] unequips [&CurrentShield] and equips [&ItemToEquip].
+    --+|[*S:t-name] unequips [&CurrentShield] and equips a [&ItemToEquip].
     --]|
     --X| End Script
+  
+  --:UnEquipShield|
+   --#whisper|
+   --&ItemToUnequip|[&CurrentShield]
+
+   --?"[&ItemToUnequip]" -eq ""|[
+    --+|[*S:t-name] has no shield equipped.
+    --]|[
+    --Rfind|[*S:character_id];[&ItemToUnequip];repeating_inventory;itemname
+    --!a:[*S:character_id]|![*R>equipped]:0
+
+    --+|[*S:t-name] unequips [&ItemToUnequip].
+    --]|
+   --X|
   
   --:ItemConvert|
    --&Itemnamewcost|[&Inventory(before,♦)]
