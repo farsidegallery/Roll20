@@ -18,7 +18,7 @@
   --dc|@{selected|spell_save_dc}
   --saveFormula|5eDEX
   --damageFormula1|[[(5+?{Cast at what level?})d6]]
-  --damageType|Lightning
+  --damageType1|Lightning
   --zeroHpMarker|dead
   --instant|1
   --autoApply|1
