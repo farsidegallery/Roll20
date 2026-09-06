@@ -1,6 +1,6 @@
 !script {{
   --/|Script Name : Concentration
-  --/|Version     : 1.4.3
+  --/|Version     : 1.4.0
   --/|Requires SC : ScriptCards 3.0.25+, 5Elib/snlib/Farsidelib 1.5.2+
   --/|
   --/|Trigger setup (ScriptCards_Triggers character):
