@@ -5,7 +5,7 @@
   --#reentrant|My Cool Script @{selected|character_id}
   --#whisper|self,gm
   --/|Script Name : Equip Shield
-  --/|Version     : 1.1.0
+  --/|Version     : 1.1.1
   --/|Requires SC : ScriptCards
   --/|Author      : Farsidegallery
   --/|  
@@ -42,10 +42,10 @@
   --?"[*R:itemmodifiers]" -ninc "Shield"|>Itemfindstart
   --?[*R:equipped] -eq 1|=InUse;1
   --?[$InUse] -eq 1|[
-   --+|[t border=0 width=100%][tr][td][&Itemname] [b](Equipped)[/b][/td][td style="width:60px"][r][&Itemcostd][/r][/td][td style="width:15px"][rbutton]Equip::EquipShield;[&Itemname][/rbutton][/td][/tr][/t]
+   --+|[t border=0 width=100%][tr][td][&Itemname] [b](Equipped)[/b][/td][td style="width:60px"][r][&Itemcostd][/r][/td][td style="width:15px"][rbutton]Equip::EquipShield;[&ItemBtnName][/rbutton][/td][/tr][/t]
    --&CurrentShield|[&Itemname]
   --]|[
-   --+|[t border=0 width=100%][tr][td][&Itemname][/td][td style="width:60px"][r][&Itemcostd][/r][/td][td style="width:15px"][rbutton]Equip::EquipShield;[&Itemname][/rbutton][/td][/tr][/t]
+   --+|[t border=0 width=100%][tr][td][&Itemname][/td][td style="width:60px"][r][&Itemcostd][/r][/td][td style="width:15px"][rbutton]Equip::EquipShield;[&ItemBtnName][/rbutton][/td][/tr][/t]
   --]|
   --=NumShields|[$NumShields]+1
   --^Itemfindstart|
@@ -60,10 +60,10 @@
    --?"[*R:itemmodifiers]" -ninc "Shield"|>Itemfindstart
    --?[*R:equipped] -eq 1|=InUse;1|=InUse;0
    --?[$InUse] -eq 1|[
-    --+|[t border=0 width=100%][tr][td][&Itemname] [b](Equipped)[/b][/td][td style="width:60px"][r][&Itemcostd][/r][/td][td style="width:15px"][rbutton]Equip::EquipShield;[&Itemname][/rbutton][/td][/tr][/t]
+    --+|[t border=0 width=100%][tr][td][&Itemname] [b](Equipped)[/b][/td][td style="width:60px"][r][&Itemcostd][/r][/td][td style="width:15px"][rbutton]Equip::EquipShield;[&ItemBtnName][/rbutton][/td][/tr][/t]
     --&CurrentShield|[&Itemname]
    --]|[
-    --+|[t border=0 width=100%][tr][td][&Itemname][/td][td style="width:60px"][r][&Itemcostd][/r][/td][td style="width:15px"][rbutton]Equip::EquipShield;[&Itemname][/rbutton][/td][/tr][/t]
+    --+|[t border=0 width=100%][tr][td][&Itemname][/td][td style="width:60px"][r][&Itemcostd][/r][/td][td style="width:15px"][rbutton]Equip::EquipShield;[&ItemBtnName][/rbutton][/td][/tr][/t]
    --]|
    --=NumShields|[$NumShields]+1
    --^Itemfindstart|
@@ -81,6 +81,7 @@
   --:EquipShield|
    --#whisper|
    --&ItemToEquip|[&reentryval]
+   --~ItemToEquip|string;replace;-!dash!-;-;[&ItemToEquip]
 
    --?"[&CurrentShield]" -eq ""|[
     --Rfind|[*S:character_id];[&ItemToEquip];repeating_inventory;itemname
@@ -119,7 +120,9 @@
   
   --:ItemConvert|
    --&Itemnamewcost|[&Inventory(before,♦)]
-   --&Itemname|[&Itemnamewcost(before,-)]
+   --&Itemname|[&Itemnamewcost]
    --&Itemcount|[&Inventory(after,♦)]
+   --&ItemBtnName|[&Itemname]
+   --~ItemBtnName|string;replace;-;-!dash!-;[&ItemBtnName]
    --<|
 }}
