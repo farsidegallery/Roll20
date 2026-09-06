@@ -1,6 +1,6 @@
 !script {{
   --/|Script Name : 5E Action Menu
-  --/|Version     : 3.1.0
+  --/|Version     : 3.1.1
   --/|Requires SC : 2.7.15+
   --/|Author      : Kurt Jaegers
   --/|Modified By : Farsidegallery
@@ -272,14 +272,14 @@
 
   --:AFTER_ADVMODE_CHANGE|
 
-  --#leftsub|Action Menu (v3.1.0)
+  --#leftsub|Action Menu (v3.1.1)
 
   --?[&EnablePerCharacterConfiguration] -eq 0|SKIP_PER_CHAR_SETTINGS
-  --#leftsub|Action Menu (v3.1.0) [rbutton][&SettingsImage]::DISPLAY_CHARACTER_CONFIG_MENU[/rbutton] [rbutton][&ClearCacheImage]::CLEAR_CHARACTER_CACHE[/rbutton]
+  --#leftsub|Action Menu (v3.1.1) [rbutton][&SettingsImage]::DISPLAY_CHARACTER_CONFIG_MENU[/rbutton] [rbutton][&ClearCacheImage]::CLEAR_CHARACTER_CACHE[/rbutton]
   -->LOAD_PER_CHARACTER_CONFIG_OPTIONS|[*S:character_id]
   --:SKIP_PER_CHAR_SETTINGS|
   --
-  --#leftsub|Action Menu (v3.1.0) [rbutton][&ClearCacheImage]::CLEAR_CHARACTER_CACHE[/rbutton]
+  --#leftsub|Action Menu (v3.1.1) [rbutton][&ClearCacheImage]::CLEAR_CHARACTER_CACHE[/rbutton]
 
   --?[*S:npc] -eq 1 -or [&ShowRestButtons] -ne 1|SKIP_REST_BUTTONS
   --?"[&perCharacterOptions]" -inc "$SHRB0$"|SKIP_REST_BUTTONS
@@ -784,16 +784,25 @@
    --&PcHashSectionKey|[&attack_name]_sectionid
    --&attack_rowid|[:PCAtkExecHash("[&PcHashSectionKey]")]
   --]|
-  --?"[*R:atkname]" -eq "NoRepeatingAttributeLoaded" -and "X[&attack_rowid]" -ne "X" -and "[&attack_rowid]" -ne "" -and "[&attack_rowid]" -ne "undefined"|[
-   --?"[&attack_rowid(0,1)]" -ne "-"|&attack_rowid;-[&attack_rowid]
-   --Rbysectionid|[&PcLookupCharId];repeating_attack;[&attack_rowid]
-  --]|
+  --/|Rfind by name before Rbysectionid — partial Rbysectionid loads can set atkname but leave dmgbase wrong (e.g. Greataxe +1 shows flat 1 + magic).
   --?"[*R:atkname]" -eq "NoRepeatingAttributeLoaded" -and "[&attack_name]" -ne ""|[
    --#parameterdelimiter|$$$
    --Rfind|[&PcLookupCharId]$$$[&attack_name]$$$repeating_attack$$$atkname
    --#parameterdelimiter|;
   --]|
   --?"[*R:atkname]" -eq "NoRepeatingAttributeLoaded" -and "[&attack_name]" -ne ""|[
+   --Rfind|[&PcLookupCharId];[&attack_name];repeating_attack;atkname
+  --]|
+  --?"[*R:atkname]" -eq "NoRepeatingAttributeLoaded" -and "X[&attack_rowid]" -ne "X" -and "[&attack_rowid]" -ne "" -and "[&attack_rowid]" -ne "undefined"|[
+   --?"[&attack_rowid(0,1)]" -ne "-"|&attack_rowid;-[&attack_rowid]
+   --Rbysectionid|[&PcLookupCharId];repeating_attack;[&attack_rowid]
+  --]|
+  --?"[*R:atkname]" -ne "NoRepeatingAttributeLoaded" -and "[&attack_name]" -ne "" -and "[*R:dmgbase]" -ninc "d"|[
+   --#parameterdelimiter|$$$
+   --Rfind|[&PcLookupCharId]$$$[&attack_name]$$$repeating_attack$$$atkname
+   --#parameterdelimiter|;
+  --]|
+  --?"[*R:atkname]" -ne "NoRepeatingAttributeLoaded" -and "[&attack_name]" -ne "" -and "[*R:dmgbase]" -ninc "d"|[
    --Rfind|[&PcLookupCharId];[&attack_name];repeating_attack;atkname
   --]|
   --?"[*R:atkname]" -eq "NoRepeatingAttributeLoaded" -and "X[&attack_rowid]" -ne "X" -and "[&attack_rowid]" -ne ""|[
