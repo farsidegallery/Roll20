@@ -1,6 +1,6 @@
 !script {{
   --/|Script Name : 5E Action Menu
-  --/|Version     : 3.1.1
+  --/|Version     : 3.1.2
   --/|Requires SC : 2.7.15+
   --/|Author      : Kurt Jaegers
   --/|Modified By : Farsidegallery
@@ -272,14 +272,14 @@
 
   --:AFTER_ADVMODE_CHANGE|
 
-  --#leftsub|Action Menu (v3.1.1)
+  --#leftsub|Action Menu (v3.1.2)
 
   --?[&EnablePerCharacterConfiguration] -eq 0|SKIP_PER_CHAR_SETTINGS
-  --#leftsub|Action Menu (v3.1.1) [rbutton][&SettingsImage]::DISPLAY_CHARACTER_CONFIG_MENU[/rbutton] [rbutton][&ClearCacheImage]::CLEAR_CHARACTER_CACHE[/rbutton]
+  --#leftsub|Action Menu (v3.1.2) [rbutton][&SettingsImage]::DISPLAY_CHARACTER_CONFIG_MENU[/rbutton] [rbutton][&ClearCacheImage]::CLEAR_CHARACTER_CACHE[/rbutton]
   -->LOAD_PER_CHARACTER_CONFIG_OPTIONS|[*S:character_id]
   --:SKIP_PER_CHAR_SETTINGS|
   --
-  --#leftsub|Action Menu (v3.1.1) [rbutton][&ClearCacheImage]::CLEAR_CHARACTER_CACHE[/rbutton]
+  --#leftsub|Action Menu (v3.1.2) [rbutton][&ClearCacheImage]::CLEAR_CHARACTER_CACHE[/rbutton]
 
   --?[*S:npc] -eq 1 -or [&ShowRestButtons] -ne 1|SKIP_REST_BUTTONS
   --?"[&perCharacterOptions]" -inc "$SHRB0$"|SKIP_REST_BUTTONS
@@ -948,14 +948,9 @@
   --?"[*R:atkname]" -inc "Silver"|&isSilver;1
   --&isAdamant|0
   --?"[*R:atkname]" -inc "Adamantine"|&isAdamant;1
-  --/+|Magic: [&isMagical], Silver: [&isSilver], Ad: [&isAdamant]
   --?"[&UseResistances]" -eq 0|SKIP_CALC_DMG_MODS
   -->CheckDamageModifiersNPC|[*T:character_id];dmgModType1;[*R:dmgtype];[&isMagical];[&isSilver];[&isAdamant];PC_GDM_RES
   -->CheckDamageModifiersNPC|[*T:character_id];dmgModType2;[*R:dmg2type];[&isMagical];[&isSilver];[&isAdamant]
-  --~gdmlist|array;fromstring;GDM_RES;|;[&PC_GDM_RES]
-  --%gdmloop|foreach;GDM_RES
-    --/||[&gdmloop]
-  --%|
   --:SKIP_CALC_DMG_MODS|
   --=attackDamage|[&dmgroll] [&dmgModType1]
   --=attackDamage2|[&dmgroll2] [&dmgModType2]
@@ -965,13 +960,13 @@
 
   --:ATTACK_ONE_DAMAGE|
   --+[&hittag]|The [*R:atkname] [&hitdesc] and deals [$attackDamage] [*R:dmgtype] damage.[br][br]
-  -->[&damageRoutine]|[&attack_target];[&hitPointsBar];[&tempHPBar];-[$attackDamage.Raw];0;0;1
+  -->[&damageRoutine]|[*T:t-id];[&hitPointsBar];[&tempHPBar];-[$attackDamage.Raw];0;0;1
   --^ATTACK_DONE|
 
   --:ATTACK_TWO_DAMAGE|
   --+[&hittag]|The [*R:atkname] [&hitdesc] and deals [$attackDamage] [*R:dmgtype] and [$attackDamage2] [*R:dmg2type] damage.[br][br]
   --=TotalDamage|[$attackDamage.Raw] + [$attackDamage2.Raw]
-  -->[&damageRoutine]|[&attack_target];[&hitPointsBar];[&tempHPBar];-[$TotalDamage.Raw];0;0;1
+  -->[&damageRoutine]|[*T:t-id];[&hitPointsBar];[&tempHPBar];-[$TotalDamage.Raw];0;0;1
   --^ATTACK_DONE|
 
   --:ATTACK_MISS|
@@ -1621,7 +1616,7 @@
   --/|Token-Mod doesn't have a "set to a relative number", so we get the current bar value, subtract the damage amount,
   --/|make sure it doesn't fall below 0, and set the amount back into the bar.
   --/|Partial temp+HP: batch both bars in one @token-mod call. Temp HP read from token bar only.
-  --/|Keep in sync with far_DamageTokenmod in Library/Farsidelib.scard (authoritative; v1.5.1+).
+  --/|Keep in sync with far_DamageTokenmod in Library/Farsidelib.scard (authoritative; v1.5.8+).
   --:ApplyDamageTokenmod|Parameters are tokenid;bar#;tempHPbar;amount;display (0 or 1);allow overheal (0 or 1);allow negative hp (0 or 1)
   --=_applyValue|[%4%]
   --=StartHP|[*[%1%]:t-bar[%2%]_value]
@@ -1630,6 +1625,7 @@
   --?"X[$TempHP]" -nei "X" -and [$TempHP] -gt 0 -and [$TempHP] -ge [$damageValue]|[
    --=newTempHP|[$TempHP]-[$damageValue]
    --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[$StartHP] bar[%3%]_value|[$newTempHP.Raw]
+   --!t:[%1%]|bar[%2%]_value:[$StartHP]|bar[%3%]_value:[$newTempHP.Raw]
    --<|
   --]|
   --?"X[$TempHP]" -nei "X" -and [$TempHP] -gt 0 -and [$TempHP] -lt [$damageValue]|[
@@ -1639,14 +1635,15 @@
    --?"X[%6%]" -ne "X1" -and [$_newValue] -gt [*[%1%]:t-bar[%2%]_max]|=_newValue;[*[%1%]:t-bar[%2%]_max]
    --?"X[%5%]" -eq "X1"|+Applying;[%4%] HP to [*[%1%]:t-name]
    --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[$_newValue.Raw] bar[%3%]_value|0
+   --!t:[%1%]|bar[%2%]_value:[$_newValue.Raw]|bar[%3%]_value:0
    --<|
   --]|
   --=_newValue|[$StartHP] + [$_applyValue]
   --?[$_newValue] -lt 0 -and "X[%7%]" -ne "X1"|=_newValue;0
   --?"X[%6%]" -ne "X1" -and [$_newValue] -gt [*[%1%]:t-bar[%2%]_max]|=_newValue;[*[%1%]:t-bar[%2%]_max]
   --?"X[%5%]" -eq "X1"|+Applying;[%4%] HP to [*[%1%]:t-name]
-  --=currentTemp|[*[%1%]:t-bar[%3%]_value]
-  --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[$_newValue.Raw] bar[%3%]_value|0
+  --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[$_newValue.Raw]
+  --!t:[%1%]|bar[%2%]_value:[$_newValue.Raw]
   --<| 
   
   --/|AlterBars supports relative values for the amount parameter, so we just pass it the value with a "-" in front of it.
