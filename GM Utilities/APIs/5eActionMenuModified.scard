@@ -272,14 +272,14 @@
 
   --:AFTER_ADVMODE_CHANGE|
 
-  --#leftsub|Action Menu (v3.1.2)
+  --#leftsub|Action Menu
 
   --?[&EnablePerCharacterConfiguration] -eq 0|SKIP_PER_CHAR_SETTINGS
-  --#leftsub|Action Menu (v3.1.2) [rbutton][&SettingsImage]::DISPLAY_CHARACTER_CONFIG_MENU[/rbutton] [rbutton][&ClearCacheImage]::CLEAR_CHARACTER_CACHE[/rbutton]
+  --#leftsub|Action Menu [rbutton][&SettingsImage]::DISPLAY_CHARACTER_CONFIG_MENU[/rbutton] [rbutton][&ClearCacheImage]::CLEAR_CHARACTER_CACHE[/rbutton]
   -->LOAD_PER_CHARACTER_CONFIG_OPTIONS|[*S:character_id]
   --:SKIP_PER_CHAR_SETTINGS|
   --
-  --#leftsub|Action Menu (v3.1.2) [rbutton][&ClearCacheImage]::CLEAR_CHARACTER_CACHE[/rbutton]
+  --#leftsub|Action Menu [rbutton][&ClearCacheImage]::CLEAR_CHARACTER_CACHE[/rbutton]
 
   --?[*S:npc] -eq 1 -or [&ShowRestButtons] -ne 1|SKIP_REST_BUTTONS
   --?"[&perCharacterOptions]" -inc "$SHRB0$"|SKIP_REST_BUTTONS
