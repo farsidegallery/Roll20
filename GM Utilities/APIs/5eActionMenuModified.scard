@@ -1,6 +1,6 @@
 !script {{
   --/|Script Name : 5E Action Menu
-  --/|Version     : 3.0.0
+  --/|Version     : 3.1.0
   --/|Requires SC : 2.7.15+
   --/|Author      : Kurt Jaegers
   --/|Modified By : Farsidegallery
@@ -253,6 +253,8 @@
 
   --/|Store the selected character so we can use it later even if it gets de-selected
   --#sourcetoken|[&saveTokenID]
+  --&AMCharacterId|[*S:character_id]
+  --!a:[&AMCharacterId]|5ECAM_MENU_TID:[&saveTokenID]
 
   --?[&UseNamedCharacterSettings] -eq 1|[
     --lsettings|[*S:character_name]
@@ -270,14 +272,14 @@
 
   --:AFTER_ADVMODE_CHANGE|
 
-  --#leftsub|Action Menu
+  --#leftsub|Action Menu (v3.1.0)
 
   --?[&EnablePerCharacterConfiguration] -eq 0|SKIP_PER_CHAR_SETTINGS
-  --#leftsub|Action Menu [rbutton][&SettingsImage]::DISPLAY_CHARACTER_CONFIG_MENU[/rbutton] [rbutton][&ClearCacheImage]::CLEAR_CHARACTER_CACHE[/rbutton]
+  --#leftsub|Action Menu (v3.1.0) [rbutton][&SettingsImage]::DISPLAY_CHARACTER_CONFIG_MENU[/rbutton] [rbutton][&ClearCacheImage]::CLEAR_CHARACTER_CACHE[/rbutton]
   -->LOAD_PER_CHARACTER_CONFIG_OPTIONS|[*S:character_id]
   --:SKIP_PER_CHAR_SETTINGS|
   --
-  --#leftsub|Action Menu [rbutton][&ClearCacheImage]::CLEAR_CHARACTER_CACHE[/rbutton]
+  --#leftsub|Action Menu (v3.1.0) [rbutton][&ClearCacheImage]::CLEAR_CHARACTER_CACHE[/rbutton]
 
   --?[*S:npc] -eq 1 -or [&ShowRestButtons] -ne 1|SKIP_REST_BUTTONS
   --?"[&perCharacterOptions]" -inc "$SHRB0$"|SKIP_REST_BUTTONS
@@ -353,22 +355,17 @@
   --~action_part|string;before;|;[&reentryval]
   --~action_target|string;after;|;[&reentryval]
   --?"[&action_target]" -eq ""|&action_target;NONE
-  --&action_name|
-  --&action_rowid|
-  --?"[&action_part]" -inc "###"|[
-   --~action_name|string;before;###;[&action_part]
-   --~action_rowid|string;after;###;[&action_part]
-   --&action_name|[&action_name(replace,-!-!-,;)]
-   --&action_name|[&action_name(replace,-!lpar!-,(,)]
-   --&action_name|[&action_name(replace,-!rpar!-,))]
-  --]|[
-   --&action_rowid|[&action_part]
-  --]|
+  --&actionBtnName|[&action_part]
+  --&action_name|[&action_part]
+  --&action_name|[&action_name(replace,-!-!-,;)]
+  --&action_name|[&action_name(replace,-!lpar!-,(,)]
+  --&action_name|[&action_name(replace,-!rpar!-,))]
+  --&action_name|[&action_name(replace,-!plus!-,+,)]
   --<|
 
   --:NPC_ROW_NOT_FOUND|
   --&actionNotFoundLabel|[&action_name]
-  --?"[&actionNotFoundLabel]" -eq ""|&actionNotFoundLabel;[&action_rowid]
+  --?"[&actionNotFoundLabel]" -eq ""|&actionNotFoundLabel;[&actionBtnName]
   --?"[&action_target]" -eq "NONE"|[
    --#emotetext|[*S:t-name] uses [&actionNotFoundLabel]
   --]|[
@@ -391,13 +388,9 @@
   --#leftsub|[*S:character_name]
   --#rightsub|
   --
-  --?"X[&action_rowid]" -ne "X" -and "[&action_rowid]" -ne ""|[
-   --Rbysectionid|[*S:character_id];repeating_npcaction;[&action_rowid]
-  --]|[
-   --#parameterdelimiter|$$$
-   --Rfind|[*S:character_id]$$$[&action_name]$$$repeating_npcaction$$$name
-   --#parameterdelimiter|;
-  --]|
+  --#parameterdelimiter|$$$
+  --Rfind|[*S:character_id]$$$[&action_name]$$$repeating_npcaction$$$name
+  --#parameterdelimiter|;
   --?"[*R:name]" -ne "NoRepeatingAttributeLoaded"|[
     --&emoteActionName|[*R:name]
     --~emoteActionName|string;replace;(;[;[&emoteActionName]
@@ -406,7 +399,7 @@
     --#leftsub|[*R:name]
     --?"[*R:attack_flag]" -ne on|NPCA_NOT_ATTACK
     --:NPCA_MAKE_AN_ATTACK|
-    --#rightsub|[rbutton][&RepeatImage]::EXEC_NPC_ACTION;[&action_rowid]|[&TB]target|token_id}[/rbutton]
+    --#rightsub|[rbutton][&RepeatImage]::EXEC_NPC_ACTION;[&actionBtnName]|[&TB]target|token_id}[/rbutton]
     --&rollType|1d20
     --?"[*S:advantagetoggle]" -inc advantage|&rollType;2d20kh1
     --?"[*S:advantagetoggle]" -inc disadvantage|&rollType;2d20kl1
@@ -550,14 +543,9 @@
   --?"[&action_target]" -eq "NONE"|NPC_BA_SKIP_TARGET
   --#targettoken|[&action_target]
   --:NPC_BA_SKIP_TARGET|
-  --?"X[&action_rowid]" -ne "X" -and "[&action_rowid]" -ne ""|[
-   --Rbysectionid|[*S:character_id];repeating_npcbonusaction;[&action_rowid]
-  --]|[
-   --?"[&action_name]" -eq ""|NPC_ROW_NOT_FOUND
-   --#parameterdelimiter|$$$
-   --Rfind|[*S:character_id]$$$[&action_name]$$$repeating_npcbonusaction$$$name
-   --#parameterdelimiter|;
-  --]|
+  --#parameterdelimiter|$$$
+  --Rfind|[*S:character_id]$$$[&action_name]$$$repeating_npcbonusaction$$$name
+  --#parameterdelimiter|;
   --?"[*R:name]" -eq "NoRepeatingAttributeLoaded"|>NPC_ROW_NOT_FOUND
   --&emoteActionName|[*R:name]
   --~emoteActionName|string;replace;(;[;[&emoteActionName]
@@ -582,14 +570,9 @@
   --?"[&action_target]" -eq "NONE"|NPC_RA_SKIP_TARGET
   --#targettoken|[&action_target]
   --:NPC_RA_SKIP_TARGET|
-  --?"X[&action_rowid]" -ne "X" -and "[&action_rowid]" -ne ""|[
-   --Rbysectionid|[*S:character_id];repeating_npcreaction;[&action_rowid]
-  --]|[
-   --?"[&action_name]" -eq ""|NPC_ROW_NOT_FOUND
-   --#parameterdelimiter|$$$
-   --Rfind|[*S:character_id]$$$[&action_name]$$$repeating_npcreaction$$$name
-   --#parameterdelimiter|;
-  --]|
+  --#parameterdelimiter|$$$
+  --Rfind|[*S:character_id]$$$[&action_name]$$$repeating_npcreaction$$$name
+  --#parameterdelimiter|;
   --?"[*R:name]" -eq "NoRepeatingAttributeLoaded"|>NPC_ROW_NOT_FOUND
   --&emoteActionName|[*R:name]
   --~emoteActionName|string;replace;(;[;[&emoteActionName]
@@ -614,14 +597,9 @@
   --?"[&action_target]" -eq "NONE"|NPC_LA_SKIP_TARGET
   --#targettoken|[&action_target]
   --:NPC_LA_SKIP_TARGET|
-  --?"X[&action_rowid]" -ne "X" -and "[&action_rowid]" -ne ""|[
-   --Rbysectionid|[*S:character_id];repeating_npcaction-l;[&action_rowid]
-  --]|[
-   --?"[&action_name]" -eq ""|NPC_ROW_NOT_FOUND
-   --#parameterdelimiter|$$$
-   --Rfind|[*S:character_id]$$$[&action_name]$$$repeating_npcaction-l$$$name
-   --#parameterdelimiter|;
-  --]|
+  --#parameterdelimiter|$$$
+  --Rfind|[*S:character_id]$$$[&action_name]$$$repeating_npcaction-l$$$name
+  --#parameterdelimiter|;
   --?"[*R:name]" -eq "NoRepeatingAttributeLoaded"|>NPC_ROW_NOT_FOUND
   --&emoteActionName|[*R:name]
   --~emoteActionName|string;replace;(;[;[&emoteActionName]
@@ -746,31 +724,107 @@
   --#emotestate|visible
   --&vfx|
   --&sfx|
+  --&PcLookupCharId|[&AMCharacterId]
+  --?"X[&saveTokenID]" -ne "X" -and "[&saveTokenID]" -ne ""|[
+   --#sourcetoken|[&saveTokenID]
+   --&PcLookupCharId|[*S:character_id]
+  --]|
+  --?"X[&PcLookupCharId]" -eq "X" -or "[&PcLookupCharId]" -eq ""|&PcLookupCharId;[&AMCharacterId]
+  --&recoveredMenuTid|[*:[&PcLookupCharId]:5ECAM_MENU_TID]
+  --?"X[&saveTokenID]" -eq "X" -or "[&saveTokenID]" -eq ""|[
+   --?"X[&recoveredMenuTid]" -ne "X" -and "[&recoveredMenuTid]" -ne ""|[
+    --#sourcetoken|[&recoveredMenuTid]
+    --&saveTokenID|[&recoveredMenuTid]
+    --&PcLookupCharId|[*S:character_id]
+   --]|
+  --]|
   --~attack_part|string;before;|;[&reentryval]
   --~attack_target|string;after;|;[&reentryval]
-  --~attack_name|string;before;###;[&attack_part]
-  --~attack_rowid|string;after;###;[&attack_part]
-  --&attack_name|[&attack_name(replace,-!-!-,;)]
-  --&attack_name|[&attack_name(replace,-!lpar!-,(,)]
-  --&attack_name|[&attack_name(replace,-!rpar!-,))]
+  --?"[&attack_target]" -eq ""|&attack_target;NONE
+  --&attack_rowid|
+  --&attack_name|
+  --&PCRepeatPayload|[&attack_part]
+  --&RidTail|
+  --?"[&attack_part(0,3)]" -eq "RID"|[
+   --&RidTail|[&attack_part]
+  --]|[
+   --?"[&attack_part]" -inc "RID"|[
+    --~attack_name|string;before;RID;[&attack_part]
+    --&RidTail|RID[&attack_part(after,RID)]
+    --?"[&attack_name]" -inc ","|&attack_name;[&attack_name(before,,)]
+   --]|[
+    --~PcTildeName|string;before;~;[&attack_part]
+    --~RidTail|string;after;~;[&attack_part]
+    --?"[&PcTildeName]" -ne "[&attack_part]"|&attack_name;[&PcTildeName]
+    --?"[&PcTildeName]" -eq "[&attack_part]"|&RidTail;[&attack_part]
+   --]|
+  --]|
+  --:PC_ATK_CHECK_RID|
+  --&RidPrefix|[&RidTail(0,3)]
+  --?"[&RidPrefix]" -eq "RID"|PC_ATK_DECODE_RID|PC_ATK_NAME_ONLY
+  --:PC_ATK_DECODE_RID|
+  --&RidTail|[&RidTail(after,RID)]
+  --&RidTail|[&RidTail(after,-)]
+  --&attack_rowid|-[&RidTail]
+  --?"1" -eq "1"|PC_ATK_PARSE_DONE|PC_ATK_PARSE_DONE
+  --:PC_ATK_NAME_ONLY|
+  --?"X[&attack_name]" -eq "X" -or "[&attack_name]" -eq ""|&attack_name;[&RidTail]
+  --:PC_ATK_PARSE_DONE|
+  --~attack_name|string;replace;-!-!-;;;[&attack_name]
+  --~attack_name|string;replace;-!plus!-;+;[&attack_name]
+  --~attack_name|string;replace;-!lpar!-;(;[&attack_name]
+  --~attack_name|string;replace;-!rpar!-;);[&attack_name]
   --#targettoken|[&attack_target]
   -->DETERMINE_NPC_STATUS_MODIFIERS|[*T:t-id];T
-  -->Find_Active_Global_Attack_Modifiers|[*S:character_id];PC_GAM
-  -->Find_Active_Global_Damage_Modifiers|[*S:character_id];PC_GDM
-  -->Find_Active_Global_Damage_Modifiers|[*S:character_id];PC_GDM_CRIT;1
-  --?"X[&attack_rowid]" -ne "X" -and "[&attack_rowid]" -ne ""|[
-   --Rbysectionid|[*S:character_id];repeating_attack;[&attack_rowid]
-  --]|[
-   --Rfind|[*S:character_id];[&attack_name];repeating_attack;atkname
+  -->Find_Active_Global_Attack_Modifiers|[&PcLookupCharId];PC_GAM
+  -->Find_Active_Global_Damage_Modifiers|[&PcLookupCharId];PC_GDM
+  -->Find_Active_Global_Damage_Modifiers|[&PcLookupCharId];PC_GDM_CRIT;1
+  --?"[&attack_name]" -ne ""|[
+   --~|hashtable;fromrepeatingsection;[&PcLookupCharId];repeating_attack;atkname;PCAtkExecHash
+   --&PcHashSectionKey|[&attack_name]_sectionid
+   --&attack_rowid|[:PCAtkExecHash("[&PcHashSectionKey]")]
+  --]|
+  --?"[*R:atkname]" -eq "NoRepeatingAttributeLoaded" -and "X[&attack_rowid]" -ne "X" -and "[&attack_rowid]" -ne "" -and "[&attack_rowid]" -ne "undefined"|[
+   --?"[&attack_rowid(0,1)]" -ne "-"|&attack_rowid;-[&attack_rowid]
+   --Rbysectionid|[&PcLookupCharId];repeating_attack;[&attack_rowid]
+  --]|
+  --?"[*R:atkname]" -eq "NoRepeatingAttributeLoaded" -and "[&attack_name]" -ne ""|[
+   --#parameterdelimiter|$$$
+   --Rfind|[&PcLookupCharId]$$$[&attack_name]$$$repeating_attack$$$atkname
+   --#parameterdelimiter|;
+  --]|
+  --?"[*R:atkname]" -eq "NoRepeatingAttributeLoaded" -and "[&attack_name]" -ne ""|[
+   --Rfind|[&PcLookupCharId];[&attack_name];repeating_attack;atkname
+  --]|
+  --?"[*R:atkname]" -eq "NoRepeatingAttributeLoaded" -and "X[&attack_rowid]" -ne "X" -and "[&attack_rowid]" -ne ""|[
+   --~|hashtable;fromrepeatingrow;[&PcLookupCharId];repeating_attack;[&attack_rowid];PCAtkRowHash
+   --&PCAtkFindName|[:PCAtkRowHash("atkname")]
+   --?"[&PCAtkFindName]" -ne "" -and "[&PCAtkFindName]" -ne "undefined"|[
+    --&attack_name|[&PCAtkFindName]
+    --#parameterdelimiter|$$$
+    --Rfind|[&PcLookupCharId]$$$[&attack_name]$$$repeating_attack$$$atkname
+    --#parameterdelimiter|;
+   --]|
   --]|
   --?"[*R:atkname]" -eq "NoRepeatingAttributeLoaded"|[
-   --+Attack Not Found|The attack "[&attack_name]" could not be loaded from [*S:character_name]'s sheet.
+   --#emotetext|
+   --&attackNotFoundLabel|[&attack_name]
+   --?"[&attackNotFoundLabel]" -eq ""|&attackNotFoundLabel;[&attack_part]
+   --?"[&attackNotFoundLabel]" -eq ""|&attackNotFoundLabel;empty payload
+   --+Attack Not Found|The attack "[&attackNotFoundLabel]" could not be loaded from [*S:character_name]'s sheet.
    --X|
   --]|
-  --&attack_name|[*R:atkname]
-  --&attack_name|[&attack_name(replace,;,-!-!-)]
-  --&attack_name|[&attack_name(replace,(,-!lpar!-)]
-  --&attack_name|[&attack_name(replace,),-!rpar!-)]
+  --&attackBtnName|[*R:atkname]
+  --&attackBtnName|[&attackBtnName(replace,;,-!-!-)]
+  --&attackBtnName|[&attackBtnName(replace,(,-!lpar!-)]
+  --&attackBtnName|[&attackBtnName(replace,),-!rpar!-)]
+  --&attackBtnName|[&attackBtnName(replace,+,-!plus!-)]
+  --&PCRepeatPayload|[&attack_part]
+  --?"X[&attack_rowid]" -ne "X" -and "[&attack_rowid]" -ne ""|[
+   --&PcRepeatEnc|RID[&attack_rowid(after,-)]
+   --&PCRepeatPayload|[&attackBtnName][&PcRepeatEnc]
+  --]|
+  --?"X[&attack_rowid]" -eq "X" -or "[&attack_rowid]" -eq ""|&PCRepeatPayload;[&attackBtnName]
   --&emoteActionName|[*R:atkname]
   --~emoteActionName|string;replace;(;[;[&emoteActionName]
   --~emoteActionName|string;replace;);];[&emoteActionName]
@@ -778,13 +832,14 @@
   --?[*R:attack_flag] -ne 1|
   --?[&requireAmmo] -eq 0|NoAmmoNeededPC_Attack
   --?"[*R:ammo]" -eq ""|NoAmmoNeededPC_Attack
+  --?"[*R:ammo]" -eq "NoRepeatingAttributeLoaded"|NoAmmoNeededPC_Attack
   --~ResourceUsed|string;before;|;[*R:ammo]
-  -->FIND_REPEATING_RESOURCE|[*S:character_id];[&ResourceUsed];AmmoAttrName;AmmoAttributeID;AmmoCount
+  -->FIND_REPEATING_RESOURCE|[&PcLookupCharId];[&ResourceUsed];AmmoAttrName;AmmoAttributeID;AmmoCount
   --?[&AmmoCount] -lt 1|_NO_AMMO_AVAILABLE
   --:NoAmmoNeededPC_Attack|
   --#title|[*R:atkname]
   --#leftsub|[*S:character_name]
-  --#rightsub|[rbutton][&RepeatImage]::EXEC_PC_ATTACK;[&attack_name]###[&attack_rowid]|[&TB]target|token_id}[/rbutton]
+  --#rightsub|[rbutton][&RepeatImage]::EXEC_PC_ATTACK;[&PCRepeatPayload]|[&TB]target|token_id}[/rbutton]
   --~|array;fromstring;fx;$;[*R:atk_desc]
   --%loop|foreach;fx
     --?"[&loop]" -inc "sfx:"|&sfx;[&loop(after,:)]
@@ -2234,6 +2289,7 @@
   --?"[%5%]" -eq "Bonus Actions"|DO_BUILD_BUTTON_LIST
   --?"[%5%]" -eq "Reactions"|DO_BUILD_BUTTON_LIST
   --?"[%5%]" -eq "Legendary Actions"|DO_BUILD_BUTTON_LIST
+  --?"[%5%]" -eq "Attacks and Actions"|DO_BUILD_BUTTON_LIST
   --&AM_CACHED_BUTTON_LIST|[*[%1%]:5ECAM_CACHE_[%5%]]
   --?"[&AM_CACHED_BUTTON_LIST]" -eq "undefined"|DO_BUILD_BUTTON_LIST
   --?"[&AM_CACHED_BUTTON_LIST]" -eq ""|DO_BUILD_BUTTON_LIST
@@ -2249,16 +2305,15 @@
   --?[@Hash_Keys(length)] -eq 0|AM_BUTTON_LIST_NOTHING
   --&AM_BUTTON_LIST|[br]
   --%loop|foreach;Hash_Keys
-    --?"[&loop]" -inc "_sectionid"|AM_LIST_NEXT_ROW
-    --^AM_LIST_CONTINUE|
+    --?"[&loop]" -inc "_sectionid"|AM_LIST_NEXT_ROW|AM_LIST_CONTINUE
     --:AM_LIST_NEXT_ROW|
     --&DisplayName|[&loop(replace,_sectionid,)]
-    --&RowSectionId|[:BuiltButtonHash("[&loop]")]
-    --?"[&RowSectionId]" -eq ""|AM_LIST_CONTINUE
-    --?"[&RowSectionId]" -eq "undefined"|AM_LIST_CONTINUE
+    --&RowSectionId|[:BuiltButtonHash("[&DisplayName]_sectionid")]
+    --?"[&RowSectionId]" -eq ""|&RowSectionId;[:BuiltButtonHash("[&loop]")]
     --&ActionName|[&DisplayName(replace,;,-!-!-)]
     --&ActionName|[&ActionName(replace,(,-!lpar!-)]
     --&ActionName|[&ActionName(replace,),-!rpar!-)]
+    --&ActionName|[&ActionName(replace,+,-!plus!-)]
     --/|5E SPECIFIC START 
     --?"[&DisplayName(contains,Multiattack)]" -eq 1|>SHOW_MULTIATTACK;[:BuiltButtonHash("[&DisplayName]_description")]
     --?"[&DisplayName(contains,Multiattack)]" -eq 1|AM_LIST_CONTINUE
@@ -2275,25 +2330,54 @@
     --?"[%6%]" -eq "none"|AM_LIST_SKIP_MULE_CHECK
     --~testName|string;replaceall; ;-;[&DisplayName]
     --~testMule|system;findability;[%6%];[&testName]
-    --?[&testMule] -eq "AbilityNotFound"|AM_LIST_SKIP_MULE_CHECK
-    --&AM_BUTTON_LIST|+[button][&DisplayName(totitlecase)]::~[%6%]|[&testName][/button][&SPACE]
-    --^AM_LIST_CONTINUE|
+    --?[&testMule] -ne "AbilityNotFound"|[
+      --&AM_BUTTON_LIST|+[button][&DisplayName(totitlecase)]::~[%6%]|[&testName][/button][&SPACE]
+      --?"1" -eq "1"|AM_LIST_CONTINUE|AM_LIST_CONTINUE
+    --]|
     --:AM_LIST_SKIP_MULE_CHECK|
     --&actionAttackFlag|[:BuiltButtonHash("[&DisplayName]_attack_flag")]
+    --?"[%4%]" -eq "EXEC_PC_ATTACK"|AM_LIST_PC_ATTACK_TARGET|AM_LIST_NPC_ATTACK_SUFFIX
+    --:AM_LIST_PC_ATTACK_TARGET|
+    --&actionTargetSuffix|[&TB]target|token_id}
+    --?"[&actionAttackFlag]" -eq "0"|AM_LIST_PC_NO_TARGET|AM_LIST_BUILD_RBUTTON
+    --?"[&actionAttackFlag]" -eq 0|AM_LIST_PC_NO_TARGET|AM_LIST_BUILD_RBUTTON
+    --?"1" -eq "1"|AM_LIST_BUILD_RBUTTON|AM_LIST_BUILD_RBUTTON
+    --:AM_LIST_NPC_ATTACK_SUFFIX|
     --&actionTargetSuffix|NONE
-    --?"[&actionAttackFlag]" -inc "on"|AM_LIST_ATTACK_TARGET
-    --?"[&actionAttackFlag]" -eq "1"|AM_LIST_ATTACK_TARGET
-    --^AM_LIST_BUILD_RBUTTON|
+    --?"[&actionAttackFlag]" -inc "on"|AM_LIST_ATTACK_TARGET|AM_LIST_NPC_ATTACK_EQ1
+    --:AM_LIST_NPC_ATTACK_EQ1|
+    --?"[&actionAttackFlag]" -eq "1"|AM_LIST_ATTACK_TARGET|AM_LIST_BUILD_RBUTTON
     --:AM_LIST_ATTACK_TARGET|
     --&actionTargetSuffix|[&TB]target|token_id}
+    --:AM_LIST_PC_NO_TARGET|
+    --&actionTargetSuffix|NONE
     --:AM_LIST_BUILD_RBUTTON|
-    --&AM_BUTTON_LIST|+[rbutton][&DisplayName(totitlecase)]::[%4%];[&RowSectionId]|[&actionTargetSuffix][/rbutton][&SPACE]
+    --&PcAttackPayload|[&ActionName]
+    --?"[%4%]" -eq "EXEC_PC_ATTACK" -and "X[&RowSectionId]" -ne "X" -and "[&RowSectionId]" -ne "" -and "[&RowSectionId]" -ne "undefined"|[
+     --&PcRidBody|[&RowSectionId(after,-)]
+     --?"[&DisplayName]" -inc "+"|AM_LIST_PC_NAME_PAYLOAD|AM_LIST_PC_RID_PAYLOAD
+     --:AM_LIST_PC_RID_PAYLOAD|
+     --&PcAttackPayload|RID[&PcRidBody]
+     --?"1" -eq "1"|AM_LIST_PC_PAYLOAD_DONE|AM_LIST_PC_PAYLOAD_DONE
+     --:AM_LIST_PC_NAME_PAYLOAD|
+     --&PcAttackPayload|[&ActionName]
+     --:AM_LIST_PC_PAYLOAD_DONE|
+    --]|
+    --&AM_BUTTON_LIST|+[rbutton][&DisplayName(totitlecase)]::[%4%];[&PcAttackPayload]|[&actionTargetSuffix][/rbutton][&SPACE]
     --:AM_LIST_CONTINUE|
   --%|
   --&cacheList|[&AM_BUTTON_LIST(replaceall,:,!#!)]
   --&cacheList|[&cacheList(replaceall,;,!$!)]
   --&cacheList|[&cacheList(replaceall,|,!@!)]
-  --!a:[%1%]|!5ECAM_CACHE_[%5%]:[&cacheList]
+  --?"[%5%]" -eq "Attacks and Actions"|AM_LIST_SKIP_CACHE_WRITE
+  --?"[%5%]" -eq "Actions"|AM_LIST_SKIP_CACHE_WRITE
+  --?"[%5%]" -eq "Bonus Actions"|AM_LIST_SKIP_CACHE_WRITE
+  --?"[%5%]" -eq "Reactions"|AM_LIST_SKIP_CACHE_WRITE
+  --?"[%5%]" -eq "Legendary Actions"|AM_LIST_SKIP_CACHE_WRITE
+  --?"[%1%]" -ne ""|[
+   --!a:[%1%]|!5ECAM_CACHE_[%5%]:[&cacheList]
+  --]|
+  --:AM_LIST_SKIP_CACHE_WRITE|
   --+[%5%]|[BR][&AM_BUTTON_LIST]
   --:AM_BUTTON_LIST_NOTHING|
   --<|
