@@ -1,6 +1,6 @@
 !script {{
   --/|Script Name : Concentration
-  --/|Version     : 1.3.9
+  --/|Version     : 1.4.3
   --/|Requires SC : ScriptCards 3.0.25+, 5Elib/snlib/Farsidelib 1.5.2+
   --/|
   --/|Trigger setup (ScriptCards_Triggers character):
@@ -9,6 +9,7 @@
   --/|  When listen_to_tokenmod is 1, TokenMod injects gmnotes into trigger replacements without escaping embedded
   --/|  double-hyphen text, which breaks ScriptCards parsing (common when bulk-heal uses @token-mod). Bulk heal should
   --/|  use !t bar updates instead of @token-mod, or temporarily disable listen_to_tokenmod.
+  --/|  On NPC death (hp to 0): applies dead marker; Corpse Cart auto-buries NPCs on dead marker (no chat call needed).
   --/|
   --/|This example watches for graphics objects (in this case tokens) to change. if the value that changed is the current hit points
   --/|(as specified by the hitPointBar variable below), it will be checked to see if it has hit 0. If so, the token will be marked 
@@ -81,6 +82,24 @@
    --#hidecard|0
    --+Died: |[*[&GraphicOld_id]:character_name] died from the damage!
    --!t:[&GraphicOld_id]|statusmarkers:[&newstatus]
+   -->ConcIsNpcToken|ConcIsNpc
+   --?[&ConcIsNpc] -eq 1|>NpcDeathCleanup
+   --?"[&GraphicOldstatusmarkers]" -inc "&ConcentrationMarker"|>DeadEntry
+   --X|
+
+  --/|NPC = sheet npc flag or uncontrolled character (matches Corpse Cart logic).
+  --:ConcIsNpcToken|return-var
+   --&[%1%]|0
+   --?"[*[&GraphicOld_id]:npc]" -eq 1|&[%1%];1
+   --?"X[&[%1%]]" -eq "X0" -and "[*[&GraphicOld_id]:character_id]" -ne ""|[
+    --&ConcCharId|[*[&GraphicOld_id]:character_id]
+    --?"[*[&ConcCharId]:controlledby]" -eq ""|&[%1%];1
+   --]|
+   --<|
+
+  --/|NPC death: Lazy Experience prompt. Corpse Cart auto-buries when the dead marker is applied above.
+  --:NpcDeathCleanup|
+   --@xp|npcdeath [&GraphicOld_id]
    --?"[&GraphicOldstatusmarkers]" -inc "&ConcentrationMarker"|>DeadEntry
    --X|
  
