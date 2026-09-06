@@ -9,6 +9,9 @@
  * Changes in this version 2.53 by FarsideGallery using Cursor AI (status marker badge updates no longer reset condition counters)
  * Changes in this version 2.54 by FarsideGallery using Cursor AI (turn tick updates marker badge in place instead of re-adding conditions)
  * Changes in this version 2.55 by FarsideGallery using Cursor AI (adopt ScriptCards token marker badges into CM duration tracking)
+ * Changes in this version 2.56 by FarsideGallery using Cursor AI (release CM tracking when ScriptCards removes token markers; guard deferred marker adds)
+ * Changes in this version 2.57 by FarsideGallery using Cursor AI (fix sandbox crash: do not persist setTimeout handle in state)
+ * Changes in this version 2.58 by FarsideGallery using Cursor AI (remove dead tokens from turn order; ScriptCards dead-marker observer; prune on turn advance)
  * Discord: Vic#5196H
  * Roll20: https://app.roll20.net/users/3135709/victor-b
  * Github: https://github.com/vicberg/CombatMaster
@@ -17,10 +20,11 @@ var CombatMaster = CombatMaster || (function() {
     'use strict';
 
     let round = 1,
-	    version = '2.55',
+	    version = '2.58',
         timerObj,
         intervalHandle,
         animationHandle,
+        auraSyncTimerHandle,
         debug = false,
         paused = false,
         who = 'gm',
@@ -1146,9 +1150,16 @@ var CombatMaster = CombatMaster || (function() {
             log('Get Condition By Marker')
         }
 
+        let markerBase = getMarkerBase(marker);
+
+        if (markerBase.indexOf('Concentrating') === 0 && state[combatState].config.conditions.concentration) {
+            return state[combatState].config.conditions.concentration;
+        }
+
         let key
         for (key in state[combatState].config.conditions) {
-            if (marker.includes(state[combatState].config.conditions[key].icon)) {
+            let icon = state[combatState].config.conditions[key].icon;
+            if (icon && (marker.includes(icon) || markerBase.includes(icon))) {
                 return state[combatState].config.conditions[key]
             }
         }
@@ -1220,10 +1231,69 @@ var CombatMaster = CombatMaster || (function() {
         return true;
     },
 
+    conditionMarkerPresentOnToken = function (tokenObj, condition) {
+        if (!tokenObj || !condition || condition.iconType === 'Token Condition') {
+            return true;
+        }
+
+        let tokenMarkers = returnMarkers(tokenObj).filter(function (marker) {
+            return marker && marker !== '';
+        });
+
+        if (condition.key === 'concentration') {
+            return tokenMarkers.some(function (marker) {
+                return getMarkerBase(marker).indexOf('Concentrating') === 0;
+            });
+        }
+
+        let iconTag = getIconTag(condition.iconType, condition.icon);
+        if (!iconTag) {
+            return false;
+        }
+
+        let base = getMarkerBase(iconTag);
+        if (markerBasePresent(tokenMarkers, base)) {
+            return true;
+        }
+
+        return tokenMarkers.some(function (marker) {
+            let markerBase = getMarkerBase(marker);
+            return markerBase.indexOf(iconTag) === 0
+                || iconTag.indexOf(markerBase) === 0
+                || (condition.icon && marker.includes(condition.icon));
+        });
+    },
+
+    releaseConditionsMissingMarkers = function (tokenObj) {
+        if (!tokenObj) {
+            return;
+        }
+
+        let tokenId = tokenObj.get('_id');
+        let keysToRelease = [...new Set(
+            state[combatState].conditions
+                .filter(function (condition) {
+                    return condition.id === tokenId && condition.iconType !== 'Token Condition';
+                })
+                .filter(function (condition) {
+                    return !conditionMarkerPresentOnToken(tokenObj, condition);
+                })
+                .map(function (condition) {
+                    return condition.key;
+                })
+        )];
+
+        keysToRelease.forEach(function (key) {
+            removeConditionFromToken(tokenObj, key, true, true);
+        });
+    },
+
     syncExternalMarkersToState = function (tokenObj) {
         if (!tokenObj) {
             return;
         }
+
+        releaseConditionsMissingMarkers(tokenObj);
 
         returnMarkers(tokenObj).forEach(function (marker) {
             if (!marker) {
@@ -1434,7 +1504,7 @@ var CombatMaster = CombatMaster || (function() {
         return;
     },
 
-    removeConditionFromToken = function(tokenObj,key,removeAPI) {
+    removeConditionFromToken = function(tokenObj,key,removeAPI,externalRelease) {
         if (debug) {
             log('Remove Condition From Token')
         }
@@ -1465,14 +1535,16 @@ var CombatMaster = CombatMaster || (function() {
                     }
                 }
 
-                if (condition.iconType == 'Token Condition') {
-                    removeTokenCondition(condition.tokenConditionID)
-                } else {
-                    removeMarker(tokenObj, condition.iconType, condition.icon)
-                }
-                if (condition.concentration == true) {
-                    let concentration = getConditionByKey('concentration')
-                    removeMarker(tokenObj, concentration.iconType, concentration.icon)
+                if (!externalRelease) {
+                    if (condition.iconType == 'Token Condition') {
+                        removeTokenCondition(condition.tokenConditionID)
+                    } else {
+                        removeMarker(tokenObj, condition.iconType, condition.icon)
+                    }
+                    if (condition.concentration == true) {
+                        let concentration = getConditionByKey('concentration')
+                        removeMarker(tokenObj, concentration.iconType, concentration.icon)
+                    }
                 }
 			    if (!condition.targeted || (condition.targeted && condition.targetedAPI == 'casterTargets')) {
 			        if (removeAPI) {
@@ -1825,6 +1897,57 @@ var CombatMaster = CombatMaster || (function() {
         });
     },
 
+    parseStatusMarkerNames = function (statusmarkers) {
+        return (statusmarkers || '').split(',').filter(Boolean).map(function (marker) {
+            return marker.split('@')[0].trim().toLowerCase();
+        });
+    },
+
+    normalizeTokenPrevForMarkers = function (prev) {
+        if (!prev) {
+            return {};
+        }
+        if (typeof prev.get === 'function') {
+            return {
+                statusmarkers: prev.get('statusmarkers'),
+                status_dead: prev.get('status_dead')
+            };
+        }
+        return prev;
+    },
+
+    markerWasJustApplied = function (obj, prev, marker) {
+        marker = (marker || '').toLowerCase();
+        prev = normalizeTokenPrevForMarkers(prev);
+        let statusKey = 'status_' + marker;
+        if (obj.get(statusKey) && !prev[statusKey]) {
+            return true;
+        }
+        let now = parseStatusMarkerNames(obj.get('statusmarkers'));
+        let was = parseStatusMarkerNames(prev.statusmarkers);
+        return now.includes(marker) && !was.includes(marker);
+    },
+
+    tokenHasDeadMarker = function (tokenObj) {
+        if (!tokenObj) {
+            return false;
+        }
+        if (tokenObj.get('status_dead')) {
+            return true;
+        }
+        return parseStatusMarkerNames(tokenObj.get('statusmarkers')).includes('dead');
+    },
+
+    handleDeadTokenTurnorderSync = function (obj, prev) {
+        if (!obj || obj.get('_subtype') !== 'token' || !inFight()) {
+            return;
+        }
+        if (!markerWasJustApplied(obj, prev, 'dead')) {
+            return;
+        }
+        removeTokenFromTurnorder(obj.get('_id'));
+    },
+
     updateConditionMarker = function (tokenObj, condition) {
         if (!tokenObj || !condition) {
             return;
@@ -1861,6 +1984,27 @@ var CombatMaster = CombatMaster || (function() {
         removeMarker(tokenObj, markerType, marker)
 
         setTimeout(() => {
+            if (!tokenObj) {
+                return;
+            }
+
+            let tokenId = tokenObj.get('_id');
+
+            if (key && key !== 'dead') {
+                let tracked = findAssignedCondition(tokenId, key);
+                if (tracked.length === 0) {
+                    return;
+                }
+                duration = parseInt(tracked[0].duration, 10);
+                direction = parseInt(tracked[0].direction, 10);
+                if (isNaN(duration)) {
+                    duration = 0;
+                }
+                if (isNaN(direction)) {
+                    direction = 0;
+                }
+            }
+
             let statusMarkers = returnMarkers(tokenObj)
 
             let statusMarker
@@ -2071,7 +2215,7 @@ var CombatMaster = CombatMaster || (function() {
                         let condition = getConditionByMarker(marker);
                         if(!condition || !base) return;
                         if(!markerBasePresent(newstatusmarkers, base)){
-                            removeConditionFromToken(obj, condition.key, true);
+                            removeConditionFromToken(obj, condition.key, true, true);
                         }
                     })
                 }
@@ -2086,8 +2230,19 @@ var CombatMaster = CombatMaster || (function() {
                         }
                     });
                 }
+
+                releaseConditionsMissingMarkers(obj);
             }
         }
+
+        handleDeadTokenTurnorderSync(obj, prev);
+    },
+
+    handleStatusDeadChange = function (obj, prev) {
+        if (cmUpdatingMarkers) {
+            return;
+        }
+        handleDeadTokenTurnorderSync(obj, prev);
     },
 
     startMarkerAnimation = function(marker) {
@@ -2136,6 +2291,75 @@ var CombatMaster = CombatMaster || (function() {
             hold.turnorder = hold.turnorder.filter(t => t.id !== tokenId);
             hold.conditions = hold.conditions.filter(c => c.id !== tokenId);
         }
+    },
+
+    removeTokenFromTurnorder = function (tokenId) {
+        if (!tokenId || !inFight()) {
+            return false;
+        }
+
+        let markerId = getOrCreateMarker().get('id');
+        let nextMarkerId = getOrCreateMarker(true).get('id');
+
+        if (tokenId === '-1' || tokenId === markerId || tokenId === nextMarkerId) {
+            return false;
+        }
+
+        let prevTurnorder = getTurnorder();
+        if (!prevTurnorder.some(t => t.id === tokenId)) {
+            return false;
+        }
+
+        let wasCurrent = prevTurnorder.length > 0 && prevTurnorder[0].id === tokenId;
+
+        withCmTurnorderDrive(function () {
+            setTurnorder(prevTurnorder.filter(t => t.id !== tokenId));
+        });
+
+        if (wasCurrent) {
+            deferTurnorderChange();
+        }
+
+        return true;
+    },
+
+    pruneInactiveTokensFromTurnorder = function () {
+        if (!inFight()) {
+            return false;
+        }
+
+        let markerId = getOrCreateMarker().get('id');
+        let nextMarkerId = getOrCreateMarker(true).get('id');
+        let prevTurnorder = getTurnorder();
+        let removedIds = [];
+
+        prevTurnorder.forEach(function (turn) {
+            let id = turn.id;
+            if (!id || id === '-1' || id === markerId || id === nextMarkerId) {
+                return;
+            }
+            let token = getObj('graphic', id);
+            if (!token || tokenHasDeadMarker(token)) {
+                removedIds.push(id);
+            }
+        });
+
+        if (removedIds.length === 0) {
+            return false;
+        }
+
+        let wasCurrent = prevTurnorder.length > 0 && removedIds.includes(prevTurnorder[0].id);
+
+        withCmTurnorderDrive(function () {
+            setTurnorder(getTurnorder().filter(t => !removedIds.includes(t.id)));
+        });
+
+        if (wasCurrent) {
+            deferTurnorderChange();
+            return true;
+        }
+
+        return false;
     },
 
     syncTurnorderRemovals = function (prevTurnorder, turnorder) {
@@ -2192,6 +2416,11 @@ var CombatMaster = CombatMaster || (function() {
         if (!verified) {
             return
         }
+
+        if (pruneInactiveTokensFromTurnorder()) {
+            return;
+        }
+
         let turn        = getCurrentTurn()
         let marker      = getOrCreateMarker()
         let tokenObj    = findObjs({_id:turn.id, _pageid:Campaign().get("playerpageid"), _type: 'graphic'})[0];
@@ -2620,8 +2849,8 @@ var CombatMaster = CombatMaster || (function() {
     },
 
     scheduleAuraTurnSync = function () {
-        clearTimeout(state[combatState].auraSyncTimer);
-        state[combatState].auraSyncTimer = setTimeout(function () {
+        clearTimeout(auraSyncTimerHandle);
+        auraSyncTimerHandle = setTimeout(function () {
             if (state[combatState].auraSyncPrev) {
                 syncAuraTurnEvents(state[combatState].auraSyncPrev, getTurnorder());
                 state[combatState].auraSyncPrev = null;
@@ -5110,6 +5339,11 @@ var CombatMaster = CombatMaster || (function() {
         if(!_.has(state, combatState)){
             state[combatState] = state[combatState] || {};
         }
+        // v2.56 and earlier stored a setTimeout handle here, which breaks Roll20 state persistence.
+        if(state[combatState].auraSyncTimer){
+            try { clearTimeout(state[combatState].auraSyncTimer); } catch (e) {}
+            delete state[combatState].auraSyncTimer;
+        }
         setDefaults();
         buildHelp();
         log(script_name + ' Ready! Command: !cmaster --main');
@@ -5120,6 +5354,7 @@ var CombatMaster = CombatMaster || (function() {
         on('close:campaign:turnorder', handleTurnorderChange);
         on('change:campaign:turnorder', handleTurnorderChange);
         on('change:graphic:statusmarkers', handleStatusMarkerChange);
+        on('change:graphic:status_dead', handleStatusDeadChange);
         on('change:campaign:initiativepage', handeIniativePageChange);
         on('change:graphic:top', handleGraphicMovement);
         on('change:graphic:left', handleGraphicMovement);
@@ -5140,6 +5375,18 @@ var CombatMaster = CombatMaster || (function() {
 
         if('undefined' !== typeof TokenMod && TokenMod.ObserveTokenChange) {
             TokenMod.ObserveTokenChange(function(obj,prev) {
+                handleStatusMarkerChange(obj,prev);
+            });
+        }
+
+        if('undefined' !== typeof ScriptCards && ScriptCards.ObserveTokenChange) {
+            ScriptCards.ObserveTokenChange(function(obj,prev) {
+                handleStatusMarkerChange(obj,prev);
+            });
+        }
+
+        if('undefined' !== typeof SmartAoE && SmartAoE.ObserveTokenChange) {
+            SmartAoE.ObserveTokenChange(function(obj,prev) {
                 handleStatusMarkerChange(obj,prev);
             });
         }
