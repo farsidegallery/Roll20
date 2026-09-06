@@ -1,4 +1,4 @@
---/|ScriptCards Library: Farsidelib  version 1.5.5
+--/|ScriptCards Library: Farsidelib  version 1.5.7
 --/|Provides various utility procedures for Roll20
 
 --/|This library contains a number of functions that are customized to meet the different needs of spell or ability
@@ -376,7 +376,7 @@
   --:IsImmune| --&[%1%]| * 0 [Immune] --<|
  
  --:far_Check_GLOBAL_MOD_EXISTS|characterid; Category; name; returnstring (0=does not exist, 1=exists)
-  --&[%1%]|0
+  --&[%4%]|0
   --&_Lib5E_WHICH_GM|
   --&_Lib5E_Search_Field|
   --&_Lib5E_Temp|[%2%]
@@ -384,12 +384,28 @@
   --C[&_Lib5E_Temp(tolowercase)]|attack:&_Lib5E_Search_Field;attack|tohit:&_Lib5E_Search_Field;attack|ac:&_Lib5E_Search_Field;ac|save:&_Lib5E_Search_Field;save|damage:&_Lib5E_Search_Field;damage|skill:&_Lib5E_Search_Field;skill
   --?"[&_Lib5E_WHICH_GM]" -eq ""|>_Lib5E_THROW_ERROR;Global Modifier type [%2%] not recognized
   --Rfind|[*[%1%]:character_id];[%3%];repeating_[&_Lib5E_WHICH_GM];global_[&_Lib5E_Search_Field]_name
-  --?"[*R:global_attack_name]" -eq "NoRepeatingAttributeLoaded"|[
-    -->_Lib5E_THROW_ERROR|Global [%2%] Modifier [%3%] not found on character [*[%1%]:character_name]
-	--&[%4%]|0
-	--<|
-	--]|
-  --?"[*R:global_attack_active_flag]" -eq "1" -or "[*R:global_attack_active_flag]" -eq "0"|&[%4%];1|&[%4%];0
+  --?"[&_Lib5E_Search_Field]" -eq "damage"|>_Lib5E_GMCheck_damage
+  --?"[&_Lib5E_Search_Field]" -eq "attack"|>_Lib5E_GMCheck_attack
+  --?"[&_Lib5E_Search_Field]" -eq "ac"|>_Lib5E_GMCheck_ac
+  --?"[&_Lib5E_Search_Field]" -eq "save"|>_Lib5E_GMCheck_save
+  --?"[&_Lib5E_Search_Field]" -eq "skill"|>_Lib5E_GMCheck_skill
+  --^_Lib5E_GMCheck_done|
+  --:_Lib5E_GMCheck_attack|
+  --?"[*R:global_attack_name]" -ne "NoRepeatingAttributeLoaded"|&[%4%];1
+  --^_Lib5E_GMCheck_done|
+  --:_Lib5E_GMCheck_damage|
+  --?"[*R:global_damage_name]" -ne "NoRepeatingAttributeLoaded"|&[%4%];1
+  --^_Lib5E_GMCheck_done|
+  --:_Lib5E_GMCheck_ac|
+  --?"[*R:global_ac_name]" -ne "NoRepeatingAttributeLoaded"|&[%4%];1
+  --^_Lib5E_GMCheck_done|
+  --:_Lib5E_GMCheck_save|
+  --?"[*R:global_save_name]" -ne "NoRepeatingAttributeLoaded"|&[%4%];1
+  --^_Lib5E_GMCheck_done|
+  --:_Lib5E_GMCheck_skill|
+  --?"[*R:global_skill_name]" -ne "NoRepeatingAttributeLoaded"|&[%4%];1
+  --^_Lib5E_GMCheck_done|
+  --:_Lib5E_GMCheck_done|
   --<|
 
  --:far_Check_GLOBAL_ATTRIB_SAVE_EXISTS|characterid; attributename; returnstring (0=does not exist, 1=exists)
