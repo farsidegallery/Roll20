@@ -103,7 +103,9 @@
 --/|      character indicated by (characterid). If the character has no levels in that class, the return value will be 0
 --/|
 --/|   far_DamageTokenmod|tokenid;bar#;tempHP bar#;amount;display (0 or 1);Allow Overhealing (0 or 1); Allow negative hp (0 or 1)
---/|      Applies damage (negative number) or healing (positive number) to (tokenid)'s (bar#) token bar.
+--/|      Applies damage (negative amount) or healing (positive amount). Temp HP bar is depleted first; overflow hits the HP bar.
+--/|      Authoritative Token-Mod temp-HP routine (v1.5.1+). Reads token bars only, not character sheet hp_temp.
+--/|      AuraTrigger callers pass hpBar and tempHPbar (often 1 and 4).
 --/|
 --/|   far_LogFatalError|EmoteText;ErrorHeader;ErrorMessage
 --/|

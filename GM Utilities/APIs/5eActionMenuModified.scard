@@ -1,6 +1,6 @@
 !script {{
   --/|Script Name : 5E Action Menu
-  --/|Version     : 2.9.1
+  --/|Version     : 3.0.0
   --/|Requires SC : 2.7.15+
   --/|Author      : Kurt Jaegers
   --/|Modified By : Farsidegallery
@@ -54,18 +54,17 @@
   --/|The name of the ability on the spell mule needs to exactly match the spell name (case sensitive)
   --&spellmulename|Spell_Mule
 
-  --/|NOTE: Shared Macro Mule functionality is currently broken due to API issues  
   --/|If you create a "shared macro mule" character and put its name here, you can define macros to be used
-  --/|generally in your game and a can include a list of macros in a character ability on each character called
-  --/|AMLIST that lists each of the mule's abilities that buttons should be created for the in the custom actions section.
-  --&sharedmacromulename|Macro_Mule
+  --/|generally in your game. Each PC needs EITHER an AMLIST ability OR a 5ECAM_AMLIST text attribute (not both).
+  --/|List mule ability names semicolon-separated. If both exist, 5ECAM_AMLIST wins. Ability: action field (or description).
+  --&sharedmacromulename|General_Macro_Mule
 
-  --/|If you create a mule character and put its name here, you can define macros to be used for NPC Actions, Reactions,
-  --/|Bonus Actions and Legendary Actions. The name matching rules are the same as those for the Spell Mule
+  --/|If you create a mule character and put its name here, you can define macros for NPC Bonus Actions and Reactions.
+  --/|The name matching rules are the same as those for the Spell Mule.
   --&sharednpcmacromulename|NPCAbility_Mule
   
-  --/|If you create a mule character and put its name here, you can define macros to be used for PC Actions listed in
-  --/|"Abilities and Spellcasting" section on the character sheet.
+  --/|If you create a mule character and put its name here, you can define macros for PC Bonus Action / Reaction trait buttons.
+  --/|Attacks and Actions always use the character sheet; only Bonus Actions and Reactions check this mule.
   --&pcabilitymulename|PCAbility_Mule
 
   --/|=========================================================================================================
@@ -77,7 +76,7 @@
   --&damageApplyScript|token-mod        --/|Set this to either "scriptcards", "token-mod", "alterbars", "damagebuttons" or anything else to not apply damage
   --&whisperDamageButtonsToDM|1         --/|If using "damagebuttons" and this is set to 1, the damage buttons will be whispered to the DM instead of being added to the card
   --&whisperDamageButtonResultsToDM|1   --/|If using "damagebuttons" for damage and this value is 1, the DM is whispered a message about damage application
-  --&selfHandleAdvantageMode|0          --/|If set to 1, the Action Menu will include advantage/normal/disadvantage toggles (and won't use the character sheet toggle)
+  --&selfHandleAdvantageMode|1          --/|If set to 1, the Action Menu will include advantage/normal/disadvantage toggles (and won't use the character sheet toggle)
   --&defaultAdvantageMode|0             --/|Used with SelfHandleAdvantageMode. 0=Normal, 1=Advantage, 2=Disadvantage
   --&showAdvantageModeText|0            --/|Used with SelfHandleAdvantageMode. 0=Button color coding only. 1=Show "Normal", "Advantage", "Disadvantage" text
   --&compactGlobalModDisplay|1          --/|If set to 1, Global X Mods will use more compact display layouts
@@ -93,6 +92,7 @@
   --&ShowRestButtons|1                  --/|If set to 1, rest buttons will be shown in the title bar
   --&Template|none                      --/|If you wish to use Keith Curtis' SuperNotes templates, put the template name here
   --&DisplayButtonsForAMAbilities|1     --/|If set to 1, the menu will include custom buttons defined on characters that include the "AM-" prefix in their names.
+  --&AmListDebug|0                      --/|Set to 1 to whisper GM debug lines while building Custom Actions (AMLIST troubleshooting)
   --&UseEmojisToReplaceText|0           --/|If set to 1, emojis will be used in place of text in some places
 
   --/|Adjusting these values will allow you to customize the padding around the action buttons. The default for Roll20 is 5px. The Action
@@ -329,10 +329,10 @@
   --?[&trackPCSpellSlots] -eq 1|[
     -->GET_HIGHEST_LEVEL_SPELL_SLOT|HighestSlot
   --]|
-  -->BUILD_BUTTON_LIST|[*S:character_id];repeating_npcaction;name;EXEC_NPC_ACTION;Actions;[&sharednpcmacromulename];0
+  -->BUILD_BUTTON_LIST|[*S:character_id];repeating_npcaction;name;EXEC_NPC_ACTION;Actions;none;0
   -->BUILD_BUTTON_LIST|[*S:character_id];repeating_npcbonusaction;name;EXEC_NPC_BONUS_ACTION;Bonus Actions;[&sharednpcmacromulename];0
   -->BUILD_BUTTON_LIST|[*S:character_id];repeating_npcreaction;name;EXEC_NPC_REACTION;Reactions;[&sharednpcmacromulename];0
-  -->BUILD_BUTTON_LIST|[*S:character_id];repeating_npcaction-l;name;EXEC_NPC_LEGENDARY_ACTION;Legendary Actions;[&sharednpcmacromulename];0
+  -->BUILD_BUTTON_LIST|[*S:character_id];repeating_npcaction-l;name;EXEC_NPC_LEGENDARY_ACTION;Legendary Actions;none;0
   -->BUILD_SPELL_BUTTON_LIST|[*S:character_id];repeating_spell-cantrip;spellname;EXEC_PC_CANTRIP;Cantrips;[&sharednpcmacromulename];0
   --%levelCounter|1;9
     --/\|repeating_spell repeating_spell-[&levelCounter]
@@ -349,20 +349,45 @@
   --/|of the EXEC_NPC_ACTION code. Note this this code is 5E specific, so you will likely need to replace the entire
   --/|"EXEC_*" sections to carry out specific actions if building for a different sheet
 
-  --:EXEC_NPC_ACTION|action_name
+  --:PARSE_NPC_REENTRY|
+  --~action_part|string;before;|;[&reentryval]
+  --~action_target|string;after;|;[&reentryval]
+  --?"[&action_target]" -eq ""|&action_target;NONE
+  --&action_name|
+  --&action_rowid|
+  --?"[&action_part]" -inc "###"|[
+   --~action_name|string;before;###;[&action_part]
+   --~action_rowid|string;after;###;[&action_part]
+   --&action_name|[&action_name(replace,-!-!-,;)]
+   --&action_name|[&action_name(replace,-!lpar!-,(,)]
+   --&action_name|[&action_name(replace,-!rpar!-,))]
+  --]|[
+   --&action_rowid|[&action_part]
+  --]|
+  --<|
+
+  --:NPC_ROW_NOT_FOUND|
+  --&actionNotFoundLabel|[&action_name]
+  --?"[&actionNotFoundLabel]" -eq ""|&actionNotFoundLabel;[&action_rowid]
+  --?"[&action_target]" -eq "NONE"|[
+   --#emotetext|[*S:t-name] uses [&actionNotFoundLabel]
+  --]|[
+   --#emotetext|[*S:t-name] uses [&actionNotFoundLabel] against [*T:t-name]
+  --]|
+  --#leftsub|[*S:character_name]
+  --+Action Not Found|The action "[&actionNotFoundLabel]" could not be loaded from [*S:character_name]'s sheet.
+  --X|
+
+  --:EXEC_NPC_ACTION|
   --?[&AMOriginalSendingPlayer] -ne [&SendingPlayerID]|YOU_CANNOT_DO_THAT
   --&whisperTarget|
   --?[*S:npc] -eq 1 -and [&AllNPCActionsToSender] -eq 1|&whisperTarget;self
   --#whisper|[&whisperTarget]
   --#emotestate|visible
-  --~action_part|string;before;|;[&reentryval]
-  --~action_target|string;after;|;[&reentryval]
-  --~action_name|string;before;###;[&action_part]
-  --~action_rowid|string;after;###;[&action_part]
-  --&action_name|[&action_name(replace,-!-!-,;)]
-  --&action_name|[&action_name(replace,-!lpar!-,(,)]
-  --&action_name|[&action_name(replace,-!rpar!-,))]
+  -->PARSE_NPC_REENTRY|
+  --?"[&action_target]" -eq "NONE"|NPC_ACT_SKIP_TARGET
   --#targettoken|[&action_target]
+  --:NPC_ACT_SKIP_TARGET|
   --#leftsub|[*S:character_name]
   --#rightsub|
   --
@@ -381,7 +406,7 @@
     --#leftsub|[*R:name]
     --?"[*R:attack_flag]" -ne on|NPCA_NOT_ATTACK
     --:NPCA_MAKE_AN_ATTACK|
-    --#rightsub|[rbutton][&RepeatImage]::EXEC_NPC_ACTION;[&action_name]###[&action_rowid]|[&TB]target|token_id}[/rbutton]
+    --#rightsub|[rbutton][&RepeatImage]::EXEC_NPC_ACTION;[&action_rowid]|[&TB]target|token_id}[/rbutton]
     --&rollType|1d20
     --?"[*S:advantagetoggle]" -inc advantage|&rollType;2d20kh1
     --?"[*S:advantagetoggle]" -inc disadvantage|&rollType;2d20kl1
@@ -513,85 +538,103 @@
     --:NPCA_DONE|
     --?"[&NPCPostAttackFunction]" -ne ""|>[&NPCPostAttackFunction]
     --]|
-  --?"[*R:name]" -eq "NoRepeatingAttributeLoaded"|[
-   --#emotetext|[*S:t-name] uses [&action_name] against [*T:t-name]
-   --+Action Not Found|The action "[&action_name]" could not be loaded from [*S:character_name]'s sheet.
-  --]|
+  --?"[*R:name]" -eq "NoRepeatingAttributeLoaded"|>NPC_ROW_NOT_FOUND
   --X|
 
-  --:EXEC_NPC_BONUS_ACTION|action_name
-  --~action_part|string;before;|;[&reentryval]
-  --~action_target|string;after;|;[&reentryval]
-  --~action_name|string;before;###;[&action_part]
-  --~action_rowid|string;after;###;[&action_part]
-  --&action_name|[&action_name(replace,-!-!-,;)]
-  --&action_name|[&action_name(replace,-!lpar!-,(,)]
-  --&action_name|[&action_name(replace,-!rpar!-,))]
+  --:EXEC_NPC_BONUS_ACTION|
+  -->PARSE_NPC_REENTRY|
   --&whisperTarget|
   --?[*S:npc] -eq 1 -and [&AllNPCActionsToSender] -eq 1|&whisperTarget;self
   --#whisper|[&whisperTarget]
   --#emotestate|visible
+  --?"[&action_target]" -eq "NONE"|NPC_BA_SKIP_TARGET
   --#targettoken|[&action_target]
-  --#emotetext|[*S:t-name] uses [&action_name] against [*T:t-name]
+  --:NPC_BA_SKIP_TARGET|
   --?"X[&action_rowid]" -ne "X" -and "[&action_rowid]" -ne ""|[
    --Rbysectionid|[*S:character_id];repeating_npcbonusaction;[&action_rowid]
   --]|[
-   --Rfind|[*S:character_id];[&action_name];repeating_npcbonusaction;name
+   --?"[&action_name]" -eq ""|NPC_ROW_NOT_FOUND
+   --#parameterdelimiter|$$$
+   --Rfind|[*S:character_id]$$$[&action_name]$$$repeating_npcbonusaction$$$name
+   --#parameterdelimiter|;
+  --]|
+  --?"[*R:name]" -eq "NoRepeatingAttributeLoaded"|>NPC_ROW_NOT_FOUND
+  --&emoteActionName|[*R:name]
+  --~emoteActionName|string;replace;(;[;[&emoteActionName]
+  --~emoteActionName|string;replace;);];[&emoteActionName]
+  --?"[&action_target]" -eq "NONE"|[
+   --#emotetext|[*S:t-name] uses [&emoteActionName]
+  --]|[
+   --#emotetext|[*S:t-name] uses [&emoteActionName] against [*T:t-name]
   --]|
   --#leftsub|[*R:name]
   --#rightsub|
-  --?"[*R:attack_flag]" -eq on|NPCA_MAKE_AN_ATTACK
-  --^NPCA_NOT_ATTACK|
+  --?"[*R:attack_flag]" -eq on|>NPCA_MAKE_AN_ATTACK
+  --+|[*R:description]
   --X|
 
-  --:EXEC_NPC_REACTION|action_name
-  --~action_part|string;before;|;[&reentryval]
-  --~action_target|string;after;|;[&reentryval]
-  --~action_name|string;before;###;[&action_part]
-  --~action_rowid|string;after;###;[&action_part]
-  --&action_name|[&action_name(replace,-!-!-,;)]
-  --&action_name|[&action_name(replace,-!lpar!-,(,)]
-  --&action_name|[&action_name(replace,-!rpar!-,))]
+  --:EXEC_NPC_REACTION|
+  -->PARSE_NPC_REENTRY|
   --&whisperTarget|
   --?[*S:npc] -eq 1 -and [&AllNPCActionsToSender] -eq 1|&whisperTarget;self
   --#whisper|[&whisperTarget]
   --#emotestate|visible
+  --?"[&action_target]" -eq "NONE"|NPC_RA_SKIP_TARGET
   --#targettoken|[&action_target]
-  --#emotetext|[*S:t-name] uses [&action_name] against [*T:t-name]
+  --:NPC_RA_SKIP_TARGET|
   --?"X[&action_rowid]" -ne "X" -and "[&action_rowid]" -ne ""|[
    --Rbysectionid|[*S:character_id];repeating_npcreaction;[&action_rowid]
   --]|[
-   --Rfind|[*S:character_id];[&action_name];repeating_npcreaction;name
+   --?"[&action_name]" -eq ""|NPC_ROW_NOT_FOUND
+   --#parameterdelimiter|$$$
+   --Rfind|[*S:character_id]$$$[&action_name]$$$repeating_npcreaction$$$name
+   --#parameterdelimiter|;
+  --]|
+  --?"[*R:name]" -eq "NoRepeatingAttributeLoaded"|>NPC_ROW_NOT_FOUND
+  --&emoteActionName|[*R:name]
+  --~emoteActionName|string;replace;(;[;[&emoteActionName]
+  --~emoteActionName|string;replace;);];[&emoteActionName]
+  --?"[&action_target]" -eq "NONE"|[
+   --#emotetext|[*S:t-name] uses [&emoteActionName]
+  --]|[
+   --#emotetext|[*S:t-name] uses [&emoteActionName] against [*T:t-name]
   --]|
   --#leftsub|[*R:name]
   --#rightsub|
-  --?"[*R:attack_flag]" -eq on|NPCA_MAKE_AN_ATTACK
-  --^NPCA_NOT_ATTACK|
+  --?"[*R:attack_flag]" -eq on|>NPCA_MAKE_AN_ATTACK
+  --+|[*R:description]
   --X|
 
-  --:EXEC_NPC_LEGENDARY_ACTION|action_name
+  --:EXEC_NPC_LEGENDARY_ACTION|
+  -->PARSE_NPC_REENTRY|
   --&whisperTarget|
   --?[*S:npc] -eq 1 -and [&AllNPCActionsToSender] -eq 1|&whisperTarget;self
   --#whisper|[&whisperTarget]
   --#emotestate|visible
-  --~action_part|string;before;|;[&reentryval]
-  --~action_target|string;after;|;[&reentryval]
-  --~action_name|string;before;###;[&action_part]
-  --~action_rowid|string;after;###;[&action_part]
-  --&action_name|[&action_name(replace,-!-!-,;)]
-  --&action_name|[&action_name(replace,-!lpar!-,(,)]
-  --&action_name|[&action_name(replace,-!rpar!-,))]
+  --?"[&action_target]" -eq "NONE"|NPC_LA_SKIP_TARGET
   --#targettoken|[&action_target]
-  --#emotetext|[*S:t-name] uses [&action_name] against [*T:t-name]  
+  --:NPC_LA_SKIP_TARGET|
   --?"X[&action_rowid]" -ne "X" -and "[&action_rowid]" -ne ""|[
    --Rbysectionid|[*S:character_id];repeating_npcaction-l;[&action_rowid]
   --]|[
-   --Rfind|[*S:character_id];[&action_name];repeating_npcaction-l;name
+   --?"[&action_name]" -eq ""|NPC_ROW_NOT_FOUND
+   --#parameterdelimiter|$$$
+   --Rfind|[*S:character_id]$$$[&action_name]$$$repeating_npcaction-l$$$name
+   --#parameterdelimiter|;
+  --]|
+  --?"[*R:name]" -eq "NoRepeatingAttributeLoaded"|>NPC_ROW_NOT_FOUND
+  --&emoteActionName|[*R:name]
+  --~emoteActionName|string;replace;(;[;[&emoteActionName]
+  --~emoteActionName|string;replace;);];[&emoteActionName]
+  --?"[&action_target]" -eq "NONE"|[
+   --#emotetext|[*S:t-name] uses [&emoteActionName]
+  --]|[
+   --#emotetext|[*S:t-name] uses [&emoteActionName] against [*T:t-name]
   --]|
   --#leftsub|[*R:name]
-  --#righsub|
-  --?"[*R:attack_flag]" -eq on|NPCA_MAKE_AN_ATTACK
-  --^NPCA_NOT_ATTACK|
+  --#rightsub|
+  --?"[*R:attack_flag]" -eq on|>NPCA_MAKE_AN_ATTACK
+  --+|[*R:description]
   --X|  
 
   --/|=========================================================================================================
@@ -661,7 +704,7 @@
     --+|[t width='100%'][tr][td width='25%' align='center'][b]ATK[/b][/td][td width='25%' align='center'][b]DMG[/b][/td][td width='25%' align='center'][b]AC[/b][/td][td width='25%' align='center'][b]SAVE[/b][/td][/tr][tr][td width='25%' align='center'][&gambuttons][/td][td width='25%' align='center'][&gdmbuttons][/td][td width='25%' align='center'][&gacmbuttons][/td][td width='25%' align='center'][&gsmbuttons][/td][/tr][/t]
   --]| 
 
-  -->BUILD_BUTTON_LIST|[*S:character_id];repeating_attack;atkname;EXEC_PC_ATTACK;Attacks and Actions;[&pcabilitymulename];0;1
+  -->BUILD_BUTTON_LIST|[*S:character_id];repeating_attack;atkname;EXEC_PC_ATTACK;Attacks and Actions;none;0;1
   --?"[&showBonusActionsAndReactions]" -eq 1|>DISPLAY_PC_OTHER_ACTIONS
   -->BUILD_SPELL_BUTTON_LIST|[*S:character_id];repeating_spell-cantrip;spellname;EXEC_PC_CANTRIP;Cantrips;[&spellmulename];0
   
@@ -1214,7 +1257,8 @@
   --&whisperTarget|
   --?[*S:npc] -eq 1 -and [&AllNPCActionsToSender] -eq 1|&whisperTarget;self
   --#whisper|[&whisperTarget]
-  -->Find_Active_Global_Save_Modifiers|[*S:character_id];GSM_VALUES
+  --&GSM_VALUES|
+  --?[*S:npc] -ne 1|>Find_Active_Global_Save_Modifiers;[*S:character_id];GSM_VALUES
   --~saveInfo|string;split;|;[&reentryval]
   --~saveType|string;tolowercase;[&saveInfo1]_save_bonus
   --&saveBonus|[*S:[&saveType]]
@@ -1234,7 +1278,8 @@
   --&whisperTarget|
   --?[*S:npc] -eq 1 -and [&AllNPCActionsToSender] -eq 1|&whisperTarget;self
   --#whisper|[&whisperTarget]
-  -->Find_Active_Global_Skill_Modifiers|[*S:character_id];GSKM_VALUES
+  --&GSKM_VALUES|
+  --?[*S:npc] -ne 1|>Find_Active_Global_Skill_Modifiers;[*S:character_id];GSKM_VALUES
   --~skillInfo|string;split;|;[&reentryval]
   --~skillType|string;tolowercase;[&skillInfo1]_bonus
   --~skillBase|string;tolowercase;npc_[&skillInfo1]_base
@@ -1346,13 +1391,15 @@
   --<|
 
   --:Find_Active_Global_Save_Modifiers|character_id;StringVariableToSet
-  --&_GSM_Temp| 
+  --&[%2%]|
+  --&_GSM_Temp|
   --Rfirst|[%1%];repeating_savemod
+  --?"[*R:global_save_name]" -eq "NoRepeatingAttributeLoaded"|<
   --:_GSM_Loop|
   --?"[*R:global_save_active_flag]" -eq "1"|>_AddGSM;[*R:global_save_name];[*R:global_save_roll]
-  --Rnext| 
+  --Rnext|
   --?"[*R:global_save_name]" -ne "NoRepeatingAttributeLoaded"|_GSM_Loop
-  --&[%2%]|[&_GSM_Temp] 
+  --&[%2%]|[&_GSM_Temp]
   --<|
 
     --:_AddGSM| 
@@ -1360,13 +1407,15 @@
   --<|
   
   --:Find_Active_Global_Skill_Modifiers|character_id;StringVariableToSet
-  --&_GSKM_Temp| 
+  --&[%2%]|
+  --&_GSKM_Temp|
   --Rfirst|[%1%];repeating_skillmod
+  --?"[*R:global_skill_name]" -eq "NoRepeatingAttributeLoaded"|<
   --:_GSKM_Loop|
   --?"[*R:global_skill_active_flag]" -eq "1"|>_AddGSKM;[*R:global_skill_name];[*R:global_skill_roll]
-  --Rnext| 
+  --Rnext|
   --?"[*R:global_skill_name]" -ne "NoRepeatingAttributeLoaded"|_GSKM_Loop
-  --&[%2%]|[&_GSKM_Temp] 
+  --&[%2%]|[&_GSKM_Temp]
   --<|
 
   --:_AddGSKM| 
@@ -1508,15 +1557,15 @@
   --/|Token-Mod doesn't have a "set to a relative number", so we get the current bar value, subtract the damage amount,
   --/|make sure it doesn't fall below 0, and set the amount back into the bar.
   --/|Partial temp+HP: batch both bars in one @token-mod call. Temp HP read from token bar only.
+  --/|Keep in sync with far_DamageTokenmod in Library/Farsidelib.scard (authoritative; v1.5.1+).
   --:ApplyDamageTokenmod|Parameters are tokenid;bar#;tempHPbar;amount;display (0 or 1);allow overheal (0 or 1);allow negative hp (0 or 1)
   --=_applyValue|[%4%]
   --=StartHP|[*[%1%]:t-bar[%2%]_value]
   --=TempHP|[*[%1%]:t-bar[%3%]_value]
-  --?"X[$TempHP]" -eq "X"|=TempHP;0
   --~damageValue|math;abs;[$_applyValue]
   --?"X[$TempHP]" -nei "X" -and [$TempHP] -gt 0 -and [$TempHP] -ge [$damageValue]|[
    --=newTempHP|[$TempHP]-[$damageValue]
-   --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[$StartHP.Raw] bar[%3%]_value|[$newTempHP.Raw]
+   --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[$StartHP] bar[%3%]_value|[$newTempHP.Raw]
    --<|
   --]|
   --?"X[$TempHP]" -nei "X" -and [$TempHP] -gt 0 -and [$TempHP] -lt [$damageValue]|[
@@ -1533,7 +1582,7 @@
   --?"X[%6%]" -ne "X1" -and [$_newValue] -gt [*[%1%]:t-bar[%2%]_max]|=_newValue;[*[%1%]:t-bar[%2%]_max]
   --?"X[%5%]" -eq "X1"|+Applying;[%4%] HP to [*[%1%]:t-name]
   --=currentTemp|[*[%1%]:t-bar[%3%]_value]
-  --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[$_newValue.Raw] bar[%3%]_value|[$currentTemp.Raw]
+  --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[$_newValue.Raw] bar[%3%]_value|0
   --<| 
   
   --/|AlterBars supports relative values for the amount parameter, so we just pass it the value with a "-" in front of it.
@@ -1768,8 +1817,7 @@
   --X|
 
   --:CLEAR_CHARACTER_CACHE|
-  --!a:[*S:character_id]|5ECAM_CACHE_Actions:|5ECAM_CACHE_Legendary Actions:
-  --!a:[*S:character_id]|5ECAM_CACHE_Legendary Actions:
+  --!a:[*S:character_id]|5ECAM_CACHE_Actions:|5ECAM_CACHE_Bonus Actions:|5ECAM_CACHE_Reactions:|5ECAM_CACHE_Legendary Actions:
   --!a:[*S:character_id]|5ECAM_CACHE_Attacks and Actions:
   --!a:[*S:character_id]|5ECAM_CACHE_Cantrips_0:
   --!a:[*S:character_id]|5ECAM_CACHE_Level 1 Spells_1:
@@ -2062,35 +2110,110 @@
 
   --:DISPLAY_ACTIONMENU_CHARACTER_ABILITIES|Character ID
   --&DACA_BUTTONS|
+
+  --/|Character-specific AM-* abilities (name must start with AM-, not AMLIST)
   --~|array;objects:ability;AbilArray;AM-;[%1%]
-  --~|array;define;DACA_OBJS_ID
-  --?"[@AbilArray(length)]" -eq "0"|DONE_CHAR_SPECIFIC_BUTTONS
-  --%loop|foreach;AbilArray
-    --&DACA_OBJS_ID(9999)|[*O:[&loop]:ability:name]|[&loop]
+  --?"[@AbilArray(length)]" -eq "0"|DACA_SHARED_MULE
+  --%abilLoop|foreach;AbilArray
+   --&abilName|[*O:[&abilLoop]:ability:name]
+   --?"X[&abilName]" -eq "X"|DACA_ABIL_NEXT
+   --?"[&abilName]" -eq ""|DACA_ABIL_NEXT
+   --?"[&abilName]" -eq "false"|DACA_ABIL_NEXT
+   --&DACA_BUTTONS|+[button][&abilName(replaceall,-, )]::~[%1%]|[&abilName][/button]
+   --:DACA_ABIL_NEXT|
   --%|
+  --^DACA_SHARED_MULE|
 
-  --:DONE_CHAR_SPECIFIC_BUTTONS|character_id
-  --/|Note : due to API issues, this currently does not work. Skipping over this section for now
-  --^DONE_SHARED_MULE_BUTTONS|
-
-  --/|Check for shared macro mule macros
-  --/>GET_CHARACTER_ID_BY_NAME|[&sharedmacromulename];MacroMuleID
-  --?[&MacroMuleID] -eq ""|DONE_SHARED_MULE_BUTTONS
-  --~|array;objects:ability;MuleButtonList;AM_SHARED_LIST;[%1%]
-  --?"[@MuleButtonList(length)]" -eq 0|DONE_SHARED_MULE_BUTTONS
-  --?[&muleButtonList] -eq "AbilityNotFound"|DONE_SHARED_MULE_BUTTONS
-  --~|array;objects:character;macro_mule;[&sharedmacromulename]
-  --?[@macro_mule(maxindex)] -lt 0|DONE_SHARED_MULE_BUTTONS
-
-  --:DONE_SHARED_MULE_BUTTONS|
-  --?"[@DACA_OBJS_ID(length)]" -eq "0"|<
-  --~|array;sort;DACA_OBJS_ID
-  --&DACA_BUTTONS|
-  --%loop|foreach;DACA_OBJS_ID
-    --~DACA_PARTS|string;split;|;[&loop]
-    --&DACA_NAME|[&DACA_PARTS1(3)]
-    --&DACA_BUTTONS|+[button][&DACA_NAME(replaceall,-, )]::~[%1%]|[&DACA_PARTS1][/button]
+  --/|Parse AMLIST and build mule buttons — no --+ output here (card lines abort gosub after parse debug)
+  --:DACA_BUILD_MULE_BUTTONS|
+  --&dacaParseCount|0
+  --=dacaBtnCount|0
+  --&dacaBuildHint|ok
+  --~|array;define;MuleNameList|
+  --?"X[&amListSafe]" -ne "X"|DACA_BUILD_DOSPLIT
+  --?"[&amListObjId]" -eq "AbilityNotFound"|[
+   --&dacaBuildHint|no-amlist-text
+   --<|
+  --]|
+  --&amListSource|[*O:[&amListObjId]:ability:action]
+  --&amListSafe|[&amListSource(replaceall,;,&&&)]
+  --?"X[&amListSafe]" -eq "X"|[
+   --&amListSource|[*O:[&amListObjId]:ability:description]
+   --&amListSafe|[&amListSource(replaceall,;,&&&)]
+  --]|
+  --:DACA_BUILD_DOSPLIT|
+  --?"X[&amListSafe]" -eq "X"|[
+   --&dacaBuildHint|no-amlist-text
+   --<|
+  --]|
+  --?"[&amListSafe]" -eq ""|[
+   --&dacaBuildHint|no-amlist-text
+   --<|
+  --]|
+  --~|array;fromstring;MuleNameList;&&&;[&amListSafe]
+  --?"[@MuleNameList(length)]" -eq "0"|[
+   --~|array;define;MuleNameList;[&amListSafe]
+  --]|
+  --&dacaParseCount|[@MuleNameList(length)]
+  --?"[&dacaParseCount]" -eq "0"|[
+   --&dacaBuildHint|parse-empty
+   --<|
+  --]|
+  --?"[&dacaParseCount]" -eq "1"|[
+   --?"[@MuleNameList(0)]" -eq ""|[
+    --&dacaBuildHint|parse-empty
+    --<|
+   --]|
+  --]|
+  --&dacaMuleRef|[&sharedmacromulename]
+  --%mi|0;[@MuleNameList(maxindex)]
+   --&muleAbilityName|[@MuleNameList([&mi])]
+   --~muleAbilityName|string;trim;[&muleAbilityName]
+   --?"[&muleAbilityName]" -eq ""|DACA_MULE_NEXT
+   --~muleSheetName|string;replaceall; ;-;[&muleAbilityName]
+   --~testMule|system;findability;[&dacaMuleRef];[&muleSheetName]
+   --?"[&testMule]" -eq "AbilityNotFound"|[
+    --~testMule|system;findability;[&dacaMuleRef];[&muleAbilityName]
+    --&muleSheetName|[&muleAbilityName]
+   --]|
+   --?"[&testMule]" -eq "AbilityNotFound"|DACA_MULE_NEXT
+   --&DACA_BUTTONS|+[button][&muleAbilityName(replaceall,-, )]::~[&dacaMuleRef]|[&muleSheetName][/button]
+   --=dacaBtnCount|[$dacaBtnCount.Raw] + 1
+   --:DACA_MULE_NEXT|
   --%|
+  --?"[$dacaBtnCount.Raw]" -eq "0"|&dacaBuildHint;mule-not-found
+  --<|
+
+  --/|Shared macro mule — AMLIST ability lists mule names (semicolon-separated)
+  --:DACA_SHARED_MULE|
+  --?"[&sharedmacromulename]" -eq ""|DACA_FINISH_BUTTONS
+  --?"[&sharedmacromulename]" -eq "none"|DACA_FINISH_BUTTONS
+  --&amListObjId|AbilityNotFound
+  --&dacaParseCount|0
+  --=dacaBtnCount|0
+  --&dacaBuildHint|
+  --?"X[*[%1%]:5ECAM_AMLIST]" -eq "X"|[
+   --!a:[%1%]|5ECAM_AMLIST:
+  --]|
+  --?"X[*[%1%]:5ECAM_AMLIST]" -ne "X"|[
+   --?"X[*[%1%]:5ECAM_AMLIST]" -eq "X"|DACA_ATTR0_SKIP
+   --?"[*[%1%]:5ECAM_AMLIST]" -eq "undefined"|DACA_ATTR0_SKIP
+   --&amListSource|[*[%1%]:5ECAM_AMLIST]
+   --&amListSafe|[&amListSource(replaceall,;,&&&)]
+   --:DACA_ATTR0_SKIP|
+  --]|
+  --~|array;objects:ability;AmListObjs;AMLIST;[%1%]
+  --?"[@AmListObjs(length)]" -eq "0"|[
+   --~|array;objects:ability;AmListObjs;AM_SHARED_LIST;[%1%]
+  --]|
+  --?"[@AmListObjs(length)]" -ne "0"|&amListObjId;[@AmListObjs(0)]
+  -->DACA_BUILD_MULE_BUTTONS|
+  --?"[&AmListDebug]" -eq "1"|[
+   --#whisper|self,gm
+   --+AMLIST Debug|5ECAM_AMLIST=[*[%1]:5ECAM_AMLIST] abilObjs=[@AmListObjs(length)] obj=[&amListObjId] parse=[&dacaParseCount] btnCount=[$dacaBtnCount.Raw] hint=[&dacaBuildHint]
+  --]|
+
+  --:DACA_FINISH_BUTTONS|
   --?"[&DACA_BUTTONS]" -eq ""|<
 
   --+Custom Actions|
@@ -2106,8 +2229,11 @@
 
   --:BUILD_BUTTON_LIST|Character ID;Repeating_section_name;repeating field for name;reentrant point;section header;mule char name/id;filter out spells
   --/|See if we have a cached version of the button list
-  --/|Note that we are not using a cache for the "Actions" group for NPCs because it breaks multiattack detection
+  --/|Note that we are not using a cache for NPC Actions, Bonus Actions, Reactions, or Legendary Actions
   --?"[%5%]" -eq "Actions"|DO_BUILD_BUTTON_LIST
+  --?"[%5%]" -eq "Bonus Actions"|DO_BUILD_BUTTON_LIST
+  --?"[%5%]" -eq "Reactions"|DO_BUILD_BUTTON_LIST
+  --?"[%5%]" -eq "Legendary Actions"|DO_BUILD_BUTTON_LIST
   --&AM_CACHED_BUTTON_LIST|[*[%1%]:5ECAM_CACHE_[%5%]]
   --?"[&AM_CACHED_BUTTON_LIST]" -eq "undefined"|DO_BUILD_BUTTON_LIST
   --?"[&AM_CACHED_BUTTON_LIST]" -eq ""|DO_BUILD_BUTTON_LIST
@@ -2128,6 +2254,8 @@
     --:AM_LIST_NEXT_ROW|
     --&DisplayName|[&loop(replace,_sectionid,)]
     --&RowSectionId|[:BuiltButtonHash("[&loop]")]
+    --?"[&RowSectionId]" -eq ""|AM_LIST_CONTINUE
+    --?"[&RowSectionId]" -eq "undefined"|AM_LIST_CONTINUE
     --&ActionName|[&DisplayName(replace,;,-!-!-)]
     --&ActionName|[&ActionName(replace,(,-!lpar!-)]
     --&ActionName|[&ActionName(replace,),-!rpar!-)]
@@ -2151,7 +2279,15 @@
     --&AM_BUTTON_LIST|+[button][&DisplayName(totitlecase)]::~[%6%]|[&testName][/button][&SPACE]
     --^AM_LIST_CONTINUE|
     --:AM_LIST_SKIP_MULE_CHECK|
-    --&AM_BUTTON_LIST|+[rbutton][&DisplayName(totitlecase)]::[%4%];[&ActionName]###[&RowSectionId]|[&TB]target|token_id}[/rbutton][&SPACE]
+    --&actionAttackFlag|[:BuiltButtonHash("[&DisplayName]_attack_flag")]
+    --&actionTargetSuffix|NONE
+    --?"[&actionAttackFlag]" -inc "on"|AM_LIST_ATTACK_TARGET
+    --?"[&actionAttackFlag]" -eq "1"|AM_LIST_ATTACK_TARGET
+    --^AM_LIST_BUILD_RBUTTON|
+    --:AM_LIST_ATTACK_TARGET|
+    --&actionTargetSuffix|[&TB]target|token_id}
+    --:AM_LIST_BUILD_RBUTTON|
+    --&AM_BUTTON_LIST|+[rbutton][&DisplayName(totitlecase)]::[%4%];[&RowSectionId]|[&actionTargetSuffix][/rbutton][&SPACE]
     --:AM_LIST_CONTINUE|
   --%|
   --&cacheList|[&AM_BUTTON_LIST(replaceall,:,!#!)]
@@ -2326,20 +2462,65 @@
   --X|
 
   --:DISPLAY_PC_OTHER_ACTIONS|
-    --/|Traits
-    --RFirst|[*S:character_id];repeating_traits
     --&BA_BUTTON_LIST|
     --&RA_BUTTON_LIST|
-    --?"[*R:name]" -ne "NoRepeatingAttributeLoaded"|[
-    --:BA_TRAITS_BUTTON_LIST_LOOP|
-      --~desc|string;replaceall;";;[*R:description] --/|" My editor screams at me if I don't close my quotes
-      --?"[&desc]" -inc "bonus action"|&BA_BUTTON_LIST;+[rbutton][*R:name]::EXEC_PC_TRAIT;[*R:name][/rbutton][&SPACE]
-      --?"[&desc]" -inc "reaction"|&RA_BUTTON_LIST;+[rbutton][*R:name]::EXEC_PC_TRAIT;[*R:name][/rbutton][&SPACE]
-      --Rnext|
-      --?"[*R:name]" -ne "NoRepeatingAttributeLoaded"|BA_TRAITS_BUTTON_LIST_LOOP
-    --]|
-    --&BA_BUTTON_LIST|+[rbutton]Two-Weapon Fighting::TWO_WEAPON_FIGHTING[/rbutton][&SPACE]
+    --~|hashtable;fromrepeatingsection;[*S:character_id];repeating_traits;name;TraitBtnHash
+    --~|array;fromkeys;TraitBtnKeys;TraitBtnHash
+    --%baTrait|foreach;TraitBtnKeys
+      --?"[&baTrait]" -inc "_sectionid"|PC_BA_TRAIT_ROW
+      --^PC_BA_TRAIT_NEXT|
+      --:PC_BA_TRAIT_ROW|
+      --&TraitRowName|[&baTrait(replace,_sectionid,)]
+      --?"[&TraitRowName]" -eq ""|PC_BA_TRAIT_NEXT
+      --&TraitRowId|[:TraitBtnHash("[&baTrait]")]
+      --&TraitDesc|[:TraitBtnHash("[&TraitRowName]_description")]
+      --~TraitDesc|string;replaceall;";;[&TraitDesc]
+      --?"[&TraitDesc]" -inc "bonus action"|PC_BA_TRAIT_ADD
+      --?"[&TraitRowName]" -inc "Two-Weapon Fighting"|PC_BA_TRAIT_ADD
+      --?"[&TraitRowName]" -inc "Two Weapon Fighting"|PC_BA_TRAIT_ADD
+      --^PC_BA_TRAIT_NEXT|
+      --:PC_BA_TRAIT_ADD|
+      --&TraitBtnLabel|[&TraitRowName]
+      --~testName|string;replaceall; ;-;[&TraitRowName]
+      --~testMule|system;findability;[&pcabilitymulename];[&testName]
+      --?[&testMule] -eq "AbilityNotFound"|PC_BA_TRAIT_RBUTTON
+      --&BA_BUTTON_LIST|+[button][&TraitBtnLabel]::~[&pcabilitymulename]|[&testName][/button][&SPACE]
+      --^PC_BA_TRAIT_NEXT|
+      --:PC_BA_TRAIT_RBUTTON|
+      --&BA_BUTTON_LIST|+[rbutton][&TraitBtnLabel]::EXEC_PC_TRAIT;[&TraitRowId][/rbutton][&SPACE]
+      --:PC_BA_TRAIT_NEXT|
+    --%|
+    --%raTrait|foreach;TraitBtnKeys
+      --?"[&raTrait]" -inc "_sectionid"|PC_RA_TRAIT_ROW
+      --^PC_RA_TRAIT_NEXT|
+      --:PC_RA_TRAIT_ROW|
+      --&TraitRowName|[&raTrait(replace,_sectionid,)]
+      --?"[&TraitRowName]" -eq ""|PC_RA_TRAIT_NEXT
+      --&TraitRowId|[:TraitBtnHash("[&raTrait]")]
+      --&TraitDesc|[:TraitBtnHash("[&TraitRowName]_description")]
+      --~TraitDesc|string;replaceall;";;[&TraitDesc]
+      --?"[&TraitDesc]" -ninc "reaction"|PC_RA_TRAIT_NEXT
+      --?"[&TraitDesc]" -inc "bonus action"|PC_RA_TRAIT_NEXT
+      --^PC_RA_TRAIT_ADD|
+      --:PC_RA_TRAIT_ADD|
+      --&TraitBtnLabel|[&TraitRowName]
+      --~testName|string;replaceall; ;-;[&TraitRowName]
+      --~testMule|system;findability;[&pcabilitymulename];[&testName]
+      --?[&testMule] -eq "AbilityNotFound"|PC_RA_TRAIT_RBUTTON
+      --&RA_BUTTON_LIST|+[button][&TraitBtnLabel]::~[&pcabilitymulename]|[&testName][/button][&SPACE]
+      --^PC_RA_TRAIT_NEXT|
+      --:PC_RA_TRAIT_RBUTTON|
+      --&RA_BUTTON_LIST|+[rbutton][&TraitBtnLabel]::EXEC_PC_TRAIT;[&TraitRowId][/rbutton][&SPACE]
+      --:PC_RA_TRAIT_NEXT|
+    --%|
+    --~oppTestName|string;replaceall; ;-;Opportunity Attack
+    --~oppTestMule|system;findability;[&pcabilitymulename];[&oppTestName]
+    --?[&oppTestMule] -eq "AbilityNotFound"|PC_RA_OPP_RBUTTON
+    --&RA_BUTTON_LIST|+[button]Opportunity Attack::~[&pcabilitymulename]|[&oppTestName][/button][&SPACE]
+    --^PC_RA_OPP_DONE|
+    --:PC_RA_OPP_RBUTTON|
     --&RA_BUTTON_LIST|+[rbutton]Opportunity Attack::OPP_ATTACK[/rbutton][&SPACE]
+    --:PC_RA_OPP_DONE|
     --+Bonus Actions|
     --+|[&BA_BUTTON_LIST]
     --+Reactions|
@@ -2349,7 +2530,19 @@
   --:EXEC_PC_TRAIT|
   --#whisper|self
   --#emotestate|visible
-  --Rfind|[*S:character_id];[&reentryval];repeating_traits;name
+  --&trait_rowid|[&reentryval]
+  --Rbysectionid|[*S:character_id];repeating_traits;[&trait_rowid]
+  --?"[*R:name]" -eq "NoRepeatingAttributeLoaded"|[
+   --&trait_name|[&reentryval]
+   --&trait_name|[&trait_name(replace,-!-!-,;)]
+   --&trait_name|[&trait_name(replace,-!lpar!-,(,)]
+   --&trait_name|[&trait_name(replace,-!rpar!-,))]
+   --Rfind|[*S:character_id];[&trait_name];repeating_traits;name
+  --]|
+  --?"[*R:name]" -eq "NoRepeatingAttributeLoaded"|[
+   --+Trait Not Found|The trait could not be loaded from [*S:character_name]'s sheet.
+   --X|
+  --]|
   --#title|[*R:name]
   --#leftsub|[*S:character_name]
   --#rightsub|
@@ -2372,7 +2565,7 @@
   --:OPP_ATTACK|
   --#whisper|self
   --#emotestate|nope
-  --#title|Opprounity Attack
+  --#title|Opportunity Attack
   --#leftsub|[*S:character_name]
   --#rightsub|
   --+Source|[i]General[/i]
