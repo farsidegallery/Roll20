@@ -1,6 +1,6 @@
 var Corpsecart = (function() {	
 
-	const scriptIndex = {"name":"corpsecart","version":"v0.06"};
+	const scriptIndex = {"name":"corpsecart","version":"v0.07"};
 
 	//commands
 	const comMap = "map";
@@ -103,8 +103,21 @@ var Corpsecart = (function() {
 		});
 	};
 
+	const normalizeTokenPrev = (prev) => {
+		if(!prev) return {};
+		if(typeof prev.get === 'function'){
+			return {
+				statusmarkers: prev.get('statusmarkers'),
+				status_dead: prev.get('status_dead'),
+				bar1_value: prev.get('bar1_value')
+			};
+		}
+		return prev;
+	};
+
 	const handleTokenStatusChange = (obj, prev) => {
 		if(!isTokenGraphic(obj)) return;
+		prev = normalizeTokenPrev(prev);
 		notifyTokenChange(obj, prev);
 		if(!autoBury) return;
 		if(markerWasJustApplied(obj, prev, 'dead') && isNpcToken(obj)){
@@ -114,15 +127,46 @@ var Corpsecart = (function() {
 
 	const handleTokenHpChange = (obj, prev) => {
 		if(!isTokenGraphic(obj)) return;
-		if(!autoBury || obj.get(hpbarNum) > 0 || prev[hpbarNum] <= 0) return;
+		prev = normalizeTokenPrev(prev);
+		if(!autoBury || obj.get(hpbarNum) > 0 || parseInt(prev[hpbarNum], 10) <= 0) return;
 		if(isNpcToken(obj)){
 			scheduleBuryToken(obj.id);
 		}
 	};
 
-	//Automatically bury DEAD tokens
-	on("change:graphic:statusmarkers", handleTokenStatusChange);
-	on("change:graphic:bar1_value", handleTokenHpChange);
+	const registerExternalTokenObservers = () => {
+		// Concentration applies dead via ScriptCards !t; TokenMod applies HP damage that triggers that path.
+		// Native change:graphic alone is not reliable for those updates (same pattern as Lazy Experience / HealthColors).
+		if(typeof TokenMod !== 'undefined' && TokenMod.ObserveTokenChange){
+			TokenMod.ObserveTokenChange(function(obj, prev){
+				handleTokenStatusChange(obj, prev);
+				handleTokenHpChange(obj, prev);
+			});
+		}
+		if(typeof ScriptCards !== 'undefined' && ScriptCards.ObserveTokenChange){
+			ScriptCards.ObserveTokenChange(function(obj, prev){
+				handleTokenStatusChange(obj, prev);
+				handleTokenHpChange(obj, prev);
+			});
+		}
+		if(typeof SmartAoE !== 'undefined' && SmartAoE.ObserveTokenChange){
+			SmartAoE.ObserveTokenChange(function(obj, prev){
+				handleTokenStatusChange(obj, prev);
+				handleTokenHpChange(obj, prev);
+			});
+		}
+	};
+
+	const registerEventHandlers = () => {
+		on("change:graphic:statusmarkers", handleTokenStatusChange);
+		on("change:graphic:status_dead", handleTokenStatusChange);
+		on("change:graphic:bar1_value", handleTokenHpChange);
+		registerExternalTokenObservers();
+	};
+
+	const checkInstall = () => {
+		log(`${scriptIndex.name} ${scriptIndex.version} ready — auto-bury on dead marker (Concentration / TokenMod / ScriptCards path)`);
+	};
 
 	function tryBuryToken(token, announce=true){
 		if(!token || !isTokenGraphic(token) || !isNpcToken(token)) return false;
@@ -424,6 +468,8 @@ var Corpsecart = (function() {
 
 	return {
 		...scriptIndex,
+		CheckInstall: checkInstall,
+		RegisterEventHandlers: registerEventHandlers,
 		ObserveTokenChange: observeTokenChange,
 		TagAndBuryDeadOnPage: tagAndBuryDeadOnPage,
 		BuryToken: buryCorpses,
@@ -431,3 +477,9 @@ var Corpsecart = (function() {
 		IsNpcToken: isNpcToken
 	};
 })();
+
+on('ready', function(){
+	'use strict';
+	Corpsecart.CheckInstall();
+	Corpsecart.RegisterEventHandlers();
+});
