@@ -24,7 +24,7 @@
   --/|______________________________________________________________________________________________________________________________________
   
   --/|Script Name : Rage
-  --/|Version     : 2.0.2
+  --/|Version     : 2.0.4
   --/|Requires SC : ScriptCards Library 5Elib/Farsidelib, Meta-Toolbox Fetch
   --/|Author      : Farsidegallery
 
@@ -60,9 +60,9 @@
    --/| +|[img]https://c.tenor.com/ob62tslCeUIAAAAC/gnome-gravity-falls.gif[/img]
    --/| roll20AM audio play rage (uncomment and use roll20AM mod if desired)
    --vtoken|[*S:t-id] burn-death
-   -->far_Check_GLOBAL_MOD_EXISTS|[*S:character_id]; damage; [&ModName]; Exists
-   --?[&Exists] -eq 1|>SetRageMod
-   -->CreateRageMod|
+   -->FindRageDamage|
+   --Rfind|[*S:character_id];[&ModName];repeating_damagemod;global_damage_name
+   --?"[*R:global_damage_name]" -ne "NoRepeatingAttributeLoaded"|>SetRageMod |>CreateRageMod
    --!a:[*S:character_id]|!Raging:1
    --?"X[*S:SurgeRoll]" -ne "X"|[
    --!a:[*S:character_id]|!SurgeRoll:**
@@ -743,7 +743,9 @@
   
   --:SetRageMod|  
    -->FindRageDamage|
-   --?[*R:global_damage_damage] -nei [$RageDamage]|[
+   --Rfind|[*S:character_id];[&ModName];repeating_damagemod;global_damage_name
+   --?"[*R:global_damage_name]" -eq "NoRepeatingAttributeLoaded"|>CreateRageMod
+   --?"[*R:global_damage_damage]" -nei [$RageDamage.Raw]|[
     --*Error: |Damage is not the same! Damage amount updated.
 	--!a:[*S:character_id]|![*R>global_damage_damage]:[$RageDamage]
 	--]|
