@@ -1107,7 +1107,9 @@
   --#targettoken|[%1%]
   --&PaladinAuraSources|[*T:PaladinAuraSources]
   --?"X[&PaladinAuraSources]" -eq "X"|&PaladinAuraSources|;|
-  --?"X[&PaladinAuraSources]" -inc ";[%2%];"|&PaladinAuraSources|+[%2%];
+  --?"X[&PaladinAuraSources]" -inc ";[%2%];"|paAddSourceSkip|
+  --&PaladinAuraSources|+[%2%];
+  --:paAddSourceSkip|
   --!a:[*T:character_id]|PaladinAuraSources:[&PaladinAuraSources]
   -->far_ApplyBestPaladinAura|[%1%]
   --<|
@@ -1168,7 +1170,7 @@
    --=ThisBonus|[*O:[*[&PalTID]:character_id]:character:charisma_mod]
    --?[$ThisBonus] -gt [$BestBonus]|=BestBonus;[$ThisBonus]
    -->far_FIND_CLASS_LEVEL|[*[&PalTID]:character_id];paladin;PalLvl
-   --?[&PalLvl] -ge 10|=CourageFlag|1
+   --?[&PalLvl] -ge 10|=CourageFlag;1
    --:paSrcSkip|
    --%|
   --&CleanSources|;[&CleanSources];
