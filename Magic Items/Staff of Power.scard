@@ -1,0 +1,335 @@
+!script {{
+  +++5Elib;snlib;Farsidelib+++
+
+  --/|Script Name : Staff of Power
+  --/|Version     : 1.1.0
+  --/|Requires SC : SmartAOE, ScriptCards Library 5Elib/snlib/Farsidelib 1.5.10+
+  --/|Author      : Arak
+  --/|Modified By : Farsidegallery
+  --/|
+  --/|  Choose a staff spell via rbuttons (only spells you can afford are shown). Deducts charges from the
+  --/|  character resource named in PowerResource below.
+
+  --/| ____________________ Begin Global User Variables ___________________________________
+
+  --/|Exact name of the charge resource on the wielder's character sheet (max 20).
+  --&PowerResource|Staff of Power
+
+  --&damageType|force
+
+  --/| ____________________ End Global User Variables _____________________________________
+
+  --#hidecard|0
+  --#whisper|self,gm
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|Staff of Power @{selected|character_id}
+  --#title|Staff of Power
+
+  --&brace|{
+  --&cbrace|}
+  --&subtitlefontcolor|#ffffff
+
+  -->far_LoadTokenMarkers|
+
+  -->Lib5E_FIND_RESOURCE|[*S:character_id];[&PowerResource];Powername;PowerAmmo
+  --?"[&Powername]" -eq "Not Found"|>NoResource
+
+  --&GlobeActiveFlag|0
+  --&GlobeAuraColor|#00ccff50
+  -->far_GetTokenCharAttr|[*S:t-id];StaffGlobeActive;0;StaffGlobeFlag
+  --?"X[&StaffGlobeFlag]" -eq "X1"|&GlobeActiveFlag;1
+  --=GlobeAuraRadius|[*S:t-aura1_radius]
+  --?"X[$GlobeAuraRadius.Total]" -ne "X" -and [$GlobeAuraRadius] -ge 10|[
+   --&ThisAuraColor|[*S:t-aura1_color]
+   --?"X[&ThisAuraColor]" -eq "X[&GlobeAuraColor]"|&GlobeActiveFlag;1
+  --]|
+
+  --?"X[&GlobeActiveFlag]" -eq "X1"|>ShowMenu
+  --?[$PowerAmmo] -lt 1|>NoPower
+
+  --:ShowMenu|
+  --&SpellMenu|
+  --?[$PowerAmmo] -ge 1|&SpellMenu;+ [rbutton]Magic Missile (1 charge)::MagicMissile[/rbutton]
+  --?[$PowerAmmo] -ge 1|&SpellMenu;+ [rbutton]Ray of Enfeeblement (1 charge)::RayOfEnfeeblement[/rbutton]
+  --?[$PowerAmmo] -ge 2|&SpellMenu;+ [rbutton]Levitate (2 charges)::Levitate[/rbutton]
+  --?[$PowerAmmo] -ge 5|&SpellMenu;+ [rbutton]Cone of Cold (5 charges)::ConeOfCold[/rbutton]
+  --?[$PowerAmmo] -ge 5|&SpellMenu;+ [rbutton]Fireball (5 charges)::Fireball[/rbutton]
+  --?[$PowerAmmo] -ge 5|&SpellMenu;+ [rbutton]Lightning Bolt (5 charges)::LightningBolt[/rbutton]
+  --?[$PowerAmmo] -ge 5|&SpellMenu;+ [rbutton]Hold Monster (5 charges)::HoldMonster[/rbutton]
+  --?[$PowerAmmo] -ge 5|&SpellMenu;+ [rbutton]Wall of Force (5 charges)::WallOfForce[/rbutton]
+  --?[$PowerAmmo] -ge 6|&SpellMenu;+ [rbutton]Globe of Invulnerability (6 charges)::GlobeOfInvulnerability[/rbutton]
+  --?"X[&GlobeActiveFlag]" -eq "X1"|&SpellMenu;+ [rbutton]Dismiss Globe of Invulnerability::DismissGlobe[/rbutton]
+
+  --+|[c][b][*S:t-name]'s Staff of Power[/b] — [$PowerAmmo] charges remaining[/c]
+  --+Choose a spell: |[c][&SpellMenu][/c]
+  --X|
+
+  --/| ____________________ Charge deduction _______________________________________________
+
+  --:DeductCharges|cost
+  -->Lib5E_FIND_RESOURCE|[*S:character_id];[&PowerResource];Powername;PowerAmmo
+  --?"[&Powername]" -eq "Not Found"|>NoResource
+  --?[$PowerAmmo] -lt [%1%]|>NoPower
+  --=FinalAmmo|[$PowerAmmo]-[%1%]
+  --!a:[*S:character_id]|[&PowerAmmo]:[$FinalAmmo]
+  --+|[*S:t-name] uses [%1] charge(s). [$FinalAmmo] charge(s) remaining.
+  --<|
+
+  --/| ____________________ Spells _________________________________________________________
+
+  --:MagicMissile|
+  -->DeductCharges|1
+  --&Power|Magic Missile
+  --=MissileCount|3
+  -->far_BuildTargetList|[$MissileCount.Total]
+  -->far_BuildTargetArray|Targets;[$MissileCount];TargetString;1
+  -->MMBuildUnique|
+  --=TargetCount|1
+  --=TotalDamage|0
+  --#emoteText|[*S:t-name] uses the Staff of Power to cast Magic Missile!
+  --%loop|foreach;Targets
+   -->MMFireMissile|[&loop]
+   --=TargetCount|[$TargetCount]+1
+  --%|
+  --%i|1;[$MissileCount];1
+   --&ThisDartTarget|[&MMDartTarget[&i]]
+   --+[&MMResultLabel[&i]]: |[&MMResultText[&i]]
+   -->far_PlayEffects|[*S:t-id];[&ThisDartTarget];none;burst-smoke;beam-magic
+  --%|
+  --+|Total damage is [$TotalDamage]
+  --%loopTarget|foreach;MMUnique
+   -->far_DamageTokenmod|[&loopTarget];[&hpBar];[&tempHPbar];-[$MMDamage[&loopTarget]];0;0;1
+   --?[*[&loopTarget]:t-bar[&hpBar]_value] -lt 0|[
+    -->LibSN_ADD_STATUS_MARKER|[*[&loopTarget]:t-id];[&DeathMarker]
+   --]|
+  --%|
+  --X|
+
+  --:RayOfEnfeeblement|
+  --#whisper|
+  -->DeductCharges|1
+  --&Power|Ray of Enfeeblement
+  --#emoteText|[*S:t-name] points the Staff of Power at a target within 60 feet
+  --#title|Ray of Enfeeblement
+  --+The target must make a DC [*S:spell_save_dc] CON save.|
+  --+On a success, the target has disadvantage on the next attack roll before the start of your next turn.|
+  --+On a failure, the target has disadvantage on Strength-based d20 checks and saves for 1 minute and subtracts 1d8 from damage rolls. The target repeats the save at the end of each of its turns, ending the effect on a success.|
+  --X|
+
+  --:Levitate|
+  --#whisper|
+  -->DeductCharges|2
+  --&Power|Levitate
+  --#emoteText|[*S:t-name] uses the Staff of Power to cast Levitate
+  --#title|Levitate
+  --+Target one creature or object within 60 feet.|
+  --+An unwilling creature must make a DC [*S:spell_save_dc] CON save. On a failure it rises up to 20 feet and remains suspended for 10 minutes.|
+  --+An object is lifted with no save. When the effect ends, the target floats gently to the ground if still aloft.|
+  --X|
+
+  --:ConeOfCold|
+  -->DeductCharges|5
+  --&Power|Cone of Cold
+  --@forselected|smartaoe [&brace][&brace]
+   _title|[*S:t-name] points the staff and casts Cone of Cold.
+   _rightsub|DC [*S:spell_save_dc] CON save
+   _subtitlefontcolor|[&subtitlefontcolor]
+   _titlecardbackground|linear-gradient(blue, cyan)
+   _oddrowbackground|#00ccff
+   _evenrowbackground|#edfcfc
+   _oddrowfontcolor|#000000
+   _tablebgcolor|#edfcfc
+   _chatAvatarsEnabled|false
+   _aoeColor|#00ccff50
+   _aoeOutlineColor|#0099ff
+   _gridColor|#99999900
+   _aoeType|5econe
+   _radius|60ft
+   _origin|nearest, face
+   _forceIntersection|1
+   _minGridArea|0.25
+   _minTokArea|0.25
+   _fx|burn-frost
+   _dc|[*S:spell_save_dc]
+   _saveFormula|5eCON
+   _damageFormula1|[[8d8]]
+   _damageType1|Cold
+   _instant|1
+   _autoApply|1
+   _bar|[&hpBar]
+   _zeroHPmarker|dead
+   _desc|A blast of cold air erupts from the staff. Each creature in a 60-foot cone must make a CON save. A creature killed by this spell becomes a frozen statue until it thaws.
+   [&cbrace][&cbrace]
+  --X|
+
+  --:Fireball|
+  -->DeductCharges|5
+  --&Power|Fireball
+  --@forselected|smartaoe [&brace][&brace]
+   _title|[*S:t-name] points the staff and casts Fireball.
+   _rightsub|DC [*S:spell_save_dc] DEX save
+   _chatAvatarsEnabled|false
+   _aoeColor|#99000050
+   _gridColor|#99000050
+   _aoeType|circle, float
+   _radius|20ft
+   _forceIntersection|1
+   _minGridArea|0.25
+   _minTokArea|0.25
+   _fx|burn-fire
+   _dc|[*S:spell_save_dc]
+   _saveFormula|5eDEX
+   _damageFormula1|[[8d6]]
+   _damageType1|Fire
+   _instant|1
+   _autoApply|1
+   _bar|[&hpBar]
+   _zeroHPmarker|dead
+   _desc|A bright streak flashes to a point you choose, then blossoms into flame. Each creature in a 20-foot-radius sphere must make a DEX save. The fire ignites flammable objects in the area that are not being worn or carried.
+   [&cbrace][&cbrace]
+  --X|
+
+  --:LightningBolt|
+  -->DeductCharges|5
+  --&Power|Lightning Bolt
+  --@forselected|smartaoe [&brace][&brace]
+   _title|[*S:t-name] points the staff and casts Lightning Bolt.
+   _rightsub|DC [*S:spell_save_dc] DEX save
+   _subtitlefontcolor|[&subtitlefontcolor]
+   _titlecardbackground|linear-gradient(blue, cyan)
+   _oddrowbackground|#00ccff
+   _evenrowbackground|#edfcfc
+   _oddrowfontcolor|#000000
+   _tablebgcolor|#edfcfc
+   _chatAvatarsEnabled|false
+   _aoeColor|#00ccff50
+   _aoeOutlineColor|#0099ff
+   _gridColor|#99999900
+   _aoeType|line
+   _radius|100ft
+   _minGridArea|0.25
+   _minTokArea|0.25
+   _fx|burn-frost
+   _dc|[*S:spell_save_dc]
+   _saveFormula|5eDEX
+   _damageFormula1|[[8d6]]
+   _damageType1|Lightning
+   _instant|1
+   _autoApply|1
+   _bar|[&hpBar]
+   _zeroHPmarker|dead
+   _desc|A stroke of lightning shoots out forming a line 100 feet long and 5 feet wide. Each creature in the line must make a DEX save. The lightning ignites flammable objects in the area that are not being worn or carried.
+   [&cbrace][&cbrace]
+  --X|
+
+  --:HoldMonster|
+  --#whisper|
+  -->DeductCharges|5
+  --&Power|Hold Monster
+  --#emoteText|[*S:t-name] uses the Staff of Power to cast Hold Monster
+  --#title|Hold Monster
+  --+Target one creature within 90 feet.|
+  --+The target must make a DC [*S:spell_save_dc] WIS save or be paralyzed for 1 minute. It repeats the save at the end of each of its turns, ending the effect on a success.|
+  --X|
+
+  --:WallOfForce|
+  -->DeductCharges|5
+  --&Power|Wall of Force
+  --@forselected|smartaoe [&brace][&brace]
+   _title|[*S:t-name] points the staff and casts Wall of Force.
+   _titlecardbackground|linear-gradient(blue, cyan)
+   _oddrowbackground|#00ccff
+   _evenrowbackground|#edfcfc
+   _oddrowfontcolor|#000000
+   _tablebgcolor|#edfcfc
+   _chatAvatarsEnabled|false
+   _aoeType|wall
+   _aoeColor|#00ccff50
+   _aoeOutlineColor|#0099ff
+   _gridColor|#99999900
+   _offset|1,0
+   _minGridArea|0.5
+   _forceIntersection|1
+   _radius|10ft
+   _width|10ft
+   _fx|burn-magic
+   _instant|1
+   _autoApply|1
+   _bar|[&hpBar]
+   _zeroHPmarker|dead
+   _desc|An invisible wall of force springs into existence. It can be a hemisphere or globe up to 10 feet in radius, or up to ten 10-foot panels. The wall is one-quarter inch thick and lasts for the duration.
+   [&cbrace][&cbrace]
+  --X|
+
+  --:GlobeOfInvulnerability|
+  --#whisper|
+  -->DeductCharges|6
+  --&Power|Globe of Invulnerability
+  --#emoteText|[*S:t-name] uses the Staff of Power to cast Globe of Invulnerability
+  --#title|Globe of Invulnerability
+  --+A shimmering barrier appears in a 10-foot emanation around you for 1 minute.|
+  --+Spells of level 5 or lower cast from outside the barrier cannot affect creatures or objects within it.|
+  --!t:[*S:t-id]|aura1_radius:|aura1_color:|aura1_square:false
+  --!t:[*S:t-id]|aura1_radius:10|aura1_color:#00ccff50|aura1_square:false
+  --!a:[*S:character_id]|StaffGlobeActive:1
+  --+|[c][rbutton]Dismiss Globe of Invulnerability::DismissGlobe[/rbutton][/c]
+  --X|
+
+  --:DismissGlobe|
+  --#whisper|
+  --#emoteText|[*S:t-name] dismisses Globe of Invulnerability
+  --#title|Globe of Invulnerability
+  --!t:[*S:t-id]|aura1_radius:|aura1_color:|aura1_square:false
+  --!a:[*S:character_id]|StaffGlobeActive:0
+  --+The shimmering barrier fades.|
+  --X|
+
+  --/| ____________________ Magic Missile helpers __________________________________________
+
+  --:MMFireMissile|target-token-id
+  --&ThisTarget|[%1%]
+  --#targettoken|[&ThisTarget]
+  --&Hex|
+  --&HexBlade|
+  -->LibSN_CHECK_STATUS_MARKER|[*[&ThisTarget]:t-id];[&HexMarker];HexMarkerFlag;HexMarkerCount
+  -->LibSN_CHECK_STATUS_MARKER|[*[&ThisTarget]:t-id];[&HexBladeMarker];HexBladeMarkerFlag;HexBladeMarkerCount
+  --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*[&ThisTarget]:t-id]"|&Hex; + 1d6 [Hex] |&Hex;
+  --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*[&ThisTarget]:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade; + [*S:pb] [Hexblade Curse] |&HexBlade;
+  --&damageMod|
+  --=ThisMissile|1d4+1
+  -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0
+  -->far_CheckDamageModifiers|[*[&ThisTarget]:character_id];[&damageType];damageMod;0;0;0
+  --=ResultantDamage|[$ThisMissile.Raw] [&damageMod][&HexBlade][&Hex][&GlobalDamage]
+  --=TotalDamage|[$TotalDamage] + [$ResultantDamage]
+  --&MMResultLabel[$TargetCount.Raw]|Bolt [$TargetCount.Raw]
+  --&MMResultText[$TargetCount.Raw]|Hits [*[&ThisTarget]:t-name] for [$ResultantDamage] [b][&damageType][/b] damage.
+  --=MMDamage[&ThisTarget]|[$MMDamage[&ThisTarget]] + [$ResultantDamage]
+  --&MMDartTarget[$TargetCount.Raw]|[&ThisTarget]
+  --<|
+
+  --:MMBuildUnique|
+  --~|array;define;MMUnique;[@Targets(0)]
+  --%loop|foreach;Targets
+   --&ThisTarget|[&loop]
+   --?"X[&ThisTarget]" -eq "X"|MMBottomUniqueLoop
+   --~testvar|array;indexof;MMUnique;[&ThisTarget]
+   --?"[&testvar]" -eq "ArrayError" | [
+    --~|array;add;MMUnique;[&ThisTarget]
+   --]|
+   --:MMBottomUniqueLoop|
+  --%|
+  --<|
+
+  --/| ____________________ Errors __________________________________________________________
+
+  --:NoResource|
+  --#emoteText|[*S:t-name] tries to use the Staff of Power.
+  --+|[c]Could not find a resource named "[&PowerResource]" on this character. Add the resource to the sheet or update PowerResource in the script.[/c]
+  --X|
+
+  --:NoPower|
+  --#emoteText|[*S:t-name] tries to use the Staff of Power.
+  --+|[c]You do not have enough charges remaining.[/c]
+  --X|
+
+}}
