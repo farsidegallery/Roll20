@@ -1,4 +1,4 @@
---/|ScriptCards Library: Farsidelib  version 1.5.8
+--/|ScriptCards Library: Farsidelib  version 1.5.10
 --/|Provides various utility procedures for Roll20
 
 --/|This library contains a number of functions that are customized to meet the different needs of spell or ability
@@ -12,7 +12,9 @@
 --/|Functions Included:
 --/|
 --/|   far_LoadTokenMarkers|
---/|     Centralized token marker definition repository
+--/|     Centralized token marker definition repository. Also sets hpBar (default 1) and tempHPbar
+--/|     (default 4) for far_DamageTokenmod and aura damage helpers. Change those two values here only;
+--/|     individual spell scripts should not define their own HP bar settings.
 --/| 
 --/|   far_CustomCritCheck|ReturnStringName
 --/|     Are you using a custom critical damage game? 0 = no and 1 = yes
@@ -105,7 +107,7 @@
 --/|   far_DamageTokenmod|tokenid;bar#;tempHP bar#;amount;display (0 or 1);Allow Overhealing (0 or 1); Allow negative hp (0 or 1)
 --/|      Applies damage (negative amount) or healing (positive amount). Temp HP bar is depleted first; overflow hits the HP bar.
 --/|      Authoritative Token-Mod temp-HP routine (v1.5.8+). Reads token bars only, not character sheet hp_temp.
---/|      AuraTrigger callers pass hpBar and tempHPbar (often 1 and 4).
+--/|      Callers should use &hpBar and &tempHPbar from far_LoadTokenMarkers (v1.5.10+).
 --/|
 --/|   far_LogFatalError|EmoteText;ErrorHeader;ErrorMessage
 --/|
@@ -168,11 +170,25 @@
 --/|
 --/|   far_EvardTentaclesAuraEnter|target-token-id;flag-bar#
 --/|      AuraTrigger onEnter/onStartTurn handler. Turn gate, strike, and turn mark in one call.
+--/|
+--/|   far_PaladinAuraGetRadius|paladinLevel;returnVar
+--/|      Returns aura radius in feet: 10 (levels 6-17) or 30 (level 18+).
+--/|
+--/|   far_PaladinAuraOnEnter|target-token-id;paladin-aura-token-id
+--/|   far_PaladinAuraOnExit|target-token-id;paladin-aura-token-id
+--/|      AuraTrigger handlers. Track overlapping paladin auras on the target and apply the best save bonus.
+--/|
+--/|   far_PaladinAuraDismissPaladin|paladin-token-id
+--/|      Removes one paladin from all affected targets when their aura is dismissed.
 
 --/| =============================== BEGIN LIBRARY CODE ===============================================
 
  
  --:far_LoadTokenMarkers|
+  --/|Token bar numbers for far_DamageTokenmod — change here for the whole game, not per script.
+  --&hpBar|1
+  --&tempHPbar|4
+  
   --/|Enter the Token Markers you use for each condition
   --&BaneMarker|Hexed3::7409911
   
@@ -1080,6 +1096,122 @@
  --:far_EvardTentaclesAuraEnter|target-token-id;flag-bar#
   -->far_AuraTriggerTurnGate|[%1%];[%2%]
   -->far_EvardTentaclesAuraStrike|3d6;bludgeoning;dexterity;1;4
+  --<|
+
+ --:far_PaladinAuraGetRadius|paladinLevel;returnVar
+  --&[%2%]|10
+  --?[%1%] -ge 18|&[%2%];30
+  --<|
+
+ --:far_PaladinAuraAddSource|target-token-id;paladin-token-id
+  --#targettoken|[%1%]
+  --&PaladinAuraSources|[*T:PaladinAuraSources]
+  --?"X[&PaladinAuraSources]" -eq "X"|&PaladinAuraSources|;|
+  --?"X[&PaladinAuraSources]" -inc ";[%2%];"|&PaladinAuraSources|+[%2%];
+  --!a:[*T:character_id]|PaladinAuraSources:[&PaladinAuraSources]
+  -->far_ApplyBestPaladinAura|[%1%]
+  --<|
+
+ --:far_PaladinAuraRemoveSource|target-token-id;paladin-token-id
+  --#targettoken|[%1%]
+  --&PaladinAuraSources|[*T:PaladinAuraSources]
+  --?"X[&PaladinAuraSources]" -eq "X"|&PaladinAuraSources|;|
+  --&PaladinAuraSources|[&PaladinAuraSources(replace,;[%2%];,;)]
+  --!a:[*T:character_id]|PaladinAuraSources:[&PaladinAuraSources]
+  -->far_ApplyBestPaladinAura|[%1%]
+  --<|
+
+ --:far_PaladinAuraOnEnter|target-token-id;paladin-token-id
+  -->far_PaladinAuraAddSource|[%1%];[%2%]
+  --#targettoken|[%1%]
+  --?"X[&PaladinAuraCourageMsg]" -ne "X"|[
+   --+|[c]Your saving throws receive an additional +[&PaladinAuraAppliedBonus] bonus[&PaladinAuraCourageMsg][/c]
+  --]|[
+   --+|[c]Your saving throws receive an additional +[&PaladinAuraAppliedBonus] bonus.[/c]
+  --]|
+  --+Global Save Modifiers|[&PaladinAuraModList]
+  --<|
+
+ --:far_PaladinAuraOnExit|target-token-id;paladin-token-id
+  -->far_PaladinAuraRemoveSource|[%1%];[%2%]
+  --<|
+
+ --:far_PaladinAuraDismissPaladin|paladin-token-id
+  --~|array;pagetokens;PageTokens;[%1%]
+  --%paTok|foreach;PageTokens
+   --#targettoken|[&paTok]
+   --?"X[*T:PaladinAuraSources]" -eq "X"|paDismissSkip
+   --?"X[*T:PaladinAuraSources]" -inc ";[%1%];"|[
+    -->far_PaladinAuraRemoveSource|[&paTok];[%1%]
+    --]|
+   --:paDismissSkip|
+   --%|
+  --<|
+
+ --:far_ApplyBestPaladinAura|target-token-id
+  --#targettoken|[%1%]
+  --&PaladinAuraModName|Paladin Aura
+  --&PaladinAuraAppliedBonus|0
+  --&PaladinAuraCourageMsg|
+  --&PaladinAuraModList|
+  --=BestBonus|-999
+  --=CourageFlag|0
+  --&SourceList|[*T:PaladinAuraSources]
+  --?"X[&SourceList]" -eq "X"|&SourceList|;|
+  --~|string;split;PALsrcArr;[&SourceList];;
+  --&CleanSources|;|
+  --%paSrc|foreach;PALsrcArr
+   --&PalTID|[&paSrc]
+   --?"X[&PalTID]" -eq "X"|paSrcSkip
+   --?"X[*[&PalTID]:character_id]" -eq "X"|paSrcSkip
+   --&CleanSources|+[&PalTID];
+   --=ThisBonus|[*O:[*[&PalTID]:character_id]:character:charisma_mod]
+   --?[$ThisBonus] -gt [$BestBonus]|=BestBonus;[$ThisBonus]
+   -->far_FIND_CLASS_LEVEL|[*[&PalTID]:character_id];paladin;PalLvl
+   --?[&PalLvl] -ge 10|=CourageFlag|1
+   --:paSrcSkip|
+   --%|
+  --&CleanSources|;[&CleanSources];
+  --?"X[&CleanSources]" -ne "X[&SourceList]"|[
+   --!a:[*T:character_id]|PaladinAuraSources:[&CleanSources]
+   --&SourceList|[&CleanSources]
+  --]|
+  --?"X[&SourceList]" -eq "X|;|" -or [$BestBonus] -le -999|>far_PaladinAuraDeactivate
+  --&PaladinAuraAppliedBonus|[$BestBonus]
+  --?"X[$CourageFlag]" -eq "X1"|&PaladinAuraCourageMsg|; Aura of Courage makes you immune to the Frightened condition.
+  -->far_PaladinAuraEnsureMod|[*T:character_id];[$BestBonus]
+  --?"X[$CourageFlag]" -eq "X1"|[
+   --!a:[*T:character_id]|PaladinAuraCourage:1
+   -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&FearMarker]
+  --]|[
+   --!a:[*T:character_id]|PaladinAuraCourage:0
+  --]|
+  -->Lib5E_FIND_ACTIVE_GLOBAL_SAVE_MODS|[*T:character_id];PaladinAuraModList
+  --<|
+
+ --:far_PaladinAuraEnsureMod|character-id;bonus-total
+  --&PaladinAuraModName|Paladin Aura
+  -->far_Check_GLOBAL_MOD_EXISTS|[%1%];save;[&PaladinAuraModName];PAExists
+  --?[&PAExists] -eq 0|[
+   --!a:[%1%]|global_save_mod_flag:1
+   --!or:[%1%]:savemod|global_save_name:[&PaladinAuraModName]|global_save_active_flag:1|global_save_roll:[%2%]|options-flag:0
+   --^PAEnsureDone|
+  --]|
+  --Rfind|[%1%];[&PaladinAuraModName];repeating_savemod;global_save_name
+  --!a:[%1%]|[*R>global_save_roll]:[%2%]
+  --:PAEnsureDone|
+  -->Lib5E_SET_GLOBAL_MOD_STATUS|[%1%];save;[&PaladinAuraModName];1
+  --!a:[%1%]|global_save_mod_flag:1
+  --<|
+
+ --:far_PaladinAuraDeactivate|
+  --&PaladinAuraModName|Paladin Aura
+  -->Lib5E_SET_GLOBAL_MOD_STATUS|[*T:character_id];save;[&PaladinAuraModName];0
+  --!a:[*T:character_id]|PaladinAuraCourage:0
+  --!a:[*T:character_id]|PaladinAuraSources:;|
+  --&PaladinAuraAppliedBonus|0
+  --&PaladinAuraCourageMsg|
+  --&PaladinAuraModList|
   --<|
 
  --:far_AuraTriggerDied|
