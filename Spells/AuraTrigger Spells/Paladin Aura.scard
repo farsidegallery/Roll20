@@ -1,0 +1,74 @@
+!script {{
+  +++5Elib;snlib;Farsidelib+++
+
+  --#title|Paladin Aura
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|Paladin Aura @{selected|character_id}
+  --#whisper|self,gm
+  --#rightsub|Level 6+
+
+  --/|Script Name : Paladin Aura
+  --/|Version     : 1.0.0
+  --/|Requires SC : ScriptCards 3.0.19a+, 5Elib/snlib/Farsidelib 1.6.0+, AuraTriggers 0.9+, TokenMod
+  --/|Author      : Farsidegallery (based on Si's AuraTrigger template)
+  --/|
+  --/|  Toggles Aura of Protection on the selected paladin token. Radius is 10 ft (levels 6-17) or 30 ft (level 18+).
+  --/|  Overlapping paladin auras apply the highest Charisma bonus; Aura of Courage (level 10+) removes Frightened.
+  --/|  AuraTriggers gmnotes are written by far_PaladinAuraAttachTriggers (icon passed from this script).
+  --/|
+
+  --&ATColor|#9900ff00
+  --/|Token marker for the paladin and beneficiaries while in aura (must match a Roll20 marker name).
+  --&PaladinAuraIcon|overdrive
+
+  --&SavedSourceToken|@{selected|token_id}
+  --&CasterToken|[*S:t-id]
+
+  -->far_LoadTokenMarkers|
+
+  --?"X[*S:character_id]" -eq "X" -or "X[*S:t-id]" -eq "X"|>far_FatalError;No Token Selected;ERROR;Select the paladin token, then run this script again.
+  -->far_FIND_CLASS_LEVEL|[*S:character_id];paladin;PalLevel
+  --?[&PalLevel] -lt 6|>far_FatalError;Level Too Low;ERROR;Aura of Protection requires paladin level 6 or higher.
+  -->far_PaladinAuraGetLeftSub|[&PalLevel];PalLeftSub
+  --#leftsub|[&PalLeftSub]
+
+  --+Choose Function: |[rbutton]Activate Aura::Activate[/rbutton][rbutton]Suspend Aura::Suspend[/rbutton]
+  --X|
+
+  --:Activate|
+   --#sourceToken|[&SavedSourceToken]
+   --?"X[*S:character_id]" -eq "X" -or "X[*S:t-id]" -eq "X"|>far_FatalError;No Token Selected;ERROR;Select the paladin token, then run this script again.
+   -->far_FIND_CLASS_LEVEL|[*S:character_id];paladin;PalLevel
+   -->far_PaladinAuraGetRadius|[&PalLevel];AuraRadius
+   -->far_PaladinAuraGetLeftSub|[&PalLevel];PalLeftSub
+   --#leftsub|[&PalLeftSub]
+   --&PalTID|[*S:t-id]
+   --#targettoken|notoken
+   --!t:[&PalTID]|aura1_radius:[&AuraRadius]|aura1_color:"[&ATColor]"
+   --!a:[*S:character_id]|PaladinAuraActive:1
+   -->far_PaladinAuraAttachTriggers|[&PalTID];_AttachUnused;[&PaladinAuraIcon]
+   -->far_PaladinAuraRebuild|[&PalTID];[&PaladinAuraIcon];[&AuraRadius]
+   --#emoteText|[*S:t-name] activates their Paladin Aura ([&AuraRadius] ft).
+   --?[&PalLevel] -ge 10|[
+    --+Aura of Protection: |Friendly creatures within [&AuraRadius] feet gain +[*S:charisma_mod] on saving throws.
+    --+|[br]
+    --+Aura of Courage: |Allies are immune to the Frightened condition.
+   --]|[
+    --+Aura of Protection: |Friendly creatures within [&AuraRadius] feet gain +[*S:charisma_mod] on saving throws.
+   --]|
+   --X|
+
+  --:Suspend|
+   --#sourceToken|[&SavedSourceToken]
+   --?"X[*S:character_id]" -eq "X" -or "X[*S:t-id]" -eq "X"|>far_FatalError;No Token Selected;ERROR;Select the paladin token, then run this script again.
+   -->far_FIND_CLASS_LEVEL|[*S:character_id];paladin;PalLevel
+   -->far_PaladinAuraGetLeftSub|[&PalLevel];PalLeftSub
+   --#leftsub|[&PalLeftSub]
+   --&PalTID|[*S:t-id]
+   -->far_PaladinAuraSuspend|[&PalTID];[&PaladinAuraIcon]
+   --!a:[*S:character_id]|PaladinAuraActive:0
+   --#emoteText|[*S:t-name] suspends their Paladin Aura.
+   --+|[*S:t-name]'s Paladin Aura is suspended.
+   --X|
+
+}}
