@@ -1,6 +1,6 @@
 !script {{
   --/|Script Name : 5E Action Menu
-  --/|Version     : 3.1.2
+  --/|Version     : 3.1.3
   --/|Requires SC : 2.7.15+
   --/|Author      : Kurt Jaegers
   --/|Modified By : Farsidegallery
@@ -1411,7 +1411,9 @@
   --/|The three Find_Active_Global_X_Modifiers functions will loop through the various global modifiers repeating
   --/|sections and construct a line containing the dice roll and description (in square brackets) for each entry
   --/|that has an active flag set. This is set to a variable named after the second parameter and can be appended
-  --/|directly to an attack/damage/save roll
+  --/|directly to an attack/damage/save roll. Toggle buttons use row ids (Rbysectionid) for names with
+  --/|apostrophes or hyphens. Find/append sanitizes GMMModName and builds roll fragments via GMMRollSep
+  --/|(no literal # on the same line as [&var] — gosub params and # lines cannot expand [&label]).
 
   --:SET_ADV_MODE|
   --&currentAdvantageMode|[&reentryval]
@@ -1419,66 +1421,148 @@
 
   --:Find_Active_Global_Attack_Modifiers|character_id;StringVariableToSet
   --&_GAM_Temp| 
+  --&_GAMDedupSeen|
   --Rfirst|[%1%];repeating_tohitmod
   --:_GAM_Loop|
-  --?"[*R:global_attack_active_flag]" -eq "1"|>_AddGAM;[*R:global_attack_name];[*R:global_attack_roll]
+  --?"[*R:global_attack_active_flag]" -eq "1"|[
+   --&_GAMStgRoll|[*R:global_attack_roll]
+   --?"[&_GAMStgRoll]" -ninc "NoRepeatingAttributeLoaded"|[
+    --?"[&_GAMStgRoll]" -ne ""|[
+     --&GMMModName|[*R:global_attack_name]
+     --~GMMModName|string;replace;';’;[&GMMModName]
+     --~GMMModName|string;replace;-‑;[&GMMModName]
+     --&GAMDedupKey||[&GMMModName]|
+     --?"[&_GAMDedupSeen]" -ninc "[&GAMDedupKey]"|[
+      --&_GAMDedupSeen|+ [&GAMDedupKey]
+      -->_AddGAM|
+     --]|
+    --]|
+   --]|
+  --]|
   --Rnext| 
   --?"[*R:global_attack_name]" -ne "NoRepeatingAttributeLoaded"|_GAM_Loop
   --&[%2%]|[&_GAM_Temp] 
   --<|
   
-  --:_AddGAM| 
-  --&_GAM_Temp|+ + [%2%]# [&obrac][%1%][&cbrac] 
+  --:_AddGAM|
+  --&GMMModBracket|[&obrac][&GMMModName][&cbrac]
+  --&GMMRollSep|#
+  --&GMMGamPiece|
+  --&GMMGamPiece|+ + [&_GAMStgRoll][&GMMRollSep] [&GMMModBracket]
+  --&_GAM_Temp|+ [&GMMGamPiece]
   --<|
 
   --:Find_Active_Global_Damage_Modifiers|character_id;StringVariableToSet;isCrit(1=true);StringVar2forResistances
   --&_GDM_Temp| 
   --&_GDM_Temp2|
+  --&_GDMDedupSeen|
   --Rfirst|[%1%];repeating_damagemod
   --:_GDM_Loop|
-  --?"[*R:global_damage_active_flag]" -eq "1"|>_AddGDM;[*R:global_damage_name];[*R:global_damage_damage];[%3%];[*R:global_damage_critical_damage];[*R:global_damage_type]
+  --?"[*R:global_damage_active_flag]" -eq "1"|[
+   --&_GDMStgDice|[*R:global_damage_damage]
+   --&_GDMStgCrit|[*R:global_damage_critical_damage]
+   --&_GDMStgType|[*R:global_damage_type]
+   --&GMMModName|[*R:global_damage_name]
+   --~GMMModName|string;replace;';’;[&GMMModName]
+   --~GMMModName|string;replace;-‑;[&GMMModName]
+   --&GDMDedupKey||[&GMMModName]|
+   --?"[&_GDMDedupSeen]" -ninc "[&GDMDedupKey]"|[
+    --&_GDMDedupSeen|+ [&GDMDedupKey]
+    --&_GDMStgCritFlag|[%3]
+    -->_AddGDM|
+   --]|
+  --]|
   --Rnext| 
   --?"[*R:global_damage_name]" -ne "NoRepeatingAttributeLoaded"|_GDM_Loop
   --&[%2%]|[&_GDM_Temp] 
   --&[%4%]|[&_GDM_Temp2] 
   --<|
   
-  --:_AddGDM| 
-  --&_GDM_Temp|+ + [%2%]# [%5%] damage [&obrac][%1%][&cbrac] 
-  --?"[%3%]" -eq "1"|&_GDM_Temp;+ + [%4%]  [ CRIT [%1%] ]
-  --&_GDM_Temp2|+[%2%]# [%5%] damage [&obrac][%1%][&cbrac][&vbar]
+  --:_AddGDM|
+  --&GMMModBracket|[&obrac][&GMMModName][&cbrac]
+  --&GMMRollSep|#
+  --&GMMDmgPiece|
+  --&GMMDmgPiece|+ + [&_GDMStgDice][&GMMRollSep]
+  --?"[&_GDMStgType]" -ne ""|&GMMDmgPiece;+ [&_GDMStgType] damage 
+  --&GMMDmgPiece|+ [&GMMModBracket]
+  --&_GDM_Temp|+ [&GMMDmgPiece]
+  --&GMMCritSuffix| CRIT [&GMMModBracket]
+  --?"[&_GDMStgCritFlag]" -eq "1"|&_GDM_Temp;+ + [&_GDMStgCrit] [&GMMCritSuffix]
+  --&GMMResPiece|
+  --&GMMResPiece|+ + [&_GDMStgDice][&GMMRollSep]
+  --?"[&_GDMStgType]" -ne ""|&GMMResPiece;+ [&_GDMStgType] damage 
+  --&GMMResPiece|+ [&GMMModBracket][&vbar]
+  --&_GDM_Temp2|+ [&GMMResPiece]
   --<|
 
   --:Find_Active_Global_Save_Modifiers|character_id;StringVariableToSet
   --&[%2%]|
   --&_GSM_Temp|
+  --&_GSMDedupSeen|
   --Rfirst|[%1%];repeating_savemod
   --?"[*R:global_save_name]" -eq "NoRepeatingAttributeLoaded"|<
   --:_GSM_Loop|
-  --?"[*R:global_save_active_flag]" -eq "1"|>_AddGSM;[*R:global_save_name];[*R:global_save_roll]
+  --?"[*R:global_save_active_flag]" -eq "1"|[
+   --&_GSMStgRoll|[*R:global_save_roll]
+   --?"[&_GSMStgRoll]" -ninc "NoRepeatingAttributeLoaded"|[
+    --?"[&_GSMStgRoll]" -ne ""|[
+     --&GMMModName|[*R:global_save_name]
+     --~GMMModName|string;replace;';’;[&GMMModName]
+     --~GMMModName|string;replace;-‑;[&GMMModName]
+     --&GSMDedupKey||[&GMMModName]|
+     --?"[&_GSMDedupSeen]" -ninc "[&GSMDedupKey]"|[
+      --&_GSMDedupSeen|+ [&GSMDedupKey]
+      -->_AddGSM|
+     --]|
+    --]|
+   --]|
+  --]|
   --Rnext|
   --?"[*R:global_save_name]" -ne "NoRepeatingAttributeLoaded"|_GSM_Loop
   --&[%2%]|[&_GSM_Temp]
   --<|
 
-    --:_AddGSM| 
-  --&_GSM_Temp|+ + [%2%]# [&obrac][%1%][&cbrac] 
+  --:_AddGSM|
+  --&GMMModBracket|[&obrac][&GMMModName][&cbrac]
+  --&GMMRollSep|#
+  --&GMMSavPiece|
+  --&GMMSavPiece|+ + [&_GSMStgRoll][&GMMRollSep] [&GMMModBracket]
+  --&_GSM_Temp|+ [&GMMSavPiece]
   --<|
   
   --:Find_Active_Global_Skill_Modifiers|character_id;StringVariableToSet
   --&[%2%]|
   --&_GSKM_Temp|
+  --&_GSKMDedupSeen|
   --Rfirst|[%1%];repeating_skillmod
   --?"[*R:global_skill_name]" -eq "NoRepeatingAttributeLoaded"|<
   --:_GSKM_Loop|
-  --?"[*R:global_skill_active_flag]" -eq "1"|>_AddGSKM;[*R:global_skill_name];[*R:global_skill_roll]
+  --?"[*R:global_skill_active_flag]" -eq "1"|[
+   --&_GSKMStgRoll|[*R:global_skill_roll]
+   --?"[&_GSKMStgRoll]" -ninc "NoRepeatingAttributeLoaded"|[
+    --?"[&_GSKMStgRoll]" -ne ""|[
+     --&GMMModName|[*R:global_skill_name]
+     --~GMMModName|string;replace;';’;[&GMMModName]
+     --~GMMModName|string;replace;-‑;[&GMMModName]
+     --&GSKMDedupKey||[&GMMModName]|
+     --?"[&_GSKMDedupSeen]" -ninc "[&GSKMDedupKey]"|[
+      --&_GSKMDedupSeen|+ [&GSKMDedupKey]
+      -->_AddGSKM|
+     --]|
+    --]|
+   --]|
+  --]|
   --Rnext|
   --?"[*R:global_skill_name]" -ne "NoRepeatingAttributeLoaded"|_GSKM_Loop
   --&[%2%]|[&_GSKM_Temp]
   --<|
 
-  --:_AddGSKM| 
-  --&_GSKM_Temp|+ + [%2%]# [&obrac][%1%][&cbrac] 
+  --:_AddGSKM|
+  --&GMMModBracket|[&obrac][&GMMModName][&cbrac]
+  --&GMMRollSep|#
+  --&GMMSklPiece|
+  --&GMMSklPiece|+ + [&_GSKMStgRoll][&GMMRollSep] [&GMMModBracket]
+  --&_GSKM_Temp|+ [&GMMSklPiece]
   --<|
 
   --:Create_Global_Attack_Modifier_Buttons|character_id;StringVariableToSet
@@ -1486,8 +1570,14 @@
   --Rfirst|[%1%];repeating_tohitmod
   --:_GAMB_Loop|
   --?"[*R:global_attack_name]" -eq "NoRepeatingAttributeLoaded"|_GAMB_DONE
-  --?"[*R:global_attack_active_flag]" -eq "1"|>_AddGAMB;[*R:global_attack_name];[&GAM_Button_Active_Color]
-  --?"[*R:global_attack_active_flag]" -ne "1"|>_AddGAMB;[*R:global_attack_name];[&GAM_Button_Inactive_Color]
+  --?"[*R:global_attack_active_flag]" -eq "1"|[
+   --&_GMMModName|[*R:global_attack_name]
+   -->_AddGAMB|[&GAM_Button_Active_Color]
+  --]|
+  --?"[*R:global_attack_active_flag]" -ne "1"|[
+   --&_GMMModName|[*R:global_attack_name]
+   -->_AddGAMB|[&GAM_Button_Inactive_Color]
+  --]|
   --Rnext| 
   --?"[*R:global_attack_name]" -ne "NoRepeatingAttributeLoaded"|_GAMB_Loop
   --:_GAMB_DONE|
@@ -1495,7 +1585,7 @@
   --<|
   
   --:_AddGAMB| 
-  --&_GAMB_Temp|+[rbutton:#ffffff:#[%2%]:8px][%1%]::TOGGLE_GAM;[%1%][/rbutton][&SPACE]
+  --&_GAMB_Temp|+[rbutton:#ffffff:#[%1%]:8px][&_GMMModName]::TOGGLE_GAM;[*R:_reporder][/rbutton][&SPACE]
   --<|
 
   --:Create_Global_Damage_Modifier_Buttons|character_id;StringVariableToSet
@@ -1503,8 +1593,14 @@
   --Rfirst|[%1%];repeating_damagemod
   --:_GDMB_Loop|
   --?"[*R:global_damage_name]" -eq "NoRepeatingAttributeLoaded"|_GDMB_DONE
-  --?"[*R:global_damage_active_flag]" -eq "1"|>_AddGDMB;[*R:global_damage_name];[&GAM_Button_Active_Color]
-  --?"[*R:global_damage_active_flag]" -ne "1"|>_AddGDMB;[*R:global_damage_name];[&GAM_Button_Inactive_Color]  
+  --?"[*R:global_damage_active_flag]" -eq "1"|[
+   --&_GMMModName|[*R:global_damage_name]
+   -->_AddGDMB|[&GAM_Button_Active_Color]
+  --]|
+  --?"[*R:global_damage_active_flag]" -ne "1"|[
+   --&_GMMModName|[*R:global_damage_name]
+   -->_AddGDMB|[&GAM_Button_Inactive_Color]
+  --]|
   --Rnext| 
   --?"[*R:global_damage_name]" -ne "NoRepeatingAttributeLoaded"|_GDMB_Loop
   --:_GDMB_DONE|
@@ -1512,7 +1608,7 @@
   --<|
   
   --:_AddGDMB| 
-  --&_GDMB_Temp|+[rbutton:#ffffff:#[%2%]:8px][%1%]::TOGGLE_GDM;[%1%][/rbutton][&SPACE]
+  --&_GDMB_Temp|+[rbutton:#ffffff:#[%1%]:8px][&_GMMModName]::TOGGLE_GDM;[*R:_reporder][/rbutton][&SPACE]
   --<|
 
   --:Create_Global_Save_Modifier_Buttons|character_id;StringVariableToSet
@@ -1520,8 +1616,14 @@
   --Rfirst|[%1%];repeating_savemod
   --:_GSMB_Loop|
   --?"[*R:global_save_name]" -eq "NoRepeatingAttributeLoaded"|_GSMB_DONE
-  --?"[*R:global_save_active_flag]" -eq "1"|>_AddGSMB;[*R:global_save_name];[&GAM_Button_Active_Color]
-  --?"[*R:global_save_active_flag]" -ne "1"|>_AddGSMB;[*R:global_save_name];[&GAM_Button_Inactive_Color]  
+  --?"[*R:global_save_active_flag]" -eq "1"|[
+   --&_GMMModName|[*R:global_save_name]
+   -->_AddGSMB|[&GAM_Button_Active_Color]
+  --]|
+  --?"[*R:global_save_active_flag]" -ne "1"|[
+   --&_GMMModName|[*R:global_save_name]
+   -->_AddGSMB|[&GAM_Button_Inactive_Color]
+  --]|
   --Rnext| 
   --?"[*R:global_save_name]" -ne "NoRepeatingAttributeLoaded"|_GSMB_Loop
   --:_GSMB_DONE|
@@ -1533,8 +1635,14 @@
   --Rfirst|[%1%];repeating_acmod
   --:_GACMB_Loop|
   --?"[*R:global_ac_name]" -eq "NoRepeatingAttributeLoaded"|_GACMB_DONE
-  --?"[*R:global_ac_active_flag]" -eq "1"|>_AddGACMB;[*R:global_ac_name];[&GAM_Button_Active_Color]
-  --?"[*R:global_ac_active_flag]" -ne "1"|>_AddGACMB;[*R:global_ac_name];[&GAM_Button_Inactive_Color]  
+  --?"[*R:global_ac_active_flag]" -eq "1"|[
+   --&_GMMModName|[*R:global_ac_name]
+   -->_AddGACMB|[&GAM_Button_Active_Color]
+  --]|
+  --?"[*R:global_ac_active_flag]" -ne "1"|[
+   --&_GMMModName|[*R:global_ac_name]
+   -->_AddGACMB|[&GAM_Button_Inactive_Color]
+  --]|
   --Rnext| 
   --?"[*R:global_ac_name]" -ne "NoRepeatingAttributeLoaded"|_GACMB_Loop
   --:_GACMB_DONE|
@@ -1546,8 +1654,14 @@
   --Rfirst|[%1%];repeating_skillmod
   --:_GSKMB_Loop|
   --?"[*R:global_skill_name]" -eq "NoRepeatingAttributeLoaded"|_GACMB_DONE
-  --?"[*R:global_skill_active_flag]" -eq "1"|>_AddGSKMB;[*R:global_skill_name];[&GAM_Button_Active_Color]
-  --?"[*R:global_skill_active_flag]" -ne "1"|>_AddGSKMB;[*R:global_skill_name];[&GAM_Button_Inactive_Color]  
+  --?"[*R:global_skill_active_flag]" -eq "1"|[
+   --&_GMMModName|[*R:global_skill_name]
+   -->_AddGSKMB|[&GAM_Button_Active_Color]
+  --]|
+  --?"[*R:global_skill_active_flag]" -ne "1"|[
+   --&_GMMModName|[*R:global_skill_name]
+   -->_AddGSKMB|[&GAM_Button_Inactive_Color]
+  --]|
   --Rnext| 
   --?"[*R:global_skill_name]" -ne "NoRepeatingAttributeLoaded"|_GSKMB_Loop
   --:_GSKMB_DONE|
@@ -1555,15 +1669,15 @@
   --<|  
 
   --:_AddGSMB| 
-  --&_GSMB_Temp|+[rbutton:#ffffff:#[%2%]:8px][%1%]::TOGGLE_GSM;[%1%][/rbutton][&SPACE]
+  --&_GSMB_Temp|+[rbutton:#ffffff:#[%1%]:8px][&_GMMModName]::TOGGLE_GSM;[*R:_reporder][/rbutton][&SPACE]
   --<|  
 
   --:_AddGACMB| 
-  --&_GACMB_Temp|+[rbutton:#ffffff:#[%2%]:8px][%1%]::TOGGLE_GACM;[%1%][/rbutton][&SPACE]
+  --&_GACMB_Temp|+[rbutton:#ffffff:#[%1%]:8px][&_GMMModName]::TOGGLE_GACM;[*R:_reporder][/rbutton][&SPACE]
   --<|  
 
   --:_AddGSKMB| 
-  --&_GSKMB_Temp|+[rbutton:#ffffff:#[%2%]:8px][%1%]::TOGGLE_GSKM;[%1%][/rbutton][&SPACE]
+  --&_GSKMB_Temp|+[rbutton:#ffffff:#[%1%]:8px][&_GMMModName]::TOGGLE_GSKM;[*R:_reporder][/rbutton][&SPACE]
   --<|  
 
   --:Get_Ability_Modifier|attribute_string;returnnumericvalue;returnnamestring
@@ -1616,7 +1730,6 @@
   --/|Token-Mod doesn't have a "set to a relative number", so we get the current bar value, subtract the damage amount,
   --/|make sure it doesn't fall below 0, and set the amount back into the bar.
   --/|Partial temp+HP: batch both bars in one @token-mod call. Temp HP read from token bar only.
-  --/|Keep in sync with far_DamageTokenmod in Library/Farsidelib.scard (authoritative; v1.5.8+).
   --:ApplyDamageTokenmod|Parameters are tokenid;bar#;tempHPbar;amount;display (0 or 1);allow overheal (0 or 1);allow negative hp (0 or 1)
   --=_applyValue|[%4%]
   --=StartHP|[*[%1%]:t-bar[%2%]_value]
@@ -1752,36 +1865,36 @@
   --%|
   --<|
 
-  --:TOGGLE_GAM|GAM Name
-  --Rfind|[*S:character_id];[&reentryval];repeating_tohitmod;global_attack_name
+  --:TOGGLE_GAM|repeating row id
+  --Rbysectionid|[*S:character_id];repeating_tohitmod;[&reentryval]
   --?"[*R:global_attack_name]" -eq "NoRepeatingAttributeLoaded"|_TOGGLE_ERROR
   --?"[*R:global_attack_active_flag]" -eq "1"|>_setGlobalMod;[*R>global_attack_active_flag];0|>_setGlobalMod;[*R>global_attack_active_flag];1
   --^proc_pc|
   --X|
 
-  --:TOGGLE_GDM|GDM Name
-  --Rfind|[*S:character_id];[&reentryval];repeating_damagemod;global_damage_name
+  --:TOGGLE_GDM|repeating row id
+  --Rbysectionid|[*S:character_id];repeating_damagemod;[&reentryval]
   --?"[*R:global_damage_name]" -eq "NoRepeatingAttributeLoaded"|_TOGGLE_ERROR
   --?"[*R:global_damage_active_flag]" -eq "1"|>_setGlobalMod;[*R>global_damage_active_flag];0|>_setGlobalMod;[*R>global_damage_active_flag];1
   --^proc_pc|
   --X|
 
-  --:TOGGLE_GSM|GSM Name
-  --Rfind|[*S:character_id];[&reentryval];repeating_savemod;global_save_name
+  --:TOGGLE_GSM|repeating row id
+  --Rbysectionid|[*S:character_id];repeating_savemod;[&reentryval]
   --?"[*R:global_save_name]" -eq "NoRepeatingAttributeLoaded"|_TOGGLE_ERROR
   --?"[*R:global_save_active_flag]" -eq "1"|>_setGlobalMod;[*R>global_save_active_flag];0|>_setGlobalMod;[*R>global_save_active_flag];1
   --^proc_pc|
   --X|
 
-  --:TOGGLE_GACM|GACM Name
-  --Rfind|[*S:character_id];[&reentryval];repeating_acmod;global_ac_name
+  --:TOGGLE_GACM|repeating row id
+  --Rbysectionid|[*S:character_id];repeating_acmod;[&reentryval]
   --?"[*R:global_ac_name]" -eq "NoRepeatingAttributeLoaded"|_TOGGLE_ERROR
   --?"[*R:global_ac_active_flag]" -eq "1"|>_setGlobalMod;[*R>global_ac_active_flag];0|>_setGlobalMod;[*R>global_ac_active_flag];1
   --^proc_pc|
   --X|  
 
-  --:TOGGLE_GSKM|GACM Name
-  --Rfind|[*S:character_id];[&reentryval];repeating_skillmod;global_skill_name
+  --:TOGGLE_GSKM|repeating row id
+  --Rbysectionid|[*S:character_id];repeating_skillmod;[&reentryval]
   --?"[*R:global_skill_name]" -eq "NoRepeatingAttributeLoaded"|_TOGGLE_ERROR
   --?"[*R:global_skill_active_flag]" -eq "1"|>_setGlobalMod;[*R>global_skill_active_flag];0|>_setGlobalMod;[*R>global_skill_active_flag];1
   --^proc_pc|
