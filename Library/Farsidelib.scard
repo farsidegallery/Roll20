@@ -1,4 +1,4 @@
---/|ScriptCards Library: Farsidelib  version 1.6.0
+--/|ScriptCards Library: Farsidelib  version 1.6.1
 --/|Provides various utility procedures for Roll20
 
 --/|This library contains a number of functions that are customized to meet the different needs of spell or ability
@@ -58,7 +58,13 @@
 --/|      (damageVariableName), which is a string that can be added to the end of a roll assignment to modify the damage as appropriate   
 --/|
 --/|   far_Check_GLOBAL_MOD_EXISTS|characterid; Category; name; returnstring (0=does not exist, 1=exists)
---/|      Checks to see if the specified Global Mod exists and returns string variable
+--/|      Name is staged internally; safe for apostrophes and hyphens in mod names.
+--/|
+--/|   far_SetGlobalModStatusStaged|characterid;category;activeFlag (0/1/2=toggle)
+--/|      Set _FarGMName before calling. Uses $$$ Rfind delimiter for special characters.
+--/|
+--/|   far_GlobalModSafeLabel|source-var-name;return-var
+--/|      Sanitizes a mod name for use inside roll [bracket] labels.
 --/|
 --/|   far_Check_GLOBAL_ATTRIB_SAVE_EXISTS|characterid; attributename; returnstring (0=does not exist, 1=exists)
 --/|      Checks to see if a Global Save Mod exists in any variation of the attribute provided and returns numeric flag
@@ -406,15 +412,46 @@
   --:IsResistant| --&[%1%]| \ 2 [Resistant] --<|
   --:IsImmune| --&[%1%]| * 0 [Immune] --<|
  
+ --:far_GlobalModResolveCategory|category;whichGM-var;searchField-var
+  --&[%2%]|
+  --&[%3%]|
+  --&_Lib5E_Temp|[%1%]
+  --C[&_Lib5E_Temp(tolowercase)]|attack:&[%2%];tohitmod|tohit:&[%2%];tohitmod|ac:&[%2%];acmod|save:&[%2%];savemod|damage:&[%2%];damagemod|skill:&[%2%];skillmod
+  --C[&_Lib5E_Temp(tolowercase)]|attack:&[%3%];attack|tohit:&[%3%];attack|ac:&[%3%];ac|save:&[%3%];save|damage:&[%3%];damage|skill:&[%3%];skill
+  --?"[&[%2%]]" -eq ""|>far_LogFatalError;Global Modifier type [%1%] not recognized
+  --<|
+
+ --:far_GlobalModSafeLabel|source-var-name;return-var
+  --&[%2%]|[&[%1%]]
+  --~[%2%]|string;replace;';’;[%2%]
+  --~[%2%]|string;replace;-‑;[%2%]
+  --<|
+
+ --:far_RfindGlobalModStaged|characterid;category
+  -->far_GlobalModResolveCategory|[%2%];_Lib5E_WHICH_GM;_Lib5E_Search_Field
+  --#parameterdelimiter|$$$
+  --Rfind|[*[%1%]:character_id]$$$[&_FarGMName]$$$repeating_[&_Lib5E_WHICH_GM]$$$global_[&_Lib5E_Search_Field]_name
+  --#parameterdelimiter|;
+  --<|
+
+ --:far_SetGlobalModStatusStaged|characterid;category;activeFlag
+  -->far_RfindGlobalModStaged|[%1%];[%2%]
+  --?"[*R:global_[&_Lib5E_Search_Field]_name]" -eq "NoRepeatingAttributeLoaded"|>far_LogFatalError;Global [%2%] Modifier [&_FarGMName] not found on character [%1%]
+  --?"[%3]" -eq 2|[
+   --?"[*R:global_[&_Lib5E_Search_Field]_active_flag]" -eq "1"|[
+    --!a:[%1]|[*R>global_[&_Lib5E_Search_Field]_active_flag]:0
+   --]|[
+    --!a:[%1]|[*R>global_[&_Lib5E_Search_Field]_active_flag]:1
+   --]|
+   --<|
+  --]|
+  --!a:[%1]|[*R>global_[&_Lib5E_Search_Field]_active_flag]:[%3]
+  --<|
+
  --:far_Check_GLOBAL_MOD_EXISTS|characterid; Category; name; returnstring (0=does not exist, 1=exists)
   --&[%4%]|0
-  --&_Lib5E_WHICH_GM|
-  --&_Lib5E_Search_Field|
-  --&_Lib5E_Temp|[%2%]
-  --C[&_Lib5E_Temp(tolowercase)]|attack:&_Lib5E_WHICH_GM;tohitmod|tohit:&_Lib5E_WHICH_GM;tohitmod|ac:&_Lib5E_WHICH_GM;acmod|save:&_Lib5E_WHICH_GM;savemod|damage:&_Lib5E_WHICH_GM;damagemod|skill:&_Lib5E_WHICH_GM;skillmod
-  --C[&_Lib5E_Temp(tolowercase)]|attack:&_Lib5E_Search_Field;attack|tohit:&_Lib5E_Search_Field;attack|ac:&_Lib5E_Search_Field;ac|save:&_Lib5E_Search_Field;save|damage:&_Lib5E_Search_Field;damage|skill:&_Lib5E_Search_Field;skill
-  --?"[&_Lib5E_WHICH_GM]" -eq ""|>_Lib5E_THROW_ERROR;Global Modifier type [%2%] not recognized
-  --Rfind|[*[%1%]:character_id];[%3%];repeating_[&_Lib5E_WHICH_GM];global_[&_Lib5E_Search_Field]_name
+  --&_FarGMName|[%3]
+  -->far_RfindGlobalModStaged|[%1%];[%2%]
   --?"[&_Lib5E_Search_Field]" -eq "damage"|>_Lib5E_GMCheck_damage
   --?"[&_Lib5E_Search_Field]" -eq "attack"|>_Lib5E_GMCheck_attack
   --?"[&_Lib5E_Search_Field]" -eq "ac"|>_Lib5E_GMCheck_ac
@@ -440,7 +477,7 @@
   --<|
 
  --:far_Check_GLOBAL_ATTRIB_SAVE_EXISTS|characterid; attributename; returnstring (0=does not exist, 1=exists)
-  --&[%1%]|0
+  --&[%3%]|0
   --&_Lib5E_Temp|[%2%]
   
   --~FullUpperAttrib|string;touppercase;[%2%]
@@ -454,7 +491,10 @@
   --~|array;define;Variations;[&FullUpperAttrib];[&FullLowerAttrib];[&FullTitleAttrib];[&UpperShortattrib];[&LowerShortattrib];[&TitleShortattrib]
   
   --%loop|foreach;Variations
-   --Rfind|[*[%1%]:character_id];[&loop];repeating_savemod;global_save_name
+   --&_FarGMName|[&loop]
+   --#parameterdelimiter|$$$
+   --Rfind|[*[%1%]:character_id]$$$[&_FarGMName]$$$repeating_savemod$$$global_save_name
+   --#parameterdelimiter|;
    --?"[*R:global_save_name]" -ne "NoRepeatingAttributeLoaded"|[
 	--&[%3%]|1
 	--<| 
@@ -702,77 +742,172 @@
  --:far_FIND_ACTIVE_GLOBAL_ATTACK_MODS|character_id;StringVariableToSet
   --&_obrac|[ --&_cbrac|]
   --&_GAM_Temp| 
+  --&_GAMDedupSeen|
   --Rfirst|[%1%];repeating_tohitmod
   --:far_GAM_Loop|
-  --?"[*R:global_attack_name]" -ne "Bardic Inspiration" -and "[*R:global_attack_active_flag]" -eq "1"|>far_AddGAM;[*R:global_attack_name];[*R:global_attack_roll]
+  --?"[*R:global_attack_name]" -ne "Bardic Inspiration" -and "[*R:global_attack_active_flag]" -eq "1"|[
+   --&_FarGMValue|[*R:global_attack_roll]
+   --?"[&_FarGMValue]" -ninc "NoRepeatingAttributeLoaded"|[
+    --?"[&_FarGMValue]" -ne ""|[
+     --&GMMModName|[*R:global_attack_name]
+     --~GMMModName|string;replace;';’;[&GMMModName]
+     --~GMMModName|string;replace;-‑;[&GMMModName]
+     --&GAMDedupKey||[&GMMModName]|
+     --?"[&_GAMDedupSeen]" -ninc "[&GAMDedupKey]"|[
+      --&_GAMDedupSeen|+ [&GAMDedupKey]
+      -->far_AddGAM|
+     --]|
+    --]|
+   --]|
+  --]|
   --Rnext|  
   --?"[*R:global_attack_name]" -ne "NoRepeatingAttributeLoaded"|far_GAM_Loop
   --&[%2%]|[&_GAM_Temp] 
   --<|
   
- --:far_AddGAM| 
-  --&_GAM_Temp|+ + [%2%]# [&_obrac][%1%][&_cbrac] 
+ --:far_AddGAM|
+  --&GMMModBracket|[&_obrac][&GMMModName][&cbrac]
+  --&GMMRollSep|#
+  --&GMMGamPiece|
+  --&GMMGamPiece|+ + [&_FarGMValue][&GMMRollSep] [&GMMModBracket]
+  --&_GAM_Temp|+ [&GMMGamPiece]
   --<|
 
  --:far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|character_id;StringVariableToSet;isCrit(1=true)
   --&_obrac|[ --&_cbrac|]
   --&_GDM_Temp| 
+  --&_GDMDedupSeen|
   --Rfirst|[%1%];repeating_damagemod
   --:far_GDM_Loop|
-  --?"[*R:global_damage_active_flag]" -eq "1"|>far_AddGDM;[*R:global_damage_name];[*R:global_damage_damage];[%3%];[*R:global_damage_critical_damage]
+  --?"[*R:global_damage_active_flag]" -eq "1"|[
+   --&_FarGMValue|[*R:global_damage_damage]
+   --&_FarGMValue2|[*R:global_damage_critical_damage]
+   --&_FarGMType|[*R:global_damage_type]
+   --&GMMModName|[*R:global_damage_name]
+   --~GMMModName|string;replace;';’;[&GMMModName]
+   --~GMMModName|string;replace;-‑;[&GMMModName]
+   --&GDMDedupKey||[&GMMModName]|
+   --?"[&_GDMDedupSeen]" -ninc "[&GDMDedupKey]"|[
+    --&_GDMDedupSeen|+ [&GDMDedupKey]
+    --&_FarGMCrit|[%3]
+    -->far_AddGDM|
+   --]|
+  --]|
   --Rnext| 
   --?"[*R:global_damage_name]" -ne "NoRepeatingAttributeLoaded"|far_GDM_Loop
   --&[%2%]|[&_GDM_Temp] 
   --<|
   
- --:far_AddGDM| 
-  --&_GDM_Temp|+ + [%2%]# [&_obrac][%1%][&_cbrac] 
-  --?"[%3%]" -eq "1"|&_GDM_Temp;+ + [%4%]  [ CRIT [%1%] ]
+ --:far_AddGDM|
+  --&GMMModBracket|[&_obrac][&GMMModName][&cbrac]
+  --&GMMRollSep|#
+  --&GMMDmgPiece|
+  --&GMMDmgPiece|+ + [&_FarGMValue][&GMMRollSep]
+  --?"[&_FarGMType]" -ne ""|&GMMDmgPiece;+ [&_FarGMType] damage 
+  --&GMMDmgPiece|+ [&GMMModBracket]
+  --&_GDM_Temp|+ [&GMMDmgPiece]
+  --&GMMCritSuffix| CRIT [&GMMModBracket]
+  --?"[&_FarGMCrit]" -eq "1"|&_GDM_Temp;+ + [&_FarGMValue2] [&GMMCritSuffix]
   --<|
 
  --:far_FIND_ACTIVE_GLOBAL_SAVE_MODS|character_id;StringVariableToSet
   --&_obrac|[ --&_cbrac|]
   --&_GSM_Temp| 
+  --&_GSMDedupSeen|
   --Rfirst|[%1%];repeating_savemod
+  --?"[*R:global_save_name]" -eq "NoRepeatingAttributeLoaded"|<
   --:far_GSM_Loop|
-  --?"[*R:global_save_name]" -ne "Bardic Inspiration" -and "[*R:global_save_active_flag]" -eq "1"|>far_AddGSM;[*R:global_save_name];[*R:global_save_roll]
+  --?"[*R:global_save_name]" -ne "Bardic Inspiration" -and "[*R:global_save_active_flag]" -eq "1"|[
+   --&_FarGMValue|[*R:global_save_roll]
+   --?"[&_FarGMValue]" -ninc "NoRepeatingAttributeLoaded"|[
+    --?"[&_FarGMValue]" -ne ""|[
+     --&GMMModName|[*R:global_save_name]
+     --~GMMModName|string;replace;';’;[&GMMModName]
+     --~GMMModName|string;replace;-‑;[&GMMModName]
+     --&GSMDedupKey||[&GMMModName]|
+     --?"[&_GSMDedupSeen]" -ninc "[&GSMDedupKey]"|[
+      --&_GSMDedupSeen|+ [&GSMDedupKey]
+      -->far_AddGSM|
+     --]|
+    --]|
+   --]|
+  --]|
   --Rnext| 
   --?"[*R:global_save_name]" -ne "NoRepeatingAttributeLoaded"|far_GSM_Loop
   --&[%2%]|[&_GSM_Temp] 
   --<|
 
- --:far_AddGSM| 
-  --&_GSM_Temp|+ + [%2%]# [&_obrac][%1%][&_cbrac] 
+ --:far_AddGSM|
+  --&GMMModBracket|[&_obrac][&GMMModName][&cbrac]
+  --&GMMRollSep|#
+  --&GMMSavPiece|
+  --&GMMSavPiece|+ + [&_FarGMValue][&GMMRollSep] [&GMMModBracket]
+  --&_GSM_Temp|+ [&GMMSavPiece]
   --<|
 
  --:far_FIND_ACTIVE_GLOBAL_AC_MODS|character_id;StringVariableToSet
   --&_obrac|[ --&_cbrac|]
   --&_GACM_Temp| 
+  --&_GACMDedupSeen|
   --Rfirst|[%1%];repeating_acmod
   --:far_GACM_Loop|
-  --?"[*R:global_ac_active_flag]" -eq "1"|>far_AddGACM;[*R:global_ac_name];[*R:global_ac_val]
+  --?"[*R:global_ac_active_flag]" -eq "1"|[
+   --&_FarGMValue|[*R:global_ac_val]
+   --&GMMModName|[*R:global_ac_name]
+   --~GMMModName|string;replace;';’;[&GMMModName]
+   --~GMMModName|string;replace;-‑;[&GMMModName]
+   --&GACMDedupKey||[&GMMModName]|
+   --?"[&_GACMDedupSeen]" -ninc "[&GACMDedupKey]"|[
+    --&_GACMDedupSeen|+ [&GACMDedupKey]
+    -->far_AddGACM|
+   --]|
+  --]|
   --Rnext| 
   --?"[*R:global_ac_name]" -ne "NoRepeatingAttributeLoaded"|far_GACM_Loop
   --&[%2%]|[&_GACM_Temp] 
   --<|
 
- --:far_AddGACM| 
-  --&_GACM_Temp|+ + [%2%]# [&_obrac][%1%][&_cbrac] 
+ --:far_AddGACM|
+  --&GMMModBracket|[&_obrac][&GMMModName][&cbrac]
+  --&GMMRollSep|#
+  --&GMMACPiece|
+  --&GMMACPiece|+ + [&_FarGMValue][&GMMRollSep] [&GMMModBracket]
+  --&_GACM_Temp|+ [&GMMACPiece]
   --<|
 
  --:far_FIND_ACTIVE_GLOBAL_SKILL_MODS|character_id;StringVariableToSet
   --&_obrac|[ --&_cbrac|]
   --&_GSKM_Temp| 
+  --&_GSKMDedupSeen|
   --Rfirst|[%1%];repeating_skillmod
+  --?"[*R:global_skill_name]" -eq "NoRepeatingAttributeLoaded"|<
   --:far_GSKM_Loop|
-  --?"[*R:global_skill_name]" -ne "Bardic Inspiration" -and "[*R:global_skill_active_flag]" -eq "1"|>far_AddGSKM;[*R:global_skill_name];[*R:global_skill_roll]
+  --?"[*R:global_skill_name]" -ne "Bardic Inspiration" -and "[*R:global_skill_active_flag]" -eq "1"|[
+   --&_FarGMValue|[*R:global_skill_roll]
+   --?"[&_FarGMValue]" -ninc "NoRepeatingAttributeLoaded"|[
+    --?"[&_FarGMValue]" -ne ""|[
+     --&GMMModName|[*R:global_skill_name]
+     --~GMMModName|string;replace;';’;[&GMMModName]
+     --~GMMModName|string;replace;-‑;[&GMMModName]
+     --&GSKMDedupKey||[&GMMModName]|
+     --?"[&_GSKMDedupSeen]" -ninc "[&GSKMDedupKey]"|[
+      --&_GSKMDedupSeen|+ [&GSKMDedupKey]
+      -->far_AddGSKM|
+     --]|
+    --]|
+   --]|
+  --]|
   --Rnext| 
   --?"[*R:global_skill_name]" -ne "NoRepeatingAttributeLoaded"|far_GSKM_Loop
   --&[%2%]|[&_GSKM_Temp] 
   --<|
 
- --:far_AddGSKM| 
-  --&_GSKM_Temp|+ + [%2%]# [&_obrac][%1%][&_cbrac] 
+ --:far_AddGSKM|
+  --&GMMModBracket|[&_obrac][&GMMModName][&cbrac]
+  --&GMMRollSep|#
+  --&GMMSklPiece|
+  --&GMMSklPiece|+ + [&_FarGMValue][&GMMRollSep] [&GMMModBracket]
+  --&_GSKM_Temp|+ [&GMMSklPiece]
   --<|
  
  --:far_EmpowerShowDice|
@@ -1152,7 +1287,7 @@
  --:far_SetTokenMarker|token-id;marker-name;count
   -->far_RemoveTokenMarker|[%1%];[%2%]
   --&FSMCount|[%3%]
-  --?"X[&FSMCount]" -eq "X"|&FSMCount|0
+  --?"X[&FSMCount]" -eq "X"|&FSMCount;0
   --&FSMAdd|[%2%]
   --?"X[&FSMCount]" -ne "X0"|&FSMAdd;[%2]@[&FSMCount]
   --~|array;statusmarkers;FSMList;[%1%]
@@ -1376,7 +1511,8 @@
    --<|
   --]|
   --&PAExists|0
-  --Rfind|[*T:character_id];[&PAModName];repeating_savemod;global_save_name
+  --&_FarGMName|[&PAModName]
+  -->far_RfindGlobalModStaged|[*T:character_id];save
   --&PARowName|[*R:global_save_name]
   --?"X[&PARowName]" -eq "X[&PAModName]"|[
    --&PAExists|1
@@ -1391,7 +1527,7 @@
   --?[&PAExists] -eq 1|[
    --!a:[*T:character_id]|[*R>global_save_roll]:[%2%]
   --]|
-  -->Lib5E_SET_GLOBAL_MOD_STATUS|[*T:character_id];save;[&PAModName];1
+  -->far_SetGlobalModStatusStaged|[*T:character_id];save;1
   --!a:[*T:character_id]|global_save_mod_flag:1
   --<|
 
