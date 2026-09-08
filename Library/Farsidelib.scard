@@ -1,4 +1,4 @@
---/|ScriptCards Library: Farsidelib  version 1.5.10
+--/|ScriptCards Library: Farsidelib  version 1.6.0
 --/|Provides various utility procedures for Roll20
 
 --/|This library contains a number of functions that are customized to meet the different needs of spell or ability
@@ -174,12 +174,27 @@
 --/|   far_PaladinAuraGetRadius|paladinLevel;returnVar
 --/|      Returns aura radius in feet: 10 (levels 6-17) or 30 (level 18+).
 --/|
+--/|   far_PaladinAuraGetLeftSub|paladinLevel;returnVar
+--/|      Card leftsub by level: Aura of Protection (6-9), Aura of Courage (10+). No new aura name at 18+.
+--/|
 --/|   far_PaladinAuraOnEnter|target-token-id;paladin-aura-token-id
 --/|   far_PaladinAuraOnExit|target-token-id;paladin-aura-token-id
 --/|      AuraTrigger handlers. Track overlapping paladin auras on the target and apply the best save bonus.
 --/|
---/|   far_PaladinAuraDismissPaladin|paladin-token-id
---/|      Removes one paladin from all affected targets when their aura is dismissed.
+--/|   far_PaladinAuraDismissPaladin|paladin-token-id;icon-default
+--/|      Strips save mod and beneficiary markers for everyone in range or sourced by this paladin.
+--/|
+--/|   far_PaladinAuraClearToken|paladin-token-id
+--/|      Clears aura ring and gmnotes on the paladin token (token-mod + !t).
+--/|
+--/|   far_PaladinAuraSuspend|paladin-token-id;icon-name
+--/|      Full suspend: dismiss beneficiaries, clear token aura/gmnotes, AT rebuild/checkall.
+--/|
+--/|   far_PaladinAuraAttachTriggers|token-id;result-var;icon-name
+--/|      Writes AuraTriggers gmnotes. Icon from ability script; baked into JSON and chat actions.
+--/|
+--/|   far_PaladinAuraRebuild|paladin-token-id;icon-name;aura-radius-feet
+--/|      Applies self mod/marker, rescans allies in range, then AT rebuild/checkall.
 
 --/| =============================== BEGIN LIBRARY CODE ===============================================
 
@@ -1100,120 +1115,396 @@
 
  --:far_PaladinAuraGetRadius|paladinLevel;returnVar
   --&[%2%]|10
-  --?[%1%] -ge 18|&[%2%];30
+  --?[%1%] -ge 18|[
+   --&[%2%]|30
+  --]|
+  --<|
+
+ --:far_PaladinAuraGetLeftSub|paladinLevel;returnVar
+  --&[%2%]|Aura of Protection
+  --?[%1%] -ge 10|[
+   --&[%2%]|Aura of Courage
+  --]|
+  --<|
+
+ --:far_RemoveTokenMarker|token-id;marker-name
+  --&FRMMarker|[%2%]
+  --~|array;statusmarkers;FRMList;[%1%]
+  --&FRMChanged|0
+  --%FRMLoop|0;[@FRMList(maxindex)]
+   --&FRMEntry|[@FRMList([%FRMLoop])]
+   --?[&FRMEntry(indexof,[&FRMMarker])] -eq 0|[
+    --~|array;remove;FRMList;[&FRMEntry]
+    --&FRMChanged|1
+   --]|
+  --%|
+  --?[&FRMChanged] -eq 1|[
+   --~FRMNew|array;stringify;FRMList
+   --#parameterdelimiter|$
+   --~FRMNew|string;replaceall;$;,$[&FRMNew]
+   --#parameterdelimiter|;
+   --!t:[%1%]|statusmarkers:[&FRMNew]
+  --]|[
+   --@token-mod|_ignore-selected _ids [%1%] _set statusmarkers|-[&FRMMarker]
+  --]|
+  --<|
+
+ --:far_SetTokenMarker|token-id;marker-name;count
+  -->far_RemoveTokenMarker|[%1%];[%2%]
+  --&FSMCount|[%3%]
+  --?"X[&FSMCount]" -eq "X"|&FSMCount|0
+  --&FSMAdd|[%2%]
+  --?"X[&FSMCount]" -ne "X0"|&FSMAdd;[%2]@[&FSMCount]
+  --~|array;statusmarkers;FSMList;[%1%]
+  --~|array;add;FSMList;[&FSMAdd]
+  --~FSMNew|array;stringify;FSMList
+  --#parameterdelimiter|$
+  --~FSMNew|string;replaceall;$;,$[&FSMNew]
+  --#parameterdelimiter|;
+  --!t:[%1%]|statusmarkers:[&FSMNew]
+  --@token-mod|_ignore-selected _ids [%1%] _set statusmarkers|[&FSMAdd]
   --<|
 
  --:far_PaladinAuraAddSource|target-token-id;paladin-token-id
   --#targettoken|[%1%]
-  --&PaladinAuraSources|[*T:PaladinAuraSources]
-  --?"X[&PaladinAuraSources]" -eq "X"|&PaladinAuraSources|;|
-  --?"X[&PaladinAuraSources]" -inc ";[%2%];"|paAddSourceSkip|
-  --&PaladinAuraSources|+[%2%];
+  -->far_GetTokenCharAttr|[%1%];PaladinAuraSources;,;PaladinAuraSources
+  --?"X[&PaladinAuraSources]" -inc ",[%2%],"|paAddSourceSkip|
+  --&PaladinAuraSources|+[%2%],
   --:paAddSourceSkip|
-  --!a:[*T:character_id]|PaladinAuraSources:[&PaladinAuraSources]
-  -->far_ApplyBestPaladinAura|[%1%]
+  --!a:[*T:character_id]|!PaladinAuraSources:[&PaladinAuraSources]
+  -->far_ApplyBestPaladinAura|[%1%];[&PaladinAuraSources]
   --<|
 
  --:far_PaladinAuraRemoveSource|target-token-id;paladin-token-id
   --#targettoken|[%1%]
-  --&PaladinAuraSources|[*T:PaladinAuraSources]
-  --?"X[&PaladinAuraSources]" -eq "X"|&PaladinAuraSources|;|
-  --&PaladinAuraSources|[&PaladinAuraSources(replace,;[%2%];,;)]
-  --!a:[*T:character_id]|PaladinAuraSources:[&PaladinAuraSources]
-  -->far_ApplyBestPaladinAura|[%1%]
+  -->far_GetTokenCharAttr|[%1%];PaladinAuraSources;,;PaladinAuraSources
+  --&PalRemNeedle|,[%2%],
+  --&PalRemTo|,
+  --&PaladinAuraSources|[&PaladinAuraSources(replace,[&PalRemNeedle],[&PalRemTo])]
+  --!a:[*T:character_id]|!PaladinAuraSources:[&PaladinAuraSources]
+  -->far_ApplyBestPaladinAura|[%1%];[&PaladinAuraSources]
   --<|
 
  --:far_PaladinAuraOnEnter|target-token-id;paladin-token-id
-  -->far_PaladinAuraAddSource|[%1%];[%2%]
+  -->far_LoadTokenMarkers|
   --#targettoken|[%1%]
-  --?"X[&PaladinAuraCourageMsg]" -ne "X"|[
-   --+|[c]Your saving throws receive an additional +[&PaladinAuraAppliedBonus] bonus[&PaladinAuraCourageMsg][/c]
-  --]|[
-   --+|[c]Your saving throws receive an additional +[&PaladinAuraAppliedBonus] bonus.[/c]
+  --#sourceToken|[%2%]
+  --#title|Paladin Aura
+  -->far_FIND_CLASS_LEVEL|[*S:character_id];paladin;PALSublvl
+  -->far_PaladinAuraGetLeftSub|[&PALSublvl];PLeftSub
+  --#leftsub|[&PLeftSub]
+  --#emoteText|[*T:t-name] enters the protection of [*S:t-name]
+  -->far_PaladinAuraAddSource|[%1%];[%2%]
+  --?"X[%1%]" -eq "X[%2%]"|[
+   --!a:[*T:character_id]|!PaladinAuraIcon:[&PaladinAuraIcon]
   --]|
-  --+Global Save Modifiers|[&PaladinAuraModList]
+  -->far_SetTokenMarker|[%1%];[&PaladinAuraIcon];0
+  --=PADisplayBonus|[&PaladinAuraAppliedBonus]
+  --?[$PADisplayBonus] -gt 0|[
+   --?"X[&PaladinAuraCourageMsg]" -ne "X"|[
+    --+|[c]Your saving throws receive an additional +[&PaladinAuraAppliedBonus] bonus[&PaladinAuraCourageMsg][/c]
+   --]|[
+    --+|[c]Your saving throws receive an additional +[&PaladinAuraAppliedBonus] bonus.[/c]
+   --]|
+  --]|
   --<|
 
  --:far_PaladinAuraOnExit|target-token-id;paladin-token-id
+  -->far_LoadTokenMarkers|
+  --#targettoken|[%1%]
+  --#sourceToken|[%2%]
+  --#title|Paladin Aura
+  -->far_FIND_CLASS_LEVEL|[*S:character_id];paladin;PALSublvl
+  -->far_PaladinAuraGetLeftSub|[&PALSublvl];PLeftSub
+  --#leftsub|[&PLeftSub]
+  --#emoteText|[*T:t-name] leaves the protection of [*S:t-name]
   -->far_PaladinAuraRemoveSource|[%1%];[%2%]
+  --=PADisplayBonus|[&PaladinAuraAppliedBonus]
+  --?[$PADisplayBonus] -le 0|[
+   -->far_RemoveTokenMarker|[%1%];[&PaladinAuraIcon]
+  --]|
+  --?[$PADisplayBonus] -gt 0|[
+   --+|[c]Your Paladin Aura save bonus is now +[&PaladinAuraAppliedBonus] (highest overlapping aura).[/c]
+  --]|[
+   --+|[c]You are no longer protected by a Paladin Aura.[/c]
+  --]|
   --<|
 
- --:far_PaladinAuraDismissPaladin|paladin-token-id
-  --~|array;pagetokens;PageTokens;[%1%]
+ --:far_PaladinAuraDismissPaladin|paladin-token-id;icon-default
+  -->far_LoadTokenMarkers|
+  --&PADPalTID|[%1%]
+  --#targettoken|[&PADPalTID]
+  --&PADefIcon|[%2%]
+  --?"X[&PADefIcon]" -eq "X"|&PADefIcon;overdrive
+  -->far_GetTokenCharAttr|[&PADPalTID];PaladinAuraIcon;[&PADefIcon];PADismissIcon
+  --=PADAuraFeet|[*T:aura1_radius]
+  --=PADScale|[*P:scale_number]
+  --=PADSnapFeet|[*P:snapping_increment]
+  --?[$PADScale] -le 0|[
+   --=PADScale|[$PADSnapFeet]
+  --]|
+  --?[$PADScale] -le 0|[
+   --=PADScale|5
+  --]|
+  --=PADPalReach|([*T:t-width] + [*T:t-height]) / 140 * [$PADScale]
+  --~|array;pagetokens;PageTokens;[&PADPalTID]
   --%paTok|foreach;PageTokens
    --#targettoken|[&paTok]
-   --?"X[*T:PaladinAuraSources]" -eq "X"|paDismissSkip
-   --?"X[*T:PaladinAuraSources]" -inc ";[%1%];"|[
-    -->far_PaladinAuraRemoveSource|[&paTok];[%1%]
+   --?"X[*T:t-id]" -eq "X"|paDismissSkip
+   --&PAStrip|0
+   --?"X[*T:character_id]" -ne "X"|[
+    -->far_GetTokenCharAttr|[*T:t-id];PaladinAuraSources;,;PADismissSources
+    --?"X[&PADismissSources]" -inc ",[&PADPalTID],"|&PAStrip;1
+   --]|
+   --?[$PADAuraFeet] -gt 0|[
+    --?"X[*T:t-id]" -eq "X[&PADPalTID]"|[
+     --&PAStrip|1
+    --]|[
+     --=PADMaxGrid|[$PADAuraFeet] / [$PADScale] + 1
+     --~PADDist|distance;[&PADPalTID];[*T:t-id]
+     --?[$PADDist] -le [$PADMaxGrid]|&PAStrip;1
     --]|
+   --]|
+   --?[&PAStrip] -eq 0|paDismissSkip
+   --?"X[*T:character_id]" -ne "X"|[
+    -->far_PaladinAuraRemoveSource|[*T:t-id];[&PADPalTID]
+   --]|
+   -->far_RemoveTokenMarker|[*T:t-id];[&PADismissIcon]
    --:paDismissSkip|
    --%|
+  --#targettoken|[&PADPalTID]
+  -->far_RemoveTokenMarker|[&PADPalTID];[&PADismissIcon]
+  --?"X[*T:character_id]" -ne "X"|[
+   --!a:[*T:character_id]|!PaladinAuraIcon:
+  --]|
   --<|
 
- --:far_ApplyBestPaladinAura|target-token-id
+ --:far_PaladinAuraClearToken|paladin-token-id
+  --@token-mod|_ignore-selected _ids [%1%] _set aura1_radius|0 aura1_color|transparent gmnotes|&nbsp;
+  --!t:[%1%]|aura1_radius:0|aura1_color:transparent|gmnotes:&nbsp;
+  --<|
+
+ --:far_PaladinAuraSuspend|paladin-token-id;icon-name
+  -->far_PaladinAuraDismissPaladin|[%1%];[%2%]
+  -->far_PaladinAuraClearToken|[%1%]
+  --@at-rebuild|
+  --@at-checkall|
+  --<|
+
+ --:far_ApplyBestPaladinAura|target-token-id;source-list
   --#targettoken|[%1%]
   --&PaladinAuraModName|Paladin Aura
   --&PaladinAuraAppliedBonus|0
   --&PaladinAuraCourageMsg|
   --&PaladinAuraModList|
+  --&PAPathDeactivate|0
   --=BestBonus|-999
-  --=CourageFlag|0
-  --&SourceList|[*T:PaladinAuraSources]
-  --?"X[&SourceList]" -eq "X"|&SourceList|;|
-  --~|string;split;PALsrcArr;[&SourceList];;
-  --&CleanSources|;|
+  --&CourageFlag|0
+  --&SourceList|[%2%]
+  --?"X[%2%]" -eq "X"|[
+   -->far_GetTokenCharAttr|[%1%];PaladinAuraSources;,;SourceList
+  --]|
+  --~|array;fromstring;PALsrcArr;,;[&SourceList]
+  --&CleanSources|,
+  --&SavedTarget|[%1%]
   --%paSrc|foreach;PALsrcArr
    --&PalTID|[&paSrc]
    --?"X[&PalTID]" -eq "X"|paSrcSkip
-   --?"X[*[&PalTID]:character_id]" -eq "X"|paSrcSkip
-   --&CleanSources|+[&PalTID];
-   --=ThisBonus|[*O:[*[&PalTID]:character_id]:character:charisma_mod]
-   --?[$ThisBonus] -gt [$BestBonus]|=BestBonus;[$ThisBonus]
-   -->far_FIND_CLASS_LEVEL|[*[&PalTID]:character_id];paladin;PalLvl
-   --?[&PalLvl] -ge 10|=CourageFlag;1
+   --?[&PalTID(length)] -le 1|paSrcSkip
+   --#targettoken|[&PalTID]
+   --?"X[*T:character_id]" -eq "X"|paSrcSkip
+   --&CleanSources|+[&PalTID],
+   --=ThisBonus|[*T:charisma_mod]
+   --?[$ThisBonus] -lt 1|[
+    --=ThisBonus|1
+   --]|
+   --?[$ThisBonus] -gt [$BestBonus]|[
+    --=BestBonus|[$ThisBonus]
+   --]|
+   -->far_FIND_CLASS_LEVEL|[*T:character_id];paladin;PalLvl
+   --?[&PalLvl] -ge 10|[
+    --&CourageFlag|1
+   --]|
    --:paSrcSkip|
    --%|
-  --&CleanSources|;[&CleanSources];
+  --#targettoken|[&SavedTarget]
   --?"X[&CleanSources]" -ne "X[&SourceList]"|[
-   --!a:[*T:character_id]|PaladinAuraSources:[&CleanSources]
+   --!a:[*T:character_id]|!PaladinAuraSources:[&CleanSources]
    --&SourceList|[&CleanSources]
   --]|
-  --?"X[&SourceList]" -eq "X|;|" -or [$BestBonus] -le -999|>far_PaladinAuraDeactivate
-  --&PaladinAuraAppliedBonus|[$BestBonus]
-  --?"X[$CourageFlag]" -eq "X1"|&PaladinAuraCourageMsg|; Aura of Courage makes you immune to the Frightened condition.
-  -->far_PaladinAuraEnsureMod|[*T:character_id];[$BestBonus]
-  --?"X[$CourageFlag]" -eq "X1"|[
-   --!a:[*T:character_id]|PaladinAuraCourage:1
-   -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&FearMarker]
-  --]|[
-   --!a:[*T:character_id]|PaladinAuraCourage:0
+  --?[&SourceList(length)] -le 1|&PAPathDeactivate;1
+  --?"X[&PAPathDeactivate]" -eq "X0"|[
+   --?[$BestBonus] -le -999|&PAPathDeactivate;1
   --]|
-  -->Lib5E_FIND_ACTIVE_GLOBAL_SAVE_MODS|[*T:character_id];PaladinAuraModList
+  --?"X[&PAPathDeactivate]" -eq "X1"|>PADeactPath|
+  --&PaladinAuraAppliedBonus|[$BestBonus.Raw]
+  --?[&CourageFlag] -eq 1|[
+   --&PaladinAuraCourageMsg|; Aura of Courage makes you immune to the Frightened condition.
+  --]|
+  -->far_PaladinAuraEnsureMod|[&SavedTarget];[$BestBonus.Raw]
+  --?[&CourageFlag] -eq 1|>PACourOn|
+  --^PACourOff|
+  --:PACourOn|
+  --&PAFrightImmune|,frightened
+  --~|array;attributes;PACourBk;[*T:character_id];PaladinAuraOrigImmune
+  --?"[@PACourBk(0)]" -nei ""|>PACourFearOnly|
+  --&PAOrigImmuneSnap|[*T:npc_immunities]
+  --!a:[*T:character_id]|!PaladinAuraOrigImmune:[&PAOrigImmuneSnap]
+  --&PANewImmune|[&PAOrigImmuneSnap][&PAFrightImmune]
+  --!a:[*T:character_id]|!npc_immunities:[&PANewImmune]
+  --:PACourFearOnly|
+  -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&FearMarker];0
+  --^PACourDone|
+  --:PACourOff|
+  --~|array;attributes;PACourBk;[*T:character_id];PaladinAuraOrigImmune
+  --?"[@PACourBk(0)]" -nei ""|[
+   --!a:[*T:character_id]|npc_immunities:[*T:PaladinAuraOrigImmune]
+   --!a:[*T:character_id]|PaladinAuraOrigImmune:**
+  --]|
+  --:PACourDone|
+  --^PAApplyDone|
+  --:PADeactPath|
+  -->far_PaladinAuraDeactivate|
+  --:PAApplyDone|
   --<|
 
- --:far_PaladinAuraEnsureMod|character-id;bonus-total
-  --&PaladinAuraModName|Paladin Aura
-  -->far_Check_GLOBAL_MOD_EXISTS|[%1%];save;[&PaladinAuraModName];PAExists
-  --?[&PAExists] -eq 0|[
-   --!a:[%1%]|global_save_mod_flag:1
-   --!or:[%1%]:savemod|global_save_name:[&PaladinAuraModName]|global_save_active_flag:1|global_save_roll:[%2%]|options-flag:0
-   --^PAEnsureDone|
+ --:far_PaladinAuraEnsureMod|target-token-id;bonus-total
+  --&PAModName|Paladin Aura
+  --#targettoken|[%1%]
+  --=PAModBonus|[%2%]
+  --?[$PAModBonus] -le -999|[
+   --<|
   --]|
-  --Rfind|[%1%];[&PaladinAuraModName];repeating_savemod;global_save_name
-  --!a:[%1%]|[*R>global_save_roll]:[%2%]
-  --:PAEnsureDone|
-  -->Lib5E_SET_GLOBAL_MOD_STATUS|[%1%];save;[&PaladinAuraModName];1
-  --!a:[%1%]|global_save_mod_flag:1
+  --&PAExists|0
+  --Rfind|[*T:character_id];[&PAModName];repeating_savemod;global_save_name
+  --&PARowName|[*R:global_save_name]
+  --?"X[&PARowName]" -eq "X[&PAModName]"|[
+   --&PAExists|1
+  --]|
+  --?[&PAExists] -eq 0|[
+   --!a:[*T:character_id]|global_save_mod_flag:1
+   --!or:[*T:character_id]:savemod|
+	global_save_name:[&PAModName]|
+	global_save_roll:[%2%]|
+	options-flag:0
+  --]|
+  --?[&PAExists] -eq 1|[
+   --!a:[*T:character_id]|[*R>global_save_roll]:[%2%]
+  --]|
+  -->Lib5E_SET_GLOBAL_MOD_STATUS|[*T:character_id];save;[&PAModName];1
+  --!a:[*T:character_id]|global_save_mod_flag:1
   --<|
 
  --:far_PaladinAuraDeactivate|
-  --&PaladinAuraModName|Paladin Aura
-  -->Lib5E_SET_GLOBAL_MOD_STATUS|[*T:character_id];save;[&PaladinAuraModName];0
-  --!a:[*T:character_id]|PaladinAuraCourage:0
-  --!a:[*T:character_id]|PaladinAuraSources:;|
+  --&PAModName|Paladin Aura
+  --Rfirst|[*T:character_id];repeating_savemod
+  --:PADeactLoop|
+  --&PADRowName|[*R:global_save_name]
+  --?"X[&PADRowName]" -eq "XNoRepeatingAttributeLoaded"|[
+   --^PADeactDone|
+  --]|
+  --?"X[&PADRowName]" -eq "X[&PAModName]"|[
+   --!a:[*T:character_id]|[*R>global_save_active_flag]:0
+  --]|
+  --Rnext|
+  --^PADeactLoop|
+  --:PADeactDone|
+  --~|array;attributes;PACourBk;[*T:character_id];PaladinAuraOrigImmune
+  --?"[@PACourBk(0)]" -nei ""|[
+   --!a:[*T:character_id]|npc_immunities:[*T:PaladinAuraOrigImmune]
+   --!a:[*T:character_id]|PaladinAuraOrigImmune:**
+  --]|
+  --!a:[*T:character_id]|!PaladinAuraSources:,
   --&PaladinAuraAppliedBonus|0
   --&PaladinAuraCourageMsg|
   --&PaladinAuraModList|
+  --<|
+
+ --:far_PaladinAuraAttachTriggers|token-id;result-var;icon-name
+  --&PalAttachTID|[%1%]
+  --&PAAttachIcon|[%3%]
+  --?"X[&PAAttachIcon]" -eq "X"|&PAAttachIcon;overdrive
+  --?[&PalAttachTID(length)] -eq 0|[
+   --&[%2%]|[b]Aura triggers not applied.[/b] No token id.
+   --<|
+  --]|
+  --&PalAuraEnc|%5B%7B%22color%22%3A%22%239900ff00%22%2C%22name%22%3A%22Paladin%20Aura%22%2C%22icon%22%3A%22__PAICON__%22%2C%22toPCs%22%3Atrue%2C%22toNPCs%22%3Atrue%2C%22toGraphics%22%3Afalse%2C%22toLayers%22%3A%22objects%2Cgmlayer%22%2C%22applySelf%22%3Atrue%2C%22removeOnExit%22%3Atrue%2C%22ignoreWalls%22%3Afalse%2C%22targetVfxOnEnter%22%3A%22shield-holy%22%2C%22targetVfxOnExit%22%3A%22shield-death%22%2C%22chatActionOnEnter%22%3A%22!script%20%7B%7B%20%2B%2B%2B5Elib%3Bsnlib%3BFarsidelib%2B%2B%2B%20%2D%2D%23sourcetoken%7C%5BATID%5D%20%2D%2D%23targettoken%7C%5BTID%5D%20%2D%2D%23emoteTargetTokenSize%7C75%20%2D%2D%26PaladinAuraIcon%7C__PAICON__%20%2D%2D%3Efar_PaladinAuraOnEnter%7C%5BTID%5D%3B%5BATID%5D%20%2D%2DX%7C%20%7D%7D%22%2C%22chatActionOnExit%22%3A%22!script%20%7B%7B%20%2B%2B%2B5Elib%3Bsnlib%3BFarsidelib%2B%2B%2B%20%2D%2D%23sourcetoken%7C%5BATID%5D%20%2D%2D%23targettoken%7C%5BTID%5D%20%2D%2D%23emoteTargetTokenSize%7C75%20%2D%2D%26PaladinAuraIcon%7C__PAICON__%20%2D%2D%3Efar_PaladinAuraOnExit%7C%5BTID%5D%3B%5BATID%5D%20%2D%2DX%7C%20%7D%7D%22%7D%5D
+  --&PalAuraEnc|[&PalAuraEnc(replace,__PAICON__,[&PAAttachIcon])]
+  --?[&PalAuraEnc(length)] -lt 50|[
+   --&[%2%]|[b]Aura triggers not applied.[/b] Aura JSON template missing ([&PalAuraEnc(length)] chars).
+   --<|
+  --]|
+  --#targettoken|notoken
+  --!t:[&PalAttachTID]|gmnotes:[&PalAuraEnc]
+  --&[%2%]|
+  --<|
+
+ --:far_PaladinAuraApplySelf|paladin-token-id;icon-name
+  --#targettoken|[%1%]
+  --&PASelfIcon|[%2%]
+  --?"X[&PASelfIcon]" -eq "X"|&PASelfIcon;overdrive
+  -->far_PaladinAuraAddSource|[%1%];[%1%]
+  -->far_SetTokenMarker|[%1%];[&PASelfIcon];0
+  --?"X[*T:character_id]" -ne "X"|[
+   --!a:[*T:character_id]|!PaladinAuraIcon:[&PASelfIcon]
+  --]|
+  --<|
+
+ --:far_PaladinAuraRebuild|paladin-token-id;icon-name;aura-radius-feet
+  -->far_PaladinAuraApplySelf|[%1%];[%2%]
+  -->far_PaladinAuraRescanAllies|[%1%];[%2%];[%3%]
+  --@at-rebuild|
+  --@at-checkall|
+  --<|
+
+ --:far_PaladinAuraRescanAllies|paladin-token-id;icon-name;aura-radius-feet
+  -->far_LoadTokenMarkers|
+  --&PARefPalTID|[%1%]
+  --&PARefIcon|[%2%]
+  --?"X[&PARefIcon]" -eq "X"|&PARefIcon;overdrive
+  --#targettoken|[&PARefPalTID]
+  --?"X[%3]" -ne "X"|[
+   --=PARefAuraFeet|[%3]
+  --]|
+  --?"X[%3]" -eq "X"|[
+   --=PARefAuraFeet|[*T:t-aura1_radius]
+  --]|
+  --?[$PARefAuraFeet] -le 0|[
+   --<|
+  --]|
+  --=PARefScale|[*P:scale_number]
+  --=PARefSnapFeet|[*P:snapping_increment]
+  --?[$PARefScale] -le 0|[
+   --=PARefScale|[$PARefSnapFeet]
+  --]|
+  --?[$PARefScale] -le 0|[
+   --=PARefScale|5
+  --]|
+  --=PARefMaxGrid|[$PARefAuraFeet] / [$PARefScale] + 1
+  --~|array;pagetokens;PARefTokens;[&PARefPalTID]
+  --%paRefTok|foreach;PARefTokens
+   --#targettoken|[&paRefTok]
+   --?"X[*T:t-id]" -eq "X"|paRefSkip
+   --?"X[*T:character_id]" -eq "X"|paRefSkip
+   --&PARefInRange|0
+   --?"X[*T:t-id]" -eq "X[&PARefPalTID]"|paRefSkip
+   --?[&PARefInRange] -eq 0|[
+    --~PARefDist|distance;[&PARefPalTID];[*T:t-id]
+    --?[$PARefDist] -le [$PARefMaxGrid]|&PARefInRange;1
+   --]|
+   --?[&PARefInRange] -eq 0|[
+    --~PARefDist|euclideandistance;[&PARefPalTID];[*T:t-id]
+    --=PARefDistFeet|[$PARefDist] * [$PARefScale]
+    --?[$PARefDistFeet] -le [$PARefAuraFeet]|&PARefInRange;1
+   --]|
+   --?[&PARefInRange] -eq 0|paRefSkip
+   -->far_PaladinAuraAddSource|[*T:t-id];[&PARefPalTID]
+   -->far_SetTokenMarker|[*T:t-id];[&PARefIcon];0
+   --?"X[*T:t-id]" -eq "X[&PARefPalTID]"|[
+    --!a:[*T:character_id]|!PaladinAuraIcon:[&PARefIcon]
+   --]|
+   --:paRefSkip|
+   --%|
   --<|
 
  --:far_AuraTriggerDied|
