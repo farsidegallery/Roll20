@@ -1,4 +1,4 @@
---/|ScriptCards Library: Farsidelib  version 1.6.1
+--/|ScriptCards Library: Farsidelib  version 1.6.2
 --/|Provides various utility procedures for Roll20
 
 --/|This library contains a number of functions that are customized to meet the different needs of spell or ability
@@ -60,7 +60,7 @@
 --/|   far_Check_GLOBAL_MOD_EXISTS|characterid; Category; name; returnstring (0=does not exist, 1=exists)
 --/|      Name is staged internally; safe for apostrophes and hyphens in mod names.
 --/|
---/|   far_SetGlobalModStatusStaged|characterid;category;activeFlag (0/1/2=toggle)
+--/|   far_SetGlobalModStatusStaged|category;activeFlag (0/1/2=toggle). Set _FarGMCharId and _FarGMName before calling.
 --/|      Set _FarGMName before calling. Uses $$$ Rfind delimiter for special characters.
 --/|
 --/|   far_GlobalModSafeLabel|source-var-name;return-var
@@ -427,31 +427,36 @@
   --~[%2%]|string;replace;-‑;[%2%]
   --<|
 
- --:far_RfindGlobalModStaged|characterid;category
-  -->far_GlobalModResolveCategory|[%2%];_Lib5E_WHICH_GM;_Lib5E_Search_Field
+ --:far_RfindGlobalModStaged|category
+  -->far_GlobalModResolveCategory|[%1%];_Lib5E_WHICH_GM;_Lib5E_Search_Field
+  --?"X[&_FarGMCharId]" -eq "X"|--<|
   --#parameterdelimiter|$$$
-  --Rfind|[*[%1%]:character_id]$$$[&_FarGMName]$$$repeating_[&_Lib5E_WHICH_GM]$$$global_[&_Lib5E_Search_Field]_name
+  --Rfind|[&_FarGMCharId]$$$[&_FarGMName]$$$repeating_[&_Lib5E_WHICH_GM]$$$global_[&_Lib5E_Search_Field]_name
   --#parameterdelimiter|;
   --<|
 
- --:far_SetGlobalModStatusStaged|characterid;category;activeFlag
-  -->far_RfindGlobalModStaged|[%1%];[%2%]
-  --?"[*R:global_[&_Lib5E_Search_Field]_name]" -eq "NoRepeatingAttributeLoaded"|>far_LogFatalError;Global [%2%] Modifier [&_FarGMName] not found on character [%1%]
-  --?"[%3]" -eq 2|[
+ --:far_SetGlobalModStatusStaged|category;activeFlag
+  --?"X[&_FarGMCharId]" -eq "X"|--<|
+  -->far_RfindGlobalModStaged|[%1%]
+  --?"[*R:global_[&_Lib5E_Search_Field]_name]" -eq "NoRepeatingAttributeLoaded"|>far_LogFatalError;Global [%1%] Modifier [&_FarGMName] not found on character [&_FarGMCharId]
+  --?"[%2]" -eq 2|[
    --?"[*R:global_[&_Lib5E_Search_Field]_active_flag]" -eq "1"|[
-    --!a:[%1]|[*R>global_[&_Lib5E_Search_Field]_active_flag]:0
+    --!a:[&_FarGMCharId]|[*R>global_[&_Lib5E_Search_Field]_active_flag]:0
    --]|[
-    --!a:[%1]|[*R>global_[&_Lib5E_Search_Field]_active_flag]:1
+    --!a:[&_FarGMCharId]|[*R>global_[&_Lib5E_Search_Field]_active_flag]:1
    --]|
    --<|
   --]|
-  --!a:[%1]|[*R>global_[&_Lib5E_Search_Field]_active_flag]:[%3]
+  --!a:[&_FarGMCharId]|[*R>global_[&_Lib5E_Search_Field]_active_flag]:[%2]
   --<|
 
  --:far_Check_GLOBAL_MOD_EXISTS|characterid; Category; name; returnstring (0=does not exist, 1=exists)
   --&[%4%]|0
+  --&_FarGMCharId|[*T:character_id]
+  --?"X[&_FarGMCharId]" -eq "X"|&_FarGMCharId;[%1%]
+  --?"X[&_FarGMCharId]" -eq "X"|--<|
   --&_FarGMName|[%3]
-  -->far_RfindGlobalModStaged|[%1%];[%2%]
+  -->far_RfindGlobalModStaged|[%2%]
   --?"[&_Lib5E_Search_Field]" -eq "damage"|>_Lib5E_GMCheck_damage
   --?"[&_Lib5E_Search_Field]" -eq "attack"|>_Lib5E_GMCheck_attack
   --?"[&_Lib5E_Search_Field]" -eq "ac"|>_Lib5E_GMCheck_ac
@@ -1301,23 +1306,43 @@
   --<|
 
  --:far_PaladinAuraAddSource|target-token-id;paladin-token-id
-  --#targettoken|[%1%]
-  -->far_GetTokenCharAttr|[%1%];PaladinAuraSources;,;PaladinAuraSources
-  --?"X[&PaladinAuraSources]" -inc ",[%2%],"|paAddSourceSkip|
-  --&PaladinAuraSources|+[%2%],
+  --&PATargetTok|[&PATargetTokId]
+  --?"X[&PATargetTok]" -eq "X"|&PATargetTok;[%1%]
+  --&PAPalTok|[&PAPaladinTokId]
+  --?"X[&PAPalTok]" -eq "X"|&PAPalTok;[%2%]
+  --&PATargetTokId|
+  --&PAPaladinTokId|
+  --#targettoken|[&PATargetTok]
+  --&PACharId|[*T:character_id]
+  --?"X[&PACharId]" -eq "X"|--<|
+  -->far_GetTokenCharAttr|[&PATargetTok];PaladinAuraSources;,;PaladinAuraSources
+  --?"X[&PaladinAuraSources]" -inc ",[&PAPalTok],"|paAddSourceSkip|
+  --&PaladinAuraSources|+[&PAPalTok],
   --:paAddSourceSkip|
-  --!a:[*T:character_id]|!PaladinAuraSources:[&PaladinAuraSources]
-  -->far_ApplyBestPaladinAura|[%1%];[&PaladinAuraSources]
+  --!a:[&PACharId]|!PaladinAuraSources:[&PaladinAuraSources]
+  --&PATargetTokId|[&PATargetTok]
+  -->far_ApplyBestPaladinAura|
+  --&PATargetTokId|
   --<|
 
  --:far_PaladinAuraRemoveSource|target-token-id;paladin-token-id
-  --#targettoken|[%1%]
-  -->far_GetTokenCharAttr|[%1%];PaladinAuraSources;,;PaladinAuraSources
-  --&PalRemNeedle|,[%2%],
+  --&PATargetTok|[&PATargetTokId]
+  --?"X[&PATargetTok]" -eq "X"|&PATargetTok;[%1%]
+  --&PAPalTok|[&PAPaladinTokId]
+  --?"X[&PAPalTok]" -eq "X"|&PAPalTok;[%2%]
+  --&PATargetTokId|
+  --&PAPaladinTokId|
+  --#targettoken|[&PATargetTok]
+  --&PACharId|[*T:character_id]
+  --?"X[&PACharId]" -eq "X"|--<|
+  -->far_GetTokenCharAttr|[&PATargetTok];PaladinAuraSources;,;PaladinAuraSources
+  --&PalRemNeedle|,[&PAPalTok],
   --&PalRemTo|,
   --&PaladinAuraSources|[&PaladinAuraSources(replace,[&PalRemNeedle],[&PalRemTo])]
-  --!a:[*T:character_id]|!PaladinAuraSources:[&PaladinAuraSources]
-  -->far_ApplyBestPaladinAura|[%1%];[&PaladinAuraSources]
+  --!a:[&PACharId]|!PaladinAuraSources:[&PaladinAuraSources]
+  --&PATargetTokId|[&PATargetTok]
+  -->far_ApplyBestPaladinAura|
+  --&PATargetTokId|
   --<|
 
  --:far_PaladinAuraOnEnter|target-token-id;paladin-token-id
@@ -1337,9 +1362,9 @@
   --=PADisplayBonus|[&PaladinAuraAppliedBonus]
   --?[$PADisplayBonus] -gt 0|[
    --?"X[&PaladinAuraCourageMsg]" -ne "X"|[
-    --+|[c]Your saving throws receive an additional +[&PaladinAuraAppliedBonus] bonus[&PaladinAuraCourageMsg][/c]
+    --+|[c]Your saving throws receive an additional +[$PADisplayBonus] bonus[&PaladinAuraCourageMsg][/c]
    --]|[
-    --+|[c]Your saving throws receive an additional +[&PaladinAuraAppliedBonus] bonus.[/c]
+    --+|[c]Your saving throws receive an additional +[$PADisplayBonus] bonus.[/c]
    --]|
   --]|
   --<|
@@ -1359,7 +1384,7 @@
    -->far_RemoveTokenMarker|[%1%];[&PaladinAuraIcon]
   --]|
   --?[$PADisplayBonus] -gt 0|[
-   --+|[c]Your Paladin Aura save bonus is now +[&PaladinAuraAppliedBonus] (highest overlapping aura).[/c]
+   --+|[c]Your Paladin Aura save bonus is now +[$PADisplayBonus] (highest overlapping aura).[/c]
   --]|[
    --+|[c]You are no longer protected by a Paladin Aura.[/c]
   --]|
@@ -1402,7 +1427,11 @@
    --]|
    --?[&PAStrip] -eq 0|paDismissSkip
    --?"X[*T:character_id]" -ne "X"|[
-    -->far_PaladinAuraRemoveSource|[*T:t-id];[&PADPalTID]
+    --&PATargetTokId|[*T:t-id]
+    --&PAPaladinTokId|[&PADPalTID]
+    -->far_PaladinAuraRemoveSource||
+    --&PATargetTokId|
+    --&PAPaladinTokId|
    --]|
    -->far_RemoveTokenMarker|[*T:t-id];[&PADismissIcon]
    --:paDismissSkip|
@@ -1427,7 +1456,11 @@
   --<|
 
  --:far_ApplyBestPaladinAura|target-token-id;source-list
-  --#targettoken|[%1%]
+  --&PATargetTok|[&PATargetTokId]
+  --?"X[&PATargetTok]" -eq "X"|&PATargetTok;[%1%]
+  --#targettoken|[&PATargetTok]
+  --&PACharId|[*T:character_id]
+  --?"X[&PACharId]" -eq "X"|--<|
   --&PaladinAuraModName|Paladin Aura
   --&PaladinAuraAppliedBonus|0
   --&PaladinAuraCourageMsg|
@@ -1437,11 +1470,11 @@
   --&CourageFlag|0
   --&SourceList|[%2%]
   --?"X[%2%]" -eq "X"|[
-   -->far_GetTokenCharAttr|[%1%];PaladinAuraSources;,;SourceList
+   -->far_GetTokenCharAttr|[&PATargetTok];PaladinAuraSources;,;SourceList
   --]|
   --~|array;fromstring;PALsrcArr;,;[&SourceList]
   --&CleanSources|,
-  --&SavedTarget|[%1%]
+  --&SavedTarget|[&PATargetTok]
   --%paSrc|foreach;PALsrcArr
    --&PalTID|[&paSrc]
    --?"X[&PalTID]" -eq "X"|paSrcSkip
@@ -1464,7 +1497,7 @@
    --%|
   --#targettoken|[&SavedTarget]
   --?"X[&CleanSources]" -ne "X[&SourceList]"|[
-   --!a:[*T:character_id]|!PaladinAuraSources:[&CleanSources]
+   --!a:[&PACharId]|!PaladinAuraSources:[&CleanSources]
    --&SourceList|[&CleanSources]
   --]|
   --?[&SourceList(length)] -le 1|&PAPathDeactivate;1
@@ -1472,85 +1505,100 @@
    --?[$BestBonus] -le -999|&PAPathDeactivate;1
   --]|
   --?"X[&PAPathDeactivate]" -eq "X1"|>PADeactPath|
-  --&PaladinAuraAppliedBonus|[$BestBonus.Raw]
+  --&PaladinAuraAppliedBonus|[$BestBonus]
   --?[&CourageFlag] -eq 1|[
    --&PaladinAuraCourageMsg|; Aura of Courage makes you immune to the Frightened condition.
   --]|
-  -->far_PaladinAuraEnsureMod|[&SavedTarget];[$BestBonus.Raw]
+  --&PATargetTokId|[&SavedTarget]
+  -->far_PaladinAuraEnsureMod|[$BestBonus.Raw]
+  --&PATargetTokId|
   --?[&CourageFlag] -eq 1|>PACourOn|
   --^PACourOff|
   --:PACourOn|
   --&PAFrightImmune|,frightened
-  --~|array;attributes;PACourBk;[*T:character_id];PaladinAuraOrigImmune
+  --~|array;attributes;PACourBk;[&PACharId];PaladinAuraOrigImmune
   --?"[@PACourBk(0)]" -nei ""|>PACourFearOnly|
   --&PAOrigImmuneSnap|[*T:npc_immunities]
-  --!a:[*T:character_id]|!PaladinAuraOrigImmune:[&PAOrigImmuneSnap]
+  --!a:[&PACharId]|!PaladinAuraOrigImmune:[&PAOrigImmuneSnap]
   --&PANewImmune|[&PAOrigImmuneSnap][&PAFrightImmune]
-  --!a:[*T:character_id]|!npc_immunities:[&PANewImmune]
+  --!a:[&PACharId]|!npc_immunities:[&PANewImmune]
   --:PACourFearOnly|
-  -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&FearMarker];0
+  -->LibSN_REMOVE_STATUS_MARKER|[&SavedTarget];[&FearMarker];0
   --^PACourDone|
   --:PACourOff|
-  --~|array;attributes;PACourBk;[*T:character_id];PaladinAuraOrigImmune
+  --~|array;attributes;PACourBk;[&PACharId];PaladinAuraOrigImmune
   --?"[@PACourBk(0)]" -nei ""|[
-   --!a:[*T:character_id]|npc_immunities:[*T:PaladinAuraOrigImmune]
-   --!a:[*T:character_id]|PaladinAuraOrigImmune:**
+   --!a:[&PACharId]|npc_immunities:[*T:PaladinAuraOrigImmune]
+   --!a:[&PACharId]|PaladinAuraOrigImmune:**
   --]|
   --:PACourDone|
   --^PAApplyDone|
   --:PADeactPath|
+  --&PATargetTokId|[&SavedTarget]
   -->far_PaladinAuraDeactivate|
+  --&PATargetTokId|
   --:PAApplyDone|
   --<|
 
- --:far_PaladinAuraEnsureMod|target-token-id;bonus-total
+ --:far_PaladinAuraEnsureMod|bonus-total
+  --&PATargetTok|[&PATargetTokId]
+  --?"X[&PATargetTok]" -eq "X"|--<|
+  --#targettoken|[&PATargetTok]
+  --&PACharId|[*T:character_id]
+  --?"X[&PACharId]" -eq "X"|--<|
   --&PAModName|Paladin Aura
-  --#targettoken|[%1%]
-  --=PAModBonus|[%2%]
+  --=PAModBonus|[%1%]
   --?[$PAModBonus] -le -999|[
    --<|
   --]|
   --&PAExists|0
   --&_FarGMName|[&PAModName]
-  -->far_RfindGlobalModStaged|[*T:character_id];save
+  --&_FarGMCharId|[&PACharId]
+  -->far_RfindGlobalModStaged|save
   --&PARowName|[*R:global_save_name]
   --?"X[&PARowName]" -eq "X[&PAModName]"|[
    --&PAExists|1
   --]|
   --?[&PAExists] -eq 0|[
-   --!a:[*T:character_id]|global_save_mod_flag:1
-   --!or:[*T:character_id]:savemod|
+   --!a:[&PACharId]|global_save_mod_flag:1
+   --!or:[&PACharId]:savemod|
 	global_save_name:[&PAModName]|
-	global_save_roll:[%2%]|
+	global_save_roll:[%1%]|
 	options-flag:0
   --]|
   --?[&PAExists] -eq 1|[
-   --!a:[*T:character_id]|[*R>global_save_roll]:[%2%]
+   --!a:[&PACharId]|[*R>global_save_roll]:[%1%]
   --]|
-  -->far_SetGlobalModStatusStaged|[*T:character_id];save;1
-  --!a:[*T:character_id]|global_save_mod_flag:1
+  --&_FarGMCharId|[&PACharId]
+  -->far_SetGlobalModStatusStaged|save;1
+  --!a:[&PACharId]|global_save_mod_flag:1
   --<|
 
  --:far_PaladinAuraDeactivate|
+  --&PATargetTok|[&PATargetTokId]
+  --?"X[&PATargetTok]" -eq "X"|--<|
+  --#targettoken|[&PATargetTok]
+  --&PACharId|[*T:character_id]
+  --?"X[&PACharId]" -eq "X"|--<|
   --&PAModName|Paladin Aura
-  --Rfirst|[*T:character_id];repeating_savemod
+  --Rfirst|[&PACharId];repeating_savemod
   --:PADeactLoop|
   --&PADRowName|[*R:global_save_name]
   --?"X[&PADRowName]" -eq "XNoRepeatingAttributeLoaded"|[
    --^PADeactDone|
   --]|
   --?"X[&PADRowName]" -eq "X[&PAModName]"|[
-   --!a:[*T:character_id]|[*R>global_save_active_flag]:0
+   --!a:[&PACharId]|[*R>global_save_active_flag]:0
   --]|
   --Rnext|
   --^PADeactLoop|
   --:PADeactDone|
-  --~|array;attributes;PACourBk;[*T:character_id];PaladinAuraOrigImmune
+  --~|array;attributes;PACourBk;[&PACharId];PaladinAuraOrigImmune
   --?"[@PACourBk(0)]" -nei ""|[
-   --!a:[*T:character_id]|npc_immunities:[*T:PaladinAuraOrigImmune]
-   --!a:[*T:character_id]|PaladinAuraOrigImmune:**
+   --!a:[&PACharId]|npc_immunities:[*T:PaladinAuraOrigImmune]
+   --!a:[&PACharId]|PaladinAuraOrigImmune:**
   --]|
-  --!a:[*T:character_id]|!PaladinAuraSources:,
+  --!a:[&PACharId]|!PaladinAuraSources:,
   --&PaladinAuraAppliedBonus|0
   --&PaladinAuraCourageMsg|
   --&PaladinAuraModList|
@@ -1634,11 +1682,19 @@
     --?[$PARefDistFeet] -le [$PARefAuraFeet]|&PARefInRange;1
    --]|
    --?[&PARefInRange] -eq 0|paRefSkip
-   -->far_PaladinAuraAddSource|[*T:t-id];[&PARefPalTID]
-   -->far_SetTokenMarker|[*T:t-id];[&PARefIcon];0
-   --?"X[*T:t-id]" -eq "X[&PARefPalTID]"|[
-    --!a:[*T:character_id]|!PaladinAuraIcon:[&PARefIcon]
+   --&PATargetTokId|[*T:t-id]
+   --&PAPaladinTokId|[&PARefPalTID]
+   -->far_PaladinAuraAddSource||
+   -->far_SetTokenMarker|[&PATargetTokId];[&PARefIcon];0
+   --?"X[&PATargetTokId]" -eq "X[&PARefPalTID]"|[
+    --#targettoken|[&PATargetTokId]
+    --&PACharId|[*T:character_id]
+    --?"X[&PACharId]" -ne "X"|[
+     --!a:[&PACharId]|!PaladinAuraIcon:[&PARefIcon]
+    --]|
    --]|
+   --&PATargetTokId|
+   --&PAPaladinTokId|
    --:paRefSkip|
    --%|
   --<|
