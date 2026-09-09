@@ -1,6 +1,6 @@
 !script {{
   --/|Script Name : 5E Action Menu
-  --/|Version     : 3.1.4
+  --/|Version     : 3.2.0
   --/|Requires SC : 2.7.15+
   --/|Author      : Kurt Jaegers
   --/|Modified By : Farsidegallery
@@ -254,6 +254,7 @@
   --/|Store the selected character so we can use it later even if it gets de-selected
   --#sourcetoken|[&saveTokenID]
   --&AMCharacterId|[*S:character_id]
+  -->VALIDATE_ACTION_MENU_CHARACTER|
   --!a:[&AMCharacterId]|5ECAM_MENU_TID:[&saveTokenID]
 
   --?[&UseNamedCharacterSettings] -eq 1|[
@@ -278,10 +279,12 @@
   --#leftsub|Action Menu [rbutton][&SettingsImage]::DISPLAY_CHARACTER_CONFIG_MENU[/rbutton] [rbutton][&ClearCacheImage]::CLEAR_CHARACTER_CACHE[/rbutton]
   -->LOAD_PER_CHARACTER_CONFIG_OPTIONS|[*S:character_id]
   --:SKIP_PER_CHAR_SETTINGS|
+  --&perCharacterOptions|$SGAM1$$SGDM1$$SGSM1$$SGMB1$$SSAS1$$SGCM1$$SGKM1$$SHRB1$
   --
   --#leftsub|Action Menu [rbutton][&ClearCacheImage]::CLEAR_CHARACTER_CACHE[/rbutton]
 
-  --?[*S:npc] -eq 1 -or [&ShowRestButtons] -ne 1|SKIP_REST_BUTTONS
+  --?[*S:npc] -eq 1|SKIP_REST_BUTTONS
+  --?"[&ShowRestButtons]" -ne "1"|SKIP_REST_BUTTONS
   --?"[&perCharacterOptions]" -inc "$SHRB0$"|SKIP_REST_BUTTONS
   --#rightsub|Rest: [rbutton][&ShortRestImage]::DO_SHORT_REST[/rbutton][rbutton][&LongRestImage]::DO_LONG_REST[/rbutton]
   --:SKIP_REST_BUTTONS|
@@ -2019,12 +2022,17 @@
   --<|
 
   --:LOAD_PER_CHARACTER_CONFIG_OPTIONS|characterID
-  --?"[*[%1%]:5ECAM_SETTINGS]" -eq ""|>SET_DEFAULT_PER_CHARACTER_SETTINGS;[%1%]
-  --?"[*[%1%]:5ECAM_SETTINGS]" -eq "undefined"|>SET_DEFAULT_PER_CHARACTER_SETTINGS;[%1%]
-  --&perCharacterOptions|[*[%1%]:5ECAM_SETTINGS]
+  --&_LoadCharId|[%1%]
+  --?"X[&_LoadCharId]" -eq "X"|&_LoadCharId;[&AMCharacterId]
+  --?"[&_LoadCharId]" -eq ""|--<|
+  --?"[*[&_LoadCharId]:5ECAM_SETTINGS]" -eq ""|>SET_DEFAULT_PER_CHARACTER_SETTINGS;[&_LoadCharId]
+  --?"[*[&_LoadCharId]:5ECAM_SETTINGS]" -eq "undefined"|>SET_DEFAULT_PER_CHARACTER_SETTINGS;[&_LoadCharId]
+  --&perCharacterOptions|[*[&_LoadCharId]:5ECAM_SETTINGS]
   --<|
 
   --:SET_DEFAULT_PER_CHARACTER_SETTINGS|CharacterID
+  --?"X[%1%]" -eq "X"|--<|
+  --?"[%1%]" -eq ""|--<|
   --&SettingsString|$SGAM1$$SGDM1$$SGSM1$$SGMB1$$SSAS1$$SGCM1$$SGKM1$$SHRB1$
   --!a:[%1%]|!5ECAM_SETTINGS:[&SettingsString]
   --<|
@@ -2101,10 +2109,29 @@
   --%_loop|0;[@_FCT_Tokens(maxindex)]
     --&_FCT_TID|[@_FCT_Tokens([&_loop])]
     --&_FCT_CHAR|[*[&_FCT_TID]:t-represents]
+    --?"X[&_FCT_CHAR]" -eq "X"|%
+    --?"[&_FCT_CHAR]" -eq ""|%
+    --?"[*[&_FCT_TID]:t-name]" -eq "AoEControlToken"|%
+    --?"[*O:[&_FCT_CHAR]:character_name]" -eq "AoEControlToken"|%
     --?"[*O:[&_FCT_CHAR]:character:controlledby]" -ninc [&SendingPlayerID]|%
     --?"[&[%1%]]" -eq ""|&[%1%];+[&_FCT_TID]|&[%1%];+,[&_FCT_TID]]
   --%|
   --<|
+
+  --:VALIDATE_ACTION_MENU_CHARACTER|
+  --?"X[*S:character_id]" -eq "X"|REPORT_INVALID_ACTION_MENU_TOKEN
+  --?"[*S:character_id]" -eq ""|REPORT_INVALID_ACTION_MENU_TOKEN
+  --?"X[&AMCharacterId]" -eq "X"|REPORT_INVALID_ACTION_MENU_TOKEN
+  --?"[&AMCharacterId]" -eq ""|REPORT_INVALID_ACTION_MENU_TOKEN
+  --?"[*S:character_name]" -eq "AoEControlToken"|REPORT_INVALID_ACTION_MENU_TOKEN
+  --~|array;attributes;_AMSheetNpc;[&AMCharacterId];npc
+  --?"[@_AMSheetNpc(length)]" -eq 0|REPORT_INVALID_ACTION_MENU_TOKEN
+  --<|
+
+  --:REPORT_INVALID_ACTION_MENU_TOKEN|
+  --#whisper|self
+  --+Invalid Token|Select a PC or NPC with a D&D 5e character sheet. Utility tokens (such as SmartAoE control tokens) cannot use the Action Menu.
+  --X|
 
   --:REPORT_NEED_SELECTED_TOKEN|
   --#whisper|self
@@ -2530,6 +2557,8 @@
     --%loop|foreach;Hash_Keys
       --?"[&loop]" -inc "_sectionid"|&HashList(99999);[&loop(replace,_sectionid,)]
     --%|
+    --?"X[@HashList(length)]" -eq "X"|AM_SPELL_BUTTON_LIST_NOTHING
+    --?[@HashList(length)] -eq 0|AM_SPELL_BUTTON_LIST_NOTHING
 
     --&AM_BUTTON_LIST|[br]
 
