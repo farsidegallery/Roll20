@@ -1,6 +1,6 @@
 !script {{
   --/|Script Name : 5E Action Menu
-  --/|Version     : 3.1.3
+  --/|Version     : 3.1.4
   --/|Requires SC : 2.7.15+
   --/|Author      : Kurt Jaegers
   --/|Modified By : Farsidegallery
@@ -63,8 +63,8 @@
   --/|The name matching rules are the same as those for the Spell Mule.
   --&sharednpcmacromulename|NPCAbility_Mule
   
-  --/|If you create a mule character and put its name here, you can define macros for PC Bonus Action / Reaction trait buttons.
-  --/|Attacks and Actions always use the character sheet; only Bonus Actions and Reactions check this mule.
+  --/|If you create a mule character and put its name here, you can define macros for PC attacks/actions and Bonus Action / Reaction trait buttons.
+  --/|Set to none to skip mule lookup for PC attacks (sheet-only). Bonus Actions and Reactions always check this mule when not none.
   --&pcabilitymulename|PCAbility_Mule
 
   --/|=========================================================================================================
@@ -331,10 +331,10 @@
   --?[&trackPCSpellSlots] -eq 1|[
     -->GET_HIGHEST_LEVEL_SPELL_SLOT|HighestSlot
   --]|
-  -->BUILD_BUTTON_LIST|[*S:character_id];repeating_npcaction;name;EXEC_NPC_ACTION;Actions;none;0
+  -->BUILD_BUTTON_LIST|[*S:character_id];repeating_npcaction;name;EXEC_NPC_ACTION;Actions;[&sharednpcmacromulename];0
   -->BUILD_BUTTON_LIST|[*S:character_id];repeating_npcbonusaction;name;EXEC_NPC_BONUS_ACTION;Bonus Actions;[&sharednpcmacromulename];0
   -->BUILD_BUTTON_LIST|[*S:character_id];repeating_npcreaction;name;EXEC_NPC_REACTION;Reactions;[&sharednpcmacromulename];0
-  -->BUILD_BUTTON_LIST|[*S:character_id];repeating_npcaction-l;name;EXEC_NPC_LEGENDARY_ACTION;Legendary Actions;none;0
+  -->BUILD_BUTTON_LIST|[*S:character_id];repeating_npcaction-l;name;EXEC_NPC_LEGENDARY_ACTION;Legendary Actions;[&sharednpcmacromulename];0
   -->BUILD_SPELL_BUTTON_LIST|[*S:character_id];repeating_spell-cantrip;spellname;EXEC_PC_CANTRIP;Cantrips;[&sharednpcmacromulename];0
   --%levelCounter|1;9
     --/\|repeating_spell repeating_spell-[&levelCounter]
@@ -682,7 +682,7 @@
     --+|[t width='100%'][tr][td width='25%' align='center'][b]ATK[/b][/td][td width='25%' align='center'][b]DMG[/b][/td][td width='25%' align='center'][b]AC[/b][/td][td width='25%' align='center'][b]SAVE[/b][/td][/tr][tr][td width='25%' align='center'][&gambuttons][/td][td width='25%' align='center'][&gdmbuttons][/td][td width='25%' align='center'][&gacmbuttons][/td][td width='25%' align='center'][&gsmbuttons][/td][/tr][/t]
   --]| 
 
-  -->BUILD_BUTTON_LIST|[*S:character_id];repeating_attack;atkname;EXEC_PC_ATTACK;Attacks and Actions;none;0;1
+  -->BUILD_BUTTON_LIST|[*S:character_id];repeating_attack;atkname;EXEC_PC_ATTACK;Attacks and Actions;[&pcabilitymulename];0;1
   --?"[&showBonusActionsAndReactions]" -eq 1|>DISPLAY_PC_OTHER_ACTIONS
   -->BUILD_SPELL_BUTTON_LIST|[*S:character_id];repeating_spell-cantrip;spellname;EXEC_PC_CANTRIP;Cantrips;[&spellmulename];0
   
