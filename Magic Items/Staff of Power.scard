@@ -2,8 +2,8 @@
   +++5Elib;snlib;Farsidelib+++
 
   --/|Script Name : Staff of Power
-  --/|Version     : 1.1.0
-  --/|Requires SC : SmartAOE, ScriptCards Library 5Elib/snlib/Farsidelib 1.5.10+
+  --/|Version     : 1.2.0
+  --/|Requires SC : SmartAOE, TokenMod, ScriptCards Library 5Elib/snlib/Farsidelib 1.5.10+
   --/|Author      : Arak
   --/|Modified By : Farsidegallery
   --/|
@@ -13,9 +13,22 @@
   --/| ____________________ Begin Global User Variables ___________________________________
 
   --/|Exact name of the charge resource on the wielder's character sheet (max 20).
-  --&PowerResource|Staff of Power
+  --&PowerResource|Staff of Power[l+2d8+4]
 
   --&damageType|force
+
+  --/|Magic Missile (matches Spells/Magic Missile.scard; fixed 3 darts, no slot use)
+  --&damageMode|1
+  --&ModName|Shield Spell
+  --&ShieldMarkAttr|mm_shield_active
+  --&CharName|Shield Spell
+  --&ReactCharName|Reaction Used
+  --&URLlink|https://files.d20.io/images/466430946/7DPjXj0n0IMCLlbLg50mPg/med.webm?1764787074
+  --&link1|https://files.d20.io/images/476457994/FdbUAgAk_G-
+  --&link2|-2d1MaQ9g4w/med.webm?1771472165
+  --&Reactlink|[&link1][&link2]
+  --&obrac|[
+  --&cbrac|]
 
   --/| ____________________ End Global User Variables _____________________________________
 
@@ -66,43 +79,66 @@
 
   --/| ____________________ Charge deduction _______________________________________________
 
-  --:DeductCharges|cost
+  --:DeductCharges|cost;quiet-flag
   -->Lib5E_FIND_RESOURCE|[*S:character_id];[&PowerResource];Powername;PowerAmmo
   --?"[&Powername]" -eq "Not Found"|>NoResource
   --?[$PowerAmmo] -lt [%1%]|>NoPower
   --=FinalAmmo|[$PowerAmmo]-[%1%]
+  --&LastChargeCost|[%1%]
+  --=LastChargeRemaining|[$FinalAmmo]
   --!a:[*S:character_id]|[&PowerAmmo]:[$FinalAmmo]
-  --+|[*S:t-name] uses [%1] charge(s). [$FinalAmmo] charge(s) remaining.
+  --?"[%2%]" -eq "quiet"|<
+  --#whisper|self,gm
+  --+|[*S:t-name] uses [&LastChargeCost] charge(s). [$LastChargeRemaining] charge(s) remaining.
   --<|
 
   --/| ____________________ Spells _________________________________________________________
 
   --:MagicMissile|
-  -->DeductCharges|1
-  --&Power|Magic Missile
+  -->DeductCharges|1;quiet
   --=MissileCount|3
   -->far_BuildTargetList|[$MissileCount.Total]
   -->far_BuildTargetArray|Targets;[$MissileCount];TargetString;1
-  -->MMBuildUnique|
+  -->BuildUnique|
+  --&ShieldedList|;|
+  --%loop|foreach;Targets
+   -->MMShieldModExists|[*[&loop]:t-id];Exists
+   --?[&Exists] -eq 1|>ShieldPrompt
+   --Rfind|[*[&loop]:character_id];Shield;repeating_spell-1;spellname
+   --?"X[*R:spellname]" -ne "XNoRepeatingAttributeLoaded"|>ShieldPrompt
+   --:ShieldReturn|
+  --%|
+  --?"X[&damageMode]" -eq "X0"|>MissileSameDamage
   --=TargetCount|1
   --=TotalDamage|0
-  --#emoteText|[*S:t-name] uses the Staff of Power to cast Magic Missile!
+  --#emoteText|[*S:t-name] uses the Staff of Power to fire [$MissileCount.Total] missiles of magical force!
+
+  --:MissileLoop|
+  --#whisper|self,gm
+  --+|[*S:t-name] uses [&LastChargeCost] charge(s). [$LastChargeRemaining] charge(s) remaining.
+  --+|[br]
+  --#whisper|
   --%loop|foreach;Targets
-   -->MMFireMissile|[&loop]
+   -->FireMissile|[&loop]
    --=TargetCount|[$TargetCount]+1
   --%|
-  --%i|1;[$MissileCount];1
-   --&ThisDartTarget|[&MMDartTarget[&i]]
-   --+[&MMResultLabel[&i]]: |[&MMResultText[&i]]
-   -->far_PlayEffects|[*S:t-id];[&ThisDartTarget];none;burst-smoke;beam-magic
-  --%|
+  --?"X[&damageMode]" -eq "X1"|[
+   -->FinalizeDartResults|
+   --%i|1;[$MissileCount];1
+    --&ThisDartTarget|[&DartTarget[&i]]
+    --+[&ResultLabel[&i]]: |[&ResultText[&i]]
+    -->far_PlayEffects|[*S:t-id];[&ThisDartTarget];none;burst-smoke;beam-magic
+   --%|
+  --]|
   --+|Total damage is [$TotalDamage]
-  --%loopTarget|foreach;MMUnique
-   -->far_DamageTokenmod|[&loopTarget];[&hpBar];[&tempHPbar];-[$MMDamage[&loopTarget]];0;0;1
-   --?[*[&loopTarget]:t-bar[&hpBar]_value] -lt 0|[
-    -->LibSN_ADD_STATUS_MARKER|[*[&loopTarget]:t-id];[&DeathMarker]
-   --]|
+  --%loopTarget|foreach;Unique
+   -->IsTargetShielded|[&loopTarget];ShieldHit
+   --?[&ShieldHit] -eq 1|ApplySkipDamage
+   -->far_DamageTokenmod|[&loopTarget];[&hpBar];[&tempHPbar];-[$Damage[&loopTarget]];0;0;1
+   --:ApplySkipDamage|
   --%|
+  --#whisper|
+  -->ClearMMShieldMarks|
   --X|
 
   --:RayOfEnfeeblement|
@@ -131,9 +167,9 @@
   -->DeductCharges|5
   --&Power|Cone of Cold
   --@forselected|smartaoe [&brace][&brace]
-   _title|[*S:t-name] points the staff and casts Cone of Cold.
-   _rightsub|DC [*S:spell_save_dc] CON save
-   _subtitlefontcolor|[&subtitlefontcolor]
+   _title|Cone of Cold
+   _leftsub|Staff of Power (5 charges)
+   _rightsub|DC [*S:spell_save_dc] CON
    _titlecardbackground|linear-gradient(blue, cyan)
    _oddrowbackground|#00ccff
    _evenrowbackground|#edfcfc
@@ -158,7 +194,7 @@
    _autoApply|1
    _bar|[&hpBar]
    _zeroHPmarker|dead
-   _desc|A blast of cold air erupts from the staff. Each creature in a 60-foot cone must make a CON save. A creature killed by this spell becomes a frozen statue until it thaws.
+   _desc|A blast of cold air erupts from the staff. Each creature in a 60-foot cone must make a Constitution saving throw. A creature takes 8d8 cold damage on a failed save, or half as much damage on a successful one. A creature killed by this spell becomes a frozen statue until it thaws.
    [&cbrace][&cbrace]
   --X|
 
@@ -166,8 +202,9 @@
   -->DeductCharges|5
   --&Power|Fireball
   --@forselected|smartaoe [&brace][&brace]
-   _title|[*S:t-name] points the staff and casts Fireball.
-   _rightsub|DC [*S:spell_save_dc] DEX save
+   _title|Fireball
+   _leftsub|Staff of Power (5 charges)
+   _rightsub|DC [*S:spell_save_dc] DEX
    _chatAvatarsEnabled|false
    _aoeColor|#99000050
    _gridColor|#99000050
@@ -179,13 +216,13 @@
    _fx|burn-fire
    _dc|[*S:spell_save_dc]
    _saveFormula|5eDEX
-   _damageFormula1|[[8d6]]
-   _damageType1|Fire
+   _damageformula1|[[8d6]]
+   _damagetype1|fire
    _instant|1
    _autoApply|1
    _bar|[&hpBar]
    _zeroHPmarker|dead
-   _desc|A bright streak flashes to a point you choose, then blossoms into flame. Each creature in a 20-foot-radius sphere must make a DEX save. The fire ignites flammable objects in the area that are not being worn or carried.
+   _desc|A bright streak flashes from the staff to a point you choose within range and then blossoms with a low roar into an explosion of flame. Each creature in a 20-foot-radius sphere centered on that point must make a Dexterity saving throw. A target takes 8d6 fire damage on a failed save, or half as much damage on a successful one. The fire spreads around corners. It ignites flammable objects in the area that aren't being worn or carried.
    [&cbrace][&cbrace]
   --X|
 
@@ -193,22 +230,19 @@
   -->DeductCharges|5
   --&Power|Lightning Bolt
   --@forselected|smartaoe [&brace][&brace]
-   _title|[*S:t-name] points the staff and casts Lightning Bolt.
-   _rightsub|DC [*S:spell_save_dc] DEX save
-   _subtitlefontcolor|[&subtitlefontcolor]
-   _titlecardbackground|linear-gradient(blue, cyan)
-   _oddrowbackground|#00ccff
-   _evenrowbackground|#edfcfc
-   _oddrowfontcolor|#000000
-   _tablebgcolor|#edfcfc
+   _title|Lightning Bolt
+   _leftsub|Staff of Power (5 charges)
+   _rightsub|DC [*S:spell_save_dc] DEX
+   _titlecardbackground|url('https://s3.amazonaws.com/files.d20.io/images/248538196/c9xft1A2jWNqOkBsxQwyLQ/max.jpg?1633278017');background-size: contain;
+   _subtitlefontcolor|#ffffff
+   _oddrowbackground|#2c2775
+   _evenrowbackground|#c0bfd6
+   _oddrowfontcolor|#ffffff
+   _tablebgcolor|#c0bfd6
    _chatAvatarsEnabled|false
-   _aoeColor|#00ccff50
-   _aoeOutlineColor|#0099ff
-   _gridColor|#99999900
+   _aoeColor|#0044ff50
    _aoeType|line
    _radius|100ft
-   _minGridArea|0.25
-   _minTokArea|0.25
    _fx|burn-frost
    _dc|[*S:spell_save_dc]
    _saveFormula|5eDEX
@@ -218,7 +252,7 @@
    _autoApply|1
    _bar|[&hpBar]
    _zeroHPmarker|dead
-   _desc|A stroke of lightning shoots out forming a line 100 feet long and 5 feet wide. Each creature in the line must make a DEX save. The lightning ignites flammable objects in the area that are not being worn or carried.
+   _desc|A stroke of lightning forming a line 100 feet long and 5 feet wide blasts out from you in a direction you choose. Each creature in the line must make a Dexterity saving throw. A creature takes 8d6 lightning damage on a failed save, or half as much damage on a successful one. The lightning ignites flammable objects in the area that aren't being worn or carried.
    [&cbrace][&cbrace]
   --X|
 
@@ -284,11 +318,13 @@
   --+The shimmering barrier fades.|
   --X|
 
-  --/| ____________________ Magic Missile helpers __________________________________________
+  --/| ____________________ Magic Missile helpers (from Spells/Magic Missile.scard) __________
 
-  --:MMFireMissile|target-token-id
+  --:FireMissile|target-token-id
   --&ThisTarget|[%1%]
   --#targettoken|[&ThisTarget]
+  -->IsTargetShielded|[&ThisTarget];ShieldHit
+  --?[&ShieldHit] -eq 1|>ShieldMitigation
   --&Hex|
   --&HexBlade|
   -->LibSN_CHECK_STATUS_MARKER|[*[&ThisTarget]:t-id];[&HexMarker];HexMarkerFlag;HexMarkerCount
@@ -296,28 +332,197 @@
   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*[&ThisTarget]:t-id]"|&Hex; + 1d6 [Hex] |&Hex;
   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*[&ThisTarget]:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade; + [*S:pb] [Hexblade Curse] |&HexBlade;
   --&damageMod|
-  --=ThisMissile|1d4+1
+  --?"X[&damageMode]" -eq "X0"|[
+   --=ThisMissile|[$OneMissileDamage]
+   -->far_PlayEffects|[*S:t-id];[&ThisTarget];none;burst-smoke;beam-magic
+  --]|
+  --?"X[&damageMode]" -eq "X1"|[
+   --=ThisMissile|1d4+1
+  --]|
   -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0
   -->far_CheckDamageModifiers|[*[&ThisTarget]:character_id];[&damageType];damageMod;0;0;0
   --=ResultantDamage|[$ThisMissile.Raw] [&damageMod][&HexBlade][&Hex][&GlobalDamage]
   --=TotalDamage|[$TotalDamage] + [$ResultantDamage]
-  --&MMResultLabel[$TargetCount.Raw]|Bolt [$TargetCount.Raw]
-  --&MMResultText[$TargetCount.Raw]|Hits [*[&ThisTarget]:t-name] for [$ResultantDamage] [b][&damageType][/b] damage.
-  --=MMDamage[&ThisTarget]|[$MMDamage[&ThisTarget]] + [$ResultantDamage]
-  --&MMDartTarget[$TargetCount.Raw]|[&ThisTarget]
+  --?"X[&damageMode]" -eq "X1"|[
+   --&ResultLabel[$TargetCount.Raw]|Bolt [$TargetCount.Raw]
+   --&ResultText[$TargetCount.Raw]|Hits [*[&ThisTarget]:t-name] for [$ResultantDamage] [b][&damageType][/b] damage.
+  --]|[
+   --+Bolt [$TargetCount.Raw]: |Hits [*[&ThisTarget]:t-name] for [$ResultantDamage] [b][&damageType][/b] damage.
+  --]|
+  --=Damage[&ThisTarget]|[$Damage[&ThisTarget]] + [$ResultantDamage]
+  --&DartTarget[$TargetCount.Raw]|[&ThisTarget]
+  --=DartDamage[$TargetCount.Raw]|[$ResultantDamage]
+  --?[*[&ThisTarget]:t-bar[&hpBar]_value] -lt 0|[
+   -->LibSN_ADD_STATUS_MARKER|[*[&ThisTarget]:t-id];[&DeathMarker]
+  --]|
   --<|
 
-  --:MMBuildUnique|
-  --~|array;define;MMUnique;[@Targets(0)]
+  --:MissileSameDamage|
+  --=OneMissileDamage|1d4+1
+  --+Damage per dart: |[$OneMissileDamage]
+  --+|[br]
+  --^MissileLoop|
+
+  --:ShieldMitigation|
+  --=ResultantDamage|0
+  --=TotalDamage|[$TotalDamage] + [$ResultantDamage]
+  --?"X[&damageMode]" -eq "X1"|[
+   --&ResultLabel[$TargetCount.Raw]|Bolt [$TargetCount.Raw]
+   --&ResultText[$TargetCount.Raw]|Hits a Shield surrounding [*[&ThisTarget]:t-name] for 0 damage.
+  --]|[
+   --+Bolt [$TargetCount.Raw]: |Hits a Shield surrounding [*[&ThisTarget]:t-name] for 0 damage.
+  --]|
+  --&DartTarget[$TargetCount.Raw]|[&ThisTarget]
+  --=DartDamage[$TargetCount.Raw]|0
+  --<|
+
+  --:FinalizeDartResults|
+  --=TotalDamage|0
+  --%ut|foreach;Unique
+   --=Damage[&ut]|0
+  --%|
+  --%i|1;[$MissileCount];1
+   --&ThisDartTarget|[&DartTarget[&i]]
+   -->IsTargetShielded|[&ThisDartTarget];ShieldHit
+   --?[&ShieldHit] -eq 1|[
+    --&ResultText[&i]|Hits a Shield surrounding [*[&ThisDartTarget]:t-name] for 0 damage.
+   --]|[
+    --=TotalDamage|[$TotalDamage] + [$DartDamage[&i].Raw]
+    --=Damage[&ThisDartTarget]|[$Damage[&ThisDartTarget]] + [$DartDamage[&i].Raw]
+   --]|
+  --%|
+  --<|
+
+  --:BuildUnique|
+  --~|array;define;Unique;[@Targets(0)]
   --%loop|foreach;Targets
    --&ThisTarget|[&loop]
-   --?"X[&ThisTarget]" -eq "X"|MMBottomUniqueLoop
-   --~testvar|array;indexof;MMUnique;[&ThisTarget]
+   --?"X[&ThisTarget]" -eq "X"|BottomUniqueLoop
+   --~testvar|array;indexof;Unique;[&ThisTarget]
    --?"[&testvar]" -eq "ArrayError" | [
-    --~|array;add;MMUnique;[&ThisTarget]
+    --~|array;add;Unique;[&ThisTarget]
    --]|
-   --:MMBottomUniqueLoop|
+   --:BottomUniqueLoop|
   --%|
+  --<|
+
+  --:ShieldPrompt|
+  --&ShieldTargetTID|[&loop]
+  --&control|[*O:[*[&ShieldTargetTID]:t-represents]:character:controlledby]
+  --&playername|[*O:[&control]:player:displayname]
+  --?"X[&playername]" -eq "X"|[
+   --#whisper|gm
+  --]|[
+   --#whisper|[&playername],gm
+  --]|
+  -->IsTargetShielded|[&ShieldTargetTID];InitalShieldFlag
+  --?[&InitalShieldFlag] -eq 1|[
+   -->MarkTargetShielded|
+   --^ShieldReturn|
+  --]|
+  -->GetAndCheckSlotInformation|[*[&ShieldTargetTID]:t-id];1;shieldSpellLevel
+  --+[*[&ShieldTargetTID]:t-name]: |You are being targeted by Magic Missile and can cast Shield.
+  --+Do you want to cast Shield? |[c][rbutton]Yes::CheckMod;[&ShieldTargetTID][/rbutton][rbutton]No::No;[&ShieldTargetTID][/rbutton][/c]
+  --X|
+
+  --:No|
+  --&ShieldTargetTID|[&reentryval]
+  --^ShieldReturn|
+
+  --:CheckMod|
+  --&ShieldTargetTID|[&reentryval]
+  -->MarkTargetShielded|
+  --&TokenName|[*[&ShieldTargetTID]:character_name] Shield
+  --&ReactName|[*[&ShieldTargetTID]:character_name] [&ReactCharName]
+  -->MMShieldModExists|[*[&ShieldTargetTID]:t-id];Exists
+  --?[&Exists] -eq 1|>SetMod |>CreateMod
+  --=TargetTokenSpellSlot|[&shieldSpellLevel]
+  -->far_DeductSpellSlot|[*[&ShieldTargetTID]:t-id];[$TargetTokenSpellSlot]
+  -->TargetSpellContinue|
+
+  --:CreateMod|
+  --!a:[*[&ShieldTargetTID]:character_id]|global_ac_mod_flag:1
+  --!or:[*[&ShieldTargetTID]:character_id]:acmod|
+   global_ac_name:[&ModName]|
+   global_ac_val:5|
+   global_ac_active_flag:1|
+   options-flag:0
+  -->far_PlayEffects|[*[&ShieldTargetTID]:t-id];;;burn-holy
+  -->SpawnToken|
+  --<|
+
+  --:SetMod|
+  -->Lib5E_SET_GLOBAL_MOD_STATUS|[*[&ShieldTargetTID]:character_id];ac;[&ModName];1
+  -->far_PlayEffects|[*[&ShieldTargetTID]:t-id];;;burn-holy
+  -->SpawnToken|
+  --<|
+
+  --:SpawnToken|
+  -->GetCharID|[&CharName];ShieldID
+  -->GetCharID|[&ReactCharName];ReactID
+  --!ot:ReactTID|name:"[&ReactName]"|left:[*[&ShieldTargetTID]:t-left]|top:[*[&ShieldTargetTID]:t-top]|width:[=[*[&ShieldTargetTID]:t-width]*3]|height:[=[*[&ShieldTargetTID]:t-height]*3]|imgsrc:"[&Reactlink]"|bar1_value:1|represents:[&ReactID]|showname:0
+  --z:graphic:[&ReactTID]|toback
+  --@CARRY_TOKENS_CARRY_BELOW|[*[&ShieldTargetTID]:t-id] [&ReactTID]
+  --!ot:ShieldTID|name:"[&TokenName]"|left:[*[&ShieldTargetTID]:t-left]|top:[*[&ShieldTargetTID]:t-top]|width:[=[*[&ShieldTargetTID]:t-width]*3]|height:[=[*[&ShieldTargetTID]:t-height]*3]|imgsrc:"[&URLlink]"|bar1_value:1|represents:[&ShieldID]|showname:0
+  --z:graphic:[&ShieldTID]|toback
+  --@CARRY_TOKENS_CARRY_BELOW|[*[&ShieldTargetTID]:t-id] [&ShieldTID]
+  --<|
+
+  --:GetAndCheckSlotInformation|tokenid;SpellLevel;SpellLevelReturnString
+  --=Slotlevel|[%2%]
+  -->far_FIND_CLASS_LEVEL|[%1%];Warlock;WarLevel
+  --?[&WarLevel] -ge 1|[
+   --?[&WarLevel] -ge 9 |=Slotlevel;5
+   --?[&WarLevel] -eqi 7 -or [&WarLevel] -eqi 8|=Slotlevel;4
+   --?[&WarLevel] -eqi 5 -or [&WarLevel] -eqi 6 |=Slotlevel;3
+   --?[&WarLevel] -eqi 3 -or [&WarLevel] -eqi 4 |=Slotlevel;2
+   --?[&WarLevel] -lt 2 |=Slotlevel;1
+  --]|
+  --=SlotsExpended|[*[%1%]:lvl[$Slotlevel]_slots_expended]
+  --?[$SlotsExpended.Total] -le 0|[
+   --^ShieldReturn|
+  --]|
+  --&[%3%]|[$Slotlevel]
+  --<|
+
+  --:TargetSpellContinue|
+  --+Press to Continue: |[c][rbutton]Continue::ContinueReturn;[&ShieldTargetTID][/rbutton][/c]
+  --X|
+
+  --:ContinueReturn|
+  --&ShieldTargetTID|[&reentryval]
+  -->MarkTargetShielded|
+  --^ShieldReturn|
+
+  --:MarkTargetShielded|
+  --&ShieldedList|+;[&ShieldTargetTID];
+  --!a:[*[&ShieldTargetTID]:character_id]|[&ShieldMarkAttr]:1
+  --<|
+
+  --:ClearMMShieldMarks|
+  --%shieldCleanup|foreach;Targets
+   --!a:[*[&shieldCleanup]:character_id]|[&ShieldMarkAttr]:0
+  --%|
+  --<|
+
+  --:IsTargetShielded|tokenid;returnvar
+  --&[%2%]|0
+  --?"X[&ShieldedList]" -inc ";[%1%];"|&[%2%];1
+  --?"X[*[%1%]:mm_shield_active]" -eq "X1"|&[%2%];1
+  --Rfind|[*[%1%]:character_id];[&ModName];repeating_acmod;global_ac_name
+  --?"X[*R:global_ac_name]" -ne "XNoRepeatingAttributeLoaded" -and "X[*R:global_ac_active_flag]" -eq "X1"|&[%2%];1
+  --<|
+
+  --:MMShieldModExists|tokenid;returnvar
+  --&[%2%]|0
+  --Rfind|[*[%1%]:character_id];[&ModName];repeating_acmod;global_ac_name
+  --?"X[*R:global_ac_name]" -ne "XNoRepeatingAttributeLoaded"|&[%2%];1
+  --<|
+
+  --:GetCharID|CharacterName;StringVariableForCharID
+  --~|array;objects:character;SpiritCharArr;[%1%]
+  --?[@SpiritCharArr(length)] -ne 1|>far_FatalError;Could not find character named [%1%];ERROR;Create a journal character named [%1%] for Shield graphics
+  --&[%2%]|[@SpiritCharArr(0)]
   --<|
 
   --/| ____________________ Errors __________________________________________________________
