@@ -2,7 +2,7 @@
   +++5Elib;Farsidelib+++
   
   --/|Script Name : Shield
-  --/|Version     : 2.1.0
+  --/|Version     : 2.1.1
   --/|Modified By : Farsidegallery
   --/|  
   --/|  Script checks for spell level used and makes sure the slot is available. Script will check for existence of global mod and create if necessary.
@@ -69,12 +69,12 @@
    --&ReactName|[*S:character_name] [&ReactName]
    -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
    -->far_FIND_CLASS_LEVEL|[*S:character_id];Sorcerer;SLevel
-   
-   --?"X[&SLevel]" -eq "X0"|ChooseLevel
+   --?"X[&SLevel]" -eq "X0"|SkipWildMagic
    -->far_FindFeat|[*S:character_id];"Wild Magic Surge";WildFeatFlag
-
-   -->far_Check_GLOBAL_MOD_EXISTS|[*S:t-id]; ac; [&ModName]; Exists
-   --?[&Exists] -eq 1|>SetMod |>CreateMod
+   --:SkipWildMagic|
+   -->far_Check_GLOBAL_MOD_EXISTS|[*S:character_id];ac;[&ModName];Exists
+   --?"X[&Exists]" -eq "X1"|>SetMod
+   --?"X[&Exists]" -eq "X0"|>CreateMod
    --<|
   
   --:CreateMod| 
