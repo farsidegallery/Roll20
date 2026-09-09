@@ -1,10 +1,10 @@
 ﻿// Modified SmartAoE.js — unofficial Farsidegallery modifications on SmartAoE v0.30
 // Not authored or endorsed by djmoorehead. See "SmartAOE Changelog for DJMooreHead.md".
 // Source: https://github.com/djmoorehead/SmartAoE (v0.30)
-// Changes: TokenMod damage (Concentration trigger), control-token layering, cone face/corner origin, objects-layer AoE z-order, spawn/aim deferral
+// Changes: TokenMod damage (Concentration trigger), control-token layering, cone face/corner origin, objects-layer AoE z-order, spawn/aim deferral, 5e PC save formula + between save bonus and pbd_safe, hide secondary damage when not configured, active global save mods on 5e PC saves (Paladin Aura, Bless, etc.), readable 5e save roll tooltips (PC/NPC split, ability labels)
 const SmartAoE = (() => {
  const scriptName = "SmartAoE";
- const version = '0.30.3-farside';
+ const version = '0.30.8-farside';
  const schemaVersion = '0.1';
  
  var cardParameters = {};
@@ -500,27 +500,27 @@ const SmartAoE = (() => {
  let saveList = {
  "5estr": {
  "name": "STR Save",
- "formula": "[[d20 + ([[d0 + @{strength_save_bonus}@{pbd_safe}]]*(1-@{npc})) [PC] + (@{npc_str_save}*@{npc}) [NPC]]]"
+ "formula": "[[d20 + ([[d0 + @{strength_save_bonus} + @{pbd_safe}]]*(1-@{npc})) [PC] + (@{npc_str_save}*@{npc}) [NPC]]]"
  },
  "5edex": {
  "name": "DEX Save",
- "formula": "[[d20 + ([[d0 + @{dexterity_save_bonus}@{pbd_safe}]]*(1-@{npc})) [PC] + (@{npc_dex_save}*@{npc}) [NPC]]]"
+ "formula": "[[d20 + ([[d0 + @{dexterity_save_bonus} + @{pbd_safe}]]*(1-@{npc})) [PC] + (@{npc_dex_save}*@{npc}) [NPC]]]"
  },
  "5econ": {
  "name": "CON Save",
- "formula": "[[d20 + ([[d0 + @{constitution_save_bonus}@{pbd_safe}]]*(1-@{npc})) [PC] + (@{npc_con_save}*@{npc}) [NPC]]]"
+ "formula": "[[d20 + ([[d0 + @{constitution_save_bonus} + @{pbd_safe}]]*(1-@{npc})) [PC] + (@{npc_con_save}*@{npc}) [NPC]]]"
  },
  "5eint": {
  "name": "INT Save",
- "formula": "[[d20 + ([[d0 + @{intelligence_save_bonus}@{pbd_safe}]]*(1-@{npc})) [PC] + (@{npc_int_save}*@{npc}) [NPC]]]"
+ "formula": "[[d20 + ([[d0 + @{intelligence_save_bonus} + @{pbd_safe}]]*(1-@{npc})) [PC] + (@{npc_int_save}*@{npc}) [NPC]]]"
  },
  "5ewis": {
  "name": "WIS Save",
- "formula": "[[d20 + ([[d0 + @{wisdom_save_bonus}@{pbd_safe}]]*(1-@{npc})) [PC] + (@{npc_wis_save}*@{npc}) [NPC]]]"
+ "formula": "[[d20 + ([[d0 + @{wisdom_save_bonus} + @{pbd_safe}]]*(1-@{npc})) [PC] + (@{npc_wis_save}*@{npc}) [NPC]]]"
  },
  "5echa": {
  "name": "CHA Save",
- "formula": "[[d20 + ([[d0 + @{charisma_save_bonus}@{pbd_safe}]]*(1-@{npc})) [PC] + (@{npc_cha_save}*@{npc}) [NPC]]]"
+ "formula": "[[d20 + ([[d0 + @{charisma_save_bonus} + @{pbd_safe}]]*(1-@{npc})) [PC] + (@{npc_cha_save}*@{npc}) [NPC]]]"
  },
  "pf1fort": {
  "name": "FORT Save",
@@ -4177,10 +4177,135 @@ const SmartAoE = (() => {
  let canonical = canonicalizeDiceRollFormula(formula);
  if (canonical) { return canonical; }
  }
- if (isNumber(base) && isFinite(base)) {
+ if (isNumber(base) && isFinite(base) && base !== 0) {
  return `[[${base}]]`;
  }
  return null;
+ };
+
+ // True when the AoE link has a real second damage source (not unset defaults / base 0).
+ const hasSecondaryDamage = function(link) {
+ if (!link) { return false; }
+ if (link.rollDamage2) { return true; }
+ if (Number(link.damageBase2) !== 0 && isFinite(Number(link.damageBase2))) { return true; }
+ if (link.damageFormula2 && link.damageFormula2 !== 'damageFormula2' && canonicalizeDiceRollFormula(link.damageFormula2)) {
+ return true;
+ }
+ return false;
+ };
+
+ // 5e standard save templates use one formula for PC and NPC; resolve per character for readable tooltips.
+ const save5eAbilityMeta = {
+ strength: { abbrev: 'Str', pcAttrs: ['strength_save_bonus', 'pbd_safe'], npcAttr: 'npc_str_save' },
+ dexterity: { abbrev: 'Dex', pcAttrs: ['dexterity_save_bonus', 'pbd_safe'], npcAttr: 'npc_dex_save' },
+ constitution: { abbrev: 'Con', pcAttrs: ['constitution_save_bonus', 'pbd_safe'], npcAttr: 'npc_con_save' },
+ intelligence: { abbrev: 'Int', pcAttrs: ['intelligence_save_bonus', 'pbd_safe'], npcAttr: 'npc_int_save' },
+ wisdom: { abbrev: 'Wis', pcAttrs: ['wisdom_save_bonus', 'pbd_safe'], npcAttr: 'npc_wis_save' },
+ charisma: { abbrev: 'Cha', pcAttrs: ['charisma_save_bonus', 'pbd_safe'], npcAttr: 'npc_cha_save' }
+ };
+
+ const getCharAttrNumber = function(charID, attrName) {
+ const result = getAttrByName(charID, attrName);
+ if (typeof result === 'number') { return result; }
+ if (result === '' || result === undefined || result === null) { return 0; }
+ const n = parseFloat(String(result));
+ return isNaN(n) ? 0 : n;
+ };
+
+ const detect5eStandardSaveFormula = function(formula) {
+ if (!formula) { return null; }
+ for (const [ability, meta] of Object.entries(save5eAbilityMeta)) {
+ if (formula.includes(`@{${ability}_save_bonus}`)) {
+ return { ability, ...meta };
+ }
+ }
+ return null;
+ };
+
+ const formatRollModifier = function(value, label) {
+ const v = Number(value);
+ if (!isFinite(v) || v === 0) { return ''; }
+ if (v > 0) { return ` + ${v} [${label}]`; }
+ return ` - ${Math.abs(v)} [${label}]`;
+ };
+
+ const buildClean5eSaveFormula = function(templateFormula, charID, saveDisplayName) {
+ const meta = detect5eStandardSaveFormula(templateFormula);
+ if (!meta) { return null; }
+
+ const isNpc = getCharAttrNumber(charID, 'npc') === 1;
+
+ if (isNpc) {
+ const npcSave = getCharAttrNumber(charID, meta.npcAttr);
+ const label = saveDisplayName || 'Save';
+ return `[[d20${formatRollModifier(npcSave, label)}]]`;
+ }
+
+ let bonus = 0;
+ meta.pcAttrs.forEach(attrName => { bonus += getCharAttrNumber(charID, attrName); });
+
+ let formula = `[[d20${formatRollModifier(bonus, meta.abbrev)}`;
+ getActiveGlobalSaveModPieces(charID).forEach(piece => {
+ if (/^[+-]?\d+(?:\.\d+)?$/.test(piece.roll)) {
+ const v = String(piece.roll).replace(/^\+/, '').trim();
+ formula += ` + ${v}# [${piece.name}]`;
+ } else {
+ formula += ` + ${piece.roll}# [${piece.name}]`;
+ }
+ });
+ formula += ']]';
+ return formula;
+ };
+
+ // Read active OGL 2014 global save modifiers (repeating_savemod) for 5e PC save rolls.
+ const getActiveGlobalSaveModPieces = function(charID) {
+ const npc = getAttrByName(charID, 'npc');
+ if (npc === 1 || npc === '1') { return []; }
+
+ const attrs = findObjs({ _type: 'attribute', _characterid: charID }) || [];
+ const rows = {};
+
+ attrs.forEach(attr => {
+ const attrName = attr.get('name') || '';
+ const match = attrName.match(/^repeating_savemod_(-[-A-Za-z0-9]+)_(global_save_name|global_save_roll|global_save_active_flag)$/);
+ if (!match) { return; }
+ const rowId = match[1];
+ const field = match[2];
+ if (!rows[rowId]) { rows[rowId] = {}; }
+ rows[rowId][field] = String(attr.get('current') ?? '').trim();
+ });
+
+ const pieces = [];
+ const seenNames = {};
+ Object.keys(rows).forEach(rowId => {
+ const row = rows[rowId];
+ if (row.global_save_active_flag !== '1') { return; }
+ const modName = row.global_save_name || '';
+ if (!modName || modName === 'Bardic Inspiration') { return; }
+ let modRoll = (row.global_save_roll || '').trim();
+ if (!modRoll) { return; }
+ const dedupKey = modName.replace(/'/g, '\u2019').replace(/-/g, '\u2011');
+ if (seenNames[dedupKey]) { return; }
+ seenNames[dedupKey] = true;
+ modRoll = modRoll.replace(/^\+/, '').trim();
+ pieces.push({ name: modName, roll: modRoll });
+ });
+ return pieces;
+ };
+
+ const appendActiveGlobalSaveMods = function(formula, charID) {
+ if (!formula || !/\[PC\]/.test(formula)) { return formula; }
+ const pieces = getActiveGlobalSaveModPieces(charID);
+ if (pieces.length === 0) { return formula; }
+
+ let suffix = '';
+ pieces.forEach(piece => {
+ suffix += ` + ${piece.roll}# [${piece.name}]`;
+ });
+
+ const closeIdx = formula.lastIndexOf(']]');
+ if (closeIdx < 0) { return formula + suffix; }
+ return formula.slice(0, closeIdx) + suffix + formula.slice(closeIdx);
  };
 
  // 5e save templates use [[d0 + @{}]]; empty attrs or d0 can break the ModScript dice parser.
@@ -4325,7 +4450,11 @@ const SmartAoE = (() => {
  if (link.noSave===true) {
  computedFormula = '[[0]]'
  } else {
+ computedFormula = buildClean5eSaveFormula(link.saveFormula, charID, link.saveName);
+ if (!computedFormula) {
  computedFormula = replaceAttributes(link.saveFormula, charID);
+ computedFormula = appendActiveGlobalSaveMods(computedFormula, charID);
+ }
  computedFormula = prepareSaveRollFormulaForSendChat(computedFormula);
  if (!computedFormula) { return null; }
  }
@@ -4430,19 +4559,14 @@ const SmartAoE = (() => {
  let output = buildTitle(aoeLink.cardParameters);
  
  if (damageRolls[0].result_1[0]) {
- if (damageRolls.length > 1) {
- if (damageRolls[1].result_1[0]) {
+ if (hasSecondaryDamage(aoeLink) && damageRolls.length > 1 && damageRolls[1].result_1[0]) {
  //two damage rolls
  output = output + buildDamageRow(damageRolls[0].styled_1, aoeLink.damageType1, false, damageRolls[1].styled_1, aoeLink.damageType2, aoeLink.cardParameters)
  } else {
  //one damage roll
  output = output + buildDamageRow(damageRolls[0].styled_1, aoeLink.damageType1, false, '', '', aoeLink.cardParameters)
  }
- } else {
- //one damage roll
- output = output + buildDamageRow(damageRolls[0].styled_1, aoeLink.damageType1, false, '', '', aoeLink.cardParameters)
  }
- 
  let descRow = buildDescRow(aoeLink.cardParameters.descriptiontext, aoeLink.cardParameters)
  output = output + buildTableBody('', '', descRow, aoeLink.cardParameters);
  
@@ -4450,7 +4574,6 @@ const SmartAoE = (() => {
  whisperString = aoeLink.whisperString;
  }
  sendChat(scriptName, `${whisperString} ${output}`);
- }
  }
  }
  
@@ -4681,14 +4804,9 @@ const SmartAoE = (() => {
  let outputNew = buildTitle(aoeLink.cardParameters);
  
  if (damageRolls[0].result_1[0]) {
- if (damageRolls.length > 1) {
- if (damageRolls[1].result_1[0]) {
+ if (hasSecondaryDamage(aoeLink) && damageRolls.length > 1 && damageRolls[1].result_1[0]) {
  //two damage rolls
  outputNew = outputNew + buildDamageRow(damageRolls[0].styled_1, aoeLink.damageType1, false, damageRolls[1].styled_1, aoeLink.damageType2, aoeLink.cardParameters)
- } else {
- //one damage roll
- outputNew = outputNew + buildDamageRow(damageRolls[0].styled_1, aoeLink.damageType1, false, '', '', aoeLink.cardParameters)
- }
  } else {
  //one damage roll
  outputNew = outputNew + buildDamageRow(damageRolls[0].styled_1, aoeLink.damageType1, false, '', '', aoeLink.cardParameters)
@@ -4712,6 +4830,7 @@ const SmartAoE = (() => {
  
  let damType1 = aoeLink.damageType1.toLowerCase()
  let damType2 = aoeLink.damageType2.toLowerCase()
+ let useSecondaryDamage = hasSecondaryDamage(aoeLink) && damageRolls.length > 1;
  /*
  log(o.name)
  log('vulnerabilities = ' + o.vulnerabilities);
@@ -4740,7 +4859,7 @@ const SmartAoE = (() => {
  if (damType1 !== '' && o.vulnerabilities.includes(damType1)) { tempDam1 = applyMathRule(tempDam1, aoeLink.vulnerableRule); pushUniqueElementToArray(RVI, 'V') }
  if (damType1 !== '' && o.resistances.includes(damType1)) { tempDam1 = applyMathRule(tempDam1, aoeLink.resistanceRule); pushUniqueElementToArray(RVI, 'R') }
  if (damType1 !== '' && o.immunities.includes(damType1)) { tempDam1 = applyMathRule(tempDam1, aoeLink.immunityRule); pushUniqueElementToArray(RVI, 'I') }
- if (damageRolls.length > 1) {
+ if (useSecondaryDamage) {
  tempDam2 = damageRolls[1].result_1;
  if (damType2 !== '' && o.vulnerabilities.includes(damType2)) { tempDam2 = applyMathRule(tempDam2, aoeLink.vulnerableRule); pushUniqueElementToArray(RVI, 'V') }
  if (damType2 !== '' && o.resistances.includes(damType2)) { tempDam2 = applyMathRule(tempDam2, aoeLink.resistanceRule); pushUniqueElementToArray(RVI, 'R') }
@@ -4757,7 +4876,7 @@ const SmartAoE = (() => {
  //tempDam = applyMathRule(tempDam, aoeLink.resistanceRule)
  thisDamage.push(tempDam1);
  //check for 2nd damage type
- if (damageRolls.length > 1) {
+ if (useSecondaryDamage) {
  //thisDamage.push(Math.floor(damageRolls[1].result_1 / 2));
  tempDam2 = applyMathRule(tempDam2, aoeLink.damageSaveRule)
  thisDamage.push(tempDam2);
@@ -4770,7 +4889,7 @@ const SmartAoE = (() => {
  success = false;
  atLeastOneFailedSave = true;
  thisDamage.push(tempDam1);
- if (damageRolls.length > 1) {
+ if (useSecondaryDamage) {
  thisDamage.push(tempDam2);
  }
  if (aoeLink.conditionFail && aoeLink.autoApply) {
