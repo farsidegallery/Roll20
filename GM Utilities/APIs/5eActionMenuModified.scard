@@ -1,6 +1,6 @@
 !script {{
   --/|Script Name : 5E Action Menu
-  --/|Version     : 3.2.0
+  --/|Version     : 3.2.1
   --/|Requires SC : 2.7.15+
   --/|Author      : Kurt Jaegers
   --/|Modified By : Farsidegallery
@@ -275,13 +275,14 @@
 
   --#leftsub|Action Menu
 
-  --?[&EnablePerCharacterConfiguration] -eq 0|SKIP_PER_CHAR_SETTINGS
+  --?[&EnablePerCharacterConfiguration] -eq 0|[
+   --&perCharacterOptions|$SGAM1$$SGDM1$$SGSM1$$SGMB1$$SSAS1$$SGCM1$$SGKM1$$SHRB1$
+   --#leftsub|Action Menu [rbutton][&ClearCacheImage]::CLEAR_CHARACTER_CACHE[/rbutton]
+   --^SKIP_PER_CHAR_SETTINGS|
+  --]|
   --#leftsub|Action Menu [rbutton][&SettingsImage]::DISPLAY_CHARACTER_CONFIG_MENU[/rbutton] [rbutton][&ClearCacheImage]::CLEAR_CHARACTER_CACHE[/rbutton]
   -->LOAD_PER_CHARACTER_CONFIG_OPTIONS|[*S:character_id]
   --:SKIP_PER_CHAR_SETTINGS|
-  --&perCharacterOptions|$SGAM1$$SGDM1$$SGSM1$$SGMB1$$SSAS1$$SGCM1$$SGKM1$$SHRB1$
-  --
-  --#leftsub|Action Menu [rbutton][&ClearCacheImage]::CLEAR_CHARACTER_CACHE[/rbutton]
 
   --?[*S:npc] -eq 1|SKIP_REST_BUTTONS
   --?"[&ShowRestButtons]" -ne "1"|SKIP_REST_BUTTONS
@@ -2024,15 +2025,21 @@
   --:LOAD_PER_CHARACTER_CONFIG_OPTIONS|characterID
   --&_LoadCharId|[%1%]
   --?"X[&_LoadCharId]" -eq "X"|&_LoadCharId;[&AMCharacterId]
-  --?"[&_LoadCharId]" -eq ""|--<|
+  --?"[&_LoadCharId]" -eq ""|[
+   --<|
+  --]|
   --?"[*[&_LoadCharId]:5ECAM_SETTINGS]" -eq ""|>SET_DEFAULT_PER_CHARACTER_SETTINGS;[&_LoadCharId]
   --?"[*[&_LoadCharId]:5ECAM_SETTINGS]" -eq "undefined"|>SET_DEFAULT_PER_CHARACTER_SETTINGS;[&_LoadCharId]
   --&perCharacterOptions|[*[&_LoadCharId]:5ECAM_SETTINGS]
   --<|
 
   --:SET_DEFAULT_PER_CHARACTER_SETTINGS|CharacterID
-  --?"X[%1%]" -eq "X"|--<|
-  --?"[%1%]" -eq ""|--<|
+  --?"X[%1%]" -eq "X"|[
+   --<|
+  --]|
+  --?"[%1%]" -eq ""|[
+   --<|
+  --]|
   --&SettingsString|$SGAM1$$SGDM1$$SGSM1$$SGMB1$$SSAS1$$SGCM1$$SGKM1$$SHRB1$
   --!a:[%1%]|!5ECAM_SETTINGS:[&SettingsString]
   --<|
@@ -2263,7 +2270,7 @@
   --?[*S:class] -eq "Warlock"|&[%1%];[*S:base_level]
   --?"[*S:multiclass1_flag]" -eq "1" -and [*S:multiclass1] -eq "Warlock"|&[%1%];[*S:multiclass1_lvl]
   --?"[*S:multiclass2_flag]" -eq "1" -and [*S:multiclass2] -eq "Warlock"|&[%1%];[*S:multiclass2_lvl]
-  --?"[*S:multiclass3_flag]" -eq "1" -and [*S:multiclass3] -eq "Warlock"|&[%1%];[*S:multiclass2_lvl]
+  --?"[*S:multiclass3_flag]" -eq "1" -and [*S:multiclass3] -eq "Warlock"|&[%1%];[*S:multiclass3_lvl]
   --<|
 
   --:CHECK_SPELLS_TO_KEEP|AttackName; Return variable;suffix
