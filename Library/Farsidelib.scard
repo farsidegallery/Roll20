@@ -1,4 +1,4 @@
---/|ScriptCards Library: Farsidelib  version 1.6.4
+--/|ScriptCards Library: Farsidelib  version 1.6.5
 --/|Provides various utility procedures for Roll20
 
 --/|This library contains a number of functions that are customized to meet the different needs of spell or ability
@@ -309,7 +309,7 @@
    
  --:far_DeductSpellSlot|tokenid;SpellLevel
   --=_Lib5ESlotsExpended|[*[%1%]:lvl[%2%]_slots_expended] - 1
-  --!a:[%1%]|lvl[%2%]_slots_expended:[$_Lib5ESlotsExpended]
+  --!a:[*[%1%]:character_id]|lvl[%2%]_slots_expended:[$_Lib5ESlotsExpended]
   --+|[*[%1%]:character_name] has [$_Lib5ESlotsExpended] Level [%2%] Slots Left. 
   --<|
 
@@ -323,9 +323,7 @@
   --<|
  
  --:far_FatalError|EmoteText;ErrorHeader;ErrorMessage
-  --#emoteText|[%1%]
-  --+[%2%]|[%3%]
-  --X|  
+  --^far_LogFatalError|
  
  --:far_FindFeat|tokenid;FeatName;FeatFlag
   --~|array;fromrepeatingsection;Traits;[*[%1%]:character_id];repeating_traits;name
@@ -460,38 +458,7 @@
   --?"X[&_FarGMCharId]" -eq "X"|&_FarGMCharId;[%1%]
   --?"X[&_FarGMCharId]" -eq "X"|<
   -->far_RfindGlobalModStaged|[%2%];[%3]
-  --?"[&_Lib5E_Search_Field]" -eq "damage"|>_Lib5E_GMCheck_damage
-  --?"[&_Lib5E_Search_Field]" -eq "attack"|>_Lib5E_GMCheck_attack
-  --?"[&_Lib5E_Search_Field]" -eq "ac"|>_Lib5E_GMCheck_ac
-  --?"[&_Lib5E_Search_Field]" -eq "save"|>_Lib5E_GMCheck_save
-  --?"[&_Lib5E_Search_Field]" -eq "skill"|>_Lib5E_GMCheck_skill
-  --^_Lib5E_GMCheck_done|
-  --:_Lib5E_GMCheck_attack|
-  --?"[*R:global_attack_name]" -ne "NoRepeatingAttributeLoaded"|[
-   --&[&_FarGMReturnVar]|1
-  --]|
-  --^_Lib5E_GMCheck_done|
-  --:_Lib5E_GMCheck_damage|
-  --?"[*R:global_damage_name]" -ne "NoRepeatingAttributeLoaded"|[
-   --&[&_FarGMReturnVar]|1
-  --]|
-  --^_Lib5E_GMCheck_done|
-  --:_Lib5E_GMCheck_ac|
-  --?"[*R:global_ac_name]" -ne "NoRepeatingAttributeLoaded"|[
-   --&[&_FarGMReturnVar]|1
-  --]|
-  --^_Lib5E_GMCheck_done|
-  --:_Lib5E_GMCheck_save|
-  --?"[*R:global_save_name]" -ne "NoRepeatingAttributeLoaded"|[
-   --&[&_FarGMReturnVar]|1
-  --]|
-  --^_Lib5E_GMCheck_done|
-  --:_Lib5E_GMCheck_skill|
-  --?"[*R:global_skill_name]" -ne "NoRepeatingAttributeLoaded"|[
-   --&[&_FarGMReturnVar]|1
-  --]|
-  --^_Lib5E_GMCheck_done|
-  --:_Lib5E_GMCheck_done|
+  --?"[*R:global_[&_Lib5E_Search_Field]_name]" -ne "NoRepeatingAttributeLoaded"|&[&_FarGMReturnVar]|1
   --<|
 
  --:far_Check_GLOBAL_ATTRIB_SAVE_EXISTS|characterid; attributename; returnstring (0=does not exist, 1=exists)
@@ -573,9 +540,7 @@
   
  --:far_EndHexbladeCurse|cursed-target-token-id; optional-warlock-token-id
   --&CurseTargetToken|[%1%]
-  --?"X[&CurseTargetToken]" -eq "X"|[
-     --^EndHexbladeReturn|
-     --]|
+  --?"X[&CurseTargetToken]" -eq "X"|<
   --&WarlockToken|[%2%]
   --?"X[&WarlockToken]" -eq "X"|[
    -->far_GetTokenCharAttr|[&CurseTargetToken];CurseCaster;;WarlockToken
@@ -664,7 +629,7 @@
   --=BaseRoll|[%4%]
   --=AdjustedRoll|[%5%]
   --&BardRoll|
-  --?[$Scriptcheck] -nei 1|&BardPath;far_ChooseBard |&BardPath;far_ScriptBardEntry
+  --?[%3] -nei 1|&BardPath;far_ChooseBard |&BardPath;far_ScriptBardEntry
   --+Dice Roll|You rolled a [$BaseRoll] for a total of [$AdjustedRoll].  
   --+Do you want to use Bardic Inspiration?|[rbutton]Yes::[&BardPath][/rbutton][rbutton]No::far_AnswerNo[/rbutton]
   --X|
@@ -1291,7 +1256,7 @@
   --&FSMCount|[%3%]
   --?"X[&FSMCount]" -eq "X"|&FSMCount;0
   --&FSMAdd|[%2%]
-  --?"X[&FSMCount]" -ne "X0"|&FSMAdd;[%2]@[&FSMCount]
+  --?"X[&FSMCount]" -ne "X0"|&FSMAdd;[%2%]@[&FSMCount]
   --~|array;statusmarkers;FSMList;[%1%]
   --~|array;add;FSMList;[&FSMAdd]
   --~FSMNew|array;stringify;FSMList
