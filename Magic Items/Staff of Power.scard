@@ -2,7 +2,7 @@
   +++5Elib;snlib;Farsidelib+++
 
   --/|Script Name : Staff of Power
-  --/|Version     : 1.2.0
+  --/|Version     : 1.2.1
   --/|Requires SC : SmartAOE, TokenMod, ScriptCards Library 5Elib/snlib/Farsidelib 1.5.10+
   --/|Author      : Arak
   --/|Modified By : Farsidegallery
@@ -339,7 +339,8 @@
   --?"X[&damageMode]" -eq "X1"|[
    --=ThisMissile|1d4+1
   --]|
-  -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0
+  --&GlobalDamage|
+  -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0;[*[&ThisTarget]:character_id]
   -->far_CheckDamageModifiers|[*[&ThisTarget]:character_id];[&damageType];damageMod;0;0;0
   --=ResultantDamage|[$ThisMissile.Raw] [&damageMod][&HexBlade][&Hex][&GlobalDamage]
   --=TotalDamage|[$TotalDamage] + [$ResultantDamage]
