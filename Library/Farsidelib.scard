@@ -1,4 +1,4 @@
---/|ScriptCards Library: Farsidelib  version 1.6.6
+--/|ScriptCards Library: Farsidelib  version 1.6.11
 --/|Provides various utility procedures for Roll20
 
 --/|This library contains a number of functions that are customized to meet the different needs of spell or ability
@@ -118,9 +118,9 @@
 --/|   far_LogFatalError|EmoteText;ErrorHeader;ErrorMessage
 --/|
 --/|   far_Lib5E_FIND_ACTIVE_GLOBAL_ATTACK_MODS|character_id;StringVariableToSet
---/|   far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|character_id;StringVariableToSet;isCrit;targetCharacterId;isMagical;isSilver;isAdamantine
---/|     Optional targetCharacterId defaults to [*T:character_id] when #targettoken is set. Each mod with global_damage_type
---/|     gets far_CheckDamageModifiers applied for that type (e.g. Absorbed Element lightning vs Blue Dragon immunity).
+--/|   far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|character_id;StringVariableToSet;isCrit;targetCharacterID
+--/|     Param 4 is target character id. Typed mods get resist/vuln/immune applied before # (immune uses 0#).
+--/|   far_Lib5E_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|character_id;StringVariableToSet
 --/|   far_Lib5E_FIND_ACTIVE_GLOBAL_SAVE_MODS|character_id;StringVariableToSet
 --/|   far_Lib5E_FIND_ACTIVE_GLOBAL_AC_MODS|character_id;StringVariableToSet
 --/|   far_Lib5E_FIND_ACTIVE_GLOBAL_SKILL_MODS|character_id;StringVariableToSet
@@ -742,18 +742,12 @@
   --&_GAM_Temp|+ [&GMMGamPiece]
   --<|
 
- --:far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|character_id;StringVariableToSet;isCrit(1=true);targetCharacterId;isMagical;isSilver;isAdamantine
+ --:far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|character_id;StringVariableToSet;isCrit(1=true);targetCharacterID
   --&_obrac|[ --&_cbrac|]
   --&_GDM_Temp| 
   --&_GDMDedupSeen|
-  --&_FarGDMTargetId|[%4]
-  --?"X[&_FarGDMTargetId]" -eq "X" -or "[&_FarGDMTargetId]" -eq ""|&_FarGDMTargetId|[*T:character_id]
-  --&_FarGDMMagic|[%5]
-  --?"X[&_FarGDMMagic]" -eq "X"|&_FarGDMMagic;0
-  --&_FarGDMSilver|[%6]
-  --?"X[&_FarGDMSilver]" -eq "X"|&_FarGDMSilver;0
-  --&_FarGDMAdam|[%7]
-  --?"X[&_FarGDMAdam]" -eq "X"|&_FarGDMAdam;0
+  --&_FarGMCritFlag|0
+  --?"[%3]" -eq "1"|&_FarGMCritFlag;1
   --Rfirst|[%1%];repeating_damagemod
   --:far_GDM_Loop|
   --?"[*R:global_damage_active_flag]" -eq "1"|[
@@ -761,37 +755,49 @@
    --&_FarGMValue2|[*R:global_damage_critical_damage]
    --&_FarGMType|[*R:global_damage_type]
    --&GMMModName|[*R:global_damage_name]
+   --&FarGMTypeMod|
+   --?"X[&_FarGMType]" -ne "X" -and "[&_FarGMType]" -ne ""|>far_CheckDamageModifiers;[%4%];[&_FarGMType];FarGMTypeMod
    --~GMMModName|string;replace;';’;[&GMMModName]
    --~GMMModName|string;replace;-‑;[&GMMModName]
    --&GDMDedupKey||[&GMMModName]|
    --?"[&_GDMDedupSeen]" -ninc "[&GDMDedupKey]"|[
     --&_GDMDedupSeen|+ [&GDMDedupKey]
-    --&_FarGMCrit|[%3]
     -->far_AddGDM|
    --]|
   --]|
   --Rnext| 
   --?"[*R:global_damage_name]" -ne "NoRepeatingAttributeLoaded"|far_GDM_Loop
+  --&[%2%]|
   --&[%2%]|[&_GDM_Temp] 
   --<|
   
  --:far_AddGDM|
   --&GMMModBracket|[&_obrac][&GMMModName][&cbrac]
   --&GMMRollSep|#
-  --&GMMDmgPiece|
-  --&GMMDmgPiece|+ + [&_FarGMValue][&GMMRollSep]
-  --?"[&_FarGMType]" -ne ""|&GMMDmgPiece;+ [&_FarGMType] damage 
-  --&GMMDmgPiece|+ [&GMMModBracket]
-  --?"X[&_FarGDMTargetId]" -ne "X" -and "[&_FarGDMTargetId]" -ne "" -and "[&_FarGMType]" -ne ""|[
-   -->far_CheckDamageModifiers|[&_FarGDMTargetId];[&_FarGMType];_GDMTypeMod;[&_FarGDMMagic];[&_FarGDMSilver];[&_FarGDMAdam]
-   --&GMMDmgPiece|+ [&_GDMTypeMod]
+  --&GDMRollCore|[&_FarGMValue]
+  --&GDMLabelSuffix|
+  --&GDMTypeModSnap|[&FarGMTypeMod]
+  --&_GMMCritSuffix|
+  --&_GMMCritPiece|
+  --?"[&GDMTypeModSnap]" -inc "* 0"|[
+   --&GDMRollCore|0
+   --&GDMLabelSuffix| &#91;Immune&#93;
   --]|
+  --?"X[&GDMTypeModSnap]" -ne "X" -and "[&GDMTypeModSnap]" -ninc "* 0"|[
+   --&GDMRollCore|([&GDMRollCore] [&GDMTypeModSnap])
+  --]|
+  --&GMMDmgPiece|
+  --&GMMDmgPiece|+ + [&GDMRollCore][&GMMRollSep]
+  --?"[&_FarGMType]" -ne ""|&GMMDmgPiece;+ [&_FarGMType] damage 
+  --&GMMDmgPiece|+ [&GMMModBracket][&GDMLabelSuffix]
   --&_GDM_Temp|+ [&GMMDmgPiece]
-  --&GMMCritSuffix| CRIT [&GMMModBracket]
-  --?"[&_FarGMCrit]" -eq "1"|[
-   --&GMMCritPiece|+ + [&_FarGMValue2] [&GMMCritSuffix]
-   --?"X[&_FarGDMTargetId]" -ne "X" -and "[&_FarGDMTargetId]" -ne "" -and "[&_FarGMType]" -ne ""|&GMMCritPiece|+ [&_GDMTypeMod]
-   --&_GDM_Temp|+ [&GMMCritPiece]
+  --?"[&_FarGMCritFlag]" -eq "1"|[
+   --&GDMCritCore|[&_FarGMValue2]
+   --?"[&GDMTypeModSnap]" -inc "* 0"|&GDMCritCore;0
+   --?"X[&GDMTypeModSnap]" -ne "X" -and "[&GDMTypeModSnap]" -ninc "* 0"|&GDMCritCore;([&GDMCritCore] [&GDMTypeModSnap])
+   --&_GMMCritSuffix| CRIT [&GMMModBracket]
+   --&_GMMCritPiece|+ + [&GDMCritCore][&_GMMCritSuffix]
+   --&_GDM_Temp|+ [&_GMMCritPiece]
   --]|
   --<|
 
