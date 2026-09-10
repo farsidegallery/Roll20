@@ -1,4 +1,4 @@
---/|ScriptCards Library: Farsidelib  version 1.6.3
+--/|ScriptCards Library: Farsidelib  version 1.6.4
 --/|Provides various utility procedures for Roll20
 
 --/|This library contains a number of functions that are customized to meet the different needs of spell or ability
@@ -429,23 +429,17 @@
 
  --:far_RfindGlobalModStaged|category;modName
   -->far_GlobalModResolveCategory|[%1%];_Lib5E_WHICH_GM;_Lib5E_Search_Field
-  --?"X[&_FarGMCharId]" -eq "X"|[
-   --<|
-  --]|
+  --?"X[&_FarGMCharId]" -eq "X"|<
   --&_FarRfindModName|[%2%]
   --?"X[&_FarRfindModName]" -eq "X"|&_FarRfindModName;[&_FarGMName]
-  --?"X[&_FarRfindModName]" -eq "X"|[
-   --<|
-  --]|
+  --?"X[&_FarRfindModName]" -eq "X"|<
   --#parameterdelimiter|$$$
   --Rfind|[&_FarGMCharId]$$$[&_FarRfindModName]$$$repeating_[&_Lib5E_WHICH_GM]$$$global_[&_Lib5E_Search_Field]_name
   --#parameterdelimiter|;
   --<|
 
  --:far_SetGlobalModStatusStaged|category;activeFlag;modName
-  --?"X[&_FarGMCharId]" -eq "X"|[
-   --<|
-  --]|
+  --?"X[&_FarGMCharId]" -eq "X"|<
   -->far_RfindGlobalModStaged|[%1%];[%3%]
   --?"[*R:global_[&_Lib5E_Search_Field]_name]" -eq "NoRepeatingAttributeLoaded"|>far_LogFatalError;Global [%1%] Modifier [&_FarRfindModName] not found on character [&_FarGMCharId]
   --?"[%2]" -eq 2|[
@@ -464,9 +458,7 @@
   --&[&_FarGMReturnVar]|0
   --&_FarGMCharId|[*T:character_id]
   --?"X[&_FarGMCharId]" -eq "X"|&_FarGMCharId;[%1%]
-  --?"X[&_FarGMCharId]" -eq "X"|[
-   --<|
-  --]|
+  --?"X[&_FarGMCharId]" -eq "X"|<
   -->far_RfindGlobalModStaged|[%2%];[%3]
   --?"[&_Lib5E_Search_Field]" -eq "damage"|>_Lib5E_GMCheck_damage
   --?"[&_Lib5E_Search_Field]" -eq "attack"|>_Lib5E_GMCheck_attack
@@ -541,9 +533,7 @@
 
  --:far_HasCharAttr|character-id;attribute-name;return-var
   --&[%3%]|0
-  --?"X[%1%]" -eq "X"|[
-   --<|
-  --]|
+  --?"X[%1%]" -eq "X"|<
   --~|array;attributes;AttrCheckList;[%1%];[%2%]
   --?[@AttrCheckList(length)] -ge 1|&[%3%];1
   --<|
@@ -559,32 +549,24 @@
 
  --:far_GetTokenCharAttr|token-id;attribute-name;default-value;return-var
   --&[%4%]|[%3%]
-  --?"X[*[%1%]:character_id]" -eq "X"|<|
+  --?"X[*[%1%]:character_id]" -eq "X"|<
   -->far_GetCharAttr|[*[%1%]:character_id];[%2%];[%3%];[%4%]
   --<|
 
  --:far_IsHexbladeCurseFrom|target-token-id;caster-token-id;return-var
   --&[%3%]|0
-  --?"X[%1%]" -eq "X"|[
-   --<|
-  --]|
+  --?"X[%1%]" -eq "X"|<
   -->LibSN_CHECK_STATUS_MARKER|[%1%];[&HexBladeMarker];HexbladeCurseCheck;HexbladeCurseCount
-  --?[&HexbladeCurseCheck] -ne 1|[
-   --<|
-  --]|
+  --?[&HexbladeCurseCheck] -ne 1|<
   -->far_GetTokenCharAttr|[%1%];CurseCaster;;CurseCasterToken
   --?"X[&CurseCasterToken]" -eqi "X[%2%]"|&[%3%];1
   --<|
 
  --:far_IsHexTargetOfCaster|target-token-id;caster-token-id;return-var
   --&[%3%]|0
-  --?"X[%1%]" -eq "X"|[
-   --<|
-  --]|
+  --?"X[%1%]" -eq "X"|<
   -->LibSN_CHECK_STATUS_MARKER|[%1%];[&HexMarker];HexTargetCheck;HexTargetCount
-  --?[&HexTargetCheck] -ne 1|[
-   --<|
-  --]|
+  --?[&HexTargetCheck] -ne 1|<
   -->far_GetCharAttr|[*[%2%]:character_id];ConcentrationSpellTargetToken;;ConcHexTargetToken
   --?"X[&ConcHexTargetToken]" -eqi "X[%1%]"|&[%3%];1
   --<|
@@ -635,9 +617,7 @@
  
  --:far_CheckWarlockHexbladeCurse|warlock-token-id
   -->far_GetTokenCharAttr|[%1%];CurseTarget;;WarlockCurseTarget
-  --?"X[&WarlockCurseTarget]" -eq "X"|[
-     --<|
-     --]|
+  --?"X[&WarlockCurseTarget]" -eq "X"|<
   --?"X[*[%1%]:bar1_value]" -le "X0"|>far_ClearWarlockCurse
   --?"X[*[%1%]:statusmarkers]" -inc "dead"|>far_ClearWarlockCurse
   -->LibSN_CHECK_STATUS_MARKER|[%1%];[&IncapacitatedMarker];IncapFlag;IncapCount
@@ -651,13 +631,9 @@
  
  --:far_HexHeal|cursed-target-token-id
   -->far_GetTokenCharAttr|[%1%];CurseCaster;;WarlockToken
-  --?"X[&WarlockToken]" -eq "X"|[
-   --<|
-  --]|
+  --?"X[&WarlockToken]" -eq "X"|<
   --?"X[*[%1%]:bar1_value]" -ne "X" -and [*[%1%]:bar1_value] -gt 0|[
-   --?"X[*[%1%]:statusmarkers]" -ninc "dead"|[
-    --<|
-   --]|
+   --?"X[*[%1%]:statusmarkers]" -ninc "dead"|<
   --]|
   -->Lib5E_FIND_CLASS_LEVEL|[*[&WarlockToken]:character_id];Warlock;WarlockLevel
   --=WarlockHeal|[&WarlockLevel][Level] + [*[&WarlockToken]:charisma_mod] [Cha Mod] {MIN:1}
@@ -1335,7 +1311,7 @@
   --&PAPaladinTokId|
   --#targettoken|[&PATargetTok]
   --&PACharId|[*T:character_id]
-  --?"X[&PACharId]" -eq "X"|--<|
+  --?"X[&PACharId]" -eq "X"|<
   -->far_GetTokenCharAttr|[&PATargetTok];PaladinAuraSources;,;PaladinAuraSources
   --?"X[&PaladinAuraSources]" -inc ",[&PAPalTok],"|paAddSourceSkip|
   --&PaladinAuraSources|+[&PAPalTok],
@@ -1355,7 +1331,7 @@
   --&PAPaladinTokId|
   --#targettoken|[&PATargetTok]
   --&PACharId|[*T:character_id]
-  --?"X[&PACharId]" -eq "X"|--<|
+  --?"X[&PACharId]" -eq "X"|<
   -->far_GetTokenCharAttr|[&PATargetTok];PaladinAuraSources;,;PaladinAuraSources
   --&PalRemNeedle|,[&PAPalTok],
   --&PalRemTo|,
@@ -1481,7 +1457,7 @@
   --?"X[&PATargetTok]" -eq "X"|&PATargetTok;[%1%]
   --#targettoken|[&PATargetTok]
   --&PACharId|[*T:character_id]
-  --?"X[&PACharId]" -eq "X"|--<|
+  --?"X[&PACharId]" -eq "X"|<
   --&PaladinAuraModName|Paladin Aura
   --&PaladinAuraAppliedBonus|0
   --&PaladinAuraCourageMsg|
@@ -1563,15 +1539,13 @@
 
  --:far_PaladinAuraEnsureMod|bonus-total
   --&PATargetTok|[&PATargetTokId]
-  --?"X[&PATargetTok]" -eq "X"|--<|
+  --?"X[&PATargetTok]" -eq "X"|<
   --#targettoken|[&PATargetTok]
   --&PACharId|[*T:character_id]
-  --?"X[&PACharId]" -eq "X"|--<|
+  --?"X[&PACharId]" -eq "X"|<
   --&PAModName|Paladin Aura
   --=PAModBonus|[%1%]
-  --?[$PAModBonus] -le -999|[
-   --<|
-  --]|
+  --?[$PAModBonus] -le -999|<
   --&PAExists|0
   --&_FarGMName|[&PAModName]
   --&_FarGMCharId|[&PACharId]
@@ -1597,10 +1571,10 @@
 
  --:far_PaladinAuraDeactivate|
   --&PATargetTok|[&PATargetTokId]
-  --?"X[&PATargetTok]" -eq "X"|--<|
+  --?"X[&PATargetTok]" -eq "X"|<
   --#targettoken|[&PATargetTok]
   --&PACharId|[*T:character_id]
-  --?"X[&PACharId]" -eq "X"|--<|
+  --?"X[&PACharId]" -eq "X"|<
   --&PAModName|Paladin Aura
   --Rfirst|[&PACharId];repeating_savemod
   --:PADeactLoop|
@@ -1674,9 +1648,7 @@
   --?"X[%3]" -eq "X"|[
    --=PARefAuraFeet|[*T:t-aura1_radius]
   --]|
-  --?[$PARefAuraFeet] -le 0|[
-   --<|
-  --]|
+  --?[$PARefAuraFeet] -le 0|<
   --=PARefScale|[*P:scale_number]
   --=PARefSnapFeet|[*P:snapping_increment]
   --?[$PARefScale] -le 0|[

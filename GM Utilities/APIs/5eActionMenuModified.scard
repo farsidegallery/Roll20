@@ -1,6 +1,6 @@
 !script {{
   --/|Script Name : 5E Action Menu
-  --/|Version     : 3.2.1
+  --/|Version     : 3.2.2
   --/|Requires SC : 2.7.15+
   --/|Author      : Kurt Jaegers
   --/|Modified By : Farsidegallery
@@ -770,7 +770,7 @@
   --&RidTail|[&RidTail(after,RID)]
   --&RidTail|[&RidTail(after,-)]
   --&attack_rowid|-[&RidTail]
-  --?"1" -eq "1"|PC_ATK_PARSE_DONE|PC_ATK_PARSE_DONE
+  --^PC_ATK_PARSE_DONE|
   --:PC_ATK_NAME_ONLY|
   --?"X[&attack_name]" -eq "X" -or "[&attack_name]" -eq ""|&attack_name;[&RidTail]
   --:PC_ATK_PARSE_DONE|
@@ -1685,7 +1685,7 @@
   --<|  
 
   --:Get_Ability_Modifier|attribute_string;returnnumericvalue;returnnamestring
-  --?"[%1%]" -eq ""|<|
+  --?"[%1%]" -eq ""|<
   --=[%2%]|
   --&[%3%]|
   --?"[%1%]" -eq "strength_mod"|=[%2%];[*S:strength_mod]
@@ -2025,21 +2025,15 @@
   --:LOAD_PER_CHARACTER_CONFIG_OPTIONS|characterID
   --&_LoadCharId|[%1%]
   --?"X[&_LoadCharId]" -eq "X"|&_LoadCharId;[&AMCharacterId]
-  --?"[&_LoadCharId]" -eq ""|[
-   --<|
-  --]|
+  --?"[&_LoadCharId]" -eq ""|<
   --?"[*[&_LoadCharId]:5ECAM_SETTINGS]" -eq ""|>SET_DEFAULT_PER_CHARACTER_SETTINGS;[&_LoadCharId]
   --?"[*[&_LoadCharId]:5ECAM_SETTINGS]" -eq "undefined"|>SET_DEFAULT_PER_CHARACTER_SETTINGS;[&_LoadCharId]
   --&perCharacterOptions|[*[&_LoadCharId]:5ECAM_SETTINGS]
   --<|
 
   --:SET_DEFAULT_PER_CHARACTER_SETTINGS|CharacterID
-  --?"X[%1%]" -eq "X"|[
-   --<|
-  --]|
-  --?"[%1%]" -eq ""|[
-   --<|
-  --]|
+  --?"X[%1%]" -eq "X"|<
+  --?"[%1%]" -eq ""|<
   --&SettingsString|$SGAM1$$SGDM1$$SGSM1$$SGMB1$$SSAS1$$SGCM1$$SGKM1$$SHRB1$
   --!a:[%1%]|!5ECAM_SETTINGS:[&SettingsString]
   --<|
@@ -2404,7 +2398,6 @@
    --!a:[%1%]|5ECAM_AMLIST:
   --]|
   --?"X[*[%1%]:5ECAM_AMLIST]" -ne "X"|[
-   --?"X[*[%1%]:5ECAM_AMLIST]" -eq "X"|DACA_ATTR0_SKIP
    --?"[*[%1%]:5ECAM_AMLIST]" -eq "undefined"|DACA_ATTR0_SKIP
    --&amListSource|[*[%1%]:5ECAM_AMLIST]
    --&amListSafe|[&amListSource(replaceall,;,&&&)]
@@ -2485,7 +2478,7 @@
     --~testMule|system;findability;[%6%];[&testName]
     --?[&testMule] -ne "AbilityNotFound"|[
       --&AM_BUTTON_LIST|+[button][&DisplayName(totitlecase)]::~[%6%]|[&testName][/button][&SPACE]
-      --?"1" -eq "1"|AM_LIST_CONTINUE|AM_LIST_CONTINUE
+      --^AM_LIST_CONTINUE|
     --]|
     --:AM_LIST_SKIP_MULE_CHECK|
     --&actionAttackFlag|[:BuiltButtonHash("[&DisplayName]_attack_flag")]
@@ -2494,7 +2487,7 @@
     --&actionTargetSuffix|[&TB]target|token_id}
     --?"[&actionAttackFlag]" -eq "0"|AM_LIST_PC_NO_TARGET|AM_LIST_BUILD_RBUTTON
     --?"[&actionAttackFlag]" -eq 0|AM_LIST_PC_NO_TARGET|AM_LIST_BUILD_RBUTTON
-    --?"1" -eq "1"|AM_LIST_BUILD_RBUTTON|AM_LIST_BUILD_RBUTTON
+    --^AM_LIST_BUILD_RBUTTON|
     --:AM_LIST_NPC_ATTACK_SUFFIX|
     --&actionTargetSuffix|NONE
     --?"[&actionAttackFlag]" -inc "on"|AM_LIST_ATTACK_TARGET|AM_LIST_NPC_ATTACK_EQ1
@@ -2511,7 +2504,7 @@
      --?"[&DisplayName]" -inc "+"|AM_LIST_PC_NAME_PAYLOAD|AM_LIST_PC_RID_PAYLOAD
      --:AM_LIST_PC_RID_PAYLOAD|
      --&PcAttackPayload|RID[&PcRidBody]
-     --?"1" -eq "1"|AM_LIST_PC_PAYLOAD_DONE|AM_LIST_PC_PAYLOAD_DONE
+     --^AM_LIST_PC_PAYLOAD_DONE|
      --:AM_LIST_PC_NAME_PAYLOAD|
      --&PcAttackPayload|[&ActionName]
      --:AM_LIST_PC_PAYLOAD_DONE|
