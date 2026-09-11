@@ -1,6 +1,6 @@
-!script {{
+﻿!script {{
   --/|Script Name : 5E Action Menu
-  --/|Version     : 3.2.2
+  --/|Version     : 3.4.11
   --/|Requires SC : 2.7.15+
   --/|Author      : Kurt Jaegers
   --/|Modified By : Farsidegallery
@@ -34,6 +34,7 @@
   --&showCharacterSummary|1         --/|Show a line of summary information at the top of the Action Menu. Set to 0 to disable
   --&showGlobalModifierButtons|1    --/|Show global modifiers (attack, damage, save, skill) buttons and allow players to toggle them on/off. Set to 0 to hide
   --&showBonusActionsAndReactions|1 --/|Show Bonus Actions and Reactions for characters. Set to 0 to disable
+  --&showPCFeats|1                  --/|Show Traits/Feats for PCs (after Reactions, before Cantrips). Set to 0 to disable
   --#functionbenchmarking|0         --/|If set to 1, the console will show performance info after the script is run
   --&ReportResourceReset|y
 
@@ -63,8 +64,15 @@
   --/|The name matching rules are the same as those for the Spell Mule.
   --&sharednpcmacromulename|NPCAbility_Mule
   
-  --/|If you create a mule character and put its name here, you can define macros for PC attacks/actions and Bonus Action / Reaction trait buttons.
-  --/|Set to none to skip mule lookup for PC attacks (sheet-only). Bonus Actions and Reactions always check this mule when not none.
+  --/|=========================================================================================================
+  --/| PC ABILITY MULE — TRAITS/FEATS WITH A COLON IN THE NAME (read before naming mule abilities)
+  --/| Roll20 sheet buttons break when the piped ability name contains ":". For traits like
+  --/| "Channel Divinity: Turn Undead", the menu button still shows the full trait name, but the ability on
+  --/| this mule must be named ONLY the text after the colon (trim spaces), e.g. "Turn Undead" — not the
+  --/| full "Channel Divinity: Turn Undead" string. Matching uses that suffix only.
+  --/|=========================================================================================================
+  --/|If you create a mule character and put its name here, you can define macros for PC attacks/actions, Feats, and Bonus Action / Reaction trait buttons.
+  --/|Set to none to skip mule lookup for PC attacks (sheet-only). Feats, Bonus Actions, and Reactions check this mule first, then NPCAbility_Mule.
   --&pcabilitymulename|PCAbility_Mule
 
   --/|=========================================================================================================
@@ -93,6 +101,7 @@
   --&Template|none                      --/|If you wish to use Keith Curtis' SuperNotes templates, put the template name here
   --&DisplayButtonsForAMAbilities|1     --/|If set to 1, the menu will include custom buttons defined on characters that include the "AM-" prefix in their names.
   --&AmListDebug|0                      --/|Set to 1 to whisper GM debug lines while building Custom Actions (AMLIST troubleshooting)
+  --&CamTraceDebug|0                    --/|Set to 1 for ScriptCards debug trace lines on trait/mule button building. Set 0 when done.
   --&UseEmojisToReplaceText|0           --/|If set to 1, emojis will be used in place of text in some places
 
   --/|Adjusting these values will allow you to customize the padding around the action buttons. The default for Roll20 is 5px. The Action
@@ -623,6 +632,9 @@
   --/|Handle action menu creation for PCs. 
 
   --:proc_pc|
+  --?"[&CamTraceDebug]" -ne "1"|PROC_PC_TRACE_OFF
+  --#debug|1
+  --:PROC_PC_TRACE_OFF|
   --/+|[hr #58180d]
   --+| 
   --#whisper|self
@@ -687,7 +699,9 @@
   --]| 
 
   -->BUILD_BUTTON_LIST|[*S:character_id];repeating_attack;atkname;EXEC_PC_ATTACK;Attacks and Actions;[&pcabilitymulename];0;1
+  --&_baRaShownTraits|;
   --?"[&showBonusActionsAndReactions]" -eq 1|>DISPLAY_PC_OTHER_ACTIONS
+  --?"[&showPCFeats]" -eq 1|>DISPLAY_PC_FEATS
   -->BUILD_SPELL_BUTTON_LIST|[*S:character_id];repeating_spell-cantrip;spellname;EXEC_PC_CANTRIP;Cantrips;[&spellmulename];0
   
   --/|Display a grid of the available spell slots for this character
@@ -788,7 +802,7 @@
    --&PcHashSectionKey|[&attack_name]_sectionid
    --&attack_rowid|[:PCAtkExecHash("[&PcHashSectionKey]")]
   --]|
-  --/|Rfind by name before Rbysectionid — partial Rbysectionid loads can set atkname but leave dmgbase wrong (e.g. Greataxe +1 shows flat 1 + magic).
+  --/|Rfind by name before Rbysectionid â€” partial Rbysectionid loads can set atkname but leave dmgbase wrong (e.g. Greataxe +1 shows flat 1 + magic).
   --?"[*R:atkname]" -eq "NoRepeatingAttributeLoaded" -and "[&attack_name]" -ne ""|[
    --#parameterdelimiter|$$$
    --Rfind|[&PcLookupCharId]$$$[&attack_name]$$$repeating_attack$$$atkname
@@ -1417,7 +1431,7 @@
   --/|that has an active flag set. This is set to a variable named after the second parameter and can be appended
   --/|directly to an attack/damage/save roll. Toggle buttons use row ids (Rbysectionid) for names with
   --/|apostrophes or hyphens. Find/append sanitizes GMMModName and builds roll fragments via GMMRollSep
-  --/|(no literal # on the same line as [&var] — gosub params and # lines cannot expand [&label]).
+  --/|(no literal # on the same line as [&var] â€” gosub params and # lines cannot expand [&label]).
 
   --:SET_ADV_MODE|
   --&currentAdvantageMode|[&reentryval]
@@ -1434,7 +1448,7 @@
     --?"[&_GAMStgRoll]" -ne ""|[
      --&GMMModName|[*R:global_attack_name]
      --~GMMModName|string;replace;';’;[&GMMModName]
-     --~GMMModName|string;replace;-‑;[&GMMModName]
+     --~GMMModName|string;replace;-;‑;[&GMMModName]
      --&GAMDedupKey||[&GMMModName]|
      --?"[&_GAMDedupSeen]" -ninc "[&GAMDedupKey]"|[
       --&_GAMDedupSeen|+ [&GAMDedupKey]
@@ -1468,7 +1482,7 @@
    --&_GDMStgType|[*R:global_damage_type]
    --&GMMModName|[*R:global_damage_name]
    --~GMMModName|string;replace;';’;[&GMMModName]
-   --~GMMModName|string;replace;-‑;[&GMMModName]
+   --~GMMModName|string;replace;-;‑;[&GMMModName]
    --&GDMDedupKey||[&GMMModName]|
    --?"[&_GDMDedupSeen]" -ninc "[&GDMDedupKey]"|[
     --&_GDMDedupSeen|+ [&GDMDedupKey]
@@ -1512,7 +1526,7 @@
     --?"[&_GSMStgRoll]" -ne ""|[
      --&GMMModName|[*R:global_save_name]
      --~GMMModName|string;replace;';’;[&GMMModName]
-     --~GMMModName|string;replace;-‑;[&GMMModName]
+     --~GMMModName|string;replace;-;‑;[&GMMModName]
      --&GSMDedupKey||[&GMMModName]|
      --?"[&_GSMDedupSeen]" -ninc "[&GSMDedupKey]"|[
       --&_GSMDedupSeen|+ [&GSMDedupKey]
@@ -1547,7 +1561,7 @@
     --?"[&_GSKMStgRoll]" -ne ""|[
      --&GMMModName|[*R:global_skill_name]
      --~GMMModName|string;replace;';’;[&GMMModName]
-     --~GMMModName|string;replace;-‑;[&GMMModName]
+     --~GMMModName|string;replace;-;‑;[&GMMModName]
      --&GSKMDedupKey||[&GMMModName]|
      --?"[&_GSKMDedupSeen]" -ninc "[&GSKMDedupKey]"|[
       --&_GSKMDedupSeen|+ [&GSKMDedupKey]
@@ -1706,25 +1720,53 @@
   --/|When applying damage, one of the four functions listed below will be executed to alter the target's HP. The ScriptCards
   --/|method is recommended, as there won't be an issue with impacting the same target more than once.
 
+  --/|Adjust incoming damage for temporary HP. Positive amounts (healing) pass through unchanged.
+  --/|Reads temp HP from the token bar. Sets &_tempAdjAmount, &_tempNewValue, &_tempAlterDelta (for AlterBars), &_tempBarChanged (0/1).
+  --:ADJUST_DAMAGE_FOR_TEMP_HP|TokenID;tempHPbar;Amount
+  --&_tempAdjAmount|[%3%]
+  --&_tempNewValue|
+  --&_tempAlterDelta|0
+  --&_tempBarChanged|0
+  --?"[%2%]" -eq ""|<
+  --=TempHPIncoming|[%3%]
+  --?[$TempHPIncoming.Raw] -ge 0|<
+  --&TempHPCurrentValue|[*[%1%]:t-bar[%2%]_value]
+  --?"[&TempHPCurrentValue]" -eq ""|<
+  --?"[&TempHPCurrentValue]" -eq "undefined"|<
+  --=TempHPCurrent|[&TempHPCurrentValue]
+  --?[$TempHPCurrent.Raw] -le 0|<
+  --=TempHPDamage|[$TempHPIncoming.Raw] {NEGATE}
+  --?[$TempHPCurrent.Raw] -ge [$TempHPDamage.Raw]|ADJUST_TEMP_HP_ABSORBS_ALL
+  --=TempHPAdjustedDamage|[$TempHPIncoming.Raw] + [$TempHPCurrent.Raw]
+  --&_tempAdjAmount|[$TempHPAdjustedDamage.Raw]
+  --&_tempNewValue|0
+  --=TempAlterDelta|0 - [$TempHPCurrent.Raw]
+  --&_tempAlterDelta|[$TempAlterDelta.Raw]
+  --&_tempBarChanged|1
+  --^ADJUST_TEMP_HP_DONE|
+  --:ADJUST_TEMP_HP_ABSORBS_ALL|
+  --=TempHPRemaining|[$TempHPCurrent.Raw] - [$TempHPDamage.Raw]
+  --&_tempAdjAmount|0
+  --&_tempNewValue|[$TempHPRemaining.Raw]
+  --=TempAlterDelta|[$TempHPRemaining.Raw] - [$TempHPCurrent.Raw]
+  --&_tempAlterDelta|[$TempAlterDelta.Raw]
+  --&_tempBarChanged|1
+  --:ADJUST_TEMP_HP_DONE|
+  --<|
+
+  --/|Write temp HP to token bar and sync character hp_temp attribute.
+  --:SYNC_TEMP_HP_BAR|TokenID;tempHPbar;newValue
+  --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[%3%]
+  --!a:[*[%1%]:character_id]|!hp_temp:[%3%]
+  --!t:[%1%]|bar[%2%]_value|[%3%]
+  --<|
+
   --/|Apply damage via ScriptCards' built-in object modification function (new in ScriptCards 1.5.0)
   --:ApplyDamageScriptCards|Parameters are tokenid;bar#;tempHPbar;amount;display (0 or 1);allow overheal (0 or 1);allow negative hp (0 or 1)
-  --=_applyValue|[%4%]
-  --=TempHP|[*[%1%]:hp_temp]
-  --~damageValue|math;abs;[$_applyValue]
-  --?"X[$TempHP]" -nei "X" -and [$TempHP] -gt 0 -and [$TempHP] -ge [$damageValue]|[
-   --=newTempHP|[$TempHP]-[$damageValue]
-   --@token-mod|_ignore-selected _ids [%1%] _set bar[&tempHPBar]_value|[$newTempHP.Raw]
-   --!a:[*[%1%]:character_id]|!hp_temp:[$newTempHP.Raw]
-   --!t:[%1%]|bar[%3%]_value:[$newTempHP.Raw]
-   --<|
-   --]|
-  --?"X[$TempHP]" -nei "X" -and [$TempHP] -gt 0 -and [$TempHP] -lt [$damageValue]|[
-   --=_applyValue|[$_applyValue]+[$TempHP]
-   --@token-mod|_ignore-selected _ids [%1%] _set bar[tempHPBar]_value|0
-   --!a:[*[%1%]:character_id]|!hp_temp:0
-   --!t:[%1%]|bar[%3%]_value:0
-   --]|
-  --=_newValue|[*[%1%]:t-bar[%2%]_value] + [$_applyValue]
+  -->ADJUST_DAMAGE_FOR_TEMP_HP|[%1%];[%3%];[%4%]
+  --?"[&_tempBarChanged]" -eq "1"|-->SYNC_TEMP_HP_BAR|[%1%];[%3%];[&_tempNewValue]
+  --?"[&_tempAdjAmount]" -eq "0"|<
+  --=_newValue|[*[%1%]:t-bar[%2%]_value] + [&_tempAdjAmount]
   --?[$_newValue] -lt 0 -and "X[%7%]" -ne "X1"|=_newValue;0
   --?"X[%6%]" -ne "X1" -and [$_newValue] -gt [*[%1%]:t-bar[%2%]_max]|=_newValue;[*[%1%]:t-bar[%2%]_max]
   --?"X[%5%]" -eq "X1"|+Applying;[%4%] HP to [*[%1%]:t-name]
@@ -1735,27 +1777,26 @@
   --/|make sure it doesn't fall below 0, and set the amount back into the bar.
   --/|Partial temp+HP: batch both bars in one @token-mod call. Temp HP read from token bar only.
   --:ApplyDamageTokenmod|Parameters are tokenid;bar#;tempHPbar;amount;display (0 or 1);allow overheal (0 or 1);allow negative hp (0 or 1)
-  --=_applyValue|[%4%]
+  -->ADJUST_DAMAGE_FOR_TEMP_HP|[%1%];[%3%];[%4%]
   --=StartHP|[*[%1%]:t-bar[%2%]_value]
-  --=TempHP|[*[%1%]:t-bar[%3%]_value]
-  --~damageValue|math;abs;[$_applyValue]
-  --?"X[$TempHP]" -nei "X" -and [$TempHP] -gt 0 -and [$TempHP] -ge [$damageValue]|[
-   --=newTempHP|[$TempHP]-[$damageValue]
-   --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[$StartHP] bar[%3%]_value|[$newTempHP.Raw]
-   --!t:[%1%]|bar[%2%]_value:[$StartHP]|bar[%3%]_value:[$newTempHP.Raw]
+  --?"[&_tempBarChanged]" -eq "1" -and "[&_tempAdjAmount]" -eq "0"|[
+   --?"X[%5%]" -eq "X1"|+Applying;[%4%] HP to [*[%1%]:t-name]
+   --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[$StartHP] bar[%3%]_value|[$_tempNewValue]
+   --!t:[%1%]|bar[%2%]_value:[$StartHP]|bar[%3%]_value:[$_tempNewValue]
+   --!a:[*[%1%]:character_id]|!hp_temp:[$_tempNewValue]
    --<|
   --]|
-  --?"X[$TempHP]" -nei "X" -and [$TempHP] -gt 0 -and [$TempHP] -lt [$damageValue]|[
-   --=_applyValue|[$_applyValue]+[$TempHP]
-   --=_newValue|[$StartHP] + [$_applyValue]
+  --?"[&_tempBarChanged]" -eq "1"|[
+   --=_newValue|[$StartHP] + [&_tempAdjAmount]
    --?[$_newValue] -lt 0 -and "X[%7%]" -ne "X1"|=_newValue;0
    --?"X[%6%]" -ne "X1" -and [$_newValue] -gt [*[%1%]:t-bar[%2%]_max]|=_newValue;[*[%1%]:t-bar[%2%]_max]
    --?"X[%5%]" -eq "X1"|+Applying;[%4%] HP to [*[%1%]:t-name]
-   --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[$_newValue.Raw] bar[%3%]_value|0
-   --!t:[%1%]|bar[%2%]_value:[$_newValue.Raw]|bar[%3%]_value:0
+   --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[$_newValue.Raw] bar[%3%]_value|[$_tempNewValue]
+   --!t:[%1%]|bar[%2%]_value:[$_newValue.Raw]|bar[%3%]_value:[$_tempNewValue]
+   --!a:[*[%1%]:character_id]|!hp_temp:[$_tempNewValue]
    --<|
   --]|
-  --=_newValue|[$StartHP] + [$_applyValue]
+  --=_newValue|[$StartHP] + [&_tempAdjAmount]
   --?[$_newValue] -lt 0 -and "X[%7%]" -ne "X1"|=_newValue;0
   --?"X[%6%]" -ne "X1" -and [$_newValue] -gt [*[%1%]:t-bar[%2%]_max]|=_newValue;[*[%1%]:t-bar[%2%]_max]
   --?"X[%5%]" -eq "X1"|+Applying;[%4%] HP to [*[%1%]:t-name]
@@ -1765,24 +1806,17 @@
   
   --/|AlterBars supports relative values for the amount parameter, so we just pass it the value with a "-" in front of it.
   --:ApplyDamageAlterbars|Parameters are tokenid;bar#;tempHPbar;amount;display (0 or 1);allow overheal (0 or 1);allow negative hp (0 or 1)
-  --=_applyValue|[%4%]
-  --=TempHP|[*[%1%]:hp_temp]
-  --~damageValue|math;abs;[$_applyValue]
-  --?"X[$TempHP]" -nei "X" -and [$TempHP] -gt 0 -and [$TempHP] -ge [$damageValue]|[
-   --@alter|_target|[%1%] _bar|[%3%] _amount|-[$damageValue.Raw] _show|none
-   --/|!a:[*[%1%]:character_id]|!hp_temp:[$newTempHP.Raw]
-   --<|
-   --]|
-  --?"X[$TempHP]" -nei "X" -and [$TempHP] -gt 0 -and [$TempHP] -lt [$damageValue]|[
-   --=_applyValue|[$_applyValue]+[$TempHP]
-   --@alter|_target|[%1%] _bar|[%3%] _amount|-[$TempHP] _show|none
-   --/|!a:[*[%1%]:character_id]|!hp_temp:0
-   --]|
-  --=_newValue|[*[%1%]:t-bar[%2%]_value] + [$_applyValue]
+  -->ADJUST_DAMAGE_FOR_TEMP_HP|[%1%];[%3%];[%4%]
+  --?"[&_tempBarChanged]" -eq "1"|[
+   --@alter|_target|[%1%] _bar|[%3%] _amount|[&_tempAlterDelta] _show|none
+   --!a:[*[%1%]:character_id]|!hp_temp:[$_tempNewValue]
+  --]|
+  --?"[&_tempAdjAmount]" -eq "0"|<
+  --=_newValue|[*[%1%]:t-bar[%2%]_value] + [&_tempAdjAmount]
   --?[$_newValue] -lt 0 -and "X[%7%]" -ne "X1"|=_newValue;0
   --?"X[%6%]" -ne "X1" -and [$_newValue] -gt [*[%1%]:t-bar[%2%]_max]|=_newValue;[*[%1%]:t-bar[%2%]_max]
   --?"X[%5%]" -eq "X1"|+Applying;[%4%] HP to [*[%1%]:t-name]  
-  --@alter|_target|[%1%] _bar|[%2%] _amount|-[$_applyValue] _show|none
+  --@alter|_target|[%1%] _bar|[%2%] _amount|-[$_tempAdjAmount] _show|none
   --<|
 
   --/|Just a dummy routine that doesn't do anything, but it is easier to do it this way than adding logic to see if we are
@@ -2321,12 +2355,15 @@
    --?"X[&abilName]" -eq "X"|DACA_ABIL_NEXT
    --?"[&abilName]" -eq ""|DACA_ABIL_NEXT
    --?"[&abilName]" -eq "false"|DACA_ABIL_NEXT
-   --&DACA_BUTTONS|+[button][&abilName(replaceall,-, )]::~[%1%]|[&abilName][/button]
+   --~_dacaAbilId|system;findability;[%1%];[&abilName]
+   --?"[&_dacaAbilId]" -eq "AbilityNotFound"|DACA_ABIL_NEXT
+   --&_muleBtnPiece|[button][&abilName(replaceall,-, )]::~[%1]|[&abilName][/button][&SPACE]
+   --&DACA_BUTTONS|+[&_muleBtnPiece]
    --:DACA_ABIL_NEXT|
   --%|
   --^DACA_SHARED_MULE|
 
-  --/|Parse AMLIST and build mule buttons — no --+ output here (card lines abort gosub after parse debug)
+  --/|Parse AMLIST and build mule buttons â€” no --+ output here (card lines abort gosub after parse debug)
   --:DACA_BUILD_MULE_BUTTONS|
   --&dacaParseCount|0
   --=dacaBtnCount|0
@@ -2379,14 +2416,15 @@
     --&muleSheetName|[&muleAbilityName]
    --]|
    --?"[&testMule]" -eq "AbilityNotFound"|DACA_MULE_NEXT
-   --&DACA_BUTTONS|+[button][&muleAbilityName(replaceall,-, )]::~[&dacaMuleRef]|[&muleSheetName][/button]
+   --&_muleBtnPiece|[button][&muleAbilityName(replaceall,-, )]::~[&dacaMuleRef]|[&muleSheetName][/button][&SPACE]
+   --&DACA_BUTTONS|+[&_muleBtnPiece]
    --=dacaBtnCount|[$dacaBtnCount.Raw] + 1
    --:DACA_MULE_NEXT|
   --%|
   --?"[$dacaBtnCount.Raw]" -eq "0"|&dacaBuildHint;mule-not-found
   --<|
 
-  --/|Shared macro mule — AMLIST ability lists mule names (semicolon-separated)
+  --/|Shared macro mule â€” AMLIST ability lists mule names (semicolon-separated)
   --:DACA_SHARED_MULE|
   --?"[&sharedmacromulename]" -eq ""|DACA_FINISH_BUTTONS
   --?"[&sharedmacromulename]" -eq "none"|DACA_FINISH_BUTTONS
@@ -2439,9 +2477,7 @@
   --&AM_CACHED_BUTTON_LIST|[*[%1%]:5ECAM_CACHE_[%5%]]
   --?"[&AM_CACHED_BUTTON_LIST]" -eq "undefined"|DO_BUILD_BUTTON_LIST
   --?"[&AM_CACHED_BUTTON_LIST]" -eq ""|DO_BUILD_BUTTON_LIST
-  --&AM_CACHED_BUTTON_LIST|[&AM_CACHED_BUTTON_LIST(replaceall,!#!,:)]
-  --&AM_CACHED_BUTTON_LIST|[&AM_CACHED_BUTTON_LIST(replaceall,!$!,;)]
-  --&AM_CACHED_BUTTON_LIST|[&AM_CACHED_BUTTON_LIST(replaceall,!@!,|)]
+  -->MULE_BTN_CACHE_UNESC|AM_CACHED_BUTTON_LIST;AM_CACHED_BUTTON_LIST
   --+[%5%]|[BR][&AM_CACHED_BUTTON_LIST]
   --<|
 
@@ -2476,10 +2512,10 @@
     --?"[%6%]" -eq "none"|AM_LIST_SKIP_MULE_CHECK
     --~testName|string;replaceall; ;-;[&DisplayName]
     --~testMule|system;findability;[%6%];[&testName]
-    --?[&testMule] -ne "AbilityNotFound"|[
-      --&AM_BUTTON_LIST|+[button][&DisplayName(totitlecase)]::~[%6%]|[&testName][/button][&SPACE]
-      --^AM_LIST_CONTINUE|
-    --]|
+    --?"[&testMule]" -eq "AbilityNotFound"|AM_LIST_SKIP_MULE_CHECK
+    --&_muleBtnPiece|[button][&DisplayName(totitlecase)]::~[%6%]|[&testName][/button][&SPACE]
+    --&AM_BUTTON_LIST|+[&_muleBtnPiece]
+    --^AM_LIST_CONTINUE|
     --:AM_LIST_SKIP_MULE_CHECK|
     --&actionAttackFlag|[:BuiltButtonHash("[&DisplayName]_attack_flag")]
     --?"[%4%]" -eq "EXEC_PC_ATTACK"|AM_LIST_PC_ATTACK_TARGET|AM_LIST_NPC_ATTACK_SUFFIX
@@ -2512,9 +2548,7 @@
     --&AM_BUTTON_LIST|+[rbutton][&DisplayName(totitlecase)]::[%4%];[&PcAttackPayload]|[&actionTargetSuffix][/rbutton][&SPACE]
     --:AM_LIST_CONTINUE|
   --%|
-  --&cacheList|[&AM_BUTTON_LIST(replaceall,:,!#!)]
-  --&cacheList|[&cacheList(replaceall,;,!$!)]
-  --&cacheList|[&cacheList(replaceall,|,!@!)]
+  -->MULE_BTN_CACHE_ESC|AM_BUTTON_LIST;cacheList
   --?"[%5%]" -eq "Attacks and Actions"|AM_LIST_SKIP_CACHE_WRITE
   --?"[%5%]" -eq "Actions"|AM_LIST_SKIP_CACHE_WRITE
   --?"[%5%]" -eq "Bonus Actions"|AM_LIST_SKIP_CACHE_WRITE
@@ -2533,9 +2567,7 @@
     --&AM_CACHED_BUTTON_LIST|[*[%1%]:5ECAM_CACHE_[%5%]_[%7%]]
     --?"[&AM_CACHED_BUTTON_LIST]" -eq "undefined"|DO_BUILD_SPELL_BUTTON_LIST
     --?"[&AM_CACHED_BUTTON_LIST]" -eq ""|DO_BUILD_SPELL_BUTTON_LIST
-    --&AM_CACHED_BUTTON_LIST|[&AM_CACHED_BUTTON_LIST(replaceall,!#!,:)]
-    --&AM_CACHED_BUTTON_LIST|[&AM_CACHED_BUTTON_LIST(replaceall,!$!,;)]
-    --&AM_CACHED_BUTTON_LIST|[&AM_CACHED_BUTTON_LIST(replaceall,!@!,|)]
+    -->MULE_BTN_CACHE_UNESC|AM_CACHED_BUTTON_LIST;AM_CACHED_BUTTON_LIST
     --+[%5%]|[&AM_CACHED_BUTTON_LIST]
     --<|
 
@@ -2594,15 +2626,17 @@
       --:AM_SPELL_BUTTON_SKIP_SLOT_INFO|
       --~testName|string;replaceall; ;-;[&spellloop]
       --~testMule|system;findability;[&spellmulename];[&testName]
-      --?[&testMule] -ne "AbilityNotFound"|SPELL_BUTTON_MULE
+      --?"[&testMule]" -eq "AbilityNotFound"|SPELL_BUTTON_NO_MULE
+      --&_muleBtnPiece|[button][&DisplayName]::~[&spellmulename]|[&testName][/button][&SPACE]
+      --&AM_BUTTON_LIST|+[&_muleBtnPiece]
+      --^SPELL_BUTTON_END_GENERATE|
+      --:SPELL_BUTTON_NO_MULE|
       --?"[:BuiltButtonHash("[&spellloop]_spelloutput")]" -eq ATTACK|SPELL_BUTTON_GENERATE_WITH_TARGET
       --&AM_BUTTON_LIST|+[rbutton][&DisplayName]::[%4%];[&LevelString][&spellloop]|NONE[&thisSlotString][/rbutton][&SPACE]
       --^SPELL_BUTTON_END_GENERATE|
       --:SPELL_BUTTON_GENERATE_WITH_TARGET|
       --&AM_BUTTON_LIST|+[rbutton][&DisplayName]::[%4%];[&LevelString][&spellloop]|[&targetString][&thisSlotString][/rbutton][&SPACE]
       --^SPELL_BUTTON_END_GENERATE|
-      --:SPELL_BUTTON_MULE|
-      --&AM_BUTTON_LIST|+[button][&DisplayName]::~[&spellmulename]|[&testName][/button][&SPACE]
       --:SPELL_BUTTON_END_GENERATE|
     --%|
       
@@ -2610,9 +2644,7 @@
     --?"[&AM_BUTTON_LIST]" -eq ""|AM_SPELL_BUTTON_LIST_NOTHING
     --?"[&AM_BUTTON_LIST]" -eq "[br]"|AM_SPELL_BUTTON_LIST_NOTHING
 
-  --&cacheList|[&AM_BUTTON_LIST(replaceall,:,!#!)]
-  --&cacheList|[&cacheList(replaceall,;,!$!)]
-  --&cacheList|[&cacheList(replaceall,|,!@!)]
+  -->MULE_BTN_CACHE_ESC|AM_BUTTON_LIST;cacheList
   --!a:[%1%]|!5ECAM_CACHE_[%5%]_[%7%]:[&cacheList]
 
     --+[%5%]|[&AM_BUTTON_LIST]
@@ -2693,6 +2725,280 @@
   --+|You aren't the original sender of this action, so you can't use the repeat button
   --X|
 
+  --/|Sanitized mule ability name. Caller sets &_muleBtnFindName (colons break gosub params).
+  --:MAKE_MULE_ABILITY_NAME|returnVar
+  --~_muleName|string;replaceall; ;-;[&_muleBtnFindName]
+  --~_muleName|string;replaceall;:-;-;[&_muleName]
+  --~_muleName|string;replaceall;:;-;[&_muleName]
+  --~_muleName|string;replaceall;';;[&_muleName]
+  --&[%1%]|[&_muleName]
+  --<|
+
+  --/|Lowercase key with spaces, hyphens, colons, underscores, apostrophes stripped â€” for fuzzy mule name matching.
+  --/|Caller sets &_muleKeySource before calling (colons break gosub params).
+  --:MULE_NAME_KEY|returnVar
+  --~[%1%]|string;tolower;[&_muleKeySource]
+  --~[%1%]|string;replaceall; ;;[&[%1%]]
+  --~[%1%]|string;replaceall;-;;[&[%1%]]
+  --~[%1%]|string;replaceall;:;;[&[%1%]]
+  --~[%1%]|string;replaceall;';;[&[%1%]]
+  --~[%1%]|string;replaceall;_;;[&[%1%]]
+  --<|
+
+  --/|Escape button-list text for 5ECAM_CACHE (Kurt: : ; | only — do not escape ~ or ::~ breaks).
+  --:MULE_BTN_CACHE_ESC|sourceVar;destVar
+  --&[%2%]|[&[%1%]]
+  --&[%2%]|[&[%2%](replaceall,,:,!#!)]
+  --&[%2%]|[&[%2%](replaceall,;,!$!)]
+  --&[%2%]|[&[%2%](replaceall,|,!@!)]
+  --<|
+
+  --/|Restore button-list text read from 5ECAM_CACHE attributes.
+  --:MULE_BTN_CACHE_UNESC|sourceVar;destVar
+  --&[%2%]|[&[%1%]]
+  --&[%2%]|[&[%2%](replaceall,!#!,:)]
+  --&[%2%]|[&[%2%](replaceall,!$!,;)]
+  --&[%2%]|[&[%2%](replaceall,!@!,|)]
+  --<|
+
+  --/|Sets _muleHyphName, _muleBtnLabel, _mulePipeName, _muleHyphTest. Input: _muleTraitChar, _muleTraitRowName. Colon traits match mule by suffix after ":" only (see settings note).
+  --:MULE_TRAIT_RESOLVE|
+  --?"[&CamTraceDebug]" -ne "1"|MTR_TRACE_IN_OFF
+  --#debug|1
+  --:MTR_TRACE_IN_OFF|
+  --&_muleShortName|[&_muleTraitRowName]
+  --&_muleColonTrait|0
+  --?"[&_muleTraitRowName]" -inc ":"|MTR_COLON_SUFFIX
+  --^MTR_SEARCH_READY|
+  --:MTR_COLON_SUFFIX|
+  --&_muleColonTrait|1
+  --~_muleShortName|string;after;:;[&_muleTraitRowName]
+  --~_muleShortName|string;trim;[&_muleShortName]
+  --:MTR_SEARCH_READY|
+  --&_muleBtnLabel|[&_muleTraitRowName]
+  --&_muleBtnLabel|[&_muleBtnLabel(replaceall,:,&#58;)]
+  --~_muleHyphShort|string;replaceall; ;-;[&_muleShortName]
+  --~_muleHyphFull|string;replaceall; ;-;[&_muleTraitRowName]
+  --&_muleHyphName|[&_muleHyphShort]
+  --&_muleHyphTest|AbilityNotFound
+  --~|array;objects:character;_pcMuleCidList;[&_muleTraitChar]
+  --?"[@_pcMuleCidList(maxindex)]" -lt "0"|MTR_FAIL
+  --~_muleHyphTest|system;findability;[&_muleTraitChar];[&_muleHyphShort]
+  --?"[&_muleHyphTest]" -eq "AbilityNotFound"|MTR_TRY_CID_SHORT
+  --^MTR_USE_HYPH_SHORT|
+  --:MTR_USE_HYPH_SHORT|
+  --&_muleHyphName|[&_muleHyphShort]
+  --^MTR_DONE|
+  --:MTR_TRY_CID_SHORT|
+  --~_muleHyphTest|system;findability;[@_pcMuleCidList(0)];[&_muleHyphShort]
+  --?"[&_muleHyphTest]" -eq "AbilityNotFound"|MTR_SHORT_FAIL
+  --^MTR_USE_HYPH_SHORT|
+  --:MTR_SHORT_FAIL|
+  --?"[&_muleColonTrait]" -eq "1"|MTR_TRY_SPACED_SUFFIX
+  --?"[&_muleHyphShort]" -eq "[&_muleHyphFull]"|MTR_FAIL
+  --^MTR_TRY_FULL|
+  --:MTR_TRY_SPACED_SUFFIX|
+  --?"[&_muleShortName]" -eq ""|MTR_FAIL
+  --~_muleHyphTest|system;findability;[&_muleTraitChar];[&_muleShortName]
+  --?"[&_muleHyphTest]" -eq "AbilityNotFound"|MTR_TRY_CID_SPACED
+  --&_muleHyphName|[&_muleHyphShort]
+  --^MTR_DONE|
+  --:MTR_TRY_CID_SPACED|
+  --~_muleHyphTest|system;findability;[@_pcMuleCidList(0)];[&_muleShortName]
+  --?"[&_muleHyphTest]" -eq "AbilityNotFound"|MTR_FAIL
+  --&_muleHyphName|[&_muleHyphShort]
+  --^MTR_DONE|
+  --:MTR_TRY_FULL|
+  --&_muleHyphName|[&_muleHyphFull]
+  --~_muleHyphTest|system;findability;[&_muleTraitChar];[&_muleHyphFull]
+  --?"[&_muleHyphTest]" -eq "AbilityNotFound"|MTR_TRY_CID_FULL
+  --^MTR_USE_HYPH_FULL|
+  --:MTR_USE_HYPH_FULL|
+  --&_muleHyphName|[&_muleHyphFull]
+  --^MTR_DONE|
+  --:MTR_TRY_CID_FULL|
+  --~_muleHyphTest|system;findability;[@_pcMuleCidList(0)];[&_muleHyphFull]
+  --?"[&_muleHyphTest]" -eq "AbilityNotFound"|MTR_FAIL
+  --^MTR_USE_HYPH_FULL|
+  --:MTR_FAIL|
+  --&_muleHyphTest|AbilityNotFound
+  --:MTR_DONE|
+  --?"[&_muleHyphTest]" -eq "AbilityNotFound"|MTR_TRACE_OUT_CHK
+  --&_muleBtnFindName|[&_muleHyphName]
+  --&_mulePipeName|[*O:[&_muleHyphTest]:ability:name]
+  --?"X[&_mulePipeName]" -eq "X"|MTR_PIPE_HYPH
+  --?"[&_mulePipeName]" -eq ""|MTR_PIPE_HYPH
+  --?"[&_mulePipeName]" -eq "false"|MTR_PIPE_HYPH
+  --^MTR_PIPE_DONE|
+  --:MTR_PIPE_HYPH|
+  --?"[&_muleColonTrait]" -eq "1"|MTR_PIPE_SUFFIX
+  --&_mulePipeName|[&_muleHyphName]
+  --^MTR_PIPE_DONE|
+  --:MTR_PIPE_SUFFIX|
+  --&_mulePipeName|[&_muleShortName]
+  --:MTR_PIPE_DONE|
+  --:MTR_TRACE_OUT_CHK|
+  --?"[&CamTraceDebug]" -ne "1"|MTR_TRACE_OUT_OFF
+  --#debug|0
+  --:MTR_TRACE_OUT_OFF|
+  --<|
+
+  --/|Append Kurt-style [button]Label::~MuleChar|ExactMuleAbilityName[/button]. Caller sets &_muleBtnFindName first (avoids colon breakage in gosub params).
+  --:ADD_MULE_SHEET_BUTTON|muleChar;buttonLabel;listVar
+  --&_lastMuleAbilId|
+  --&_amsbPipeName|
+  --?"[%1%]" -eq ""|AMSB_DONE
+  --?"[%1%]" -eq "none"|AMSB_DONE
+  --?"X[&_muleBtnFindName]" -eq "X"|AMSB_DONE
+  --?"[&_muleBtnFindName]" -eq ""|AMSB_DONE
+  --~_amsbHyph|string;replaceall; ;-;[&_muleBtnFindName]
+  --~_amsbTest|system;findability;[%1%];[&_amsbHyph]
+  --?"[&_amsbTest]" -ne "AbilityNotFound"|AMSB_USE_HYPH
+  -->GET_CHARACTER_ID_BY_NAME|[%1%];_amsbMuleCid
+  --?"[&_amsbMuleCid]" -eq "0"|AMSB_TRY_FIND
+  --~_amsbTest|system;findability;[&_amsbMuleCid];[&_amsbHyph]
+  --?"[&_amsbTest]" -ne "AbilityNotFound"|AMSB_USE_HYPH
+  --:AMSB_TRY_FIND|
+  --&_amsbAbilId|
+  -->FIND_MULE_ABILITY|[%1%];_amsbAbilId
+  --?"[&_amsbAbilId]" -eq ""|AMSB_DONE
+  --&_lastMuleAbilId|[&_amsbAbilId]
+  --&_amsbPipeName|[*O:[&_amsbAbilId]:ability:name]
+  --?"X[&_amsbPipeName]" -eq "X"|AMSB_PIPE_HYPH
+  --?"[&_amsbPipeName]" -eq ""|AMSB_PIPE_HYPH
+  --?"[&_amsbPipeName]" -eq "false"|AMSB_PIPE_HYPH
+  --^AMSB_APPEND|
+  --:AMSB_PIPE_HYPH|
+  --&_amsbPipeName|[&_amsbHyph]
+  --:AMSB_USE_HYPH|
+  --&_lastMuleAbilId|[&_amsbTest]
+  --&_amsbPipeName|[&_amsbHyph]
+  --:AMSB_APPEND|
+  --&_amsbBtnPiece|[button][%2]::~[%1]|[&_amsbPipeName][/button][&SPACE]
+  --&[%3%]|+[&_amsbBtnPiece]
+  --:AMSB_DONE|
+  --<|
+
+  --/|Returns mule ability object id. Reads &_muleBtnFindName (not gosub param — colons break nested calls).
+  --:FIND_MULE_ABILITY|muleChar;abilityIdReturnVar
+  --&[%2%]|
+  --?"[%1%]" -eq ""|FMA_FAIL
+  --?"[%1%]" -eq "none"|FMA_FAIL
+  --?"X[&_muleBtnFindName]" -eq "X"|FMA_FAIL
+  --?"[&_muleBtnFindName]" -eq ""|FMA_FAIL
+  -->GET_CHARACTER_ID_BY_NAME|[%1%];_fmaMuleCid
+  --&_muleKeySource|[&_muleBtnFindName]
+  -->MULE_NAME_KEY|_fmaWantKey
+  --?"[&_fmaMuleCid]" -eq "0"|FMA_ENUM_BY_NAME
+  --~|array;objects:ability;_fmaAbilArr;;[&_fmaMuleCid]
+  --?[@_fmaAbilArr(length)] -gt 0|FMA_ENUM_START
+  --:FMA_ENUM_BY_NAME|
+  --~|array;objects:ability;_fmaAbilArr;;[%1%]
+  --?[@_fmaAbilArr(length)] -eq 0|FMA_TRY_FINDABILITY
+  --^FMA_ENUM_START|
+  --:FMA_ENUM_START|
+  --&_fmaAbilIdx|0
+  --^FMA_ENUM_LOOP|
+  --:FMA_ENUM_LOOP|
+  --?[@_fmaAbilArr(length)] -eq 0|FMA_TRY_FINDABILITY
+  --?[_fmaAbilIdx] -ge [@_fmaAbilArr(length)]|FMA_TRY_FINDABILITY
+  --&_fmaCurAbilId|@_fmaAbilArr([&_fmaAbilIdx])
+  --&_fmaAbilName|[*O:[&_fmaCurAbilId]:ability:name]
+  --?"[&_fmaAbilName]" -eq ""|FMA_ENUM_NEXT
+  --?"[&_fmaAbilName]" -eq "false"|FMA_ENUM_NEXT
+  --&_muleKeySource|[&_fmaAbilName]
+  --~_fmaGotKey|string;tolower;[&_muleKeySource]
+  --~_fmaGotKey|string;replaceall; ;;[&_fmaGotKey]
+  --~_fmaGotKey|string;replaceall;-;;[&_fmaGotKey]
+  --~_fmaGotKey|string;replaceall;:;;[&_fmaGotKey]
+  --~_fmaGotKey|string;replaceall;';;[&_fmaGotKey]
+  --~_fmaGotKey|string;replaceall;_;;[&_fmaGotKey]
+  --?"[&_fmaGotKey]" -ne "[&_fmaWantKey]"|FMA_ENUM_NEXT
+  --&[%2%]|[&_fmaCurAbilId]
+  --^FMA_DONE|
+  --:FMA_ENUM_NEXT|
+  --=FmaIdxNext|[$_fmaAbilIdx.Raw]+1
+  --&_fmaAbilIdx|[$FmaIdxNext.Raw]
+  --^FMA_ENUM_LOOP|
+  --:FMA_TRY_FINDABILITY|
+  --~_findTest|system;findability;[%1%];[&_muleBtnFindName]
+  --?"[&_findTest]" -eq "AbilityNotFound"|FMA_TRY_COLON_OR_SAN
+  --&[%2%]|[&_findTest]
+  --&_fmaFoundMsg|findability exact
+  --^FMA_FOUND|
+  --:FMA_TRY_COLON_OR_SAN|
+  --?"[&_muleBtnFindName]" -inc ":"|FMA_TRY_HYPHONLY
+  --^FMA_TRY_SANITIZED|
+  --:FMA_TRY_SANITIZED|
+  -->MAKE_MULE_ABILITY_NAME|_findSanitized
+  --~_findTest|system;findability;[%1%];[&_findSanitized]
+  --?"[&_findTest]" -eq "AbilityNotFound"|FMA_TRY_HYPHONLY
+  --&[%2%]|[&_findTest]
+  --&_fmaFoundMsg|findability sanitized=[&_findSanitized]
+  --^FMA_FOUND|
+  --:FMA_TRY_HYPHONLY|
+  --~_findHyphOnly|string;replaceall; ;-;[&_muleBtnFindName]
+  --~_findTest|system;findability;[%1%];[&_findHyphOnly]
+  --?"[&_findTest]" -eq "AbilityNotFound"|FMA_TRY_HYPH_NOAPOST
+  --&[%2%]|[&_findTest]
+  --&_fmaFoundMsg|findability hyphOnly=[&_findHyphOnly]
+  --^FMA_FOUND|
+  --:FMA_TRY_HYPH_NOAPOST|
+  --~_findNoApos|string;replaceall;';;[&_muleBtnFindName]
+  --~_findHyphOnly|string;replaceall; ;-;[&_findNoApos]
+  --~_findTest|system;findability;[%1%];[&_findHyphOnly]
+  --?"[&_findTest]" -eq "AbilityNotFound"|FMA_TRY_CID
+  --&[%2%]|[&_findTest]
+  --&_fmaFoundMsg|findability hyphNoApost=[&_findHyphOnly]
+  --^FMA_FOUND|
+  --:FMA_TRY_CID|
+  --?"[&_fmaMuleCid]" -eq "0"|FMA_FAIL
+  --~_findTest|system;findability;[&_fmaMuleCid];[&_muleBtnFindName]
+  --?"[&_findTest]" -eq "AbilityNotFound"|FMA_TRY_CID_SAN
+  --&[%2%]|[&_findTest]
+  --&_fmaFoundMsg|findability cid+exact
+  --^FMA_FOUND|
+  --:FMA_TRY_CID_SAN|
+  --~_findTest|system;findability;[&_fmaMuleCid];[&_findSanitized]
+  --?"[&_findTest]" -eq "AbilityNotFound"|FMA_TRY_CID_HYPH
+  --&[%2%]|[&_findTest]
+  --&_fmaFoundMsg|findability cid+sanitized
+  --^FMA_FOUND|
+  --:FMA_TRY_CID_HYPH|
+  --~_findTest|system;findability;[&_fmaMuleCid];[&_findHyphOnly]
+  --?"[&_findTest]" -eq "AbilityNotFound"|FMA_FAIL
+  --&[%2%]|[&_findTest]
+  --&_fmaFoundMsg|findability cid+hyphOnly
+  --^FMA_FOUND|
+  --:FMA_FOUND|
+  --^FMA_DONE|
+  --:FMA_FAIL|
+  --^FMA_DONE|
+  --:FMA_DONE|
+  --<|
+
+  --:IS_TRAIT_FEAT|source_type;sourceName;returnVar
+  --&[%3%]|0
+  --~_featST|string;tolower;[%1%]
+  --~_featSrc|string;tolower;[%2%]
+  --?"[&_featST]" -eq "feat"|IS_FEAT_MATCH
+  --?"[&_featSrc]" -eq "feat"|IS_FEAT_MATCH
+  --?"[&_featST]" -inc "epic boon"|IS_FEAT_MATCH
+  --?"[&_featSrc]" -inc "epic boon"|IS_FEAT_MATCH
+  --?"[&_featST]" -inc "fighting style"|IS_FEAT_MATCH
+  --?"[&_featSrc]" -inc "fighting style"|IS_FEAT_MATCH
+  --?"[&_featST]" -ninc " feat"|IS_TRAIT_FEAT_CHK_SRC
+  --?"[&_featST]" -inc "feature"|<
+  --^IS_FEAT_MATCH|
+  --:IS_TRAIT_FEAT_CHK_SRC|
+  --?"[&_featSrc]" -ninc " feat"|<
+  --?"[&_featSrc]" -inc "feature"|<
+  --^IS_FEAT_MATCH|
+  --<|
+  --:IS_FEAT_MATCH|
+  --&[%3%]|1
+  --<|
+
   --:DISPLAY_PC_OTHER_ACTIONS|
     --&BA_BUTTON_LIST|
     --&RA_BUTTON_LIST|
@@ -2704,6 +3010,10 @@
       --:PC_BA_TRAIT_ROW|
       --&TraitRowName|[&baTrait(replace,_sectionid,)]
       --?"[&TraitRowName]" -eq ""|PC_BA_TRAIT_NEXT
+      --&TraitSourceType|[:TraitBtnHash("[&TraitRowName]_source_type")]
+      --&TraitSource|[:TraitBtnHash("[&TraitRowName]_source")]
+      -->IS_TRAIT_FEAT|[&TraitSourceType];[&TraitSource];_TraitIsFeat
+      --?"[&_TraitIsFeat]" -eq "1"|PC_BA_TRAIT_NEXT
       --&TraitRowId|[:TraitBtnHash("[&baTrait]")]
       --&TraitDesc|[:TraitBtnHash("[&TraitRowName]_description")]
       --~TraitDesc|string;replaceall;";;[&TraitDesc]
@@ -2713,13 +3023,18 @@
       --^PC_BA_TRAIT_NEXT|
       --:PC_BA_TRAIT_ADD|
       --&TraitBtnLabel|[&TraitRowName]
-      --~testName|string;replaceall; ;-;[&TraitRowName]
-      --~testMule|system;findability;[&pcabilitymulename];[&testName]
-      --?[&testMule] -eq "AbilityNotFound"|PC_BA_TRAIT_RBUTTON
-      --&BA_BUTTON_LIST|+[button][&TraitBtnLabel]::~[&pcabilitymulename]|[&testName][/button][&SPACE]
+      --&_muleTraitChar|[&pcabilitymulename]
+      --&_muleTraitRowName|[&TraitRowName]
+      -->MULE_TRAIT_RESOLVE|
+      --?"[&_muleHyphTest]" -eq "AbilityNotFound"|PC_BA_TRAIT_RBUTTON
+      --&_muleBtnPiece|[button][&_muleBtnLabel]::~[&pcabilitymulename]|[&_mulePipeName][/button][&SPACE]
+      --&BA_BUTTON_LIST|+[&_muleBtnPiece]
+      --&_lastMuleAbilId|[&_muleHyphTest]
+      --&_baRaShownTraits|+;[&TraitRowName];
       --^PC_BA_TRAIT_NEXT|
       --:PC_BA_TRAIT_RBUTTON|
       --&BA_BUTTON_LIST|+[rbutton][&TraitBtnLabel]::EXEC_PC_TRAIT;[&TraitRowId][/rbutton][&SPACE]
+      --&_baRaShownTraits|+;[&TraitRowName];
       --:PC_BA_TRAIT_NEXT|
     --%|
     --%raTrait|foreach;TraitBtnKeys
@@ -2728,27 +3043,41 @@
       --:PC_RA_TRAIT_ROW|
       --&TraitRowName|[&raTrait(replace,_sectionid,)]
       --?"[&TraitRowName]" -eq ""|PC_RA_TRAIT_NEXT
+      --&TraitSourceType|[:TraitBtnHash("[&TraitRowName]_source_type")]
+      --&TraitSource|[:TraitBtnHash("[&TraitRowName]_source")]
+      -->IS_TRAIT_FEAT|[&TraitSourceType];[&TraitSource];_TraitIsFeat
+      --?"[&_TraitIsFeat]" -eq "1"|PC_RA_TRAIT_NEXT
       --&TraitRowId|[:TraitBtnHash("[&raTrait]")]
       --&TraitDesc|[:TraitBtnHash("[&TraitRowName]_description")]
       --~TraitDesc|string;replaceall;";;[&TraitDesc]
-      --?"[&TraitDesc]" -ninc "reaction"|PC_RA_TRAIT_NEXT
       --?"[&TraitDesc]" -inc "bonus action"|PC_RA_TRAIT_NEXT
+      --?"[&TraitDesc]" -inc "as an action"|PC_RA_TRAIT_NEXT
+      --?"[&TraitDesc]" -inc "can't take reaction"|PC_RA_TRAIT_NEXT
+      --?"[&TraitDesc]" -inc "cannot take reaction"|PC_RA_TRAIT_NEXT
+      --?"[&TraitDesc]" -inc "without using your movement, action, or reaction"|PC_RA_TRAIT_NEXT
+      --?"[&TraitDesc]" -ninc "reaction"|PC_RA_TRAIT_NEXT
       --^PC_RA_TRAIT_ADD|
       --:PC_RA_TRAIT_ADD|
       --&TraitBtnLabel|[&TraitRowName]
-      --~testName|string;replaceall; ;-;[&TraitRowName]
-      --~testMule|system;findability;[&pcabilitymulename];[&testName]
-      --?[&testMule] -eq "AbilityNotFound"|PC_RA_TRAIT_RBUTTON
-      --&RA_BUTTON_LIST|+[button][&TraitBtnLabel]::~[&pcabilitymulename]|[&testName][/button][&SPACE]
+      --&_muleTraitChar|[&pcabilitymulename]
+      --&_muleTraitRowName|[&TraitRowName]
+      -->MULE_TRAIT_RESOLVE|
+      --?"[&_muleHyphTest]" -eq "AbilityNotFound"|PC_RA_TRAIT_RBUTTON
+      --&_muleBtnPiece|[button][&_muleBtnLabel]::~[&pcabilitymulename]|[&_mulePipeName][/button][&SPACE]
+      --&RA_BUTTON_LIST|+[&_muleBtnPiece]
+      --&_lastMuleAbilId|[&_muleHyphTest]
+      --&_baRaShownTraits|+;[&TraitRowName];
       --^PC_RA_TRAIT_NEXT|
       --:PC_RA_TRAIT_RBUTTON|
       --&RA_BUTTON_LIST|+[rbutton][&TraitBtnLabel]::EXEC_PC_TRAIT;[&TraitRowId][/rbutton][&SPACE]
+      --&_baRaShownTraits|+;[&TraitRowName];
       --:PC_RA_TRAIT_NEXT|
     --%|
-    --~oppTestName|string;replaceall; ;-;Opportunity Attack
-    --~oppTestMule|system;findability;[&pcabilitymulename];[&oppTestName]
-    --?[&oppTestMule] -eq "AbilityNotFound"|PC_RA_OPP_RBUTTON
-    --&RA_BUTTON_LIST|+[button]Opportunity Attack::~[&pcabilitymulename]|[&oppTestName][/button][&SPACE]
+    --~_muleHyphName|string;replaceall; ;-;Opportunity Attack
+    --~_muleHyphTest|system;findability;[&pcabilitymulename];[&_muleHyphName]
+    --?"[&_muleHyphTest]" -eq "AbilityNotFound"|PC_RA_OPP_RBUTTON
+    --&_muleBtnPiece|[button]Opportunity Attack::~[&pcabilitymulename]|[&_muleHyphName][/button][&SPACE]
+    --&RA_BUTTON_LIST|+[&_muleBtnPiece]
     --^PC_RA_OPP_DONE|
     --:PC_RA_OPP_RBUTTON|
     --&RA_BUTTON_LIST|+[rbutton]Opportunity Attack::OPP_ATTACK[/rbutton][&SPACE]
@@ -2757,6 +3086,53 @@
     --+|[&BA_BUTTON_LIST]
     --+Reactions|
     --+|[&RA_BUTTON_LIST]
+  --<|
+
+  --:DISPLAY_PC_FEATS|
+    --?"[&CamTraceDebug]" -ne "1"|PC_FEAT_TRACE_IN_OFF
+    --#debug|1
+    --:PC_FEAT_TRACE_IN_OFF|
+    --&FEAT_BUTTON_LIST|
+    --~|hashtable;fromrepeatingsection;[*S:character_id];repeating_traits;name;FeatBtnHash
+    --~|array;fromkeys;FeatBtnKeys;FeatBtnHash
+    --%featTrait|foreach;FeatBtnKeys
+      --?"[&featTrait]" -inc "_sectionid"|PC_FEAT_TRAIT_ROW
+      --^PC_FEAT_TRAIT_NEXT|
+      --:PC_FEAT_TRAIT_ROW|
+      --&TraitRowName|[&featTrait(replace,_sectionid,)]
+      --?"[&TraitRowName]" -eq ""|PC_FEAT_TRAIT_NEXT
+      --?"[&_baRaShownTraits]" -inc ";[&TraitRowName];"|PC_FEAT_TRAIT_NEXT
+      --&TraitRowId|[:FeatBtnHash("[&featTrait]")]
+      --&TraitBtnLabel|[&TraitRowName]
+      --&_lastMuleAbilId|
+      --?"[&pcabilitymulename]" -eq "none"|PC_FEAT_TRY_NPC_MULE
+      --&_muleTraitChar|[&pcabilitymulename]
+      --&_muleTraitRowName|[&TraitRowName]
+      -->MULE_TRAIT_RESOLVE|
+      --?"[&_muleHyphTest]" -ne "AbilityNotFound"|PC_FEAT_PC_BTN
+      --:PC_FEAT_TRY_NPC_MULE|
+      --?"[&sharednpcmacromulename]" -eq "none"|PC_FEAT_TRAIT_RBUTTON
+      --&_muleTraitChar|[&sharednpcmacromulename]
+      -->MULE_TRAIT_RESOLVE|
+      --?"[&_muleHyphTest]" -eq "AbilityNotFound"|PC_FEAT_TRAIT_RBUTTON
+      --&_muleBtnPiece|[button][&_muleBtnLabel]::~[&sharednpcmacromulename]|[&_mulePipeName][/button][&SPACE]
+      --&FEAT_BUTTON_LIST|+[&_muleBtnPiece]
+      --&_lastMuleAbilId|[&_muleHyphTest]
+      --^PC_FEAT_TRAIT_NEXT|
+      --:PC_FEAT_PC_BTN|
+      --&_muleBtnPiece|[button][&_muleBtnLabel]::~[&pcabilitymulename]|[&_mulePipeName][/button][&SPACE]
+      --&FEAT_BUTTON_LIST|+[&_muleBtnPiece]
+      --&_lastMuleAbilId|[&_muleHyphTest]
+      --^PC_FEAT_TRAIT_NEXT|
+      --:PC_FEAT_TRAIT_RBUTTON|
+      --&FEAT_BUTTON_LIST|+[rbutton][&TraitBtnLabel]::EXEC_PC_TRAIT;[&TraitRowId][/rbutton][&SPACE]
+      --:PC_FEAT_TRAIT_NEXT|
+    --%|
+    --+Traits/Feats|
+    --+|[&FEAT_BUTTON_LIST]
+    --?"[&CamTraceDebug]" -ne "1"|PC_FEAT_TRACE_OUT_OFF
+    --#debug|0
+    --:PC_FEAT_TRACE_OUT_OFF|
   --<|
 
   --:EXEC_PC_TRAIT|
