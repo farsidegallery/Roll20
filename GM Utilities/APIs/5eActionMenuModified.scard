@@ -289,14 +289,14 @@
   --:AFTER_ADVMODE_CHANGE|
   --#title|[*S:character_name]
 
-  --#leftsub|CAM [&CAM_VERSION] — Action Menu
+  --#leftsub|Action Menu
 
   --?[&EnablePerCharacterConfiguration] -eq 0|[
    --&perCharacterOptions|$SGAM1$$SGDM1$$SGSM1$$SGMB1$$SSAS1$$SGCM1$$SGKM1$$SHRB1$
-   --#leftsub|CAM [&CAM_VERSION] — Action Menu [rbutton][&ClearCacheImage]::CLEAR_CHARACTER_CACHE[/rbutton]
+   --#leftsub|Action Menu [rbutton][&ClearCacheImage]::CLEAR_CHARACTER_CACHE[/rbutton]
    --^SKIP_PER_CHAR_SETTINGS|
   --]|
-  --#leftsub|CAM [&CAM_VERSION] — Action Menu [rbutton][&SettingsImage]::DISPLAY_CHARACTER_CONFIG_MENU[/rbutton] [rbutton][&ClearCacheImage]::CLEAR_CHARACTER_CACHE[/rbutton]
+  --#leftsub|Action Menu [rbutton][&SettingsImage]::DISPLAY_CHARACTER_CONFIG_MENU[/rbutton] [rbutton][&ClearCacheImage]::CLEAR_CHARACTER_CACHE[/rbutton]
   -->LOAD_PER_CHARACTER_CONFIG_OPTIONS|[*S:character_id]
   --:SKIP_PER_CHAR_SETTINGS|
 
