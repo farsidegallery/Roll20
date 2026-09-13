@@ -1,6 +1,6 @@
 !script {{
   --/|Script Name : Concentration
-  --/|Version     : 1.4.0
+  --/|Version     : 1.4.2
   --/|Requires SC : ScriptCards 3.0.25+, 5Elib/snlib/Farsidelib 1.5.2+
   --/|
   --/|Trigger setup (ScriptCards_Triggers character):
@@ -106,21 +106,23 @@
   --:SKIP|
    --X|
 
-  --/|Skip position-only moves before optional sheet attrs (conc_*). Still run when Action Menu left a damage snapshot.
+  --/|Skip position-only moves (TokenMod still fires on drag; compare live bars to pre-move payload).
   --:ConcSkipIfNoDamageEvent|
-   -->ConcHasCharAttr|[*[&GraphicOld_id]:character_id];conc_predamage_temp;HasConcPendingTemp
-   -->ConcHasCharAttr|[*[&GraphicOld_id]:character_id];conc_damage_total;HasConcDamageTotal
-   --?"X[&HasConcPendingTemp]" -eq "X1" -and "X[&HasConcDamageTotal]" -eq "X1"|[
-    --&ConcMoveHPold|[&GraphicOldbar[&hitPointBar]_value]
-    --&ConcMoveTempold|[&GraphicOldbar[&tempHPBar]_value]
-    --&ConcMoveHPnew|[&GraphicNewbar[&hitPointBar]_value]
-    --&ConcMoveTempnew|[&GraphicNewbar[&tempHPBar]_value]
-    --?"X[&ConcMoveHPnew]" -eq "X"|&ConcMoveHPnew;[&ConcMoveHPold]
-    --?"X[&ConcMoveTempnew]" -eq "X"|&ConcMoveTempnew;[&ConcMoveTempold]
-    --?"[&ConcMoveHPnew]" -eq ""|&ConcMoveHPnew;[&ConcMoveHPold]
-    --?"[&ConcMoveTempnew]" -eq ""|&ConcMoveTempnew;[&ConcMoveTempold]
-    --?[&ConcMoveHPold] -eq [&ConcMoveHPnew] -and [&ConcMoveTempold] -eq [&ConcMoveTempnew]|SKIP
-   --]|
+   --&ConcMoveHPold|[&GraphicOldbar[&hitPointBar]_value]
+   --&ConcMoveTempold|[&GraphicOldbar[&tempHPBar]_value]
+   --&ConcMoveHPnew|[&GraphicNewbar[&hitPointBar]_value]
+   --&ConcMoveTempnew|[&GraphicNewbar[&tempHPBar]_value]
+   --?"X[&ConcMoveHPnew]" -eq "X"|&ConcMoveHPnew;[&ConcMoveHPold]
+   --?"X[&ConcMoveTempnew]" -eq "X"|&ConcMoveTempnew;[&ConcMoveTempold]
+   --?"[&ConcMoveHPnew]" -eq ""|&ConcMoveHPnew;[&ConcMoveHPold]
+   --?"[&ConcMoveTempnew]" -eq ""|&ConcMoveTempnew;[&ConcMoveTempold]
+   --&ConcLiveHP|[*[&GraphicOld_id]:t-bar[&hitPointBar]_value]
+   --&ConcLiveTemp|[*[&GraphicOld_id]:t-bar[&tempHPBar]_value]
+   --?"X[&ConcLiveHP]" -eq "X"|&ConcLiveHP;[&ConcMoveHPold]
+   --?"X[&ConcLiveTemp]" -eq "X"|&ConcLiveTemp;[&ConcMoveTempold]
+   --?"[&ConcLiveHP]" -eq ""|&ConcLiveHP;[&ConcMoveHPold]
+   --?"[&ConcLiveTemp]" -eq ""|&ConcLiveTemp;[&ConcMoveTempold]
+   --?[&ConcMoveHPold] -eq [&ConcMoveHPnew] -and [&ConcMoveTempold] -eq [&ConcMoveTempnew] -and [&ConcMoveHPold] -eq [&ConcLiveHP] -and [&ConcMoveTempold] -eq [&ConcLiveTemp]|SKIP
    -->ConcResolveBars|
    -->ConcCalcDamage|
    --<|
@@ -128,23 +130,6 @@
   --:ConcResolveBars|
    --&ConcHPold|[&GraphicOldbar[&hitPointBar]_value]
    --&ConcTempold|[&GraphicOldbar[&tempHPBar]_value]
-   --&ConcPendingTemp|0
-   --&ConcDamageTotal|0
-   -->ConcHasCharAttr|[*[&GraphicOld_id]:character_id];conc_predamage_temp;HasConcPendingTemp
-   --?"X[&HasConcPendingTemp]" -eq "X1"|[
-    -->ConcGetCharAttr|[*[&GraphicOld_id]:character_id];conc_predamage_temp;0;ConcPendingTemp
-   --]|
-   -->ConcHasCharAttr|[*[&GraphicOld_id]:character_id];conc_damage_total;HasConcDamageTotal
-   --?"X[&HasConcDamageTotal]" -eq "X1"|[
-    -->ConcGetCharAttr|[*[&GraphicOld_id]:character_id];conc_damage_total;0;ConcDamageTotal
-   --]|
-   --?"X[&ConcPendingTemp]" -ne "X" -and "[&ConcPendingTemp]" -ne "" -and [&ConcPendingTemp] -gt [&ConcTempold]|&ConcTempold;[&ConcPendingTemp]
-   --?"X[&HasConcPendingTemp]" -eq "X1"|[
-    --!a:[*[&GraphicOld_id]:character_id]|conc_predamage_temp:0
-   --]|
-   --?"X[&HasConcDamageTotal]" -eq "X1"|[
-    --!a:[*[&GraphicOld_id]:character_id]|conc_damage_total:0
-   --]|
    --&ConcHPnew|[&GraphicNewbar[&hitPointBar]_value]
    --&ConcTempnew|[&GraphicNewbar[&tempHPBar]_value]
    --/|When GraphicNew is missing (batched !t), use live token as post-change value.
@@ -163,12 +148,6 @@
    --/|Count decreases only (healing increases are ignored by the old>new check).
    --?"X[&ConcTempold]" -ne "X" -and "[&ConcTempold]" -ne "" -and [&ConcTempold] -gt [&ConcTempnew]|=ConcTempdam;[&ConcTempold]-[&ConcTempnew]
    --?"X[&ConcHPold]" -ne "X" -and "[&ConcHPold]" -ne "" -and [&ConcHPold] -gt [&ConcHPnew]|=ConcHPdam;[&ConcHPold]-[&ConcHPnew]
-   --/|When TokenMod reports stale HP (common on partial temp+HP), use Action Menu conc_damage_total snapshot.
-   --=ConcBarTotal|[$ConcHPdam] + [$ConcTempdam]
-   --?"X[&ConcDamageTotal]" -ne "X" -and "[&ConcDamageTotal]" -ne "" -and [&ConcDamageTotal] -gt [$ConcBarTotal]|[
-    --=ConcHPdam|[&ConcDamageTotal]-[$ConcTempdam]
-    --=ConcHPnew|[&ConcHPold]-[$ConcHPdam]
-   --]|
    --?[*[&GraphicOld_id]:hp_temp] -ne [&ConcTempnew]|[
     --!a:[*[&GraphicOld_id]:character_id]|hp_temp:[&ConcTempnew]
     --]|
@@ -224,7 +203,7 @@
    --X|
 
   --:ConcDebugCard|
-   --?[&ConcDebugOutput] -ne 1|<|
+   --?[&ConcDebugOutput] -ne 1|<
    --+Debug: |Bar [&hitPointBar] [&ConcHPold]→[&ConcHPnew] (HP loss [$ConcHPdam]) · Bar [&tempHPBar] [&ConcTempold]→[&ConcTempnew] (temp loss [$ConcTempdam]) · Sheet hp_temp [&ConcSheetTemp] · Raw total [$ConcRawTotal] · DC base [$damage] · DC [$DC]
    --+|[br]
    --<|
@@ -418,17 +397,34 @@
    --<|
   
   --:Faith|
-   --&targetToken|[*[&GraphicOld_id]:ConcentrationSpellTargetToken]
    -->LibSN_REMOVE_STATUS_MARKER|[*[&GraphicOld_id]:t-id];[&ConcentrationMarker]
-   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*[&targetToken]:character_id];ac;[&FaithMod];0
-   --~count|array;pagetokens;tokens;[*[&GraphicOld_id]:t-id];tprop:name=[&SpellTokenName]
-   --~|object;token;delete;[@tokens(0)]
-   --!a:[&GraphicOld_id]|!ConcentrationSpell:**
-   --!a:[&GraphicOld_id]|!ConcentrationSpellTargetToken:**
+   --?"X[*[&GraphicOld_id]:FaithShieldTargets]" -ne "X"|[
+    --~|array;fromstring;FaithTargets;!@!;[*[&GraphicOld_id]:FaithShieldTargets]
+    --%FaithLoop|foreach;FaithTargets
+     --#targettoken|[&FaithLoop]
+     -->Lib5E_SET_GLOBAL_MOD_STATUS|[*T:character_id];ac;[&FaithMod];0
+    --%|
+   --]|[
+    --&targetToken|[*[&GraphicOld_id]:ConcentrationSpellTargetToken]
+    --?"X[&targetToken]" -ne "X"|-->Lib5E_SET_GLOBAL_MOD_STATUS|[*[&targetToken]:character_id];ac;[&FaithMod];0
+   --]|
+   --?"X[*[&GraphicOld_id]:FaithShieldGraphics]" -ne "X"|[
+    --~|array;fromstring;FaithGraphics;!@!;[*[&GraphicOld_id]:FaithShieldGraphics]
+    --%FaithGfx|foreach;FaithGraphics
+     --?"X[&FaithGfx]" -ne "X"|~|object;token;delete;[&FaithGfx]
+    --%|
+   --]|[
+    --~count|array;pagetokens;tokens;[*[&GraphicOld_id]:t-id];tprop:name=[*[&GraphicOld_id]:character_name] Shield of Faith
+    --?"[@tokens(length)]" -gt 0|~|object;token;delete;[@tokens(0)]
+   --]|
+   --!a:[*[&GraphicOld_id]:character_id]|!ConcentrationSpell:**
+   --!a:[*[&GraphicOld_id]:character_id]|!ConcentrationSpellTargetToken:**
+   --!a:[*[&GraphicOld_id]:character_id]|!FaithShieldTargets:**
+   --!a:[*[&GraphicOld_id]:character_id]|!FaithShieldGraphics:**
    --#whisper|
    --#emotetext|[*[&GraphicOld_id]:character_name] is no longer concentrating on Shield of Faith!
    --+|[br]
-   --+|The inivisible barrier vanishes! [*[&targetToken]:character_name]'s AC returns to normal.
+   --+|The invisible barrier vanishes! AC returns to normal for affected creatures.
    --<|
    
   --:Favor|
@@ -603,20 +599,4 @@
    -->Lib5E_SET_GLOBAL_MOD_STATUS|[*[&GraphicOld_id]:t-id]; damage; [&zephyrstrike]; 0
    --<|
 
-  --/|Local helpers for optional character attrs (same logic as far_HasCharAttr / far_GetCharAttr in Farsidelib 1.5.2+).
-  --:ConcHasCharAttr|character-id;attribute-name;return-var
-   --&[%3%]|0
-   --?"X[%1%]" -eq "X"|<|
-   --~|array;attributes;AttrCheckList;[%1%];[%2%]
-   --?[@AttrCheckList(length)] -ge 1|&[%3%];1
-   --<|
-
-  --:ConcGetCharAttr|character-id;attribute-name;default-value;return-var
-   -->ConcHasCharAttr|[%1%];[%2%];AttrExistsFlag
-   --?"X[&AttrExistsFlag]" -eq "X1"|[
-    --&[%4%]|[*[%1%]:[%2%]]
-   --]|[
-    --&[%4%]|[%3%]
-   --]|
-   --<|
 }}
