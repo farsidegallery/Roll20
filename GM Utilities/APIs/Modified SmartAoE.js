@@ -4,7 +4,7 @@
 // Changes: TokenMod damage (Concentration trigger), control-token layering, cone face/corner origin, objects-layer AoE z-order, spawn/aim deferral, 5e PC save formula + between save bonus and pbd_safe, hide secondary damage when not configured, active global save mods on 5e PC saves (Paladin Aura, Bless, etc.), readable 5e save roll tooltips (PC/NPC split, ability labels)
 const SmartAoE = (() => {
  const scriptName = "SmartAoE";
- const version = '0.30.8-farside';
+ const version = '0.30.9-farside';
  const schemaVersion = '0.1';
  
  var cardParameters = {};
@@ -3733,18 +3733,26 @@ const SmartAoE = (() => {
  
  //delete the linked paths and clear the pathIDs array from the state object
  
- //do for each matching link in state object 
- for (let a=0; a<aoeLinks.indices.length; a++) {
+ //do for each matching link in state object (reverse so stale-link splice does not skew indices)
+ for (let a=aoeLinks.indices.length-1; a>=0; a--) {
  newPaths = [];
  //log('a = ' + a);
  
  
  //generate new paths based on aoeType and current posiitons or originTok and controlTok
  let oTok = getObj("graphic", aoeLinks.links[a].originTokID);
+ let cTok = getObj("graphic", aoeLinks.links[a].controlTokID);
+ if (!oTok || !cTok) {
+ deleteLinkedPaths(aoeLinks.links[a].pathIDs || []);
+ const stateIndex = aoeLinks.indices[a];
+ if (stateIndex >= 0 && stateIndex < state[scriptName].links.length) {
+ state[scriptName].links.splice(stateIndex, 1);
+ }
+ continue;
+ }
  let oHeight = oTok.get('height');
  let oWidth = oTok.get('width');
  
- let cTok = getObj("graphic", aoeLinks.links[a].controlTokID);
  let cHeight = cTok.get("height");
  let cWidth = cTok.get("width");
  
