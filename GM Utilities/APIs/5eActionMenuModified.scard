@@ -1,6 +1,6 @@
 ﻿!script {{
   --/|Script Name : 5E Action Menu
-  --/|Version     : 3.4.1
+  --/|Version     : 3.4.2
   --/|Requires SC : 2.7.15+
   --/|Author      : Kurt Jaegers
   --/|Modified By : Farsidegallery
@@ -2001,7 +2001,7 @@
   --:GET_AVAILABLE_SPELL_SLOTS|slotlevel;variableToSet
   --&_maxSlots|[*S:lvl[%1%]_slots_total]
   --=_availSlots|[&_maxSlots] - [*S:lvl[%1%]_slots_expended]
-  --&[%2%]|[*S:lvl[%1%]_slots_expended]
+  --&[%2%]|[$_availSlots.Raw]
   --<|
 
   --:DEDUCT_SPELL_SLOT|slotlevel
@@ -2011,8 +2011,7 @@
   --:GET_HIGHEST_LEVEL_SPELL_SLOT|variableToSet
   --&[%1%]|0
   --%levelCounter|1;9
-    -->GET_AVAILABLE_SPELL_SLOTS|[&levelCounter];slotTest
-    --?[&slotTest] -gt 0|&[%1%];[&levelCounter]
+    --?[*S:lvl[&levelCounter]_slots_total] -gt 0|&[%1%];[&levelCounter]
   --%|
   --<|
 
@@ -2735,8 +2734,6 @@
     --%loop|foreach;Hash_Keys
       --?"[&loop]" -inc "_sectionid"|&HashList(99999);[&loop(replace,_sectionid,)]
     --%|
-    --?"X[@HashList(length)]" -eq "X"|AM_SPELL_BUTTON_LIST_NOTHING
-    --?[@HashList(length)] -eq 0|AM_SPELL_BUTTON_LIST_NOTHING
 
     --&AM_BUTTON_LIST|[br]
 
@@ -2744,7 +2741,7 @@
       --/\|Loop: [&spellloop]
 
       --?[&skipPreppedSpellsCheck] -eq 1|SKIP_PREP_CHECK
-      --?"" -eq "1"|SKIP_PREP_CHECK
+      --?"[*S:npc]" -eq "1" -and "[&skipNPCPrepCheck]" -eq "1"|SKIP_PREP_CHECK
       --?"[%7%]" -eq 0|SKIP_PREP_CHECK   
       --?"[&SorcererLevel]" -gt 0 -or "[&WarlockLevel]" -gt 0|SKIP_PREP_CHECK
       --?"[:BuiltButtonHash("[&spellloop]_spellprepared")]" -eq "1" -or "[:BuiltButtonHash("[&spellloop]_spellritual")]" -eq "Yes"|SKIP_PREP_CHECK
@@ -2772,17 +2769,15 @@
       --:AM_SPELL_BUTTON_SKIP_SLOT_INFO|
       --~testName|string;replaceall; ;-;[&spellloop]
       --~testMule|system;findability;[&spellmulename];[&testName]
-      --?"[&testMule]" -eq "AbilityNotFound"|SPELL_BUTTON_NO_MULE
-      --&_muleBtnPiece|[button][&DisplayName]::~[&spellmulename]|[&testName][/button][&SPACE]
-      --&AM_BUTTON_LIST|+[&_muleBtnPiece]
-      --^SPELL_BUTTON_END_GENERATE|
-      --:SPELL_BUTTON_NO_MULE|
+      --?[&testMule] -ne "AbilityNotFound"|SPELL_BUTTON_MULE
       --?"[:BuiltButtonHash("[&spellloop]_spelloutput")]" -eq ATTACK|SPELL_BUTTON_GENERATE_WITH_TARGET
       --&AM_BUTTON_LIST|+[rbutton][&DisplayName]::[%4%];[&LevelString][&spellloop]|NONE[&thisSlotString][/rbutton][&SPACE]
       --^SPELL_BUTTON_END_GENERATE|
       --:SPELL_BUTTON_GENERATE_WITH_TARGET|
       --&AM_BUTTON_LIST|+[rbutton][&DisplayName]::[%4%];[&LevelString][&spellloop]|[&targetString][&thisSlotString][/rbutton][&SPACE]
       --^SPELL_BUTTON_END_GENERATE|
+      --:SPELL_BUTTON_MULE|
+      --&AM_BUTTON_LIST|+[button][&DisplayName]::~[&spellmulename]|[&testName][/button][&SPACE]
       --:SPELL_BUTTON_END_GENERATE|
     --%|
       
