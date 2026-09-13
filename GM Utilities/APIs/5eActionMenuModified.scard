@@ -1,6 +1,6 @@
 ﻿!script {{
   --/|Script Name : 5E Action Menu
-  --/|Version     : 3.4.0
+  --/|Version     : 3.4.1
   --/|Requires SC : 2.7.15+
   --/|Author      : Kurt Jaegers
   --/|Modified By : Farsidegallery
@@ -81,7 +81,7 @@
   --&UseNamedCharacterSettings|0        --/|Set to "1" to enable loading of settings information from a saved format named after the character (case sensitive)
   --&sendGmInfo|1                       --/|If this value is set to 1, attack rolls will have the target's numeric AC value hidden
   --&AllNPCActionsToSender|0            --/|If this value is set to 1, NPC actions (except spellcasting) will be whispered to the sender only and not displayed to everyone
-  --&damageApplyScript|token-mod        --/|Set this to either "scriptcards", "token-mod", "alterbars", "damagebuttons" or anything else to not apply damage
+  --&damageApplyScript|token-mod        --/|Use "token-mod" if ScriptCards_Triggers uses listen_to_tokenmod|1 (concentration/death HP triggers). "scriptcards" skips TokenMod and may not fire those triggers.
   --&whisperDamageButtonsToDM|1         --/|If using "damagebuttons" and this is set to 1, the damage buttons will be whispered to the DM instead of being added to the card
   --&whisperDamageButtonResultsToDM|1   --/|If using "damagebuttons" for damage and this value is 1, the DM is whispered a message about damage application
   --&selfHandleAdvantageMode|1          --/|If set to 1, the Action Menu will include advantage/normal/disadvantage toggles (and won't use the character sheet toggle)
@@ -1409,14 +1409,30 @@
   --&GSM_VALUES|
   --?[*S:npc] -ne 1|>Find_Active_Global_Save_Modifiers;[*S:character_id];GSM_VALUES
   --~saveInfo|string;split;|;[&reentryval]
+  --~saveAbility|string;tolowercase;[&saveInfo1]
+  --~saveShortAbility|string;left;3;[&saveAbility]
   --~saveType|string;tolowercase;[&saveInfo1]_save_bonus
   --&saveBonus|[*S:[&saveType]]
   --&rollType|[&saveInfo2]
   --&rollEquation|1d20
   --?[&rollType] -eq "Advantage"|&rollEquation;2d20kh1
   --?[&rollType] -eq "Disadvantage"|&rollEquation;2d20kl1
-  -->Get_Ability_Modifier|[&saveInfo1(tolowercase)]_mod;attrMod;attrName
+  --?[*S:npc] -eq 1|[
+    --&saveModField|[&saveAbility]_save_bonus
+    --?[*S:npc_[&saveShortAbility]_save_flag] -gt 0|&saveModField;npc_[&saveShortAbility]_save
+    --?"[*S:[&saveModField]]" -eq ""|>SAVING_THROW_NPC_ABI
+    --~saveDisplay|string;touppercase;[&saveShortAbility]
+    --&attrName|[&obrac][&saveDisplay][&cbrac]
+    --=SavingThrow|[&rollEquation] + [*S:[&saveModField]] [&attrName] [&GSM_VALUES]
+    --^SAVING_THROW_DONE|
+  --]|
+  -->Get_Ability_Modifier|[&saveAbility]_mod;attrMod;attrName
   --=SavingThrow|[&rollEquation] + [&saveBonus] [&attrName] [&GSM_VALUES]
+  --^SAVING_THROW_DONE|
+  --:SAVING_THROW_NPC_ABI|
+  -->Get_Ability_Modifier|[&saveAbility]_mod;attrMod;attrName
+  --=SavingThrow|[&rollEquation] + [&attrName] [&GSM_VALUES]
+  --:SAVING_THROW_DONE|
   --#title|[&saveInfo1] Save
   --#leftsub|[*S:character_name]
   --#rightsub|
@@ -1430,14 +1446,42 @@
   --&GSKM_VALUES|
   --?[*S:npc] -ne 1|>Find_Active_Global_Skill_Modifiers;[*S:character_id];GSKM_VALUES
   --~skillInfo|string;split;|;[&reentryval]
-  --~skillType|string;tolowercase;[&skillInfo1]_bonus
-  --~skillBase|string;tolowercase;npc_[&skillInfo1]_base
-  --=SkillMod|[*S:[&skillType]]
-  --?"[*S:[&skillBase]]" -ne "" -and "[*S:[&skillBase]]" -ne "0"|=SkillMod;[*S:[&skillBase]]
+  --~skillKey|string;tolowercase;[&skillInfo1]
+  --~skillType|string;tolowercase;[&skillKey]_bonus
   --&rollType|[&skillInfo2]
   --&skillDisplayName|[&skillInfo1]
   --?[&skillDisplayName] -eq "animal_handling"|&skillDisplayName;Animal Handling
   --?[&skillDisplayName] -eq "sleight_of_hand"|&skillDisplayName;Sleight of Hand
+  --?[*S:npc] -eq 1|[
+    --&skillModField|npc_[&skillKey]
+    --?"[*S:[&skillModField]]" -eq ""|&skillModField;[&skillKey]_bonus
+    --?"[*S:[&skillModField]]" -eq ""|>SKILL_CHECK_NPC_ABI
+    --=SkillMod|[*S:[&skillModField]]
+    --^SKILL_CHECK_ROLL|
+  --]|
+  --=SkillMod|[*S:[&skillType]]
+  --^SKILL_CHECK_ROLL|
+  --:SKILL_CHECK_NPC_ABI|
+  --&skillAbiAttr|wisdom_mod
+  --?[&skillKey] -eq acrobatics|&skillAbiAttr;dexterity_mod
+  --?[&skillKey] -eq sleight_of_hand|&skillAbiAttr;dexterity_mod
+  --?[&skillKey] -eq stealth|&skillAbiAttr;dexterity_mod
+  --?[&skillKey] -eq athletics|&skillAbiAttr;strength_mod
+  --?[&skillKey] -eq arcana|&skillAbiAttr;intelligence_mod
+  --?[&skillKey] -eq history|&skillAbiAttr;intelligence_mod
+  --?[&skillKey] -eq investigation|&skillAbiAttr;intelligence_mod
+  --?[&skillKey] -eq nature|&skillAbiAttr;intelligence_mod
+  --?[&skillKey] -eq religion|&skillAbiAttr;intelligence_mod
+  --?[&skillKey] -eq deception|&skillAbiAttr;charisma_mod
+  --?[&skillKey] -eq intimidation|&skillAbiAttr;charisma_mod
+  --?[&skillKey] -eq persuasion|&skillAbiAttr;charisma_mod
+  --?[&skillKey] -eq animal_handling|&skillAbiAttr;wisdom_mod
+  --?[&skillKey] -eq insight|&skillAbiAttr;wisdom_mod
+  --?[&skillKey] -eq medicine|&skillAbiAttr;wisdom_mod
+  --?[&skillKey] -eq perception|&skillAbiAttr;wisdom_mod
+  --?[&skillKey] -eq survival|&skillAbiAttr;wisdom_mod
+  -->Get_Ability_Modifier|[&skillAbiAttr];SkillMod;skillAbiName
+  --:SKILL_CHECK_ROLL|
   --&rollEquation|1d20
   --?[&rollType] -eq "Advantage"|&rollEquation;2d20kh1
   --?[&rollType] -eq "Disadvantage"|&rollEquation;2d20kl1
@@ -1503,7 +1547,7 @@
   --/|that has an active flag set. This is set to a variable named after the second parameter and can be appended
   --/|directly to an attack/damage/save roll. Toggle buttons use row ids (Rbysectionid) for names with
   --/|apostrophes or hyphens. Find/append sanitizes GMMModName and builds roll fragments via GMMRollSep
-  --/|(no literal # on the same line as [&var] â€” gosub params and # lines cannot expand [&label]).
+  --/|(no literal # on the same line as &var gosub params and # lines cannot expand &label).
 
   --:SET_ADV_MODE|
   --&currentAdvantageMode|[&reentryval]
@@ -1783,8 +1827,8 @@
   --<|
 
   --/|There are four different options for applying damage. The selected option is set in the settings area of the macro.
-  --/|When applying damage, one of the four functions listed below will be executed to alter the target's HP. The ScriptCards
-  --/|method is recommended, as there won't be an issue with impacting the same target more than once.
+  --/|When applying damage, one of the four functions listed below will be executed to alter the target's HP. Use token-mod
+  --/|when ScriptCards_Triggers relies on listen_to_tokenmod|1. ScriptCards !t-only may not fire those HP triggers.
 
   --/|Adjust incoming damage for temporary HP. Positive amounts (healing) pass through unchanged.
   --/|Reads temp HP from the token bar. Sets &_tempAdjAmount, &_tempNewValue, &_tempAlterDelta (for AlterBars), &_tempBarChanged (0/1).
@@ -1820,7 +1864,7 @@
   --:ADJUST_TEMP_HP_DONE|
   --<|
 
-  --/|Write temp HP to token bar and sync character hp_temp attribute.
+  --/|ScriptCards !t-only bar sync (ApplyDamageScriptCards path). Token-mod path must not call this.
   --:SYNC_TEMP_HP_BAR|TokenID;tempHPbar;newValue
   --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[%3%]
   --!a:[*[%1%]:character_id]|!hp_temp:[%3%]
@@ -1841,34 +1885,37 @@
 
   --/|Token-Mod doesn't have a "set to a relative number", so we get the current bar value, subtract the damage amount,
   --/|make sure it doesn't fall below 0, and set the amount back into the bar.
-  --/|Partial temp+HP: batch both bars in one @token-mod call. Temp HP read from token bar only.
+  --/|One batched @token-mod per hit (HP + temp together). Never follow with !t — avoids overwrites and keeps listen_to_tokenmod triggers clean.
+  --/|Temp math matches Farsidelib far_DamageTokenmod (roll values for TokenMod, not empty &_tempNewValue.Raw).
   --:ApplyDamageTokenmod|Parameters are tokenid;bar#;tempHPbar;amount;display (0 or 1);allow overheal (0 or 1);allow negative hp (0 or 1)
-  -->ADJUST_DAMAGE_FOR_TEMP_HP|[%1%];[%3%];[%4%]
+  --=_applyValue|[%4%]
   --=StartHP|[*[%1%]:t-bar[%2%]_value]
-  --?"[&_tempBarChanged]" -eq "1" -and "[&_tempAdjAmount]" -eq "0"|[
+  --=TempHP|[*[%1%]:t-bar[%3%]_value]
+  --?"X[$TempHP]" -eq "X"|=TempHP;0
+  --~damageValue|math;abs;[$_applyValue]
+  --?"X[$TempHP]" -nei "X" -and [$TempHP] -gt 0 -and [$TempHP] -ge [$damageValue]|[
+   --=newTempHP|[$TempHP]-[$damageValue]
    --?"X[%5%]" -eq "X1"|+Applying;[%4%] HP to [*[%1%]:t-name]
-   --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[$StartHP] bar[%3%]_value|[$_tempNewValue]
-   --!t:[%1%]|bar[%2%]_value:[$StartHP]|bar[%3%]_value:[$_tempNewValue]
-   --!a:[*[%1%]:character_id]|!hp_temp:[$_tempNewValue]
+   --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[$StartHP.Raw] bar[%3%]_value|[$newTempHP.Raw]
    --<|
   --]|
-  --?"[&_tempBarChanged]" -eq "1"|[
-   --=_newValue|[$StartHP] + [&_tempAdjAmount]
+  --?"X[$TempHP]" -nei "X" -and [$TempHP] -gt 0 -and [$TempHP] -lt [$damageValue]|[
+   --=_applyValue|[$_applyValue]+[$TempHP]
+   --=_newValue|[$StartHP] + [$_applyValue]
    --?[$_newValue] -lt 0 -and "X[%7%]" -ne "X1"|=_newValue;0
    --?"X[%6%]" -ne "X1" -and [$_newValue] -gt [*[%1%]:t-bar[%2%]_max]|=_newValue;[*[%1%]:t-bar[%2%]_max]
    --?"X[%5%]" -eq "X1"|+Applying;[%4%] HP to [*[%1%]:t-name]
-   --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[$_newValue.Raw] bar[%3%]_value|[$_tempNewValue]
-   --!t:[%1%]|bar[%2%]_value:[$_newValue.Raw]|bar[%3%]_value:[$_tempNewValue]
-   --!a:[*[%1%]:character_id]|!hp_temp:[$_tempNewValue]
+   --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[$_newValue.Raw] bar[%3%]_value|0
    --<|
   --]|
-  --=_newValue|[$StartHP] + [&_tempAdjAmount]
+  --=_newValue|[$StartHP] + [$_applyValue]
   --?[$_newValue] -lt 0 -and "X[%7%]" -ne "X1"|=_newValue;0
   --?"X[%6%]" -ne "X1" -and [$_newValue] -gt [*[%1%]:t-bar[%2%]_max]|=_newValue;[*[%1%]:t-bar[%2%]_max]
   --?"X[%5%]" -eq "X1"|+Applying;[%4%] HP to [*[%1%]:t-name]
-  --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[$_newValue.Raw]
-  --!t:[%1%]|bar[%2%]_value:[$_newValue.Raw]
-  --<| 
+  --=currentTemp|[*[%1%]:t-bar[%3%]_value]
+  --?"X[$currentTemp]" -eq "X"|=currentTemp;0
+  --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[$_newValue.Raw] bar[%3%]_value|[$currentTemp.Raw]
+  --<|
   
   --/|AlterBars supports relative values for the amount parameter, so we just pass it the value with a "-" in front of it.
   --:ApplyDamageAlterbars|Parameters are tokenid;bar#;tempHPbar;amount;display (0 or 1);allow overheal (0 or 1);allow negative hp (0 or 1)
