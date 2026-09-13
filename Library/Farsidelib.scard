@@ -1,4 +1,4 @@
---/|ScriptCards Library: Farsidelib  version 1.6.11
+--/|ScriptCards Library: Farsidelib  version 1.6.20
 --/|Provides various utility procedures for Roll20
 
 --/|This library contains a number of functions that are customized to meet the different needs of spell or ability
@@ -58,7 +58,7 @@
 --/|      (damageVariableName), which is a string that can be added to the end of a roll assignment to modify the damage as appropriate   
 --/|
 --/|   far_Check_GLOBAL_MOD_EXISTS|characterid; Category; name; returnstring (0=does not exist, 1=exists)
---/|      Name is staged internally; safe for apostrophes and hyphens in mod names.
+--/|      Pass characterid ([*S:character_id], [*T:character_id], loop id). Mod names with spaces: set &_FarGMName|[&YourModName] before calling, or use $$$ args (see header in subroutine).
 --/|
 --/|   far_SetGlobalModStatusStaged|category;activeFlag (0/1/2=toggle). Set _FarGMCharId and _FarGMName before calling.
 --/|      Set _FarGMName before calling. Uses $$$ Rfind delimiter for special characters.
@@ -112,8 +112,8 @@
 --/|
 --/|   far_DamageTokenmod|tokenid;bar#;tempHP bar#;amount;display (0 or 1);Allow Overhealing (0 or 1); Allow negative hp (0 or 1)
 --/|      Applies damage (negative amount) or healing (positive amount). Temp HP bar is depleted first; overflow hits the HP bar.
---/|      Authoritative Token-Mod temp-HP routine (v1.5.8+). Reads token bars only, not character sheet hp_temp.
---/|      Callers should use &hpBar and &tempHPbar from far_LoadTokenMarkers (v1.5.10+).
+--/|      One batched @token-mod per hit (HP + temp bars); no follow-up !t — matches 5E Action Menu ApplyDamageTokenmod for listen_to_tokenmod triggers (e.g. Concentration.scard).
+--/|      Reads token bars only, not character sheet hp_temp. Use &hpBar and &tempHPbar from far_LoadTokenMarkers (v1.5.10+).
 --/|
 --/|   far_LogFatalError|EmoteText;ErrorHeader;ErrorMessage
 --/|
@@ -454,13 +454,17 @@
   --<|
 
  --:far_Check_GLOBAL_MOD_EXISTS|characterid; Category; name; returnstring (0=does not exist, 1=exists)
-  --&_FarGMReturnVar|[%4%]
-  --&[&_FarGMReturnVar]|0
-  --&_FarGMCharId|[*T:character_id]
-  --?"X[&_FarGMCharId]" -eq "X"|&_FarGMCharId;[%1%]
+  --/|Names with spaces do not survive ;-delimited gosub args — preset &_FarGMName or call with #parameterdelimiter|$$$ then char$$$cat$$$name$$$returnVar
+  --&[%4%]|0
+  --&_FarGMCharId|[%1%]
+  --?"X[&_FarGMCharId]" -eq "X"|&_FarGMCharId;[*T:character_id]
   --?"X[&_FarGMCharId]" -eq "X"|<
-  -->far_RfindGlobalModStaged|[%2%];[%3]
-  --?"[*R:global_[&_Lib5E_Search_Field]_name]" -ne "NoRepeatingAttributeLoaded"|&[&_FarGMReturnVar]|1
+  --?"X[&_FarGMName]" -eq "X"|&_FarGMName;[%3%]
+  --?"X[&_FarGMName]" -eq "X"|<
+  -->far_RfindGlobalModStaged|[%2%];[&_FarGMName]
+  --?"[*R:global_[&_Lib5E_Search_Field]_name]" -eq "NoRepeatingAttributeLoaded"|<
+  --?"X[*R:global_[&_Lib5E_Search_Field]_name]" -eq "X"|<
+  --&[%4%]|1
   --<|
 
  --:far_Check_GLOBAL_ATTRIB_SAVE_EXISTS|characterid; attributename; returnstring (0=does not exist, 1=exists)
@@ -498,6 +502,23 @@
   --vtoken|[%1%] [%3%]
   --vtoken|[%2%] [%4%]
   --vbetweentokens|[%1%] [%2%] [%5%]
+  --<|
+
+ --/|   far_CarryBelow|carrier-token-id;carried-token-id
+ --/|      Links FX token under carrier via Carry Tokens API (delayed for spawn race).
+ --:far_CarryBelow|carrier-token-id;carried-token-id
+  --&_FarCarryCarrier|[%1%]
+  --&_FarCarryTarget|[%2%]
+  --?"X[&_FarCarryCarrier]" -eq "X" -or "X[&_FarCarryTarget]" -eq "X"|<
+  --@CARRY_TOKENS_CARRY_BELOW|[&_FarCarryCarrier] [&_FarCarryTarget]
+  --<|
+
+ --/|   far_FindPageTokenByName|anchor-token-id;token-name;return-var
+ --:far_FindPageTokenByName|anchor-token-id;token-name;return-var
+  --&[%3%]|
+  --?"X[%1%]" -eq "X"|<
+  --~count|array;pagetokens;fxfind;[%1%];tprop:name=[%2%]
+  --?[@fxfind(length)] -gt 0|&[%3%];[@fxfind(0)]
   --<|
 
  --:far_HasCharAttr|character-id;attribute-name;return-var
@@ -678,13 +699,13 @@
   --=_applyValue|[%4%]
   --=StartHP|[*[%1%]:t-bar[%2%]_value]
   --=TempHP|[*[%1%]:t-bar[%3%]_value]
+  --?"X[$TempHP]" -eq "X"|=TempHP;0
   --~damageValue|math;abs;[$_applyValue]
   --?"X[$TempHP]" -nei "X" -and [$TempHP] -gt 0 -and [$TempHP] -ge [$damageValue]|[
    --=newTempHP|[$TempHP]-[$damageValue]
-   --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[$StartHP] bar[%3%]_value|[$newTempHP.Raw]
-   --!t:[%1%]|bar[%2%]_value:[$StartHP]|bar[%3%]_value:[$newTempHP.Raw]
+   --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[$StartHP.Raw] bar[%3%]_value|[$newTempHP.Raw]
    --<|
-   --]|
+  --]|
   --?"X[$TempHP]" -nei "X" -and [$TempHP] -gt 0 -and [$TempHP] -lt [$damageValue]|[
    --=_applyValue|[$_applyValue]+[$TempHP]
    --=_newValue|[$StartHP] + [$_applyValue]
@@ -692,15 +713,15 @@
    --?"X[%6%]" -ne "X1" -and [$_newValue] -gt [*[%1%]:t-bar[%2%]_max]|=_newValue;[*[%1%]:t-bar[%2%]_max]
    --?"X[%5%]" -eq "X1"|+Applying;[%4%] HP to [*[%1%]:t-name]
    --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[$_newValue.Raw] bar[%3%]_value|0
-   --!t:[%1%]|bar[%2%]_value:[$_newValue.Raw]|bar[%3%]_value:0
    --<|
-   --]|
-   --=_newValue|[$StartHP] + [$_applyValue]
-   --?[$_newValue] -lt 0 -and "X[%7%]" -ne "X1"|=_newValue;0
-   --?"X[%6%]" -ne "X1" -and [$_newValue] -gt [*[%1%]:t-bar[%2%]_max]|=_newValue;[*[%1%]:t-bar[%2%]_max]
-   --?"X[%5%]" -eq "X1"|+Applying;[%4%] HP to [*[%1%]:t-name]
-   --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[$_newValue.Raw]
-   --!t:[%1%]|bar[%2%]_value:[$_newValue.Raw]
+  --]|
+  --=_newValue|[$StartHP] + [$_applyValue]
+  --?[$_newValue] -lt 0 -and "X[%7%]" -ne "X1"|=_newValue;0
+  --?"X[%6%]" -ne "X1" -and [$_newValue] -gt [*[%1%]:t-bar[%2%]_max]|=_newValue;[*[%1%]:t-bar[%2%]_max]
+  --?"X[%5%]" -eq "X1"|+Applying;[%4%] HP to [*[%1%]:t-name]
+  --=currentTemp|[*[%1%]:t-bar[%3%]_value]
+  --?"X[$currentTemp]" -eq "X"|=currentTemp;0
+  --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[$_newValue.Raw] bar[%3%]_value|[$currentTemp.Raw]
   --<| 
  
  --:far_LogFatalError|EmoteText;ErrorHeader;ErrorMessage
