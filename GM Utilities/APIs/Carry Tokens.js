@@ -8,6 +8,8 @@
  * which broke !CARRY_TOKENS_CARRY_BELOW from ScriptCards.
  * v2.0.3-farside: Default state.carrytokens.useroptions.allowPlayerUse to on (no One-Click toggle).
  * v2.0.4-farside: Fix follow — change:graphic like stock; only sync-mark carried tokens; snap on carry.
+ * v2.0.5-farside: Clearer missing-token errors; fix duplicate carrierId declaration in _carry.
+ * v2.0.6-farside: Retry carry when tokens are not in the API yet (ScriptCards spawn race).
  *
  * Replace the One-Click Carry Tokens mod with this file. Requires HTML Builder.
  * Command interface unchanged: !CARRY_TOKENS_CARRY_BELOW, etc.
@@ -15,7 +17,7 @@
 var CarryTokens = (() => {
 	'use strict';
 
-	const VERSION = '2.0.4-farside';
+	const VERSION = '2.0.6-farside';
 	const STATE_KEY = 'carrytokens';
 
 	const CARRY_MENU_CMD = '!CARRY_TOKENS_MENU';
@@ -94,6 +96,37 @@ var CarryTokens = (() => {
 		};
 	};
 
+	const CARRY_RETRY_DELAY_MS = 300;
+	const CARRY_RETRY_MAX = 10;
+
+	const isLikelyTokenId = (id) => {
+		return typeof id === 'string' && /^-/.test(id);
+	};
+
+	const runCarryWithRetry = (msg, attempt, carryFn) => {
+		Commands._enforcePermission(msg.playerid);
+
+		let ids = parseCommandIds(msg);
+		let carrier = getGraphic(ids.carrierId);
+		let target = getGraphic(ids.targetId);
+
+		if (carrier && target) {
+			carryFn(carrier, target, ids.carrierId, ids.targetId);
+			return;
+		}
+
+		if (
+			attempt < CARRY_RETRY_MAX
+			&& isLikelyTokenId(ids.carrierId)
+			&& isLikelyTokenId(ids.targetId)
+		) {
+			setTimeout(() => runCarryWithRetry(msg, attempt + 1, carryFn), CARRY_RETRY_DELAY_MS);
+			return;
+		}
+
+		carryFn(carrier, target, ids.carrierId, ids.targetId);
+	};
+
 	const graphicMoved = (obj, prev) => {
 		if (!prev) {
 			return true;
@@ -168,23 +201,11 @@ var CarryTokens = (() => {
 	 */
 	class Commands {
 		static carryAbove(msg) {
-			Commands._enforcePermission(msg.playerid);
-
-			let ids = parseCommandIds(msg);
-			let carrier = getGraphic(ids.carrierId);
-			let target = getGraphic(ids.targetId);
-
-			carryAbove(carrier, target);
+			runCarryWithRetry(msg, 0, carryAbove);
 		}
 
 		static carryBelow(msg) {
-			Commands._enforcePermission(msg.playerid);
-
-			let ids = parseCommandIds(msg);
-			let carrier = getGraphic(ids.carrierId);
-			let target = getGraphic(ids.targetId);
-
-			carryBelow(carrier, target);
+			runCarryWithRetry(msg, 0, carryBelow);
 		}
 
 		static dropOne(msg) {
@@ -235,20 +256,27 @@ var CarryTokens = (() => {
 		}
 	}
 
-	const _requireTokens = (carrier, target) => {
+	const _requireTokens = (carrier, target, carrierId, targetId) => {
 		if (!carrier || !target) {
-			throw new Error('Carrier or target token not found.');
+			throw new Error(
+				'Carrier or target token not found.'
+				+ ` (carrier id: ${carrierId || 'missing'}, target id: ${targetId || 'missing'})`
+			);
 		}
 		if (!isToken(carrier) || !isToken(target)) {
-			throw new Error('Carrier and target must be token graphics.');
+			let carrierSub = carrier && carrier.get('_subtype');
+			let targetSub = target && target.get('_subtype');
+			throw new Error(
+				'Carrier and target must be token graphics.'
+				+ ` (carrier subtype: ${carrierSub || 'n/a'}, target subtype: ${targetSub || 'n/a'})`
+			);
 		}
 	};
 
-	function _carry(carrier, target) {
-		_requireTokens(carrier, target);
-
-		let carrierId = tokenId(carrier);
-		let targetId = tokenId(target);
+	function _carry(carrier, target, carrierIdHint, targetIdHint) {
+		let carrierId = carrierIdHint || tokenId(carrier);
+		let targetId = targetIdHint || tokenId(target);
+		_requireTokens(carrier, target, carrierId, targetId);
 
 		if (carrierId === targetId) {
 			return;
@@ -268,14 +296,24 @@ var CarryTokens = (() => {
 		state[STATE_KEY].carriedBy[targetId] = carrierId;
 	}
 
-	function carryAbove(carrier, target) {
-		_carry(carrier, target);
+	function carryAbove(carrier, target, carrierIdHint, targetIdHint) {
+		_carry(
+			carrier,
+			target,
+			carrierIdHint || tokenId(carrier),
+			targetIdHint || tokenId(target)
+		);
 		toFront(target);
 		snapCarriedToken(carrier, target);
 	}
 
-	function carryBelow(carrier, target) {
-		_carry(carrier, target);
+	function carryBelow(carrier, target, carrierIdHint, targetIdHint) {
+		_carry(
+			carrier,
+			target,
+			carrierIdHint || tokenId(carrier),
+			targetIdHint || tokenId(target)
+		);
 		toBack(target);
 		snapCarriedToken(carrier, target);
 	}
