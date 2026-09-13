@@ -1,4 +1,4 @@
---/|ScriptCards Library: Farsidelib  version 1.6.20
+--/|ScriptCards Library: Farsidelib  version 1.7.0
 --/|Provides various utility procedures for Roll20
 
 --/|This library contains a number of functions that are customized to meet the different needs of spell or ability
@@ -696,7 +696,14 @@
   --<|
 
  --:far_DamageTokenmod|tokenid;bar#;tempHPbar;amount;display (0 or 1);allow overheal (0 or 1);allow negative hp (0 or 1)
-  --=_applyValue|[%4%]
+  --/|Gosub amount is often a roll object: chat/Total shows full damage but _applyValue math used Raw (dice only) without this step.
+  --/|TokenMod: barN_value|-X subtracts X from current (not "set to -X"). Send HP delta (_applyValue after clamps), not final negative HP. No |= in @ lines.
+  --=_applyIn|[%4%]
+  --=far_dmgTotal|[$_applyIn.Total]
+  --=far_dmgRaw|[$_applyIn.Raw]
+  --?"[$far_dmgTotal.Raw]" -ne "0"|=far_dmgResolved;[$far_dmgTotal.Raw]
+  --?"[$far_dmgTotal.Raw]" -eq "0"|=far_dmgResolved;[$far_dmgRaw.Raw]
+  --=_applyValue|[$far_dmgResolved.Raw]
   --=StartHP|[*[%1%]:t-bar[%2%]_value]
   --=TempHP|[*[%1%]:t-bar[%3%]_value]
   --?"X[$TempHP]" -eq "X"|=TempHP;0
@@ -709,21 +716,36 @@
   --?"X[$TempHP]" -nei "X" -and [$TempHP] -gt 0 -and [$TempHP] -lt [$damageValue]|[
    --=_applyValue|[$_applyValue]+[$TempHP]
    --=_newValue|[$StartHP] + [$_applyValue]
-   --?[$_newValue] -lt 0 -and "X[%7%]" -ne "X1"|=_newValue;0
-   --?"X[%6%]" -ne "X1" -and [$_newValue] -gt [*[%1%]:t-bar[%2%]_max]|=_newValue;[*[%1%]:t-bar[%2%]_max]
-   --?"X[%5%]" -eq "X1"|+Applying;[%4%] HP to [*[%1%]:t-name]
-   --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[$_newValue.Raw] bar[%3%]_value|0
-   --<|
+   --&_farTmBar3Val|0
+   --^far_DTM_applyHPDamage|
   --]|
   --=_newValue|[$StartHP] + [$_applyValue]
-  --?[$_newValue] -lt 0 -and "X[%7%]" -ne "X1"|=_newValue;0
-  --?"X[%6%]" -ne "X1" -and [$_newValue] -gt [*[%1%]:t-bar[%2%]_max]|=_newValue;[*[%1%]:t-bar[%2%]_max]
-  --?"X[%5%]" -eq "X1"|+Applying;[%4%] HP to [*[%1%]:t-name]
   --=currentTemp|[*[%1%]:t-bar[%3%]_value]
   --?"X[$currentTemp]" -eq "X"|=currentTemp;0
-  --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[$_newValue.Raw] bar[%3%]_value|[$currentTemp.Raw]
-  --<| 
- 
+  --&_farTmBar3Val|[$currentTemp.Raw]
+  --:far_DTM_applyHPDamage|
+  --=far_tmDelta|[$_applyValue]
+  --?[$_newValue] -lt 0 -and "X[%7%]" -ne "X1"|[
+   --=_newValue|0
+   --=far_tmDelta|[$StartHP] {NEGATE}
+  --]|
+  --?"X[%6%]" -ne "X1" -and [$_newValue] -gt [*[%1%]:t-bar[%2%]_max]|[
+   --=_newValue|[*[%1%]:t-bar[%2%]_max]
+   --=far_tmDelta|[$_newValue] - [$StartHP]
+  --]|
+  --?"X[%5%]" -eq "X1"|+Applying;[%4%] HP to [*[%1%]:t-name]
+  --?[$far_tmDelta] -lt 0|[
+   --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[$far_tmDelta.Raw] bar[%3%]_value|[&_farTmBar3Val]
+   --^far_DTM_done|
+  --]|
+  --?[$far_tmDelta] -gt 0|[
+   --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|+[$far_tmDelta.Raw] bar[%3%]_value|[&_farTmBar3Val]
+   --^far_DTM_done|
+  --]|
+  --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[$StartHP.Raw] bar[%3%]_value|[&_farTmBar3Val]
+  --:far_DTM_done|
+  --<|
+
  --:far_LogFatalError|EmoteText;ErrorHeader;ErrorMessage
    --#emoteText|[%1%]
    --+[%2%]|[%3%]
