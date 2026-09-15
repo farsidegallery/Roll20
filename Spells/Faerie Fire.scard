@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Faerie Fire
-  --/|Version     : 2.0.2
+  --/|Version     : 2.0.3
   --/|Modified By : Farsidegallery
   --/|  
   --/|  Script prompts user for spell level used and makes sure the slot is available.  and spawn the designated token to the VTT. Script calculates
@@ -98,7 +98,6 @@
    --X|
   
   --:Execute|
-   --&FFTokenName|[*S:character_name] [&SpellName]
    --/|( GET ALL TOKENS INTO THE "allTokens" ARRAY will have blank 1st element to be removed later
    --~|array;pagetokens;allTokens;[*S:t-id]
    --/| CREATE THE "inRange" ARRAY TO HOLD TOKENS IN RANGE
@@ -152,6 +151,13 @@
    --X|
 
  --/| ____________________ Procedures_______________________________________________________________________________________
+
+  --/| Carry first (v2.0.7+ uses toBelow carrier); then ScriptCards z as backup after link.
+  --:FFAttachFx|carrier-token-id;fx-token-id
+   --@CARRY_TOKENS_CARRY_BELOW|[%1%] [%2%]
+   --z:graphic:[%2%]|toback
+   --!t:[%2%]|low_light_distance:10
+   --<|
    
   --:GetSpiritID|CharacterName;StringVariableForCharID
    --~|array;objects:character;SpiritCharArr;[%1%]
@@ -192,28 +198,18 @@
 	 --+|[t border=3 width=100%][tr][td style="width:100px"][c][*[&loop]:character_name][/c][/td][td style="width:40px"][c][$TargetSave][/c][/td][td style="width:40px"][c]F[/c][/td][/tr]
  	 -->LibSN_ADD_STATUS_MARKER|[*[&loop]:t-id];[&FFMarker];
 	 --!a:[*S:character_id]|!ConcentrationSpell:[&SpellName]
-	 --!a:[*S:character_id]|!ConcentrationSpellTargetToken:[&FFTokenName]
 	 --!a:[*[&loop]:character_id]|!MageID:[*S:character_id]
 	 
-	--?[&SpawnScript] -eq 1 -and "[&firecolor]" -inc "blue"|[
-	 --!ot:FFTID|name:"[&FFTokenName]"|left:[*[&loop]:t-left]|top:[*[&loop]:t-top]|width:[*[&loop]:t-width]|height:[*[&loop]:t-height]|imgsrc:"[&BlueLink]"|bar1_value:1|represents:[&CharNameID]|showname:false|emits_low_light:true
-	 --z:graphic:[&FFTID]|toback
-	 --!t:[&FFTID]|low_light_distance:10
-	 --@CARRY_TOKENS_CARRY_BELOW|[&loop] [&FFTID]
-	 --]|
-	 
-	--?[&SpawnScript] -eq 1 -and "[&firecolor]" -inc "green"|[
-	 --!ot:FFTID|name:"[&FFTokenName]"|left:[*[&loop]:t-left]|top:[*[&loop]:t-top]|width:[*[&loop]:t-width]|height:[*[&loop]:t-height]|imgsrc:"[&GreenLink]"|bar1_value:1|represents:[&CharNameID]|showname:false|emits_low_light:true
-	 --z:graphic:[&FFTID]|toback
-	 --!t:[&FFTID]|low_light_distance:10
-	 --@CARRY_TOKENS_CARRY_BELOW|[&loop] [&FFTID]
-	 --]|
-	 
-	--?[&SpawnScript] -eq 1 -and "[&firecolor]" -inc "purple"|[
-	 --!ot:FFTID|name:"[&FFTokenName]"|left:[*[&loop]:t-left]|top:[*[&loop]:t-top]|width:[*[&loop]:t-width]|height:[*[&loop]:t-height]|imgsrc:"[&PurpleLink]"|bar1_value:1|represents:[&CharNameID]|showname:false|emits_low_light:true
-	 --z:graphic:[&FFTID]|toback
-	 --!t:[&FFTID]|low_light_distance:10
-	 --@CARRY_TOKENS_CARRY_BELOW|[&loop] [&FFTID]
+	--?[&SpawnScript] -eq 1|[
+	 --&FFTokenName|[*[&loop]:t-name] [&SpellName]
+	 --&FFFxLink|[&BlueLink]
+	 --?"[&firecolor]" -inc "green"|&FFFxLink;[&GreenLink]
+	 --?"[&firecolor]" -inc "purple"|&FFFxLink;[&PurpleLink]
+	 --&FFTID|
+	 --!ot:FFTID|name:"[&FFTokenName]"|_pageid:[*[&loop]:t-_pageid]|left:[*[&loop]:t-left]|top:[*[&loop]:t-top]|width:[*[&loop]:t-width]|height:[*[&loop]:t-height]|imgsrc:"[&FFFxLink]"|bar1_value:1|represents:[&CharNameID]|showname:false|emits_low_light:true
+	 --?"X[&FFTID]" -eq "X"|>far_FindPageTokenByName;[*[&loop]:t-id];[&FFTokenName];FFTID
+	 --?"X[&FFTID]" -ne "X"|>FFAttachFx;[*[&loop]:t-id];[&FFTID]
+	 --!a:[*S:character_id]|!ConcentrationSpellTargetToken:[&FFTokenName]
 	 --]|
 	 
 	--=NumFF|[$NumFF]+1
