@@ -1,6 +1,6 @@
 !script {{
   --/|Script Name : Concentration
-  --/|Version     : 1.4.2
+  --/|Version     : 1.4.4
   --/|Requires SC : ScriptCards 3.0.25+, 5Elib/snlib/Farsidelib 1.5.2+
   --/|
   --/|Trigger setup (ScriptCards_Triggers character):
@@ -122,7 +122,17 @@
    --?"X[&ConcLiveTemp]" -eq "X"|&ConcLiveTemp;[&ConcMoveTempold]
    --?"[&ConcLiveHP]" -eq ""|&ConcLiveHP;[&ConcMoveHPold]
    --?"[&ConcLiveTemp]" -eq ""|&ConcLiveTemp;[&ConcMoveTempold]
-   --?[&ConcMoveHPold] -eq [&ConcMoveHPnew] -and [&ConcMoveTempold] -eq [&ConcMoveTempnew] -and [&ConcMoveHPold] -eq [&ConcLiveHP] -and [&ConcMoveTempold] -eq [&ConcLiveTemp]|SKIP
+   --?"X[&ConcMoveTempold]" -eq "X"|&ConcMoveTempold;0
+   --?"[&ConcMoveTempold]" -eq ""|&ConcMoveTempold;0
+   --?"X[&ConcMoveTempnew]" -eq "X"|&ConcMoveTempnew;0
+   --?"[&ConcMoveTempnew]" -eq ""|&ConcMoveTempnew;0
+   --?"X[&ConcLiveTemp]" -eq "X"|&ConcLiveTemp;0
+   --?"[&ConcLiveTemp]" -eq ""|&ConcLiveTemp;0
+   --/|TokenMod often omits GraphicNew bar values; manual bar edits too. If payload old=new, take post-change from live token (same as ConcResolveBars).
+   --?"[&ConcMoveHPold]" -eq "[&ConcMoveHPnew]"|&ConcMoveHPnew;[&ConcLiveHP]
+   --?"[&ConcMoveTempold]" -eq "[&ConcMoveTempnew]"|&ConcMoveTempnew;[&ConcLiveTemp]
+   --/|Position-only move: after sync, HP and temp still unchanged.
+   --?"[&ConcMoveHPold]" -eq "[&ConcMoveHPnew]" -and "[&ConcMoveTempold]" -eq "[&ConcMoveTempnew]"|SKIP
    -->ConcResolveBars|
    -->ConcCalcDamage|
    --<|
@@ -137,17 +147,25 @@
    --?"[&ConcHPnew]" -eq ""|&ConcHPnew;[*[&GraphicOld_id]:t-bar[&hitPointBar]_value]
    --?"X[&ConcTempnew]" -eq "X"|&ConcTempnew;[*[&GraphicOld_id]:t-bar[&tempHPBar]_value]
    --?"[&ConcTempnew]" -eq ""|&ConcTempnew;0
+   --?"X[&ConcTempold]" -eq "X"|&ConcTempold;0
+   --?"[&ConcTempold]" -eq ""|&ConcTempold;0
    --/|TokenMod listen_to_tokenmod often sets GraphicNew equal to GraphicOld; live token has the real post-damage value.
-   --?[&ConcHPold] -eq [&ConcHPnew]|&ConcHPnew;[*[&GraphicOld_id]:t-bar[&hitPointBar]_value]
-   --?[&ConcTempold] -eq [&ConcTempnew]|&ConcTempnew;[*[&GraphicOld_id]:t-bar[&tempHPBar]_value]
+   --?"[&ConcHPold]" -eq "[&ConcHPnew]"|&ConcHPnew;[*[&GraphicOld_id]:t-bar[&hitPointBar]_value]
+   --?"[&ConcTempold]" -eq "[&ConcTempnew]"|&ConcTempnew;[*[&GraphicOld_id]:t-bar[&tempHPBar]_value]
+   --?"X[&ConcTempnew]" -eq "X"|&ConcTempnew;0
+   --?"[&ConcTempnew]" -eq ""|&ConcTempnew;0
    --<|
 
   --:ConcCalcDamage|
    --=ConcHPdam|0
    --=ConcTempdam|0
    --/|Count decreases only (healing increases are ignored by the old>new check).
-   --?"X[&ConcTempold]" -ne "X" -and "[&ConcTempold]" -ne "" -and [&ConcTempold] -gt [&ConcTempnew]|=ConcTempdam;[&ConcTempold]-[&ConcTempnew]
-   --?"X[&ConcHPold]" -ne "X" -and "[&ConcHPold]" -ne "" -and [&ConcHPold] -gt [&ConcHPnew]|=ConcHPdam;[&ConcHPold]-[&ConcHPnew]
+   --=ConcTempoldNum|[&ConcTempold]
+   --=ConcTempnewNum|[&ConcTempnew]
+   --=ConcHPoldNum|[&ConcHPold]
+   --=ConcHPnewNum|[&ConcHPnew]
+   --?[$ConcTempoldNum] -gt [$ConcTempnewNum]|=ConcTempdam;[$ConcTempoldNum]-[$ConcTempnewNum]
+   --?[$ConcHPoldNum] -gt [$ConcHPnewNum]|=ConcHPdam;[$ConcHPoldNum]-[$ConcHPnewNum]
    --?[*[&GraphicOld_id]:hp_temp] -ne [&ConcTempnew]|[
     --!a:[*[&GraphicOld_id]:character_id]|hp_temp:[&ConcTempnew]
     --]|
