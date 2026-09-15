@@ -10,6 +10,7 @@
  * v2.0.4-farside: Fix follow — change:graphic like stock; only sync-mark carried tokens; snap on carry.
  * v2.0.5-farside: Clearer missing-token errors; fix duplicate carrierId declaration in _carry.
  * v2.0.6-farside: Retry carry when tokens are not in the API yet (ScriptCards spawn race).
+ * v2.0.7-farside: carryBelow uses graphic.toBelow(carrier) when Sandbox v1.5+ provides it.
  *
  * Replace the One-Click Carry Tokens mod with this file. Requires HTML Builder.
  * Command interface unchanged: !CARRY_TOKENS_CARRY_BELOW, etc.
@@ -17,7 +18,7 @@
 var CarryTokens = (() => {
 	'use strict';
 
-	const VERSION = '2.0.6-farside';
+	const VERSION = '2.0.7-farside';
 	const STATE_KEY = 'carrytokens';
 
 	const CARRY_MENU_CMD = '!CARRY_TOKENS_MENU';
@@ -307,6 +308,14 @@ var CarryTokens = (() => {
 		snapCarriedToken(carrier, target);
 	}
 
+	const placeCarriedBelowCarrier = (carrier, target) => {
+		if (target && carrier && typeof target.toBelow === 'function') {
+			target.toBelow(carrier);
+		} else {
+			toBack(target);
+		}
+	};
+
 	function carryBelow(carrier, target, carrierIdHint, targetIdHint) {
 		_carry(
 			carrier,
@@ -314,7 +323,7 @@ var CarryTokens = (() => {
 			carrierIdHint || tokenId(carrier),
 			targetIdHint || tokenId(target)
 		);
-		toBack(target);
+		placeCarriedBelowCarrier(carrier, target);
 		snapCarriedToken(carrier, target);
 	}
 
