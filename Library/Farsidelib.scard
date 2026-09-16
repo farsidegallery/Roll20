@@ -1,4 +1,4 @@
---/|ScriptCards Library: Farsidelib  version 1.7.0
+--/|ScriptCards Library: Farsidelib  version 1.7.1
 --/|Provides various utility procedures for Roll20
 
 --/|This library contains a number of functions that are customized to meet the different needs of spell or ability
@@ -60,13 +60,14 @@
 --/|   far_Check_GLOBAL_MOD_EXISTS|characterid; Category; name; returnstring (0=does not exist, 1=exists)
 --/|      Pass characterid ([*S:character_id], [*T:character_id], loop id). Mod names with spaces: set &_FarGMName|[&YourModName] before calling, or use $$$ args (see header in subroutine).
 --/|
---/|   far_SetGlobalModStatusStaged|category;activeFlag (0/1/2=toggle). Set _FarGMCharId and _FarGMName before calling.
---/|      Set _FarGMName before calling. Uses $$$ Rfind delimiter for special characters.
+--/|   far_SetGlobalModStatusStaged|category;activeFlag;modName (optional). Set _FarGMCharId; set _FarGMName or pass modName.
+--/|      Uses $$$ Rfind delimiter for mod names with special characters.
 --/|
 --/|   far_GlobalModSafeLabel|source-var-name;return-var
 --/|      Sanitizes a mod name for use inside roll [bracket] labels.
 --/|
 --/|   far_Check_GLOBAL_ATTRIB_SAVE_EXISTS|characterid; attributename; returnstring (0=does not exist, 1=exists)
+--/|      Does not error when no repeating savemod row matches; most PCs use sheet save bonus only.
 --/|      Checks to see if a Global Save Mod exists in any variation of the attribute provided and returns numeric flag
 --/|   
 --/|   far_PlayEffects|Parameters are : sourcetoken; targettoken; source effect; target effect; line effect; sound effect
@@ -193,7 +194,7 @@
 --/|      Strips save mod and beneficiary markers for everyone in range or sourced by this paladin.
 --/|
 --/|   far_PaladinAuraClearToken|paladin-token-id
---/|      Clears aura ring and gmnotes on the paladin token (token-mod + !t).
+--/|      Clears aura ring and AuraTriggers gmnotes (empty JSON array []) on the paladin token.
 --/|
 --/|   far_PaladinAuraSuspend|paladin-token-id;icon-name
 --/|      Full suspend: dismiss beneficiaries, clear token aura/gmnotes, AT rebuild/checkall.
@@ -440,7 +441,12 @@
 
  --:far_SetGlobalModStatusStaged|category;activeFlag;modName
   --?"X[&_FarGMCharId]" -eq "X"|<
-  -->far_RfindGlobalModStaged|[%1%];[%3%]
+  --?"X[%3]" -eq "X"|[
+   -->far_RfindGlobalModStaged|[%1%];[&_FarGMName]
+  --]|
+  --?"X[%3]" -ne "X"|[
+   -->far_RfindGlobalModStaged|[%1%];[%3%]
+  --]|
   --?"[*R:global_[&_Lib5E_Search_Field]_name]" -eq "NoRepeatingAttributeLoaded"|>far_LogFatalError;Global [%1%] Modifier [&_FarRfindModName] not found on character [&_FarGMCharId]
   --?"[%2]" -eq 2|[
    --?"[*R:global_[&_Lib5E_Search_Field]_active_flag]" -eq "1"|[
@@ -469,8 +475,6 @@
 
  --:far_Check_GLOBAL_ATTRIB_SAVE_EXISTS|characterid; attributename; returnstring (0=does not exist, 1=exists)
   --&[%3%]|0
-  --&_Lib5E_Temp|[%2%]
-  
   --~FullUpperAttrib|string;touppercase;[%2%]
   --~FullLowerAttrib|string;tolowercase;[%2%]
   --~FullTitleAttrib|string;totitlecase;[%2%]  
@@ -494,8 +498,7 @@
    
   --?"[*R:global_save_name]" -eq "NoRepeatingAttributeLoaded"|[
    --&[%3%]|0
-   -->_Lib5E_THROW_ERROR|Global Save Modifier [%2%] not found on character [*[%1%]:t-name]
-   --]|   
+  --]|
   --<|
  
  --:far_PlayEffects|Parameters are : sourcetoken; targettoken; source effect; target effect; line effect; sound effect
@@ -534,6 +537,11 @@
    --&[%4%]|[*[%1%]:[%2%]]
   --]|[
    --&[%4%]|[%3%]
+  --]|
+  --?"[%2]" -eq "PaladinAuraIcon"|[
+   --?"X[&[%4]]" -eq "X"|&[%4];overdrive
+   --?"[&[%4]]" -eq ""|&[%4];overdrive
+   --?"[&[%4]]" -eq "__PAICON__"|&[%4];overdrive
   --]|
   --<|
 
@@ -1210,8 +1218,8 @@
   --]|
   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BaneMarker];ETBaneFlag;ETBaneCount
   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&BlessedMarker];ETBlessFlag;ETBlessCount
-  --?[&ETBaneFlag] -eq 1|&ETBaneroll;+ - 1d4 [Bane] |&ETBaneroll;
-  --?[&ETBlessFlag] -eq 1|&ETBlessRoll;+ + 1d4 [Blessed] |&ETBlessRoll;
+  --?[&ETBaneFlag] -eq 1|&ETBaneroll;+ - 1d4 [Bane]
+  --?[&ETBlessFlag] -eq 1|&ETBlessRoll;+ + 1d4 [Blessed]
   --?[*T:npc] -eq 1|[
    --?[*T:npc_[&ETShortAttrib]_save_flag] -gt 0|&ETSave;npc_[&ETShortAttrib]_save |&ETSave;[&ETSaveAttrib]_mod
    --=ETSaveRoll|[&ETSaveDice] + [*T:[&ETSave]] [&obrac][&ETDisplayAttrib][&cbrac] [&ETBaneroll] [&ETBlessRoll]
@@ -1298,6 +1306,9 @@
 
  --:far_RemoveTokenMarker|token-id;marker-name
   --&FRMMarker|[%2%]
+  --?"X[&FRMMarker]" -eq "X"|&FRMMarker;overdrive
+  --?"[&FRMMarker]" -eq ""|&FRMMarker;overdrive
+  --?"[&FRMMarker]" -eq "__PAICON__"|&FRMMarker;overdrive
   --~|array;statusmarkers;FRMList;[%1%]
   --&FRMChanged|0
   --%FRMLoop|0;[@FRMList(maxindex)]
@@ -1319,11 +1330,15 @@
   --<|
 
  --:far_SetTokenMarker|token-id;marker-name;count
-  -->far_RemoveTokenMarker|[%1%];[%2%]
+  --&FSMMarkerRaw|[%2%]
+  --?"X[&FSMMarkerRaw]" -eq "X"|&FSMMarkerRaw;overdrive
+  --?"[&FSMMarkerRaw]" -eq ""|&FSMMarkerRaw;overdrive
+  --?"[&FSMMarkerRaw]" -eq "__PAICON__"|&FSMMarkerRaw;overdrive
+  -->far_RemoveTokenMarker|[%1%];[&FSMMarkerRaw]
   --&FSMCount|[%3%]
   --?"X[&FSMCount]" -eq "X"|&FSMCount;0
-  --&FSMAdd|[%2%]
-  --?"X[&FSMCount]" -ne "X0"|&FSMAdd;[%2%]@[&FSMCount]
+  --&FSMAdd|[&FSMMarkerRaw]
+  --?"X[&FSMCount]" -ne "X0"|&FSMAdd;[&FSMMarkerRaw]@[&FSMCount]
   --~|array;statusmarkers;FSMList;[%1%]
   --~|array;add;FSMList;[&FSMAdd]
   --~FSMNew|array;stringify;FSMList
@@ -1345,7 +1360,7 @@
   --&PACharId|[*T:character_id]
   --?"X[&PACharId]" -eq "X"|<
   -->far_GetTokenCharAttr|[&PATargetTok];PaladinAuraSources;,;PaladinAuraSources
-  --?"X[&PaladinAuraSources]" -inc ",[&PAPalTok],"|paAddSourceSkip|
+  --?"X[&PaladinAuraSources]" -inc ",[&PAPalTok],"|paAddSourceSkip
   --&PaladinAuraSources|+[&PAPalTok],
   --:paAddSourceSkip|
   --!a:[&PACharId]|!PaladinAuraSources:[&PaladinAuraSources]
@@ -1374,8 +1389,15 @@
   --&PATargetTokId|
   --<|
 
+ --:far_PaladinAuraNormalizeIcon|
+  --?"X[&PaladinAuraIcon]" -eq "X"|&PaladinAuraIcon;overdrive
+  --?"[&PaladinAuraIcon]" -eq ""|&PaladinAuraIcon;overdrive
+  --?"[&PaladinAuraIcon]" -eq "__PAICON__"|&PaladinAuraIcon;overdrive
+  --<|
+
  --:far_PaladinAuraOnEnter|target-token-id;paladin-token-id
   -->far_LoadTokenMarkers|
+  -->far_PaladinAuraNormalizeIcon|
   --#targettoken|[%1%]
   --#sourceToken|[%2%]
   --#title|Paladin Aura
@@ -1383,23 +1405,31 @@
   -->far_PaladinAuraGetLeftSub|[&PALSublvl];PLeftSub
   --#leftsub|[&PLeftSub]
   --#emoteText|[*T:t-name] enters the protection of [*S:t-name]
+  --&PAShowEnterChat|1
+  --?"X[*T:character_id]" -ne "X"|[
+   -->far_GetTokenCharAttr|[%1%];PaladinAuraSources;,;PAEnterSources
+   --?"X[&PAEnterSources]" -inc ",[%2],"|&PAShowEnterChat;0
+  --]|
   -->far_PaladinAuraAddSource|[%1%];[%2%]
   --?"X[%1%]" -eq "X[%2%]"|[
    --!a:[*T:character_id]|!PaladinAuraIcon:[&PaladinAuraIcon]
   --]|
   -->far_SetTokenMarker|[%1%];[&PaladinAuraIcon];0
-  --=PADisplayBonus|[&PaladinAuraAppliedBonus]
-  --?[$PADisplayBonus] -gt 0|[
-   --?"X[&PaladinAuraCourageMsg]" -ne "X"|[
-    --+|[c]Your saving throws receive an additional +[$PADisplayBonus] bonus[&PaladinAuraCourageMsg][/c]
-   --]|[
-    --+|[c]Your saving throws receive an additional +[$PADisplayBonus] bonus.[/c]
+  --?[&PAShowEnterChat] -eq 1|[
+   --=PADisplayBonus|[&PaladinAuraAppliedBonus]
+   --?[$PADisplayBonus] -gt 0|[
+    --?"X[&PaladinAuraCourageMsg]" -ne "X"|[
+     --+|[c]Your saving throws receive an additional +[$PADisplayBonus] bonus[&PaladinAuraCourageMsg][/c]
+    --]|[
+     --+|[c]Your saving throws receive an additional +[$PADisplayBonus] bonus.[/c]
+    --]|
    --]|
   --]|
   --<|
 
  --:far_PaladinAuraOnExit|target-token-id;paladin-token-id
   -->far_LoadTokenMarkers|
+  -->far_PaladinAuraNormalizeIcon|
   --#targettoken|[%1%]
   --#sourceToken|[%2%]
   --#title|Paladin Aura
@@ -1437,6 +1467,8 @@
   --]|
   --=PADPalReach|([*T:t-width] + [*T:t-height]) / 140 * [$PADScale]
   --~|array;pagetokens;PageTokens;[&PADPalTID]
+  --?"[@PageTokens()]" -eq "undefined array"|<
+  --?[@PageTokens(length)] -eq 0|<
   --%paTok|foreach;PageTokens
    --#targettoken|[&paTok]
    --?"X[*T:t-id]" -eq "X"|paDismissSkip
@@ -1473,8 +1505,8 @@
   --<|
 
  --:far_PaladinAuraClearToken|paladin-token-id
-  --@token-mod|_ignore-selected _ids [%1%] _set aura1_radius|0 aura1_color|transparent gmnotes|&nbsp;
-  --!t:[%1%]|aura1_radius:0|aura1_color:transparent|gmnotes:&nbsp;
+  --@token-mod|_ignore-selected _ids [%1%] _set aura1_radius|0 aura1_color|transparent gmnotes|[]
+  --!t:[%1%]|aura1_radius:0|aura1_color:transparent|gmnotes:[]
   --<|
 
  --:far_PaladinAuraSuspend|paladin-token-id;icon-name
@@ -1493,7 +1525,6 @@
   --&PaladinAuraModName|Paladin Aura
   --&PaladinAuraAppliedBonus|0
   --&PaladinAuraCourageMsg|
-  --&PaladinAuraModList|
   --&PAPathDeactivate|0
   --=BestBonus|-999
   --&CourageFlag|0
@@ -1501,9 +1532,12 @@
   --?"X[%2%]" -eq "X"|[
    -->far_GetTokenCharAttr|[&PATargetTok];PaladinAuraSources;,;SourceList
   --]|
-  --~|array;fromstring;PALsrcArr;,;[&SourceList]
-  --&CleanSources|,
   --&SavedTarget|[&PATargetTok]
+  --~|array;fromstring;PALsrcArr;,;[&SourceList]
+  --?[@PALsrcArr(length)] -eq 0|>PADeactPath
+  --?"[&SourceList]" -eq ","|>PADeactPath
+  --?[&SourceList(length)] -le 1|>PADeactPath
+  --&CleanSources|,
   --%paSrc|foreach;PALsrcArr
    --&PalTID|[&paSrc]
    --?"X[&PalTID]" -eq "X"|paSrcSkip
@@ -1533,7 +1567,7 @@
   --?"X[&PAPathDeactivate]" -eq "X0"|[
    --?[$BestBonus] -le -999|&PAPathDeactivate;1
   --]|
-  --?"X[&PAPathDeactivate]" -eq "X1"|>PADeactPath|
+  --?"X[&PAPathDeactivate]" -eq "X1"|>PADeactPath
   --&PaladinAuraAppliedBonus|[$BestBonus]
   --?[&CourageFlag] -eq 1|[
    --&PaladinAuraCourageMsg|; Aura of Courage makes you immune to the Frightened condition.
@@ -1541,12 +1575,12 @@
   --&PATargetTokId|[&SavedTarget]
   -->far_PaladinAuraEnsureMod|[$BestBonus.Raw]
   --&PATargetTokId|
-  --?[&CourageFlag] -eq 1|>PACourOn|
+  --?[&CourageFlag] -eq 1|>PACourOn
   --^PACourOff|
   --:PACourOn|
   --&PAFrightImmune|,frightened
   --~|array;attributes;PACourBk;[&PACharId];PaladinAuraOrigImmune
-  --?"[@PACourBk(0)]" -nei ""|>PACourFearOnly|
+  --?"[@PACourBk(0)]" -nei ""|>PACourFearOnly
   --&PAOrigImmuneSnap|[*T:npc_immunities]
   --!a:[&PACharId]|!PaladinAuraOrigImmune:[&PAOrigImmuneSnap]
   --&PANewImmune|[&PAOrigImmuneSnap][&PAFrightImmune]
@@ -1628,7 +1662,11 @@
   --!a:[&PACharId]|!PaladinAuraSources:,
   --&PaladinAuraAppliedBonus|0
   --&PaladinAuraCourageMsg|
-  --&PaladinAuraModList|
+  -->far_GetTokenCharAttr|[&PATargetTok];PaladinAuraIcon;overdrive;PADeactMarkerIcon
+  --&PaladinAuraIcon|[&PADeactMarkerIcon]
+  -->far_PaladinAuraNormalizeIcon|
+  -->far_RemoveTokenMarker|[&PATargetTok];[&PaladinAuraIcon]
+  --!a:[&PACharId]|!PaladinAuraIcon:**
   --<|
 
  --:far_PaladinAuraAttachTriggers|token-id;result-var;icon-name
@@ -1641,6 +1679,10 @@
   --]|
   --&PalAuraEnc|%5B%7B%22color%22%3A%22%239900ff00%22%2C%22name%22%3A%22Paladin%20Aura%22%2C%22icon%22%3A%22__PAICON__%22%2C%22toPCs%22%3Atrue%2C%22toNPCs%22%3Atrue%2C%22toGraphics%22%3Afalse%2C%22toLayers%22%3A%22objects%2Cgmlayer%22%2C%22applySelf%22%3Atrue%2C%22removeOnExit%22%3Atrue%2C%22ignoreWalls%22%3Afalse%2C%22targetVfxOnEnter%22%3A%22shield-holy%22%2C%22targetVfxOnExit%22%3A%22shield-death%22%2C%22chatActionOnEnter%22%3A%22!script%20%7B%7B%20%2B%2B%2B5Elib%3Bsnlib%3BFarsidelib%2B%2B%2B%20%2D%2D%23sourcetoken%7C%5BATID%5D%20%2D%2D%23targettoken%7C%5BTID%5D%20%2D%2D%23emoteTargetTokenSize%7C75%20%2D%2D%26PaladinAuraIcon%7C__PAICON__%20%2D%2D%3Efar_PaladinAuraOnEnter%7C%5BTID%5D%3B%5BATID%5D%20%2D%2DX%7C%20%7D%7D%22%2C%22chatActionOnExit%22%3A%22!script%20%7B%7B%20%2B%2B%2B5Elib%3Bsnlib%3BFarsidelib%2B%2B%2B%20%2D%2D%23sourcetoken%7C%5BATID%5D%20%2D%2D%23targettoken%7C%5BTID%5D%20%2D%2D%23emoteTargetTokenSize%7C75%20%2D%2D%26PaladinAuraIcon%7C__PAICON__%20%2D%2D%3Efar_PaladinAuraOnExit%7C%5BTID%5D%3B%5BATID%5D%20%2D%2DX%7C%20%7D%7D%22%7D%5D
   --&PalAuraEnc|[&PalAuraEnc(replace,__PAICON__,[&PAAttachIcon])]
+  --?"X[&PalAuraEnc]" -inc "__PAICON__"|[
+   --&[%2%]|[b]Aura triggers not applied.[/b] Icon placeholder was not replaced in aura JSON.
+   --<|
+  --]|
   --?[&PalAuraEnc(length)] -lt 50|[
    --&[%2%]|[b]Aura triggers not applied.[/b] Aura JSON template missing ([&PalAuraEnc(length)] chars).
    --<|
@@ -1691,6 +1733,8 @@
   --]|
   --=PARefMaxGrid|[$PARefAuraFeet] / [$PARefScale] + 1
   --~|array;pagetokens;PARefTokens;[&PARefPalTID]
+  --?"[@PARefTokens()]" -eq "undefined array"|<
+  --?[@PARefTokens(length)] -eq 0|<
   --%paRefTok|foreach;PARefTokens
    --#targettoken|[&paRefTok]
    --?"X[*T:t-id]" -eq "X"|paRefSkip
