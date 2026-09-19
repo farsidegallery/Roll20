@@ -1,10 +1,10 @@
 ﻿!script {{
   --/|Script Name : 5E Action Menu
-  --/|Version     : 3.5.0
+  --/|Version     : 3.6.0
   --/|Requires SC : 2.7.15+
   --/|Author      : Kurt Jaegers
   --/|Modified By : Farsidegallery
-  --&CAM_VERSION|3.5.0
+  --&CAM_VERSION|3.7.0
 
   --/|IMPORTANT NOTE: Updating this macro via the in-game editor will cause it to exhibit strange behavior. If you wish
   --/|to make settings changes, make them in an external editor (like NOTEPAD) and copy/paste the whole
@@ -22,7 +22,9 @@
   --/|Settings Area - Customize the behavior of the script here
 
   --&hitPointsBar|1                 --/|What bar do you use for representing hit points for damage application?
-  --&tempHPBar|4                    --/|What bar do you use for representing temporary hit points?
+  --&tempHPBar|4                    --/|Token bar # for temporary HP. When UseTempHP is 1, this bar MUST be set on tokens (mandatory).
+  --&UseTempHP|1                    --/|1 = deplete tempHPBar before HP. 0 = HP bar only.
+  --&AllowNegativeHP|1              --/|1 = HP may go below 0 after damage. 0 = clamp at 0 (overheal still per call param 6).
   --&skipPreppedSpellsCheck|1       --/|If set to 1, show all known spells for PCs. Otherwise (default) show prepared spells only
   --&skipNPCPrepCheck|1             --/|If set to 1 (Default), show all known spells for NPCs. Otherwise show prepared spells only
   --&trackPCSpellSlots|1            --/|If set to 1, available PC spell slots will be tracked/used.
@@ -82,7 +84,7 @@
   --&UseNamedCharacterSettings|0        --/|Set to "1" to enable loading of settings information from a saved format named after the character (case sensitive)
   --&sendGmInfo|1                       --/|If this value is set to 1, attack rolls will have the target's numeric AC value hidden
   --&AllNPCActionsToSender|0            --/|If this value is set to 1, NPC actions (except spellcasting) will be whispered to the sender only and not displayed to everyone
-  --&damageApplyScript|token-mod        --/|Use "token-mod" if ScriptCards_Triggers uses listen_to_tokenmod|1 (concentration/death HP triggers). "scriptcards" skips TokenMod and may not fire those triggers.
+  --&damageApplyScript|token-mod        --/|Set this to either "scriptcards", "token-mod", "alterbars", "damagebuttons" or anything else to not apply damage
   --&whisperDamageButtonsToDM|1         --/|If using "damagebuttons" and this is set to 1, the damage buttons will be whispered to the DM instead of being added to the card
   --&whisperDamageButtonResultsToDM|1   --/|If using "damagebuttons" for damage and this value is 1, the DM is whispered a message about damage application
   --&selfHandleAdvantageMode|1          --/|If set to 1, the Action Menu will include advantage/normal/disadvantage toggles (and won't use the character sheet toggle)
@@ -96,9 +98,9 @@
   --&FailTableMelee|Damage-Melee-Fail   --/|Full Roll20 rollable table name for melee weapon attack critical fails (natural 1). Leave blank to skip fail tables for melee attacks.
   --&FailTableRanged|Damage-Range-Fail  --/|Full Roll20 rollable table name for ranged weapon attack critical fails (natural 1). Leave blank to skip fail tables for ranged attacks.
   --&FailTableSpell|Damage-Spell-Fail   --/|Full Roll20 rollable table name for spell attack critical fails (natural 1). Leave blank to skip fail tables for spell attacks.
-  --&ConcentrationMarkerName|Concentrating::7409928           --/|If set to a non-blank value, this will be used as the name of the conditional marker to be set on the caster if the cast spell requires concentration
+  --&ConcentrationMarkerName|Concentrating::7409928           --/|Roll20 token marker tag when CAM spells apply concentration. Match your campaign marker (and any external conc trigger you use).
   --&DetectPlayersToken|1               --/|If set to a non-zero value, the script will attempt to resolve a character for a player that runs it without a selected token
-  --&ShowRestButtons|1                  --/|If set to 1, rest buttons will be shown in the title bar
+  --&ShowRestButtons|0                  --/|If set to 1, rest buttons will be shown in the title bar
   --&Template|none                      --/|If you wish to use Keith Curtis' SuperNotes templates, put the template name here
   --&DisplayButtonsForAMAbilities|1     --/|If set to 1, the menu will include custom buttons defined on characters that include the "AM-" prefix in their names.
   --&AmListDebug|0                      --/|Set to 1 to whisper GM debug lines while building Custom Actions (AMLIST troubleshooting)
@@ -271,17 +273,7 @@
     --lsettings|[*S:character_name]
   --]|
 
-  --/|Determine damage subroutine. Start by assuming we aren't going to apply damage
-  --&damageRoutine|DontApplyDamage
-  --&damageApplyRoutine|ApplyDamageTokenmod
-  --?[&damageApplyScript] -eq "scriptcards"|&damageRoutine;ApplyDamageScriptCards
-  --?[&damageApplyScript] -eq "scriptcards"|&damageApplyRoutine;ApplyDamageScriptCards
-  --?[&damageApplyScript] -eq "token-mod"|&damageRoutine;ApplyDamageTokenmod
-  --?[&damageApplyScript] -eq "token-mod"|&damageApplyRoutine;ApplyDamageTokenmod
-  --?[&damageApplyScript] -eq "alterbars"|&damageRoutine;ApplyDamageAlterbars
-  --?[&damageApplyScript] -eq "alterbars"|&damageApplyRoutine;ApplyDamageAlterbars
-  --?[&damageApplyScript] -eq "damagebuttons"|&damageRoutine;SHOW_DAMAGE_BUTTONS
-  --?[&damageApplyScript] -eq "damagebuttons"|&damageApplyRoutine;ApplyDamageTokenmod
+  -->CAM_SetDamageApplyRoutines|
 
   --#emotestate|hidden
   --#title|[*S:character_name]
@@ -348,10 +340,8 @@
 
   --/|5E Sheet Specific BEGIN
 
+  --/|NPC spell buttons: show all spells in repeating sections (no slot-level filter). Cast still checks slots in EXEC_PC_SPELL.
   --&HighestSlot|9
-  --?[&trackPCSpellSlots] -eq 1|[
-    -->GET_HIGHEST_LEVEL_SPELL_SLOT|HighestSlot
-  --]|
   -->BUILD_BUTTON_LIST|[*S:character_id];repeating_npcaction;name;EXEC_NPC_ACTION;Actions;[&sharednpcmacromulename];0
   -->BUILD_BUTTON_LIST|[*S:character_id];repeating_npcbonusaction;name;EXEC_NPC_BONUS_ACTION;Bonus Actions;[&sharednpcmacromulename];0
   -->BUILD_BUTTON_LIST|[*S:character_id];repeating_npcreaction;name;EXEC_NPC_REACTION;Reactions;[&sharednpcmacromulename];0
@@ -419,6 +409,7 @@
 
   --:EXEC_NPC_ACTION|
   --?[&AMOriginalSendingPlayer] -ne [&SendingPlayerID]|YOU_CANNOT_DO_THAT
+  -->CAM_SetDamageApplyRoutines|
   --&whisperTarget|
   --?[*S:npc] -eq 1 -and [&AllNPCActionsToSender] -eq 1|&whisperTarget;self
   --#whisper|[&whisperTarget]
@@ -478,15 +469,11 @@
     --?"[&UseResistances]" -eq 0|SKIP_NPC_DMG_MODS
     --?"[*T:npc]" -ne 1|NPCA_VS_PC
     -->CheckDamageModifiersNPC|[*T:character_id];dmgModType1;[*R:attack_damagetype];0;0;0;T
-    --?"X[*R:attack_damagetype2]" -ne "X" -and "[*R:attack_damagetype2]" -ne "" -and "[*R:attack_damagetype2]" -ne "NoRepeatingAttributeLoaded"|[
-     -->CheckDamageModifiersNPC|[*T:character_id];dmgModType2;[*R:attack_damagetype2];0;0;0;T
-    --]|
+    -->CheckDamageModifiersNPC|[*T:character_id];dmgModType2;[*R:attack_damagetype2];0;0;0;T
     --^SKIP_NPC_DMG_MODS|
     --:NPCA_VS_PC|
     -->CheckDamageModifiersNPC|[*T:character_id];dmgModType1;[*R:attack_damagetype];0;0;0;T
-    --?"X[*R:attack_damagetype2]" -ne "X" -and "[*R:attack_damagetype2]" -ne "" -and "[*R:attack_damagetype2]" -ne "NoRepeatingAttributeLoaded"|[
-     -->CheckDamageModifiersNPC|[*T:character_id];dmgModType2;[*R:attack_damagetype2];0;0;0;T
-    --]|
+    -->CheckDamageModifiersNPC|[*T:character_id];dmgModType2;[*R:attack_damagetype2];0;0;0;T
     --:SKIP_NPC_DMG_MODS|
     --=AC|[*T:ac]
     --?"[*T:npc_ac]" -ne ""|=AC;[*T:npc_ac]
@@ -504,7 +491,7 @@
     --=Damage|[*R:attack_damage] [&ANPC_DMGMOD] [&dmgModType1]
     --+Hit|[$Damage] [*R:attack_damagetype]
     --+|[*R:description]
-    -->[&damageRoutine]|[&action_target];[&hitPointsBar];[&tempHPBar];-[$Damage];0;0;1
+    -->[&damageRoutine]|[&action_target];[&hitPointsBar];[&tempHPBar];-[$Damage.Raw];0;0;1
     --^NPCA_DONE|
     --:NPCA_HIT_TWODAMAGE|
     --=Damage|[*R:attack_damage] [&ANPC_DMGMOD] [&dmgModType1]
@@ -512,7 +499,7 @@
     --=TotalDamage|[$Damage] + [$Damage2]
     --+Hit|[$Damage] [*R:attack_damagetype] and [$Damage2] [*R:attack_damagetype2]
     --+|[*R:description]
-    -->[&damageRoutine]|[&action_target];[&hitPointsBar];[&tempHPBar];-[$TotalDamage];0;0;1
+    -->[&damageRoutine]|[&action_target];[&hitPointsBar];[&tempHPBar];-[$TotalDamage.Raw];0;0;1
     --^NPCA_DONE|
 
     --:NPCA_CRIT|
@@ -524,7 +511,7 @@
     --]|
     --+Critical|[$Damage] [*R:attack_damagetype]
     --+|[*R:description]
-    -->[&damageRoutine]|[&action_target];[&hitPointsBar];[&tempHPBar];-[$Damage];0;0;1
+    -->[&damageRoutine]|[&action_target];[&hitPointsBar];[&tempHPBar];-[$Damage.Raw];0;0;1
     --^NPCA_DONE|
     
     --:NPCA_CRIT_TWODAMAGE|
@@ -541,7 +528,7 @@
     --=TotalDamage|[$Damage] + [$Damage2]
     --+Critical|[$Damage] [*R:attack_damagetype] and [$Damage2] [*R:attack_damagetype2]
     --+|[*R:description]
-    -->[&damageRoutine]|[&action_target];[&hitPointsBar];[&tempHPBar];-[$TotalDamage];0;0;1
+    -->[&damageRoutine]|[&action_target];[&hitPointsBar];[&tempHPBar];-[$TotalDamage.Raw];0;0;1
     --^NPCA_DONE|
 
     --:NPCA_MISS|
@@ -768,6 +755,7 @@
 
   --:EXEC_PC_ATTACK|
   --?[&AMOriginalSendingPlayer] -ne [&SendingPlayerID]|YOU_CANNOT_DO_THAT
+  -->CAM_SetDamageApplyRoutines|
   --/+|[hr #58180d]
   --#whisper|
   --#emotestate|visible
@@ -1043,14 +1031,11 @@
   --&isAdamant|0
   --?"[*R:atkname]" -inc "Adamantine"|&isAdamant;1
   --?"[&UseResistances]" -eq 0|SKIP_CALC_DMG_MODS
-  --&_cdmResistCid|[*T:character_id]
-  -->CheckDamageModifiersNPC|[&_cdmResistCid];dmgModType1;[*R:dmgtype];[&isMagical];[&isSilver];[&isAdamant];T
-  --?"[*R:dmg2flag]" -eq "0"|SKIP_DMG2_RESIST
-  --?"[*R:dmg2flag]" -eq ""|SKIP_DMG2_RESIST
-  --?"X[*R:dmg2type]" -eq "X"|SKIP_DMG2_RESIST
-  --?"[*R:dmg2type]" -eq ""|SKIP_DMG2_RESIST
-  -->CheckDamageModifiersNPC|[&_cdmResistCid];dmgModType2;[*R:dmg2type];[&isMagical];[&isSilver];[&isAdamant];T
-  --:SKIP_DMG2_RESIST|
+  -->CheckDamageModifiersNPC|[*T:character_id];dmgModType1;[*R:dmgtype];[&isMagical];[&isSilver];[&isAdamant];PC_GDM_RES
+  -->CheckDamageModifiersNPC|[*T:character_id];dmgModType2;[*R:dmg2type];[&isMagical];[&isSilver];[&isAdamant]
+  --~gdmlist|array;fromstring;GDM_RES;|;[&PC_GDM_RES]
+  --%gdmloop|foreach;GDM_RES
+  --%|
   --:SKIP_CALC_DMG_MODS|
   --=attackDamage|[&dmgroll] [&dmgModType1]
   --=attackDamage2|[&dmgroll2] [&dmgModType2]
@@ -1060,13 +1045,13 @@
 
   --:ATTACK_ONE_DAMAGE|
   --+[&hittag]|The [*R:atkname] [&hitdesc] and deals [$attackDamage] [*R:dmgtype] damage.[br][br]
-  -->[&damageRoutine]|[*T:t-id];[&hitPointsBar];[&tempHPBar];-[$attackDamage];0;0;1
+  -->[&damageRoutine]|[*T:t-id];[&hitPointsBar];[&tempHPBar];-[$attackDamage.Raw];0;0;1
   --^ATTACK_DONE|
 
   --:ATTACK_TWO_DAMAGE|
   --+[&hittag]|The [*R:atkname] [&hitdesc] and deals [$attackDamage] [*R:dmgtype] and [$attackDamage2] [*R:dmg2type] damage.[br][br]
   --=TotalDamage|[$attackDamage] + [$attackDamage2]
-  -->[&damageRoutine]|[*T:t-id];[&hitPointsBar];[&tempHPBar];-[$TotalDamage];0;0;1
+  -->[&damageRoutine]|[*T:t-id];[&hitPointsBar];[&tempHPBar];-[$TotalDamage.Raw];0;0;1
   --^ATTACK_DONE|
 
   --:ATTACK_MISS|
@@ -1119,6 +1104,7 @@
 
   --:EXEC_PC_CANTRIP|
   --?[&AMOriginalSendingPlayer] -ne [&SendingPlayerID]|YOU_CANNOT_DO_THAT
+  -->CAM_SetDamageApplyRoutines|
   --/+|[hr #58180d]
   --&whisperTarget|
   --?[*S:npc] -eq 1 -and [&AllNPCActionsToSender] -eq 1|&whisperTarget;self
@@ -1179,7 +1165,7 @@
   --?[$cantrip_crit] -eq 1|&hittag;Critical Hit!|&hittag;Hit!
   --?[$cantrip_crit] -eq 1|&hitdesc;critically hits|&hitdesc;hits
   --+[&hittag]|The [*R:spellname] [&hitdesc] and deals [$cantripDamage] [*R:spelldamagetype] damage.[br][br]
-  -->[&damageRoutine]|[&cantrip_target];[&hitPointsBar];[&tempHPBar];-[$cantripDamage];0;0;1
+  -->[&damageRoutine]|[&cantrip_target];[&hitPointsBar];[&tempHPBar];-[$cantripDamage.Raw];0;0;1
   --^PC_CARD_CANTRIP|
   --:CANTRIP_SAVE|
   --+|The target needs to make a DC [*S:spell_save_dc] [*R:spellsave] saving throw or take [$cantripDamage] [*R:spelldamagetype] damage.[br][br]
@@ -1230,11 +1216,26 @@
   --X|
 
   --:EXEC_PC_SPELL|spellInfo1=Spell Level, 2=SpellName, 3=Target ID, 4=Slot Level
+  -->CAM_SetDamageApplyRoutines|
   --/+|[hr #58180d]
   --&whisperTarget|
   --?[*S:npc] -eq 1 -and [&AllNPCActionsToSender] -eq 1|&whisperTarget;self
   --#whisper|[&whisperTarget]
+  --/|Reentry: restore caster token before slot deduct (same as EXEC_PC_ATTACK).
+  --?"X[&saveTokenID]" -ne "X" -and "[&saveTokenID]" -ne ""|[
+   --#sourcetoken|[&saveTokenID]
+  --]|
+  --?"X[&AMCharacterId]" -eq "X" -or "[&AMCharacterId]" -eq ""|&AMCharacterId;[*S:character_id]
+  --&recoveredMenuTid|[*[&AMCharacterId]:5ECAM_MENU_TID]
+  --?"X[&saveTokenID]" -eq "X" -or "[&saveTokenID]" -eq ""|[
+   --?"X[&recoveredMenuTid]" -ne "X" -and "[&recoveredMenuTid]" -ne ""|[
+    --#sourcetoken|[&recoveredMenuTid]
+    --&saveTokenID|[&recoveredMenuTid]
+   --]|
+  --]|
   --~spellInfo|string;split;|;[&reentryval]
+  --/|Buttons without a slot picker omit spellInfo4; treat as cast at the spell's list level ([&spellInfo1]).
+  --?"X[&spellInfo4]" -eq "X" -or "[&spellInfo4]" -eq ""|&spellInfo4;[&spellInfo1]
 
   --=UpCast|[&spellInfo4] - [&spellInfo1]
   --?"[&UseAMAShadowdarkSystem]" -eq "1" -and "[*S:class]" -eq "Wizard"|=UpCast;0
@@ -1255,7 +1256,7 @@
   --:CAST_SKIP_SHADOWDARK|
   
   -->GET_AVAILABLE_SPELL_SLOTS|[&spellInfo4];castSlotAvailable
-  --?[&castSlotAvailable] -eq 0|NO_SLOTS_AVAILABLE
+  --?[&castSlotAvailable] -le 0|NO_SLOTS_AVAILABLE
   -->DEDUCT_SPELL_SLOT|[&spellInfo4]
   --^SKIP_CASTING_SLOT_CHECK|
   --:NO_SLOTS_AVAILABLE|
@@ -1360,18 +1361,18 @@
   --?"[*R:spelldamage2]" -ne ""|TWO_DAMAGE
   --+[&hittag]|The [*R:spellname] [&hitdesc] [$spellDamage] [*R:spelldamagetype] damage.[br][br]
   --?[&spell_heal] -eq 1|[
-   -->[&damageRoutine]|[&action_target];[&hitPointsBar];[&tempHPBar];[$spellDamage];0;0;1
+   -->[&damageRoutine]|[&action_target];[&hitPointsBar];[&tempHPBar];[$spellDamage.Raw];1;0;1
   --]|[
-   -->[&damageRoutine]|[&action_target];[&hitPointsBar];[&tempHPBar];-[$spellDamage];0;0;1
+   -->[&damageRoutine]|[&action_target];[&hitPointsBar];[&tempHPBar];-[$spellDamage.Raw];0;0;1
   --]|
   --^DONE_SPELL_DAMAGE|
 
   --:TWO_DAMAGE|
   --+[&hittag]|The [*R:spellname] [&hitdesc] [$spellDamage] [*R:spelldamagetype] damage and [$spellDamage2] [*R:spelldamagetype2] damage.[br][br]
   --?[&spell_heal] -eq 1|[
-   -->[&damageRoutine]|[&action_target];[&hitPointsBar];[&tempHPBar];[$TotalDamage];0;0;1
+   -->[&damageRoutine]|[&action_target];[&hitPointsBar];[&tempHPBar];[$TotalDamage.Raw];1;0;1
   --]|[
-   -->[&damageRoutine]|[&action_target];[&hitPointsBar];[&tempHPBar];-[$TotalDamage];0;0;1
+   -->[&damageRoutine]|[&action_target];[&hitPointsBar];[&tempHPBar];-[$TotalDamage.Raw];0;0;1
   --]|
   --^DONE_SPELL_DAMAGE|
 
@@ -1865,8 +1866,85 @@
   --<|
 
   --/|There are four different options for applying damage. The selected option is set in the settings area of the macro.
-  --/|When applying damage, one of the four functions listed below will be executed to alter the target's HP. Use token-mod
-  --/|when ScriptCards_Triggers relies on listen_to_tokenmod|1. ScriptCards !t-only may not fire those HP triggers.
+  --/|Token-mod apply (ApplyDamageTokenmod*): relative barN_value deltas only; do not re-set unchanged bars; no sheet hp_temp
+  --/|sync on token-mod temp writes (avoids double temp loss). Compatible with listen_to_tokenmod|1 change:graphic triggers.
+
+  --/|Set damageApplyRoutine + damageRoutine from settings (menu init and attack/damage reentry).
+  --:CAM_SetDamageApplyRoutines|
+  --&_dmgRouteScript|[&damageApplyScript]
+  --?"[&damageApplyScript]" -eq "damagebuttons"|&_dmgRouteScript;scriptcards
+  --&damageApplyRoutine|DontApplyDamage
+  --?"X[&UseTempHP]" -eq "X1"|[
+   --?"[&_dmgRouteScript]" -eq "scriptcards"|&damageApplyRoutine;ApplyDamageScriptCardsTempHP
+   --?"[&_dmgRouteScript]" -eq "token-mod"|&damageApplyRoutine;ApplyDamageTokenmodTempHP
+   --?"[&_dmgRouteScript]" -eq "alterbars"|&damageApplyRoutine;ApplyDamageAlterbarsTempHP
+  --]|
+  --?"X[&UseTempHP]" -ne "X1"|[
+   --?"[&_dmgRouteScript]" -eq "scriptcards"|&damageApplyRoutine;ApplyDamageScriptCardsSingle
+   --?"[&_dmgRouteScript]" -eq "token-mod"|&damageApplyRoutine;ApplyDamageTokenmodSingle
+   --?"[&_dmgRouteScript]" -eq "alterbars"|&damageApplyRoutine;ApplyDamageAlterbarsSingle
+  --]|
+  --?"[&damageApplyRoutine]" -eq "DontApplyDamage"|[
+   --?"[&_dmgRouteScript]" -eq "token-mod"|&damageApplyRoutine;ApplyDamageTokenmodSingle
+   --?"[&_dmgRouteScript]" -eq "scriptcards"|&damageApplyRoutine;ApplyDamageScriptCardsSingle
+   --?"[&_dmgRouteScript]" -eq "alterbars"|&damageApplyRoutine;ApplyDamageAlterbarsSingle
+  --]|
+  --?[&damageApplyScript] -eq "damagebuttons"|&damageRoutine;SHOW_DAMAGE_BUTTONS
+  --?"[&damageApplyScript]" -ne "damagebuttons"|&damageRoutine;CAM_ApplyDamageOrHealing
+  --<|
+
+  --/|Like LibSN_APPLY_DAMAGE_OR_HEALING: signed amount — negative = damage, positive = healing.
+  --/|Healing always uses main-HP apply (UseTempHP|0 / Single). Damage uses [&damageApplyRoutine] (TempHP when UseTempHP|1).
+  --:CAM_ApplyDamageOrHealing|tokenid;hp bar#;temp bar#;amount;display;allow overheal;allow negative hp
+  -->_ResolveDamageAmount|[%4%]
+  --?"[$_applyValue] -ge 0"|>CAM_ApplyDOR_MainHPOnly
+  -->[&damageApplyRoutine]|[%1%];[%2%];[%3%];[%4%];[%5%];[%6%];[%7%]
+  --<|
+
+  --:CAM_ApplyDOR_MainHPOnly|
+  --&_camDORRoute|[&damageApplyScript]
+  --?"[&damageApplyScript]" -eq "damagebuttons"|&_camDORRoute;scriptcards
+  --?"[&_camDORRoute]" -eq "scriptcards"|-->ApplyDamageScriptCardsSingle|[%1%];[%2%];[%3%];[%4%];[%5%];[%6%];[%7%]
+  --?"[&_camDORRoute]" -eq "alterbars"|-->ApplyDamageAlterbarsSingle|[%1%];[%2%];[%3%];[%4%];[%5%];[%6%];[%7%]
+  -->ApplyDamageTokenmodSingle|[%1%];[%2%];[%3%];[%4%];[%5%];[%6%];[%7%]
+  --<|
+
+  --/|Read temp HP from token bar; if bar empty/0, fall back to character hp_temp (common on NPCs).
+  --:ReadTokenTempHP|tokenId;tempBarNum;returnVarName
+   --&_rtthVal|[*[%1%]:t-bar[%2%]_value]
+   --?"X[&_rtthVal]" -eq "X"|&_rtthVal;0
+   --?"[&_rtthVal]" -eq ""|&_rtthVal;0
+   --?"[&_rtthVal]" -eq "undefined"|&_rtthVal;0
+   --?"[&_rtthVal]" -eq "0"|[
+    --?"X[*[%1%]:character_id]" -ne "X"|[
+     --&_tempFromSheet|[*[*[%1%]:character_id]:hp_temp]
+     --?"X[&_tempFromSheet]" -ne "X" -and "[&_tempFromSheet]" -ne "" -and "[&_tempFromSheet]" -ne "0"|&_rtthVal;[&_tempFromSheet]
+    --]|
+   --]|
+   --&[%3%]|[&_rtthVal]
+   --<|
+
+  --/|1 if token bar N exists for AlterBars / !t (max or value readable). 0 = PC sheet-only temp (hp_temp).
+  --:CAM_TokenBarExists|tokenId;barNum;returnVarName
+   --&_tbeExists|0
+   --&_tbeMax|[*[%1%]:t-bar[%2%]_max]
+   --?"X[&_tbeMax]" -ne "X"|&_tbeExists;1
+   --?"[&_tbeMax]" -ne "" -and "[&_tbeMax]" -ne "undefined"|&_tbeExists;1
+   --?"[&_tbeExists]" -eq "1"|[
+    --&[%3%]|1
+    --<|
+   --]|
+   --&_tbeVal|[*[%1%]:t-bar[%2%]_value]
+   --?"X[&_tbeVal]" -ne "X"|&_tbeExists;1
+   --?"[&_tbeVal]" -ne "" -and "[&_tbeVal]" -ne "undefined"|&_tbeExists;1
+   --&[%3%]|[&_tbeExists]
+   --<|
+
+  --/|Keep sheet hp_temp in sync when temp bar changes (OGL).
+  --:SyncTempHPSheet|tokenId;newTempValue
+   --?"X[*[%1%]:character_id]" -eq "X"|<
+   --!a:[*[%1%]:character_id]|!hp_temp:[%2%]
+   --<|
 
   --/|Adjust incoming damage for temporary HP. Positive amounts (healing) pass through unchanged.
   --/|Reads temp HP from the token bar. Sets &_tempAdjAmount, &_tempNewValue, &_tempAlterDelta (for AlterBars), &_tempBarChanged (0/1).
@@ -1874,11 +1952,12 @@
   --&_tempAdjAmount|[%3%]
   --&_tempNewValue|
   --&_tempAlterDelta|0
+  --=_tempAlterDeltaRoll|0
   --&_tempBarChanged|0
   --?"[%2%]" -eq ""|<
   --=TempHPIncoming|[%3%]
   --?[$TempHPIncoming.Raw] -ge 0|<
-  --&TempHPCurrentValue|[*[%1%]:t-bar[%2%]_value]
+  -->ReadTokenTempHP|[%1%];[%2%];TempHPCurrentValue
   --?"[&TempHPCurrentValue]" -eq ""|<
   --?"[&TempHPCurrentValue]" -eq "undefined"|<
   --=TempHPCurrent|[&TempHPCurrentValue]
@@ -1890,6 +1969,7 @@
   --&_tempNewValue|0
   --=TempAlterDelta|0 - [$TempHPCurrent.Raw]
   --&_tempAlterDelta|[$TempAlterDelta.Raw]
+  --=_tempAlterDeltaRoll|[$TempAlterDelta.Raw]
   --&_tempBarChanged|1
   --^ADJUST_TEMP_HP_DONE|
   --:ADJUST_TEMP_HP_ABSORBS_ALL|
@@ -1898,93 +1978,179 @@
   --&_tempNewValue|[$TempHPRemaining.Raw]
   --=TempAlterDelta|[$TempHPRemaining.Raw] - [$TempHPCurrent.Raw]
   --&_tempAlterDelta|[$TempAlterDelta.Raw]
+  --=_tempAlterDeltaRoll|[$TempAlterDelta.Raw]
   --&_tempBarChanged|1
   --:ADJUST_TEMP_HP_DONE|
   --<|
 
-  --/|ScriptCards !t-only bar sync (ApplyDamageScriptCards path). Token-mod path must not call this.
+  --/|ScriptCards !t-only bar sync (ApplyDamageScriptCards TempHP path). Token-mod path must not call this.
   --:SYNC_TEMP_HP_BAR|TokenID;tempHPbar;newValue
-  --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[%3%]
-  --!a:[*[%1%]:character_id]|!hp_temp:[%3%]
-  --!t:[%1%]|bar[%2%]_value|[%3%]
+  -->CAM_TokenBarExists|[%1%];[%2%];_syncTempBarExists
+  --?"[&_syncTempBarExists]" -eq "1"|[
+   --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[%3%]
+   --!t:[%1%]|bar[%2%]_value|[%3%]
+  --]|
+  --?"X[*[%1%]:character_id]" -ne "X"|--!a:[*[%1%]:character_id]|!hp_temp:[%3%]
   --<|
 
-  --/|Apply damage via ScriptCards' built-in object modification function (new in ScriptCards 1.5.0)
-  --:ApplyDamageScriptCards|Parameters are tokenid;bar#;tempHPbar;amount;display (0 or 1);allow overheal (0 or 1);allow negative hp (0 or 1)
+  --/|Shared: resolve roll amount (Total if non-zero, else Raw). Sets _applyValue.
+  --:_ResolveDamageAmount|amount
+  --=_applyIn|[%1%]
+  --=dmgTotalRoll|[$_applyIn.Total]
+  --=dmgRawRoll|[$_applyIn.Raw]
+  --?"[$dmgTotalRoll.Raw]" -ne "0"|=dmgResolvedRoll;[$dmgTotalRoll.Raw]
+  --?"[$dmgTotalRoll.Raw]" -eq "0"|=dmgResolvedRoll;[$dmgRawRoll.Raw]
+  --=_applyValue|[$dmgResolvedRoll.Raw]
+  --<|
+
+  --/|Shared: current HP + _applyValue -> _newValue, then clamp using AllowNegativeHP and allow-overheal param.
+  --:_ComputeClampedHP|tokenId;hpBar;allowOverheal
+  --=StartHP|[*[%1%]:t-bar[%2%]_value]
+  --=_newValue|[$StartHP] + [$_applyValue]
+  --?"X[&AllowNegativeHP]" -ne "X1" -and [$_newValue] -lt 0|=_newValue;0
+  --?"X[%3%]" -ne "X1" -and [$_newValue] -gt [*[%1%]:t-bar[%2%]_max]|=_newValue;[*[%1%]:t-bar[%2%]_max]
+  --<|
+
+  --/|Apply damage via ScriptCards !t (Single — hit bar only).
+  --:ApplyDamageScriptCardsSingle|Parameters are tokenid;bar#;tempHPbar;amount;display (0 or 1);allow overheal (0 or 1);allow negative hp (0 or 1)
+  --=applyValue|[%4%]
+  --=newValue|[*[%1%]:t-bar[%2%]_value] + [$applyValue]
+  --?"X[&AllowNegativeHP]" -ne "X1" -and [$newValue] -lt 0|=newValue;0
+  --?"X[%6%]" -ne "X1" -and [$newValue] -gt [*[%1%]:t-bar[%2%]_max]|=newValue;[*[%1%]:t-bar[%2%]_max]
+  --?"X[%5%]" -eq "X1"|+Applying;[%4%] HP to [*[%1%]:t-name]
+  --!t:[%1%]|bar[%2%]_value:[$newValue.Raw]
+  --<|
+
+  --/|Apply damage via ScriptCards !t (TempHP — temp bar then HP; same math as Alterbars TempHP).
+  --:ApplyDamageScriptCardsTempHP|Parameters are tokenid;bar#;tempHPbar;amount;display (0 or 1);allow overheal (0 or 1);allow negative hp (0 or 1)
   -->ADJUST_DAMAGE_FOR_TEMP_HP|[%1%];[%3%];[%4%]
   --?"[&_tempBarChanged]" -eq "1"|-->SYNC_TEMP_HP_BAR|[%1%];[%3%];[&_tempNewValue]
-  --?"[&_tempAdjAmount]" -eq "0"|<
-  --=_newValue|[*[%1%]:t-bar[%2%]_value] + [&_tempAdjAmount]
-  --?[$_newValue] -lt 0 -and "X[%7%]" -ne "X1"|=_newValue;0
-  --?"X[%6%]" -ne "X1" -and [$_newValue] -gt [*[%1%]:t-bar[%2%]_max]|=_newValue;[*[%1%]:t-bar[%2%]_max]
-  --?"X[%5%]" -eq "X1"|+Applying;[%4%] HP to [*[%1%]:t-name]
+  --=tempHpRemainToMain|[&_tempAdjAmount]
+  --?"X[$tempHpRemainToMain]" -eq "X"|=tempHpRemainToMain;0
+  --?"[$tempHpRemainToMain.Raw]" -eq 0|<
+  --=_applyValue|[$tempHpRemainToMain.Raw]
+  -->_ComputeClampedHP|[%1%];[%2%];[%6%]
+  --?"X[%5%]" -eq "X1"|+Applying;[$tempHpRemainToMain.Raw] HP to [*[%1%]:t-name]
   --!t:[%1%]|bar[%2%]_value:[$_newValue.Raw]
   --<|
 
-  --/|Token-mod HP apply 
-  --:ApplyDamageTokenmod|Parameters are tokenid;bar#;tempHPbar;amount;display (0 or 1);allow overheal (0 or 1);allow negative hp (0 or 1)
-  --=_applyIn|[%4%]
-  --=far_dmgTotal|[$_applyIn.Total]
-  --=far_dmgRaw|[$_applyIn.Raw]
-  --?"[$far_dmgTotal.Raw]" -ne "0"|=far_dmgResolved;[$far_dmgTotal.Raw]
-  --?"[$far_dmgTotal.Raw]" -eq "0"|=far_dmgResolved;[$far_dmgRaw.Raw]
-  --=_applyValue|[$far_dmgResolved.Raw]
+  --/|Token-mod Single — relative HP delta (listen_to_tokenmod). Clamp only when AllowNegativeHP is not 1.
+  --:ApplyDamageTokenmodSingle|Parameters are tokenid;bar#;tempHPbar;amount;display (0 or 1);allow overheal (0 or 1);allow negative hp (0 or 1)
+  --=applyValue|[%4%]
   --=StartHP|[*[%1%]:t-bar[%2%]_value]
-  --=TempHP|[*[%1%]:t-bar[%3%]_value]
+  --=newValue|[$StartHP] + [$applyValue]
+  --?"X[&AllowNegativeHP]" -ne "X1" -and [$newValue] -lt 0|=newValue;0
+  --?"X[%6%]" -ne "X1" -and [$newValue] -gt [*[%1%]:t-bar[%2%]_max]|=newValue;[*[%1%]:t-bar[%2%]_max]
+  --=hpDelta|[$newValue] - [$StartHP]
+  --?"[$hpDelta]" -eq "0"|<
+  --?"X[%5%]" -eq "X1"|+Applying;[%4%] HP to [*[%1%]:t-name]
+  --?[$hpDelta] -lt 0|[
+   --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[$hpDelta.Raw]
+   --<|
+  --]|
+  --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|+[$hpDelta.Raw]
+  --<|
+
+  --/|Token-mod TempHP — relative temp then HP deltas (listen_to_tokenmod). No SyncTempHPSheet on this path.
+  --:ApplyDamageTokenmodTempHP|Parameters are tokenid;bar#;tempHPbar;amount;display (0 or 1);allow overheal (0 or 1);allow negative hp (0 or 1)
+  --/|Gosub amount is a roll object: use Total when non-zero, else Raw.
+  --&TempHPDrained|0
+  --=applyValue|[%4%]
+  --=camDmgTotal|[$applyValue.Total]
+  --=camDmgRaw|[$applyValue.Raw]
+  --?"[$camDmgTotal.Raw]" -ne "0"|=camDmgResolved;[$camDmgTotal.Raw]
+  --?"[$camDmgTotal.Raw]" -eq "0"|=camDmgResolved;[$camDmgRaw.Raw]
+  --=_applyValue|[$camDmgResolved.Raw]
+  --/|Damage-only — negative amounts from CAM_ApplyDamageOrHealing (positive healing never enters here).
+  --=StartHP|[*[%1%]:t-bar[%2%]_value]
+  -->ReadTokenTempHP|[%1%];[%3%];_tokTempHPRead
+  --=TempHP|[&_tokTempHPRead]
   --?"X[$TempHP]" -eq "X"|=TempHP;0
   --~damageValue|math;abs;[$_applyValue]
   --?"X[$TempHP]" -nei "X" -and [$TempHP] -gt 0 -and [$TempHP] -ge [$damageValue]|[
    --=newTempHP|[$TempHP]-[$damageValue]
    --?"X[%5%]" -eq "X1"|+Applying;[%4%] HP to [*[%1%]:t-name]
-   --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[$StartHP.Raw] bar[%3%]_value|[$newTempHP.Raw]
-   --<|
+   --/|Temp-only: relative delta on temp bar only (do not touch HP bar).
+   --@token-mod|_ignore-selected _ids [%1%] _set bar[%3%]_value|-[$damageValue.Raw]
+   --^ApplyDamageTokenmodTempHP_Done|
   --]|
   --?"X[$TempHP]" -nei "X" -and [$TempHP] -gt 0 -and [$TempHP] -lt [$damageValue]|[
-   --=_applyValue|[$_applyValue]+[$TempHP]
+   --=_applyValue|[$_applyValue] + [$TempHP]
+   --&TempHPDrained|[$TempHP.Raw]
    --=_newValue|[$StartHP] + [$_applyValue]
-   --&_farTmBar3Val|0
-   --^CAM_DTM_applyHPDamage|
+   --^_ApplyHPDamageTokenmod|
   --]|
   --=_newValue|[$StartHP] + [$_applyValue]
-  --=currentTemp|[*[%1%]:t-bar[%3%]_value]
-  --?"X[$currentTemp]" -eq "X"|=currentTemp;0
-  --&_farTmBar3Val|[$currentTemp.Raw]
-  --:CAM_DTM_applyHPDamage|
-  --=far_tmDelta|[$_applyValue]
-  --?[$_newValue] -lt 0 -and "X[%7%]" -ne "X1"|[
+  --:_ApplyHPDamageTokenmod|
+  --=hpDelta|[$_applyValue]
+  --?"X[&AllowNegativeHP]" -ne "X1" -and [$_newValue] -lt 0|[
    --=_newValue|0
-   --=far_tmDelta|[$StartHP] {NEGATE}
+   --=hpDelta|[$StartHP] {NEGATE}
   --]|
   --?"X[%6%]" -ne "X1" -and [$_newValue] -gt [*[%1%]:t-bar[%2%]_max]|[
    --=_newValue|[*[%1%]:t-bar[%2%]_max]
-   --=far_tmDelta|[$_newValue] - [$StartHP]
+   --=hpDelta|[$_newValue] - [$StartHP]
   --]|
+  --=TempHPDrainedNum|[&TempHPDrained]
+  --?"[$hpDelta]" -eq "0" -and [$TempHPDrainedNum] -eq 0|^ApplyDamageTokenmodTempHP_Done|
   --?"X[%5%]" -eq "X1"|+Applying;[%4%] HP to [*[%1%]:t-name]
-  --?[$far_tmDelta] -lt 0|[
-   --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[$far_tmDelta.Raw] bar[%3%]_value|[&_farTmBar3Val]
-   --^CAM_DTM_done|
+  --?"[$hpDelta]" -ne "0" -and [$TempHPDrainedNum] -gt 0|[
+   --?[$hpDelta] -lt 0|[
+    --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[$hpDelta.Raw] bar[%3%]_value|-[$TempHPDrained.Raw]
+    --^ApplyDamageTokenmodTempHP_Done|
+   --]|
+   --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|+[$hpDelta.Raw] bar[%3%]_value|-[$TempHPDrained.Raw]
+   --^ApplyDamageTokenmodTempHP_Done|
   --]|
-  --?[$far_tmDelta] -gt 0|[
-   --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|+[$far_tmDelta.Raw] bar[%3%]_value|[&_farTmBar3Val]
-   --^CAM_DTM_done|
+  --?"[$hpDelta]" -ne "0"|[
+   --?[$hpDelta] -lt 0|[
+    --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[$hpDelta.Raw]
+    --^ApplyDamageTokenmodTempHP_Done|
+   --]|
+   --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|+[$hpDelta.Raw]
+   --^ApplyDamageTokenmodTempHP_Done|
   --]|
-  --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[$StartHP.Raw] bar[%3%]_value|[&_farTmBar3Val]
-  --:CAM_DTM_done|
+  --@token-mod|_ignore-selected _ids [%1%] _set bar[%3%]_value|-[$TempHPDrained.Raw]
+  --:ApplyDamageTokenmodTempHP_Done|
   --<|
 
-  --/|AlterBars supports relative values for the amount parameter, so we just pass it the value with a "-" in front of it.
-  --:ApplyDamageAlterbars|Parameters are tokenid;bar#;tempHPbar;amount;display (0 or 1);allow overheal (0 or 1);allow negative hp (0 or 1)
+  --/|AlterBars Single — relative delta on hit bar (clamped; Kurt passed raw amount, we pass actual bar change).
+  --:ApplyDamageAlterbarsSingle|Parameters are tokenid;bar#;tempHPbar;amount;display (0 or 1);allow overheal (0 or 1);allow negative hp (0 or 1)
+  --=StartHP|[*[%1%]:t-bar[%2%]_value]
+  --=applyValue|[%4%]
+  --=newValue|[$StartHP] + [$applyValue]
+  --?"X[&AllowNegativeHP]" -ne "X1" -and [$newValue] -lt 0|=newValue;0
+  --?"X[%6%]" -ne "X1" -and [$newValue] -gt [*[%1%]:t-bar[%2%]_max]|=newValue;[*[%1%]:t-bar[%2%]_max]
+  --=hpAlterDelta|[$newValue] - [$StartHP]
+  --?"[$hpAlterDelta.Raw]" -eq 0|<
+  --?"X[%5%]" -eq "X1"|+Applying;[$hpAlterDelta.Raw] HP to [*[%1%]:t-name]
+  --@alter|_target|[%1%] _bar|[%2%] _amount|[$hpAlterDelta.Raw] _show|none
+  --<|
+
+  --/|AlterBars TempHP — temp bar delta then relative HP amount (same temp math as ScriptCards TempHP).
+  --:ApplyDamageAlterbarsTempHP|Parameters are tokenid;bar#;tempHPbar;amount;display (0 or 1);allow overheal (0 or 1);allow negative hp (0 or 1)
   -->ADJUST_DAMAGE_FOR_TEMP_HP|[%1%];[%3%];[%4%]
   --?"[&_tempBarChanged]" -eq "1"|[
-   --@alter|_target|[%1%] _bar|[%3%] _amount|[&_tempAlterDelta] _show|none
-   --!a:[*[%1%]:character_id]|!hp_temp:[$_tempNewValue]
+   --?"[$_tempAlterDeltaRoll.Raw]" -ne "0"|[
+    --@alter|_target|[%1%] _bar|[%3%] _amount|[$_tempAlterDeltaRoll.Raw] _show|none
+   --]|
+   --?"X[*[%1%]:character_id]" -ne "X"|[
+    --=tempNewSheet|[&_tempNewValue]
+    --!a:[*[%1%]:character_id]|!hp_temp:[$tempNewSheet.Raw]
+   --]|
   --]|
-  --?"[&_tempAdjAmount]" -eq "0"|<
-  --=_newValue|[*[%1%]:t-bar[%2%]_value] + [&_tempAdjAmount]
-  --?[$_newValue] -lt 0 -and "X[%7%]" -ne "X1"|=_newValue;0
-  --?"X[%6%]" -ne "X1" -and [$_newValue] -gt [*[%1%]:t-bar[%2%]_max]|=_newValue;[*[%1%]:t-bar[%2%]_max]
-  --?"X[%5%]" -eq "X1"|+Applying;[%4%] HP to [*[%1%]:t-name]  
-  --@alter|_target|[%1%] _bar|[%2%] _amount|-[$_tempAdjAmount] _show|none
+  --=tempHpRemainToMain|[&_tempAdjAmount]
+  --?"X[$tempHpRemainToMain]" -eq "X"|=tempHpRemainToMain;0
+  --?"[$tempHpRemainToMain.Raw]" -eq 0|<
+  --=StartHP|[*[%1%]:t-bar[%2%]_value]
+  --=applyValue|[$tempHpRemainToMain.Raw]
+  --=newValue|[$StartHP] + [$applyValue]
+  --?"X[&AllowNegativeHP]" -ne "X1" -and [$newValue] -lt 0|=newValue;0
+  --?"X[%6%]" -ne "X1" -and [$newValue] -gt [*[%1%]:t-bar[%2%]_max]|=newValue;[*[%1%]:t-bar[%2%]_max]
+  --=hpAlterDelta|[$newValue] - [$StartHP]
+  --?"[$hpAlterDelta.Raw]" -eq 0|<
+  --?"X[%5%]" -eq "X1"|+Applying;[$hpAlterDelta.Raw] HP to [*[%1%]:t-name]
+  --@alter|_target|[%1%] _bar|[%2%] _amount|[$hpAlterDelta.Raw] _show|none
   --<|
 
   --/|Just a dummy routine that doesn't do anything, but it is easier to do it this way than adding logic to see if we are
@@ -2004,8 +2170,9 @@
   --]|
   --<|
 
-  --/|Reentry point to apply damage/healing to selected tokens
+  --/|Reentry point to apply damage/healing to selected tokens (damagebuttons — Kurt: always ScriptCards apply; fork: CAM_ApplyDamageOrHealing for heal vs damage + temp).
   --:APPLY_DAMAGE|Amount
+  -->CAM_SetDamageApplyRoutines|
   --?[&whisperDamageButtonResultsToDM] -eq 1|[
     --#whisper|gm
     --#title|Damage Applied
@@ -2018,7 +2185,7 @@
   --%loop|0;[$tokenCount.Raw]
     --&thisToken|[@SC_SelectedTokens([&loop])]
     --+Applying|[&reentryval] HP to [*[&thisToken]:t-name]
-    -->[&damageApplyRoutine]|[&thisToken];[&hitPointsBar];[&tempHPBar];[&reentryval];0;0;1
+    -->CAM_ApplyDamageOrHealing|[&thisToken];[&hitPointsBar];[&tempHPBar];[&reentryval];0;0;1
   --%|
   --X|
 
@@ -2053,10 +2220,11 @@
   --?"[*S:multiclass3]" -eq "[%1%]"|&[%2%];[*S:multiclass3_lvl]
   --<|
 
+  --/|OGL on this table: lvlN_slots_expended = remaining slots (long rest sets to slots_total). Verified 3.6.1+.
   --:GET_AVAILABLE_SPELL_SLOTS|slotlevel;variableToSet
-  --&_maxSlots|[*S:lvl[%1%]_slots_total]
-  --=_availSlots|[&_maxSlots] - [*S:lvl[%1%]_slots_expended]
-  --&[%2%]|[$_availSlots.Raw]
+  --&[%2%]|[*S:lvl[%1%]_slots_expended]
+  --?"X[&[%2%]]" -eq "X"|&[%2%];0
+  --?"[&[%2%]]" -eq ""|&[%2%];0
   --<|
 
   --:DEDUCT_SPELL_SLOT|slotlevel
@@ -2066,7 +2234,8 @@
   --:GET_HIGHEST_LEVEL_SPELL_SLOT|variableToSet
   --&[%1%]|0
   --%levelCounter|1;9
-    --?[*S:lvl[&levelCounter]_slots_total] -gt 0|&[%1%];[&levelCounter]
+    -->GET_AVAILABLE_SPELL_SLOTS|[&levelCounter];slotTest
+    --?[&slotTest] -gt 0|&[%1%];[&levelCounter]
   --%|
   --<|
 
@@ -2163,54 +2332,41 @@
  
   --:CheckDamageModifiersNPC|characterid;damageVariableName;damageType;isMagical(0 or 1);IsSilver (0 or 1);IsAdamantine (0 or 1);NPCType(A or T)
   --&[%2%]|
-  --&_cdmCid|[%1%]
-  --&_cdmDmgType|[%3%]
-  --?"X[&_cdmDmgType]" -eq "X"|<
-  --?"[&_cdmDmgType]" -eq ""|<
-  --&_cdmMagFlag|0
-  --&_cdmSilFlag|0
-  --&_cdmAdaFlag|0
-  --?"[%4%]" -eq "1"|&_cdmMagFlag;1
-  --?"[%5%]" -eq "1"|&_cdmSilFlag;1
-  --?"[%6%]" -eq "1"|&_cdmAdaFlag;1
-  --&_cdmNpcPfx|[%7%]
-  --?"[&_cdmNpcPfx]" -eq ""|&_cdmNpcPfx;T
-  --?"[&_cdmNpcPfx]" -eq "PC_GDM_RES"|&_cdmNpcPfx;T
   --#parameterdelimiter|!!
-  --~Vulns|string!!split!!;!![*[_cdmCid]:npc_vulnerabilities];[&_cdmNpcPfx]NPC_VULNS]
-  --~Resists|string!!split!!;!![*[_cdmCid]:npc_resistances];[&_cdmNpcPfx]NPC_RESISTS]
-  --~Immunes|string!!split!!;!![*[_cdmCid]:npc_immunities];[&_cdmNpcPfx]NPC_IMMUNES]
+  --~Vulns|string!!split!!;!![*[%1%]:npc_vulnerabilities];[&[%7%]NPC_VULNS]
+  --~Resists|string!!split!!;!![*[%1%]:npc_resistances];[&[%7%]NPC_RESISTS]
+  --~Immunes|string!!split!!;!![*[%1%]:npc_immunities];[&[%7%]NPC_IMMUNES]
   --#parameterdelimiter|;
   --%VulnLoop|1;[$VulnsCount]
-    --&_cdmHasMod|0
-    --?"[&Vulns[&VulnLoop]]" -inc "silver" -or "[&Vulns[&VulnLoop]]" -inc "adamantine" -or "[&Vulns[&VulnLoop]]" -inc "magical"|&_cdmHasMod;1
-    --?"[&Vulns[&VulnLoop]]" -inc "[&_cdmDmgType]" -and "[&Vulns[&VulnLoop]]" -inc "adamantine" -and "[&_cdmAdaFlag]" -eq "1"|>IsVulnerable;[%2%]
-    --?"[&Vulns[&VulnLoop]]" -inc "[&_cdmDmgType]" -and "[&Vulns[&VulnLoop]]" -inc "silver" -and "[&_cdmSilFlag]" -eq "1"|>IsVulnerable;[%2%]
-    --?"[&Vulns[&VulnLoop]]" -inc "[&_cdmDmgType]" -and "[&Vulns[&VulnLoop]]" -inc "magical" -and "[&_cdmMagFlag]" -eq "1"|>IsVulnerable;[%2%]
-    --?"[&Vulns[&VulnLoop]]" -inc "[&_cdmDmgType]" -and "[&_cdmHasMod]" -eq "0"|>IsVulnerable;[%2%]
+    --&hasModifier|0
+    --?"[&Vulns[&VulnLoop]]" -inc "silver" -or "[&Vulns[&VulnLoop]]" -inc "adamantine" -or "[&Vulns[&VulnLoop]]" -inc "magical"|&hasModifier;1
+    --?"[&Vulns[&VulnLoop]]" -inc "[%3%]" -and "[&Vulns[&VulnLoop]]" -inc "adamantine" -and [%6%] -eq 1|>IsVulnerable;[%2%]
+    --?"[&Vulns[&VulnLoop]]" -inc "[%3%]" -and "[&Vulns[&VulnLoop]]" -inc "silver" -and [%5%] -eq 1|>IsVulnerable;[%2%]
+    --?"[&Vulns[&VulnLoop]]" -inc "[%3%]" -and "[&Vulns[&VulnLoop]]" -inc "magical" -and [%4%] -eq 1|>IsVulnerable;[%2%]
+    --?"[&Vulns[&VulnLoop]]" -inc "[%3%]" -and [&hasModifier] -eq 0|>IsVulnerable;[%2%]
   --%|
   --:SKIP_VULN_CHECK|
   --%ResistLoop|1;[$ResistsCount]
-    --&_cdmHasMod|0
-    --?"[&Resists[&ResistLoop]]" -inc "silver" -or "[&Resists[&ResistLoop]]" -inc "adamantine" -or "[&Resists[&ResistLoop]]" -inc "magical"|&_cdmHasMod;1
-    --?"[&Resists[&ResistLoop]]" -inc "[&_cdmDmgType]" -and "[&_cdmHasMod]" -eq "0"|>IsResistant;[%2%]
-    --?"[&Resists[&ResistLoop]]" -inc "[&_cdmDmgType]" -and "[&_cdmHasMod]" -eq "0"|FINISH_RESIST_CHECK
-    --?"[&Resists[&ResistLoop]]" -inc "[&_cdmDmgType]" -and "[&Resists[&ResistLoop]]" -inc "adamantine" -and "[&_cdmAdaFlag]" -eq "1"|FINISH_RESIST_CHECK
-    --?"[&Resists[&ResistLoop]]" -inc "[&_cdmDmgType]" -and "[&Resists[&ResistLoop]]" -inc "silver" -and "[&_cdmSilFlag]" -eq "1"|FINISH_RESIST_CHECK
-    --?"[&Resists[&ResistLoop]]" -inc "[&_cdmDmgType]" -and "[&Resists[&ResistLoop]]" -inc "magical" -and "[&_cdmMagFlag]" -eq "1"|FINISH_RESIST_CHECK
-    --?"[&Resists[&ResistLoop]]" -inc "[&_cdmDmgType]"|>IsResistant;[%2%]
+    --&hasModifier|0
+    --?"[&Resists[&ResistLoop]]" -inc "silver" -or "[&Resists[&ResistLoop]]" -inc "adamantine" -or "[&Resists[&ResistLoop]]" -inc "magical"|&hasModifier;1
+    --?"[&Resists[&ResistLoop]]" -inc "[%3%]" -and [&hasModifier] -eq 0|>IsResistant;[%2%]
+    --?"[&Resists[&ResistLoop]]" -inc "[%3%]" -and [&hasModifier] -eq 0|FINISH_RESIST_CHECK
+    --?"[&Resists[&ResistLoop]]" -inc "[%3%]" -and "[&Resists[&ResistLoop]]" -inc "adamantine" -and [%6%] -eq 1|FINISH_RESIST_CHECK
+    --?"[&Resists[&ResistLoop]]" -inc "[%3%]" -and "[&Resists[&ResistLoop]]" -inc "silver" -and [%5%] -eq 1|FINISH_RESIST_CHECK
+    --?"[&Resists[&ResistLoop]]" -inc "[%3%]" -and "[&Resists[&ResistLoop]]" -inc "magical" -and [%4%] -eq 1|FINISH_RESIST_CHECK
+    --?"[&Resists[&ResistLoop]]" -inc "[%3%]"|>IsResistant;[%2%]
     --:FINISH_RESIST_CHECK|
   --%|
   --:SKIP_RESIST_CHECK|
   --%ImmuneLoop|1;[$ImmunesCount]
-    --&_cdmHasMod|0
-    --?"[&Immunes[&ImmuneLoop]]" -inc "silver" -or "[&Immunes[&ImmuneLoop]]" -inc "adamantine" -or "[&Immunes[&ImmuneLoop]]" -inc "magical"|&_cdmHasMod;1
-    --?"[&Immunes[&ImmuneLoop]]" -inc "[&_cdmDmgType]" -and "[&_cdmHasMod]" -eq "0"|>IsImmune;[%2%]
-    --?"[&Immunes[&ImmuneLoop]]" -inc "[&_cdmDmgType]" -and "[&_cdmHasMod]" -eq "0"|FINISH_IMMUNE_CHECK
-    --?"[&Immunes[&ImmuneLoop]]" -inc "[&_cdmDmgType]" -and "[&_cdmHasMod]" -eq "1" -and "[&Immunes[&ImmuneLoop]]" -inc "adamantine" -and "[&_cdmAdaFlag]" -eq "1"|FINISH_IMMUNE_CHECK
-    --?"[&Immunes[&ImmuneLoop]]" -inc "[&_cdmDmgType]" -and "[&_cdmHasMod]" -eq "1" -and "[&Immunes[&ImmuneLoop]]" -inc "silver" -and "[&_cdmSilFlag]" -eq "1"|FINISH_IMMUNE_CHECK
-    --?"[&Immunes[&ImmuneLoop]]" -inc "[&_cdmDmgType]" -and "[&_cdmHasMod]" -eq "1" -and "[&Immunes[&ImmuneLoop]]" -inc "magical" -and "[&_cdmMagFlag]" -eq "1"|FINISH_IMMUNE_CHECK
-    --?"[&Immunes[&ImmuneLoop]]" -inc "[&_cdmDmgType]"|>IsImmune;[%2%]
+    --&hasModifier|0
+    --?"[&Immunes[&ImmuneLoop]]" -inc "silver" -or "[&Immunes[&ImmuneLoop]]" -inc "adamantine" -or "[&Immunes[&ImmuneLoop]]" -inc "magical"|&hasModifier;1
+    --?"[&Immunes[&ImmuneLoop]]" -inc "[%3%]" -and [&hasModifier] -eq 0|>IsImmune;[%2%]
+    --?"[&Immunes[&ImmuneLoop]]" -inc "[%3%]" -and [&hasModifier] -eq 0|FINISH_IMMUNE_CHECK
+    --?"[&Immunes[&ImmuneLoop]]" -inc "[%3%]" -and [&hasModifier] -eq 1 -and "[&Immunes[&ImmuneLoop]]" -inc "adamantine" -and [%6%] -eq 1|FINISH_IMMUNE_CHECK
+    --?"[&Immunes[&ImmuneLoop]]" -inc "[%3%]" -and [&hasModifier] -eq 1 -and "[&Immunes[&ImmuneLoop]]" -inc "silver" -and [%5%] -eq 1|>FINISH_IMMUNE_CHECK;[%2%]
+    --?"[&Immunes[&ImmuneLoop]]" -inc "[%3%]" -and [&hasModifier] -eq 1 -and "[&Immunes[&ImmuneLoop]]" -inc "magical" -and [%4%] -eq 1|>FINISH_IMMUNE_CHECK;[%2%]
+    --?"[&Immunes[&ImmuneLoop]]" -inc "[%3%]"|>IsImmune;[%2%]
     --:FINISH_IMMUNE_CHECK|
   --%|
   --:SKIP_IMMUNE_CHECK|
@@ -2792,22 +2948,26 @@
 
   --:BUILD_SPELL_BUTTON_LIST|Character ID;Repeating_section_name;repeating field for name;reentrant point;section header;mule char name/id;spell level
 
+    --?"[&trackPCSpellSlots]" -eq "1"|DO_BUILD_SPELL_BUTTON_LIST
     --&AM_CACHED_BUTTON_LIST|[*[%1%]:5ECAM_CACHE_[%5%]_[%7%]]
     --?"[&AM_CACHED_BUTTON_LIST]" -eq "undefined"|DO_BUILD_SPELL_BUTTON_LIST
     --?"[&AM_CACHED_BUTTON_LIST]" -eq ""|DO_BUILD_SPELL_BUTTON_LIST
-    -->MULE_BTN_CACHE_UNESC|AM_CACHED_BUTTON_LIST;AM_CACHED_BUTTON_LIST
+    --&AM_CACHED_BUTTON_LIST|[&AM_CACHED_BUTTON_LIST(replaceall,!#!,:)]
+    --&AM_CACHED_BUTTON_LIST|[&AM_CACHED_BUTTON_LIST(replaceall,!$!,;)]
+    --&AM_CACHED_BUTTON_LIST|[&AM_CACHED_BUTTON_LIST(replaceall,!@!,|)]
     --+[%5%]|[&AM_CACHED_BUTTON_LIST]
     --<|
 
     --:DO_BUILD_SPELL_BUTTON_LIST|
+    --&_buildSpellLevel|[%7%]
     --&slotString|
     --&RitualslotString|
-    --&LevelString|[%7%]|
-    --?"[%7%]" -eq "0"|&LevelString; 
-    --?"[%7%]" -eq "0"|BEGIN_BUILDING_SPELL_BUTTONS
+    --&LevelString|[&_buildSpellLevel]
+    --?"[%7%]" -eq 0|&LevelString; 
+    --?"[%7%]" -eq 0|BEGIN_BUILDING_SPELL_BUTTONS
     --?"[&UseAMAShadowdarkSystem]" -eq "1" -and "[*S:class]" -eq "Wizard"|BEGIN_BUILDING_SPELL_BUTTONS
-    --?"[%7%]" -gt "0"|>BUILD_SLOT_LIST;[%7%];slotString;
-    --?"[%7%]" -gt "0"|>BUILD_SLOT_LIST;[%7%];RitualslotString;Yes
+    --?"[%7%]" -gt 0|>BUILD_SLOT_LIST;[%7%];slotString;
+    --?"[%7%]" -gt 0|>BUILD_SLOT_LIST;[%7%];RitualslotString;Yes
     --:BEGIN_BUILDING_SPELL_BUTTONS|
     --~|hashtable;fromrepeatingsection;[%1%];[%2%];[%3%];BuiltButtonHash
     --~|array;fromkeys;Hash_Keys;BuiltButtonHash
@@ -2820,11 +2980,21 @@
 
     --&AM_BUTTON_LIST|[br]
 
+    --/|Remaining slots for this spell level (once per section; used by per-spell filter below).
+    --&_spellBtnSlotsAtLevel|0
+    --?"[&_buildSpellLevel]" -eq 0|PC_SPELL_BTN_SLOTS_READ_DONE
+    --?[*[%1%]:npc] -eq 1|PC_SPELL_BTN_SLOTS_READ_DONE
+    --?[&trackPCSpellSlots] -eq 0|PC_SPELL_BTN_SLOTS_READ_DONE
+    -->GET_AVAILABLE_SPELL_SLOTS|[&_buildSpellLevel];_spellBtnSlotsAtLevel
+    --=spellBtnSlotsAtLevelNum|[&_spellBtnSlotsAtLevel]
+    --?"X[$spellBtnSlotsAtLevelNum]" -eq "X"|=spellBtnSlotsAtLevelNum;0
+    --:PC_SPELL_BTN_SLOTS_READ_DONE|
+
     --%spellloop|foreach;HashList
       --/\|Loop: [&spellloop]
 
+      --?[*[%1%]:npc] -eq 1 -and "[&skipNPCPrepCheck]" -eq "1"|SKIP_PREP_CHECK
       --?[&skipPreppedSpellsCheck] -eq 1|SKIP_PREP_CHECK
-      --?"[*S:npc]" -eq "1" -and "[&skipNPCPrepCheck]" -eq "1"|SKIP_PREP_CHECK
       --?"[%7%]" -eq 0|SKIP_PREP_CHECK   
       --?"[&SorcererLevel]" -gt 0 -or "[&WarlockLevel]" -gt 0|SKIP_PREP_CHECK
       --?"[:BuiltButtonHash("[&spellloop]_spellprepared")]" -eq "1" -or "[:BuiltButtonHash("[&spellloop]_spellritual")]" -eq "Yes"|SKIP_PREP_CHECK
@@ -2843,11 +3013,12 @@
       --?"[:BuiltButtonHash("[&spellloop]_spellcastingtime")]" -inc "reaction"|&DisplayName;+ [RA]
       --?"[:BuiltButtonHash("[&spellloop]_spellcastingtime")]" -inc "bonus"|&DisplayName;+ [BA]
       --?"[:BuiltButtonHash("[&spellloop]_spellconcentration")]" -inc "concentration=1"|&DisplayName;+ [C]
-      --?"[%7%]" -eq 0|AM_SPELL_BUTTON_SKIP_SLOT_INFO 
+      --/|PC slot filter (per spell): at 0 slots for this level, hide unless ritual [R].
+      --?"[&_buildSpellLevel]" -eq 0|AM_SPELL_BUTTON_SKIP_SLOT_INFO 
+      --?[*[%1%]:npc] -eq 1|AM_SPELL_BUTTON_SKIP_SLOT_INFO
       --?[&trackPCSpellSlots] -eq 0|AM_SPELL_BUTTON_SKIP_SLOT_INFO
-      --?[&HighestSlot] -ge [%7%]|AM_SPELL_BUTTON_SKIP_SLOT_INFO
+      --?"[$spellBtnSlotsAtLevelNum.Raw]" -ne 0|AM_SPELL_BUTTON_SKIP_SLOT_INFO
       --?"[:BuiltButtonHash("[&spellloop]_spellritual")]" -eq "Yes"|AM_SPELL_BUTTON_SKIP_SLOT_INFO
-      --/|We are tracking spells and the caster doesn't have a high enough slot, and it isn't a ritual spell.
       --^SPELL_BUTTON_END_GENERATE|
       --:AM_SPELL_BUTTON_SKIP_SLOT_INFO|
       --~testName|string;replaceall; ;-;[&spellloop]
@@ -2868,8 +3039,12 @@
     --?"[&AM_BUTTON_LIST]" -eq ""|AM_SPELL_BUTTON_LIST_NOTHING
     --?"[&AM_BUTTON_LIST]" -eq "[br]"|AM_SPELL_BUTTON_LIST_NOTHING
 
-  -->MULE_BTN_CACHE_ESC|AM_BUTTON_LIST;cacheList
-  --!a:[%1%]|!5ECAM_CACHE_[%5%]_[%7%]:[&cacheList]
+  --?"[&trackPCSpellSlots]" -ne "1"|[
+   --&cacheList|[&AM_BUTTON_LIST(replaceall,:,!#!)]
+   --&cacheList|[&cacheList(replaceall,;,!$!)]
+   --&cacheList|[&cacheList(replaceall,|,!@!)]
+   --!a:[%1%]|!5ECAM_CACHE_[%5%]_[%7%]:[&cacheList]
+  --]|
 
     --+[%5%]|[&AM_BUTTON_LIST]
     --:AM_SPELL_BUTTON_LIST_NOTHING|
@@ -2881,19 +3056,19 @@
 
   --:BUILD_SLOT_LIST|Spell Level;return string;is ritual (Yes for true)
   --&buildslotString|
-  --?"[%1%]" -eq "9" -and "[%3%]" -eq ""|SKIP_BUILD_SLOT_LIST
-  --&buildslotString||&#
-  --&buildslotString|+63;{Slot Level|
+  --?[%1%] -eq 9 -and "[%3%]" -eq ""|SKIP_BUILD_SLOT_LIST
+  --&buildslotString||
+  --&buildslotString|+[&QB]Slot Level|
   --?"[%3%]" -ne "Yes"|SLOT_LIST_NOT_RITUAL
   --&buildslotString|+As Ritual|
   --:SLOT_LIST_NOT_RITUAL|
   --%slotcounter|[%1%];9
     --&buildslotString|+[&slotcounter]
-    --?"[&slotcounter]" -eq "9"|SKIP_SLOT_LIST_VERTICAL_BAR
+    --?[&slotcounter] -eq 9|SKIP_SLOT_LIST_VERTICAL_BAR
     --&buildslotString|+|
     --:SKIP_SLOT_LIST_VERTICAL_BAR|
   --%|
-  --&buildslotString|+}
+  --&buildslotString|+[&QE]
   --^BUILD_SLOT_LIST_DONE|
   --:SKIP_BUILD_SLOT_LIST|
   --&buildslotString||9
