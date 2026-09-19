@@ -6,13 +6,13 @@
   --#whisper|self,gm
   
   --/|Script Name : Mass Healing Word
-  --/|Version     : 2.0.1
+  --/|Version     : 2.0.2
   --/|Requires SC : TokenMod, SuperNotes (for template override only), ScriptCards Library snlib/Farsidelib
   --/|Author      : Michael C.
   --/|Modified By : Farsidegallery
   --/|  
   --/|  Script prompts user for spell level used and then queries targets to be healed (unique targets only). It will deduct 1 spell slot from the appropriate level. 
-  --/|  Script checks for Disciple of Life and Belssed Healer feats. It checks if Beacon of Hope is active, calculates, applies healing to those targeted.
+  --/|  Script checks for Disciple of Life and Blessed Healer feats (clerics only; skipped for sorcerers including Divine Soul). It checks if Beacon of Hope is active, calculates, applies healing to those targeted.
   --/|
 
   --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
@@ -59,12 +59,21 @@
    --#rightsub|[*R:spellrange]
    --#emotetext|[*S:t-name] casts [&SpellName] at [&SpellLevel]!
    --=DisplayCount|1
-   -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
    --=LifeFlag|0
    --=HealerFlag|0
+   -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
+   -->far_FIND_CLASS_LEVEL|[*S:t-id];Sorcerer;SLevel
+   --?[&SLevel] -eqi 0|>ClericCast |>SorcererCast
+
+  --:SorcererCast|
+   --^CompanionCount|
+
+  --:ClericCast|
    -->far_FindFeat|[*S:t-id];Disciple of Life;LifeFlag
    -->far_FindFeat|[*S:t-id];Blessed Healer;HealerFlag
-   
+   --^CompanionCount|
+
+  --:CompanionCount|
    --~|array;define;Count;1;2;3;4;5;6
    
    --+|[c][b]Select number of companions.[/b][/c]
