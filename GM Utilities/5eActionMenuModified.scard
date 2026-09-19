@@ -1,0 +1,3624 @@
+﻿!script {{
+  --/|Script Name : 5E Action Menu
+  --/|Version     : 3.6.0
+  --/|Requires SC : 2.7.15+
+  --/|Author      : Kurt Jaegers
+  --/|Modified By : Farsidegallery
+  --&CAM_VERSION|3.7.0
+
+  --/|IMPORTANT NOTE: Updating this macro via the in-game editor will cause it to exhibit strange behavior. If you wish
+  --/|to make settings changes, make them in an external editor (like NOTEPAD) and copy/paste the whole
+  --/|macro into the Roll20 editor.
+
+  --/|Description : This script can be used with either a PC or NPC selected. It will generate an action menu with clickable
+  --/|buttons to execute character actions and cast spells. The menu is whispered to the player executing the
+  --/|script, while the results of clicking the action buttons are displayed in general chat.
+
+  --/|Includes the optional "ActionMenuAddons" library if it is being used
+  +++ActionMenuAddons+++
+  -->LibAMA_CHECK_FOR_LIBRARY|UseAddons
+
+  --/|=========================================================================================================
+  --/|Settings Area - Customize the behavior of the script here
+
+  --&hitPointsBar|1                 --/|What bar do you use for representing hit points for damage application?
+  --&tempHPBar|4                    --/|Token bar # for temporary HP. When UseTempHP is 1, this bar MUST be set on tokens (mandatory).
+  --&UseTempHP|1                    --/|1 = deplete tempHPBar before HP. 0 = HP bar only.
+  --&AllowNegativeHP|1              --/|1 = HP may go below 0 after damage. 0 = clamp at 0 (overheal still per call param 6).
+  --&skipPreppedSpellsCheck|1       --/|If set to 1, show all known spells for PCs. Otherwise (default) show prepared spells only
+  --&skipNPCPrepCheck|1             --/|If set to 1 (Default), show all known spells for NPCs. Otherwise show prepared spells only
+  --&trackPCSpellSlots|1            --/|If set to 1, available PC spell slots will be tracked/used.
+  --&showPCSpellSlotList|1          --/|If set to 1, a section on the menu will show available spell slots (if the character has them)
+  --&requireAmmo|1                  --/|If set to 1, ammo will be required for items that have defined ammo. Create a repeating resource matching the Ammo name
+  --&showPCSkillsAndSaves|1         --/|Show saving throw and skill check buttons for PCs (set to 0 to hide)
+  --&showNPCSkillsAndSaves|1        --/|Show saving throw and skill check buttons for NPCs (set to 0 to hide)
+  --&showPCStandardActions|1        --/|Show "Standard Actions" on PCs (if skills and saves are displayed). Set to 0 to hide
+  --&showNPCStandardActions|1       --/|Show "Standard Actions" on NPCs (if skills and saves are displayed). Set to 0 to hide
+  --&showCharacterSummary|1         --/|Show a line of summary information at the top of the Action Menu. Set to 0 to disable
+  --&showGlobalModifierButtons|1    --/|Show global modifiers (attack, damage, save, skill) buttons and allow players to toggle them on/off. Set to 0 to hide
+  --&showBonusActionsAndReactions|1 --/|Show Bonus Actions and Reactions for characters. Set to 0 to disable
+  --&showPCFeats|1                  --/|Show Traits/Feats for PCs (after Reactions, before Cantrips). Set to 0 to disable
+  --#functionbenchmarking|0         --/|If set to 1, the console will show performance info after the script is run
+  --&ReportResourceReset|y
+
+  --/|Defaults: 1 for title buttons, 0 for icongraphic and "white-on-black" for icon set. These control how and if some text/images
+  --/|            on the Action Menu are replaced with icons from game-icons.net, hosted on my github. In particular, the 
+  --/|            TitleButtons setting replaces the emoji's previously used in the title area for settings, short rest, and long rest.
+  --/|            the IconsGraphics setting (if 1) replaces "AC", "HP", and "Speed" in the character summary with icons.
+  --/|            The type of icons used outside the title area are determiend by the IconsSet - white (white on transparent), 
+  --/|            black (black on transparent), or white-on-black.
+  --&useGameIconsGraphicsForTitleButtons|1
+  --&useGameIconsGraphics|0
+  --&gameIconsSet|white-on-black
+
+  --/|If you create a "spell mule" character and put its name here, it's ability list will be checked for
+  --/|abilities that match the name of each spell found on PCs. If a match is found, the button that is
+  --/|created for that spell will be a sheet-button for that ability instead of a reentrant button back to
+  --/|this script for generic processing. This lets you define "special case" macros for non-standard spells.
+  --/|The name of the ability on the spell mule needs to exactly match the spell name (case sensitive)
+  --&spellmulename|Spell_Mule
+
+  --/|If you create a "shared macro mule" character and put its name here, you can define macros to be used
+  --/|generally in your game. Each PC needs EITHER an AMLIST ability OR a 5ECAM_AMLIST text attribute (not both).
+  --/|List mule ability names semicolon-separated. If both exist, 5ECAM_AMLIST wins. Ability: action field (or description).
+  --&sharedmacromulename|General_Macro_Mule
+
+  --/|If you create a mule character and put its name here, you can define macros for NPC Bonus Actions and Reactions.
+  --/|The name matching rules are the same as those for the Spell Mule.
+  --&sharednpcmacromulename|NPCAbility_Mule
+  
+  --/|=========================================================================================================
+  --/| PC ABILITY MULE — TRAITS/FEATS WITH A COLON IN THE NAME (read before naming mule abilities)
+  --/| Roll20 sheet buttons break when the piped ability name contains ":". For traits like
+  --/| "Channel Divinity: Turn Undead", the menu button still shows the full trait name, but the ability on
+  --/| this mule must be named ONLY the text after the colon (trim spaces), e.g. "Turn Undead" — not the
+  --/| full "Channel Divinity: Turn Undead" string. Matching uses that suffix only.
+  --/|=========================================================================================================
+  --/|If you create a mule character and put its name here, you can define macros for PC attacks/actions, Feats, and Bonus Action / Reaction trait buttons.
+  --/|Set to none to skip mule lookup for PC attacks (sheet-only). Feats, Bonus Actions, and Reactions check this mule first, then NPCAbility_Mule.
+  --&pcabilitymulename|PCAbility_Mule
+
+  --/|=========================================================================================================
+  --/| More generalized settings. You may not need to change these.
+
+  --&UseNamedCharacterSettings|0        --/|Set to "1" to enable loading of settings information from a saved format named after the character (case sensitive)
+  --&sendGmInfo|1                       --/|If this value is set to 1, attack rolls will have the target's numeric AC value hidden
+  --&AllNPCActionsToSender|0            --/|If this value is set to 1, NPC actions (except spellcasting) will be whispered to the sender only and not displayed to everyone
+  --&damageApplyScript|token-mod        --/|Set this to either "scriptcards", "token-mod", "alterbars", "damagebuttons" or anything else to not apply damage
+  --&whisperDamageButtonsToDM|1         --/|If using "damagebuttons" and this is set to 1, the damage buttons will be whispered to the DM instead of being added to the card
+  --&whisperDamageButtonResultsToDM|1   --/|If using "damagebuttons" for damage and this value is 1, the DM is whispered a message about damage application
+  --&selfHandleAdvantageMode|1          --/|If set to 1, the Action Menu will include advantage/normal/disadvantage toggles (and won't use the character sheet toggle)
+  --&defaultAdvantageMode|0             --/|Used with SelfHandleAdvantageMode. 0=Normal, 1=Advantage, 2=Disadvantage
+  --&showAdvantageModeText|0            --/|Used with SelfHandleAdvantageMode. 0=Button color coding only. 1=Show "Normal", "Advantage", "Disadvantage" text
+  --&compactGlobalModDisplay|1          --/|If set to 1, Global X Mods will use more compact display layouts
+  --&EnablePerCharacterConfiguration|1  --/|If set to 1, the Action Menu will create attributes on the character sheet the first time it is executed for a character. It will then use these attributes to generate a configuration menu to allow players to enable/disable some features
+  --&UseResistances|1                   --/|If set to 1, damage immunity, vulnerability, and resistance will be included in damage rolls.
+  --/|Resistance calc requires the target character sheet (PC or NPC) to have npc_resistances, npc_immunities, and/or npc_vulnerabilities populated with the relevant damage types.
+  --&UseFailTables|1                    --/|If set to 1, natural 1 attack rolls use the Roll20 fail tables configured below. Any other value uses a simple critical-fail message only.
+  --&FailTableMelee|Damage-Melee-Fail   --/|Full Roll20 rollable table name for melee weapon attack critical fails (natural 1). Leave blank to skip fail tables for melee attacks.
+  --&FailTableRanged|Damage-Range-Fail  --/|Full Roll20 rollable table name for ranged weapon attack critical fails (natural 1). Leave blank to skip fail tables for ranged attacks.
+  --&FailTableSpell|Damage-Spell-Fail   --/|Full Roll20 rollable table name for spell attack critical fails (natural 1). Leave blank to skip fail tables for spell attacks.
+  --&ConcentrationMarkerName|Concentrating::7409928           --/|Roll20 token marker tag when CAM spells apply concentration. Match your campaign marker (and any external conc trigger you use).
+  --&DetectPlayersToken|1               --/|If set to a non-zero value, the script will attempt to resolve a character for a player that runs it without a selected token
+  --&ShowRestButtons|0                  --/|If set to 1, rest buttons will be shown in the title bar
+  --&Template|none                      --/|If you wish to use Keith Curtis' SuperNotes templates, put the template name here
+  --&DisplayButtonsForAMAbilities|1     --/|If set to 1, the menu will include custom buttons defined on characters that include the "AM-" prefix in their names.
+  --&AmListDebug|0                      --/|Set to 1 to whisper GM debug lines while building Custom Actions (AMLIST troubleshooting)
+  --&CamTraceDebug|0                    --/|Set to 1 for ScriptCards debug trace lines on trait/mule button building. Set 0 when done.
+  --&UseEmojisToReplaceText|0           --/|If set to 1, emojis will be used in place of text in some places
+
+  --/|Adjusting these values will allow you to customize the padding around the action buttons. The default for Roll20 is 5px. The Action
+  --/|menu uses slightly smaller buttons (4px) for actions and very small (2px) padding for global modifier and advantage mode toggle buttons.
+  --&defaultButtonPadding|3px
+  --&smallButtonPadding|2px
+  --&bodyFontSize|12
+  --&smallFontSize|11
+    
+  --/|List spells here, separated by semicolons, that should be kept in the PC Attacks display with "[After Cast]" appended to them
+  --~|array;define;SpellsToKeepWithSuffix;Spiritual Weapon;Scorching Ray
+  
+  --~|array;define;NonScalingCantrips;Eldritch Blast
+
+  --/|List spells here, separated by semicolons, that should be kept in the PC Attacks display with no suffix appended to them
+  --~|array;define;SpellsToKeepNoSuffix;
+  
+  --/|NOTE: This section is experimental and needs further testing. Setting "statusmod_MARKERNAME" allows you to define modifiers that will be applied
+  --/|to NPCs based on the status markers active on the NPC. The following modifiers are supported:
+  --/| attack:value        (use +X [Desc] to provide a value and description, Can be -X as well) 
+  --/| damage:value        (use +X [Desc] to provide a value and description, Can be -X as well)
+  --/| rollmode:mode       (use d for disadvantage, a for advantage, n for normal)
+  --/| attackermode:mode   (use d for disadvantage, a for advantage, n for normal)
+  --/| ac:value            (use +X [Desc] to provide a value and description, Can be -X as well) 
+  --/| resist:dmgtypes     (use - to separate damage types, ex bludgeoning-slashing-piercing)
+  --/| immune:dmgtypes     (use - to separate damage types, ex bludgeoning-slashing-piercing)
+  --/| vuln:dmgtypes       (use - to separate damage types, ex bludgeoning-slashing-piercing)
+
+  --/|For the staus marker mods to work, you will need to set this to 1 and edit/create some modifiers. The items here are just samples.
+  --&useTokenMarkersForNPCModifiers|0
+  --&statusmod_snail|rollmode:d
+  --&statusmod_fist|resist:bludgeoning-piercing-slashing
+  --&statusmod_red|damage:+20 [Strong]
+  --&statusmod_overdrive|attack:+2 [Haste]
+  --&statusmod_tread|ac:-2 [Prone]
+
+  --/|End Settings Area
+  --/|=========================================================================================================
+  
+
+  --/|=========================================================================================================
+  --/|Action Menu Addons Settings
+  --?[&UseAddons] -eq "1"|[
+    --&PCPostSpellCastFunction|_LibAMA_SpellFumbleOrCrit
+    --&PCPostCantripCastFunction|_LibAMA_SpellFumbleOrCrit
+    --&PCPostAttackFunction|
+    --&NPCPostAttackFunction|
+    --&PCSpellListCheck|_LibAMA_SHADOWDARK_SPELL_LIST_CHECK
+    --&UseAMASpellCastCheck|1
+    --&UseAMAShadowdarkSystem|0
+    --?"[&UseAMAShadowdarkSystem]" -eq "1"|&skipPreppedSpellsCheck;1
+    --?"[&UseAMAShadowdarkSystem]" -eq "1"|&showPCSpellSlotList;0
+  --]|
+  --/|Action Menu Addons Settings Area
+  --/|=========================================================================================================
+  
+
+  -->CHECK_VERSION_INFO|
+
+  --/|Determine if a token is selected or if we need to (and can based on config) automatically find a token for this player.
+  --?"[@SC_SelectedTokens()]" -eq "undefined array" -and [&DetectPlayersToken] -ne 1|REPORT_NEED_SELECTED_TOKEN
+  --?"[@SC_SelectedTokens()]" -ne "undefined array" -and "[@SC_SelectedTokens()]" -eq "1"|BEGIN_WITH_SC_SELECTED_TOKENS
+  --?"[@SC_SelectedTokens()]" -gt 1|REPORT_MULTIPLE_SELECTED_TOKEN
+  --?[&DetectPlayersToken] -ne 1 -and "[@SC_SelectedTokens()]" -ne "1"|REPORT_NEED_SELECTED_TOKEN
+  --?[&DetectPlayersToken] -ne 1 -and "[@SC_SelectedTokens()]" -eq "1"|BEGIN_WITH_SC_SELECTED_TOKENS
+  --?[&SendingPlayerIsGM] -eq 1 -and "[@SC_SelectedTokens()]" -ne "1"|REPORT_NEED_SELECTED_TOKEN
+
+  -->GET_CONTROLLED_TOKENS_FROM_PAGETOKENS|saveTokenID
+  --?"[&saveTokenID]" -eq ""|REPORT_NO_TOKENS_ON_PAGE
+  --?"[&saveTokenID]" -inc ","|REPORT_MULTIPLE_POSSIBLE_TOKENS
+  --^SKIP_SELECTED_TOKENS|
+
+  --:BEGIN_WITH_SC_SELECTED_TOKENS|
+  --&saveTokenID|[@SC_SelectedTokens(0)]
+  --:SKIP_SELECTED_TOKENS|
+
+  --/|Give the script a reentrant name based on the selected character id so we can have multiple instances at the same time
+  --#reentrant|CharacterAction [&saveTokenID]
+  --&QB|? --&QB|+{ --&QE|}
+  --&AB|@ --&AB|+{
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&BED|& --&BED|+# --&BED|+128719;
+  --&CLOCK|& --&CLOCK|+# --&CLOCK|+128336;
+  --&GEAR|& --&GEAR|+# --&GEAR|+x2699;
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&NB|& --&NB|+nbsp --&NB|+;
+  --&obrac|[ --&cbrac|]
+  --&vbar||
+
+  --&ShortRestImage|[&CLOCK]
+  --&LongRestImage|[&BED]
+  --&SettingsImage|[&GEAR]
+  --&ACImage|[b]AC:[&NB][/b]
+  --&HPImage|[b]HP:[&NB][/b]
+  --&SpeedImage|[b]Speed:[&NB][/b]
+  --&SkillCheckImage|Skill
+  --&ToolCheckImage|Tool
+  --&SavingThrowImage|Save
+  --&RepeatImage|Repeat
+
+  --/|Useful Emoticons
+  --&emoSpeed|& --&emoSpeed|+# --&emoSpeed|+9193;
+  --&emoShield|& --&emoShield|+# --&emoShield|+129355;
+  --&emoHeart|& --&emoHeart|+# --&emoHeart|+129505;
+  --&emoShield|[img width=25 height=25]https://s3.amazonaws.com/files.d20.io/images/30/JAFfatM7Ius91Eg4uPBY6w/icon.png?1575370642[/img]
+  --?[&useGameIconsGraphicsForTitleButtons] -eq 0|SKIP_GAME_ICONS_FOR_TITLES
+  --&gameIconsBasePath|https://raw.githubusercontent.com/kjaegers/game-icons/master/transparent/
+  --&ShortRestImage|[img width=15 height=15][&gameIconsBasePath]white/meditation.png[/img]
+  --&LongRestImage|[img width=15 height=15][&gameIconsBasePath]white/night-sleep.png[/img]
+  --&SettingsImage|[img width=15 height=15][&gameIconsBasePath]white/cog.png[/img]
+  --&ClearCacheImage|[img width=15 height=15][&gameIconsBasePath]white/anticlockwise-rotation.png[/img]
+  --&RepeatImage|[img width=15 height=15][&gameIconsBasePath]white/anticlockwise-rotation.png[/img]
+  --:SKIP_GAME_ICONS_FOR_TITLES|
+  --?[&useGameIconsGraphics] -eq 0|SKIP_GAME_ICONS
+  --/&SkillCheckImage|[img width=15 height=15][&gameIconsBasePath]white/skills.png[/img]
+  --/&SavingThrowImage|[img width=15 height=15][&gameIconsBasePath]white/dodging.png[/img]
+  --&ACImage|[img width=20 height=20][&gameIconsBasePath][&gameIconsSet]/shield.png[/img][&NB]
+  --&HPImage|[img width=20 height=20][&gameIconsBasePath][&gameIconsSet]/health-normal.png[/img][&NB]
+  --&SpeedImage|[img width=20 height=20][&gameIconsBasePath][&gameIconsSet]/walk.png[/img][&NB]
+  --:SKIP_GAME_ICONS|
+
+  --/|Set up some style information for the action menu and subsequent cards. These attempt to somewhat
+  --/|simulate the 5E style
+  --#bodyfontface|Helvetica
+  --#oddrowfontcolor|#290000
+  --#evenrowfontcolor|#290000
+  --#bodyfontsize|[&bodyFontSize]px
+  --#buttonfontsize|10px
+  --#buttonbackground|#930c10
+  --#buttonbackground|#672223
+  --#buttonbackground|rgba(103,34,35,1); display:inline-block;
+  --/#buttonbordercolor|rgba(0,0,0,0)
+  --/#buttonbackground|rgba(0,0,0,0); display:inline-block; border:none
+  --/#buttontextcolor|#930c10
+  --#buttonfontface|Tahoma
+  --#titlecardbackgroundcolor|#930c10
+  --#titlecardbackgroundcolor|#672223
+  --#titlefontcolor|#fffebd
+  --#titlefontsize|1.5em
+  --#titlefontshadow|0
+  --#oddrowbackground|#f7ce65
+  --#evenrowbackground|#f7ce65
+  --#oddrowbackground|#b3ab96
+  --#evenrowbackground|#b3ab96
+  --#subtitlefontcolor|#fffebd
+  --#tablebgcolor|#fffebd
+  --#lineheight|10pt
+  --#buttonpadding|[&defaultButtonPadding]
+  --#overridetemplate|[&Template]
+  --&GAM_Button_Active_Color|009900
+  --&GAM_Button_Inactive_Color|672223
+  
+  --&AMOriginalSendingPlayer|[&SendingPlayerID]
+
+  --/|The menu is whispered to the player executing the macro. #whisper will be set again later for the
+  --/|actual output to be public.
+  --#whisper|self
+
+  --/|Store the selected character so we can use it later even if it gets de-selected
+  --#sourcetoken|[&saveTokenID]
+  --&AMCharacterId|[*S:character_id]
+  -->VALIDATE_ACTION_MENU_CHARACTER|
+  --!a:[&AMCharacterId]|5ECAM_MENU_TID:[&saveTokenID]
+
+  --?[&UseNamedCharacterSettings] -eq 1|[
+    --lsettings|[*S:character_name]
+  --]|
+
+  -->CAM_SetDamageApplyRoutines|
+
+  --#emotestate|hidden
+  --#title|[*S:character_name]
+
+  --:AFTER_ADVMODE_CHANGE|
+  --#title|[*S:character_name]
+
+  --#leftsub|Action Menu
+
+  --?[&EnablePerCharacterConfiguration] -eq 0|[
+   --&perCharacterOptions|$SGAM1$$SGDM1$$SGSM1$$SGMB1$$SSAS1$$SGCM1$$SGKM1$$SHRB1$
+   --#leftsub|Action Menu [rbutton][&ClearCacheImage]::CLEAR_CHARACTER_CACHE[/rbutton]
+   --^SKIP_PER_CHAR_SETTINGS|
+  --]|
+  --#leftsub|Action Menu [rbutton][&SettingsImage]::DISPLAY_CHARACTER_CONFIG_MENU[/rbutton] [rbutton][&ClearCacheImage]::CLEAR_CHARACTER_CACHE[/rbutton]
+  -->LOAD_PER_CHARACTER_CONFIG_OPTIONS|[*S:character_id]
+  --:SKIP_PER_CHAR_SETTINGS|
+
+  --?[*S:npc] -eq 1|SKIP_REST_BUTTONS
+  --?"[&ShowRestButtons]" -ne "1"|SKIP_REST_BUTTONS
+  --?"[&perCharacterOptions]" -inc "$SHRB0$"|SKIP_REST_BUTTONS
+  --#rightsub|Rest: [rbutton][&ShortRestImage]::DO_SHORT_REST[/rbutton][rbutton][&LongRestImage]::DO_LONG_REST[/rbutton]
+  --:SKIP_REST_BUTTONS|
+
+  --/|Determine if the selected character is a PC or NPC and process appropriately
+  --?[*S:npc] -eq 1|proc_npc|proc_pc
+
+  --/|=========================================================================================================
+  --/|Handle Action Menu creation for NPCs
+
+  --:proc_npc|
+  --/+|[hr #58180d]
+
+  -->BuildCharacterSummary|[*S:t-id];CharSummaryText;npc_ac
+  
+  --?"[&showCharacterSummary]" -ne "1"|SKIP_NPC_SUMMARY
+  --?"[&perCharacterOptions]" -inc "SCS0"|SKIP_NPC_SUMMARY
+  --/+|[c][F[&smallFontSize]][&CharSummaryText][/F][/c]
+  --+|[&CharSummaryText]
+  --:SKIP_NPC_SUMMARY|
+  
+  --&AdvModeText|
+
+  --?[&selfHandleAdvantageMode] -eq 1|[
+    --?"[&currentAdvantageMode]" -eq ""|&currentAdvantageMode;[&defaultAdvantageMode]
+    --&mode|
+    --?[&showAdvantageModeText] -eq 0|SKIP_NPC_SET_MODE
+    --C[&currentAdvantageMode]|0:&mode; Normal|1:&mode; Advantage|2:&mode; Disadvantage
+    --:SKIP_NPC_SET_MODE|
+    --&nbuttoncolor|#[&GAM_Button_Inactive_Color]
+    --&abuttoncolor|#[&GAM_Button_Inactive_Color]
+    --&dbuttoncolor|#[&GAM_Button_Inactive_Color]
+    --C[&currentAdvantageMode]|0:&nbuttoncolor;#[&GAM_Button_Active_Color]|1:&abuttoncolor;#[&GAM_Button_Active_Color]|2:&dbuttoncolor;#[&GAM_Button_Active_Color]
+    --#buttonpadding|[&smallButtonPadding]
+    --&AdvModeText|[r][b]Attack Mode:[/b] [&mode][rbutton:#FFFFFF:[&nbuttoncolor]]N::SET_ADV_MODE;0[/rbutton][rbutton:#FFFFFF:[&abuttoncolor]]A::SET_ADV_MODE;1[/rbutton][rbutton:#FFFFFF:[&dbuttoncolor]]D::SET_ADV_MODE;2[/rbutton][/r]    --C[&currentAdvantageMode]|0:&mode;Normal|1:&mode;Advantage|2:&mode;Disadvantage
+    --#buttonpadding|[&defaultButtonPadding]
+  --]|
+
+  --/|Skill Checks and Saving Throws
+  --&savesAndSkills|
+  --?[&showNPCSkillsAndSaves] -eq 1 -or "[&perCharacterOptions]" -inc "$SSAS1$"|>BUILD_SAVES_AND_SKILLS_BUTTONS;savesAndSkills
+  --/+|[t width='100%'][tr][td align=left][&savesAndSkills][/td][td align=right][&AdvModeText][/td][/tr][tr][td][&NB][/td][td][/td][tr][/t]
+  --+|[t width='100%'][tr][td align=left][&savesAndSkills][/td][td align=right][&AdvModeText][/td][/tr][/t][F5][BR][/F]
+
+  --/|5E Sheet Specific BEGIN
+
+  --/|NPC spell buttons: show all spells in repeating sections (no slot-level filter). Cast still checks slots in EXEC_PC_SPELL.
+  --&HighestSlot|9
+  -->BUILD_BUTTON_LIST|[*S:character_id];repeating_npcaction;name;EXEC_NPC_ACTION;Actions;[&sharednpcmacromulename];0
+  -->BUILD_BUTTON_LIST|[*S:character_id];repeating_npcbonusaction;name;EXEC_NPC_BONUS_ACTION;Bonus Actions;[&sharednpcmacromulename];0
+  -->BUILD_BUTTON_LIST|[*S:character_id];repeating_npcreaction;name;EXEC_NPC_REACTION;Reactions;[&sharednpcmacromulename];0
+  -->BUILD_BUTTON_LIST|[*S:character_id];repeating_npcaction-l;name;EXEC_NPC_LEGENDARY_ACTION;Legendary Actions;[&sharednpcmacromulename];0
+  -->BUILD_SPELL_BUTTON_LIST|[*S:character_id];repeating_spell-cantrip;spellname;EXEC_PC_CANTRIP;Cantrips;[&sharednpcmacromulename];0
+  --%levelCounter|1;9
+    --/\|repeating_spell repeating_spell-[&levelCounter]
+    --/\|Spellname-[&spellname]
+    -->BUILD_SPELL_BUTTON_LIST|[*S:character_id];repeating_spell-[&levelCounter];spellname;EXEC_PC_SPELL;Level [&levelCounter] Spells;[&spellmulename];[&levelCounter]
+  --%|
+  --/|5E Sheet Specific END
+
+  --#buttonpadding|[&smallButtonPadding]
+  --X|
+
+  --/|=========================================================================================================
+  --/|Reentrant points for NPCs. Most of the reentry points set up variables and jump back into the "NPCA_NOT_ATTACK" portion
+  --/|of the EXEC_NPC_ACTION code. Note this this code is 5E specific, so you will likely need to replace the entire
+  --/|"EXEC_*" sections to carry out specific actions if building for a different sheet
+
+  --:PARSE_NPC_REENTRY|
+  --~action_part|string;before;|;[&reentryval]
+  --~action_target|string;after;|;[&reentryval]
+  --?"[&action_target]" -eq ""|&action_target;NONE
+  --&actionBtnName|[&action_part]
+  --&action_name|[&action_part]
+  --&action_name|[&action_name(replace,-!-!-,;)]
+  --&action_name|[&action_name(replace,-!lpar!-,(,)]
+  --&action_name|[&action_name(replace,-!rpar!-,))]
+  --&action_name|[&action_name(replace,-!plus!-,+,)]
+  --<|
+
+  --/|Load repeating_npcaction* row by RID payload or Rfind by name. Sets *R; on failure jumps to :NPC_ROW_NOT_FOUND|
+  --:LOAD_NPC_ACTION_ROW|repeatingSection
+  --&_npcRepeatSec|[%1%]
+  --?"[&action_part(0,3)]" -eq "RID"|LNAR_BY_RID
+  --#parameterdelimiter|$$$
+  --Rfind|[*S:character_id]$$$[&action_name]$$$[&_npcRepeatSec]$$$name
+  --#parameterdelimiter|;
+  --?"[*R:name]" -eq "NoRepeatingAttributeLoaded"|[
+   --Rfind|[*S:character_id];[&action_name];[&_npcRepeatSec];name
+  --]|
+  --?"[*R:name]" -eq "NoRepeatingAttributeLoaded"|>NPC_ROW_NOT_FOUND
+  --?"[*R:name]" -eq ""|>NPC_ROW_NOT_FOUND
+  --^LNAR_DONE|
+  --:LNAR_BY_RID|
+  --&_npcRowId|-[&action_part(after,RID)]
+  --Rbysectionid|[*S:character_id];[&_npcRepeatSec];[&_npcRowId]
+  --?"[*R:name]" -eq "NoRepeatingAttributeLoaded"|>NPC_ROW_NOT_FOUND
+  --&action_name|[*R:name]
+  --:LNAR_DONE|
+  --<|
+
+  --:NPC_ROW_NOT_FOUND|
+  --&actionNotFoundLabel|[&action_name]
+  --?"[&actionNotFoundLabel]" -eq ""|&actionNotFoundLabel;[&actionBtnName]
+  --?"[&action_target]" -eq "NONE"|[
+   --#emotetext|[*S:t-name] uses [&actionNotFoundLabel]
+  --]|[
+   --#emotetext|[*S:t-name] uses [&actionNotFoundLabel] against [*T:t-name]
+  --]|
+  --#leftsub|[*S:character_name]
+  --+Action Not Found|The action "[&actionNotFoundLabel]" could not be loaded from [*S:character_name]'s sheet.
+  --X|
+
+  --:EXEC_NPC_ACTION|
+  --?[&AMOriginalSendingPlayer] -ne [&SendingPlayerID]|YOU_CANNOT_DO_THAT
+  -->CAM_SetDamageApplyRoutines|
+  --&whisperTarget|
+  --?[*S:npc] -eq 1 -and [&AllNPCActionsToSender] -eq 1|&whisperTarget;self
+  --#whisper|[&whisperTarget]
+  --#emotestate|visible
+  -->PARSE_NPC_REENTRY|
+  --?"[&action_target]" -eq "NONE"|NPC_ACT_SKIP_TARGET
+  --#targettoken|[&action_target]
+  --:NPC_ACT_SKIP_TARGET|
+  --#leftsub|[*S:character_name]
+  --#rightsub|
+  --
+  -->LOAD_NPC_ACTION_ROW|repeating_npcaction
+  --&emoteActionName|[*R:name]
+  --~emoteActionName|string;replace;(;[;[&emoteActionName]
+  --~emoteActionName|string;replace;);];[&emoteActionName]
+  --?"[&action_target]" -eq "NONE"|[
+   --#emotetext|[*S:t-name] uses [&emoteActionName]
+  --]|[
+   --#emotetext|[*S:t-name] uses [&emoteActionName] against [*T:t-name]
+  --]|
+  --#leftsub|[*R:name]
+  --?"[*R:attack_flag]" -ne on|NPCA_NOT_ATTACK
+  --?"[*R:attack_tohit]" -eq "NoRepeatingAttributeLoaded"|>NPC_ROW_NOT_FOUND
+  --?"X[*R:attack_tohit]" -eq "X"|>NPC_ROW_NOT_FOUND
+  --?"[*R:attack_tohit]" -eq ""|>NPC_ROW_NOT_FOUND
+  --?"[&action_target]" -eq "NONE"|[
+   --#whisper|self
+   --+No Target|Choose a target when prompted (Roll20 target picker). This attack was not rolled against AC 0.
+   --X|
+  --]|
+  --:NPCA_MAKE_AN_ATTACK|
+    --#rightsub|[rbutton][&RepeatImage]::EXEC_NPC_ACTION;[&actionBtnName]|[&TB]target|token_id}[/rbutton]
+    --&rollType|1d20
+    --?"[*S:advantagetoggle]" -inc advantage|&rollType;2d20kh1
+    --?"[*S:advantagetoggle]" -inc disadvantage|&rollType;2d20kl1
+    -->DETERMINE_NPC_STATUS_MODIFIERS|[*S:t-id];A
+    -->DETERMINE_NPC_STATUS_MODIFIERS|[*T:t-id];T 
+    --?[&selfHandleAdvantageMode] -eq 1 -and [&currentAdvantageMode] -eq 0|&rollType;1d20
+    --?[&selfHandleAdvantageMode] -eq 1 -and [&currentAdvantageMode] -eq 1|&rollType;2d20kh1
+    --?[&selfHandleAdvantageMode] -eq 1 -and [&currentAdvantageMode] -eq 2|&rollType;2d20kl1
+    --?"[&ANPC_ROLLMODE]" -ne "" -and "[&TNPC_ATTACKAGAINSTMODE]" -eq ""|SKIP_NPC_ATTACK_ROLLMODE_CALC
+    --?"[&ANPC_ROLLMODE]" -ne "" -and "[&TNPC_ATTACKAGAINSTMODE]" -eq ""|&rollType;[&ANPC_ROLLMODE]
+    --?"[&ANPC_ROLLMODE]" -ne "" -and "[&TNPC_ATTACKAGAINSTMODE]" -eq ""|SKIP_NPC_ATTACK_ROLLMODE_CALC
+    --?"[&ANPC_ROLLMODE]" -eq "" -and "[&TNPC_ATTACKAGAINSTMODE]" -ne ""|&rollType;[&TNPC_ATTACKAGAINSTMODE]
+    --?"[&ANPC_ROLLMODE]" -eq "" -and "[&TNPC_ATTACKAGAINSTMODE]" -ne ""|SKIP_NPC_ATTACK_ROLLMODE_CALC
+    --?"[&ANPC_ROLLMODE]" -eq "1d20" -and "[&TNPC_ROLLMODE]" -eq "1d20"|&rollType;1d20
+    --?"[&ANPC_ROLLMODE]" -eq "2d20kh1" -and "[&TNPC_ROLLMODE]" -eq "1d20"|&rollType;2d20kh1
+    --?"[&ANPC_ROLLMODE]" -eq "2d20kl1" -and "[&TNPC_ROLLMODE]" -eq "1d20"|&rollType;2d20kl1
+    --?"[&ANPC_ROLLMODE]" -eq "2d20kh1" -and "[&TNPC_ROLLMODE]" -eq "2d20kh1"|&rollType;2d20kh1
+    --?"[&ANPC_ROLLMODE]" -eq "2d20kl1" -and "[&TNPC_ROLLMODE]" -eq "2d20kl1"|&rollType;2d20kl1
+    --?"[&ANPC_ROLLMODE]" -eq "2d20kh1" -and "[&TNPC_ROLLMODE]" -eq "2d20kl1"|&rollType;1d20
+    --?"[&ANPC_ROLLMODE]" -eq "2d20kl1" -and "[&TNPC_ROLLMODE]" -eq "2d20kh1"|&rollType;1d20
+    --:SKIP_NPC_ATTACK_ROLLMODE_CALC|
+    --=ToHit|[&rollType] + [*R:attack_tohit] [&ANPC_ATKMOD]
+    --&dmgModType1|
+    --&dmgModType2|
+    --?"[&UseResistances]" -eq 0|SKIP_NPC_DMG_MODS
+    --?"[*T:npc]" -ne 1|NPCA_VS_PC
+    -->CheckDamageModifiersNPC|[*T:character_id];dmgModType1;[*R:attack_damagetype];0;0;0;T
+    -->CheckDamageModifiersNPC|[*T:character_id];dmgModType2;[*R:attack_damagetype2];0;0;0;T
+    --^SKIP_NPC_DMG_MODS|
+    --:NPCA_VS_PC|
+    -->CheckDamageModifiersNPC|[*T:character_id];dmgModType1;[*R:attack_damagetype];0;0;0;T
+    -->CheckDamageModifiersNPC|[*T:character_id];dmgModType2;[*R:attack_damagetype2];0;0;0;T
+    --:SKIP_NPC_DMG_MODS|
+    --=AC|[*T:ac]
+    --?"[*T:npc_ac]" -ne ""|=AC;[*T:npc_ac]
+    --?[&sendGmInfo] -eq 1|[
+      --+[*R:name] Attack|rolled [$ToHit] vs the target's AC[br][br]
+      --*[*R:name] Attack|rolled [$ToHit] vs AC [b][$AC.Raw][/b]
+    --]|[
+      --+[*R:name] Attack|rolled [$ToHit] vs AC [b][$AC.Raw][/b][br][br]
+    --]|
+    --/+Roll|[$ToHit.Base]
+    --?"[$ToHit.Base]" -eq "20"|NPCA_CRIT
+    --?"[$ToHit.Base]" -eq "1"|NPCA_FAIL
+    --?"[$ToHit.Total]" -lt [$AC]|NPCA_MISS
+    --?"X[*R:attack_damage2]" -ne "X" -and "[*R:attack_damage2]" -ne "" -and "[*R:attack_damage2]" -ne "NoRepeatingAttributeLoaded"|NPCA_HIT_TWODAMAGE
+    --=Damage|[*R:attack_damage] [&ANPC_DMGMOD] [&dmgModType1]
+    --+Hit|[$Damage] [*R:attack_damagetype]
+    --+|[*R:description]
+    -->[&damageRoutine]|[&action_target];[&hitPointsBar];[&tempHPBar];-[$Damage.Raw];0;0;1
+    --^NPCA_DONE|
+    --:NPCA_HIT_TWODAMAGE|
+    --=Damage|[*R:attack_damage] [&ANPC_DMGMOD] [&dmgModType1]
+    --=Damage2|[*R:attack_damage2] [&ANPC_DMGMOD] [&dmgModType2]
+    --=TotalDamage|[$Damage] + [$Damage2]
+    --+Hit|[$Damage] [*R:attack_damagetype] and [$Damage2] [*R:attack_damagetype2]
+    --+|[*R:description]
+    -->[&damageRoutine]|[&action_target];[&hitPointsBar];[&tempHPBar];-[$TotalDamage.Raw];0;0;1
+    --^NPCA_DONE|
+
+    --:NPCA_CRIT|
+    --?"X[*R:attack_damage2]" -ne "X" -and "[*R:attack_damage2]" -ne "" -and "[*R:attack_damage2]" -ne "NoRepeatingAttributeLoaded"|NPCA_CRIT_TWODAMAGE
+    --?"X[*R:attack_crit]" -ne "X" -and "[*R:attack_crit]" -ne "" -and "[*R:attack_crit]" -ne "NoRepeatingAttributeLoaded"|[
+     --=Damage|[*R:attack_damage] + [*R:attack_crit] [&ANPC_DMGMOD] [&dmgModType1]
+    --]|[ 
+     --=Damage|[*R:attack_damage] + [*R:attack_damage] [&ANPC_DMGMOD] [&dmgModType1]
+    --]|
+    --+Critical|[$Damage] [*R:attack_damagetype]
+    --+|[*R:description]
+    -->[&damageRoutine]|[&action_target];[&hitPointsBar];[&tempHPBar];-[$Damage.Raw];0;0;1
+    --^NPCA_DONE|
+    
+    --:NPCA_CRIT_TWODAMAGE|
+    --?"X[*R:attack_crit]" -ne "X" -and "[*R:attack_crit]" -ne "" -and "[*R:attack_crit]" -ne "NoRepeatingAttributeLoaded"|[
+     --=Damage|[*R:attack_damage] + [*R:attack_crit] [&ANPC_DMGMOD] [&dmgModType1]
+    --]|[ 
+     --=Damage|[*R:attack_damage] + [*R:attack_damage] [&ANPC_DMGMOD] [&dmgModType1]
+    --]|
+    --?"X[*R:attack_crit2]" -ne "X" -and "[*R:attack_crit2]" -ne "" -and "[*R:attack_crit2]" -ne "NoRepeatingAttributeLoaded"|[
+     --=Damage2|[*R:attack_damage2] + [*R:attack_crit2] [&ANPC_DMGMOD] [&dmgModType2]
+    --]|[ 
+     --=Damage2|[*R:attack_damage2] + [*R:attack_damage2] [&ANPC_DMGMOD] [&dmgModType2]
+    --]|
+    --=TotalDamage|[$Damage] + [$Damage2]
+    --+Critical|[$Damage] [*R:attack_damagetype] and [$Damage2] [*R:attack_damagetype2]
+    --+|[*R:description]
+    -->[&damageRoutine]|[&action_target];[&hitPointsBar];[&tempHPBar];-[$TotalDamage.Raw];0;0;1
+    --^NPCA_DONE|
+
+    --:NPCA_MISS|
+    --+Miss|The attack missed.
+    --^NPCA_DONE|
+	
+	--:NPCA_FAIL|
+    --+Critical Fail! | You rolled a [$ToHit.Base] on your attack roll.
+	--?"[&UseFailTables]" -ne "1"|^NPCA_DONE|
+	--&failTable|
+	--?"[*R:attack_type]" -inc "Melee"|&failTable;[&FailTableMelee]
+	--?"[*R:attack_type]" -inc "Ranged"|&failTable;[&FailTableRanged]
+	--?"[&failTable]" -eq ""|^NPCA_DONE|
+	--+|[br]
+	--=Fail|[T#[&failTable]]
+    --&failText|[$Fail.tableEntryText]
+    --?"[&failText]" -inc "[&obrac][&obrac]"|[
+	--~failText1|string;before;[&obrac][&obrac];[&failText]
+	--~failText2|string;after;[&cbrac][&cbrac];[&failText]
+	--~roll|string;before;[&cbrac][&cbrac];[&failText]
+	--~roll|string;after;[&obrac][&obrac];[&roll]
+	--=failRoll|[&roll]
+	--&failText|[&failText1][$failRoll][&failText2]
+	--]|
+    --+|[&failText]
+	--+|[br]
+    --?"[&failText]" -inc "Roll for damage"|[
+	--=Damage|[*R:attack_damage] [&ANPC_DMGMOD] [&dmgModType1]
+    --=Damage2|[*R:attack_damage2] [&ANPC_DMGMOD] [&dmgModType2]
+	--+Damage: |[$Damage]
+	--+|[br]
+	--]|
+    --^NPCA_DONE|
+	
+  --:NPCA_NOT_ATTACK|
+  --+|[*R:description]
+  --:NPCA_DONE|
+  --?"[&NPCPostAttackFunction]" -ne ""|>[&NPCPostAttackFunction]
+  --X|
+
+  --:EXEC_NPC_BONUS_ACTION|
+  -->PARSE_NPC_REENTRY|
+  --&whisperTarget|
+  --?[*S:npc] -eq 1 -and [&AllNPCActionsToSender] -eq 1|&whisperTarget;self
+  --#whisper|[&whisperTarget]
+  --#emotestate|visible
+  --?"[&action_target]" -eq "NONE"|NPC_BA_SKIP_TARGET
+  --#targettoken|[&action_target]
+  --:NPC_BA_SKIP_TARGET|
+  -->LOAD_NPC_ACTION_ROW|repeating_npcbonusaction
+  --&emoteActionName|[*R:name]
+  --~emoteActionName|string;replace;(;[;[&emoteActionName]
+  --~emoteActionName|string;replace;);];[&emoteActionName]
+  --?"[&action_target]" -eq "NONE"|[
+   --#emotetext|[*S:t-name] uses [&emoteActionName]
+  --]|[
+   --#emotetext|[*S:t-name] uses [&emoteActionName] against [*T:t-name]
+  --]|
+  --#leftsub|[*R:name]
+  --#rightsub|
+  --?"[*R:attack_flag]" -eq on|>NPCA_MAKE_AN_ATTACK
+  --+|[*R:description]
+  --X|
+
+  --:EXEC_NPC_REACTION|
+  -->PARSE_NPC_REENTRY|
+  --&whisperTarget|
+  --?[*S:npc] -eq 1 -and [&AllNPCActionsToSender] -eq 1|&whisperTarget;self
+  --#whisper|[&whisperTarget]
+  --#emotestate|visible
+  --?"[&action_target]" -eq "NONE"|NPC_RA_SKIP_TARGET
+  --#targettoken|[&action_target]
+  --:NPC_RA_SKIP_TARGET|
+  -->LOAD_NPC_ACTION_ROW|repeating_npcreaction
+  --&emoteActionName|[*R:name]
+  --~emoteActionName|string;replace;(;[;[&emoteActionName]
+  --~emoteActionName|string;replace;);];[&emoteActionName]
+  --?"[&action_target]" -eq "NONE"|[
+   --#emotetext|[*S:t-name] uses [&emoteActionName]
+  --]|[
+   --#emotetext|[*S:t-name] uses [&emoteActionName] against [*T:t-name]
+  --]|
+  --#leftsub|[*R:name]
+  --#rightsub|
+  --?"[*R:attack_flag]" -eq on|>NPCA_MAKE_AN_ATTACK
+  --+|[*R:description]
+  --X|
+
+  --:EXEC_NPC_LEGENDARY_ACTION|
+  -->PARSE_NPC_REENTRY|
+  --&whisperTarget|
+  --?[*S:npc] -eq 1 -and [&AllNPCActionsToSender] -eq 1|&whisperTarget;self
+  --#whisper|[&whisperTarget]
+  --#emotestate|visible
+  --?"[&action_target]" -eq "NONE"|NPC_LA_SKIP_TARGET
+  --#targettoken|[&action_target]
+  --:NPC_LA_SKIP_TARGET|
+  -->LOAD_NPC_ACTION_ROW|repeating_npcaction-l
+  --&emoteActionName|[*R:name]
+  --~emoteActionName|string;replace;(;[;[&emoteActionName]
+  --~emoteActionName|string;replace;);];[&emoteActionName]
+  --?"[&action_target]" -eq "NONE"|[
+   --#emotetext|[*S:t-name] uses [&emoteActionName]
+  --]|[
+   --#emotetext|[*S:t-name] uses [&emoteActionName] against [*T:t-name]
+  --]|
+  --#leftsub|[*R:name]
+  --#rightsub|
+  --?"[*R:attack_flag]" -eq on|>NPCA_MAKE_AN_ATTACK
+  --+|[*R:description]
+  --X|  
+
+  --/|=========================================================================================================
+  --/|Handle action menu creation for PCs. 
+
+  --:proc_pc|
+  --?"X[&saveTokenID]" -ne "X" -and "[&saveTokenID]" -ne ""|[
+   --#sourcetoken|[&saveTokenID]
+  --]|
+  --?"X[&AMCharacterId]" -eq "X" -or "[&AMCharacterId]" -eq ""|&AMCharacterId;[*S:character_id]
+  --?"[&CamTraceDebug]" -ne "1"|PROC_PC_TRACE_OFF
+  --#debug|1
+  --:PROC_PC_TRACE_OFF|
+  --/+|[hr #58180d]
+  --+| 
+  --#whisper|self
+
+  -->FIND_CLASS_LEVEL|Sorcerer;SorcererLevel
+  -->FIND_CLASS_LEVEL|Warlock;WarlockLevel
+  -->FIND_CLASS_LEVEL|Wizard;WizardLevel
+  -->FIND_CLASS_LEVEL|Bard;BardLevel
+  -->FIND_CLASS_LEVEL|Druid;DruidLevel
+  -->FIND_CLASS_LEVEL|Cleric;ClericLevel
+  -->FIND_CLASS_LEVEL|Ranger;RangerLevel
+  -->FIND_CLASS_LEVEL|Paladin;PaladinLevel
+  -->FIND_CLASS_LEVEL|Fighter;FighterLevel
+  -->FIND_CLASS_LEVEL|Barbarian;BarbarianLevel
+  -->FIND_CLASS_LEVEL|Monk;MonkLevel
+  -->FIND_CLASS_LEVEL|Rogue;RogueLevel
+  -->FIND_CLASS_LEVEL|Artificer;ArtificerLevel
+  
+  --&WizLevel|[&WizardLevel]
+  --&SorcLevel|[&SorcererLevel]
+    
+  -->BuildCharacterSummary|[*S:character_id];CharSummaryText;ac
+
+  --?"[&showCharacterSummary]" -ne "1"|SKIP_PC_SUMMARY
+  --?"[&perCharacterOptions]" -inc "SCS0"|SKIP_PC_SUMMARY
+  --+|[c][F[&smallFontSize]][&CharSummaryText][/F][/c]
+  --:SKIP_PC_SUMMARY|
+
+   --&AdvModeText|
+  --?[&selfHandleAdvantageMode] -eq 1|[
+    --?"[&currentAdvantageMode]" -eq ""|&currentAdvantageMode;[&defaultAdvantageMode]
+    --&mode|
+    --?[&showAdvantageModeText] -eq 0|SKIP_PC_SET_MODE
+    --C[&currentAdvantageMode]|0:&mode; Normal|1:&mode; Advantage|2:&mode; Disadvantage
+    --:SKIP_PC_SET_MODE|
+    --&nbuttoncolor|#[&GAM_Button_Inactive_Color]
+    --&abuttoncolor|#[&GAM_Button_Inactive_Color]
+    --&dbuttoncolor|#[&GAM_Button_Inactive_Color]
+    --C[&currentAdvantageMode]|0:&nbuttoncolor;#[&GAM_Button_Active_Color]|1:&abuttoncolor;#[&GAM_Button_Active_Color]|2:&dbuttoncolor;#[&GAM_Button_Active_Color]
+    --#buttonpadding|[&smallButtonPadding]
+    --&AdvModeText|[r][b]Attack Mode:[/b] [&mode][rbutton:#FFFFFF:[&nbuttoncolor]]N::SET_ADV_MODE;0[/rbutton][rbutton:#FFFFFF:[&abuttoncolor]]A::SET_ADV_MODE;1[/rbutton][rbutton:#FFFFFF:[&dbuttoncolor]]D::SET_ADV_MODE;2[/rbutton][/r]    --C[&currentAdvantageMode]|0:&mode;Normal|1:&mode;Advantage|2:&mode;Disadvantage
+    --#buttonpadding|[&defaultButtonPadding]
+  --]|
+
+  --/|Skill Checks and Saving Throws
+  --&savesAndSkills|
+  --?[&showPCSkillsAndSaves] -eq 1 -and "[&perCharacterOptions]" -ninc "$SSAS0$"|>BUILD_SAVES_AND_SKILLS_BUTTONS;savesAndSkills
+
+  --#buttonpadding|[&smallButtonPadding]
+  --/+|[t width='100%'][tr][td align=left][&savesAndSkills][/td][td align=right][&AdvModeText][/td][/tr][tr][td][&NB][/td][td][/td][tr][/t]
+  --+|[t width='100%'][tr][td align=left][&savesAndSkills][/td][td align=right][&AdvModeText][/td][/tr][/t][p style='font-size:smaller; margin-top:0px; margin-bottom:0px; line-height:6px;'][&NB][/p]
+  --#buttonpadding|[&defaultButtonPadding]
+
+  --?[&showGlobalModifierButtons] -eq 1 -and "[&perCharacterOptions]" -ninc "$SGMB0$" |[
+    -->Create_Global_Attack_Modifier_Buttons|[*S:character_id];gambuttons
+    -->Create_Global_Damage_Modifier_Buttons|[*S:character_id];gdmbuttons
+    -->Create_Global_Save_Modifier_Buttons|[*S:character_id];gsmbuttons
+    -->Create_Global_AC_Modifier_Buttons|[*S:character_id];gacmbuttons
+    -->Create_Global_Skill_Modifier_Buttons|[*S:character_id];gskmbuttons
+    --#buttonpadding|[&smallButtonPadding]
+    --+|[p style='text-align:center; font-weight:bold; margin-bottom:0px;']- - - - G L O B A L [&NB][&NB] M O D S - - - -[/p]
+    --+|[t width='100%'][tr][td width='25%' align='center'][b]ATK[/b][/td][td width='25%' align='center'][b]DMG[/b][/td][td width='25%' align='center'][b]AC[/b][/td][td width='25%' align='center'][b]SAVE[/b][/td][/tr][tr][td width='25%' align='center'][&gambuttons][/td][td width='25%' align='center'][&gdmbuttons][/td][td width='25%' align='center'][&gacmbuttons][/td][td width='25%' align='center'][&gsmbuttons][/td][/tr][/t]
+  --]| 
+
+  -->BUILD_BUTTON_LIST|[*S:character_id];repeating_attack;atkname;EXEC_PC_ATTACK;Attacks and Actions;[&pcabilitymulename];0;1
+  --&_baRaShownTraits|;
+  --?"[&showBonusActionsAndReactions]" -eq 1|>DISPLAY_PC_OTHER_ACTIONS
+  --?"[&showPCFeats]" -eq 1|>DISPLAY_PC_FEATS
+  -->BUILD_SPELL_BUTTON_LIST|[*S:character_id];repeating_spell-cantrip;spellname;EXEC_PC_CANTRIP;Cantrips;[&spellmulename];0
+  
+  --/|Display a grid of the available spell slots for this character
+  --&HighestSlot|9
+  --?[&trackPCSpellSlots] -eq 1|[
+    -->GET_HIGHEST_LEVEL_SPELL_SLOT|HighestSlot
+    --&spellSlotInfo1|[t align=center width=100% border=1][tr][td][b]Level[/b][/td]
+    --&spellSlotInfo2|[/tr][tr][td][b]Slots[/b][/td]
+    --&anySpell|0
+    --%levelCounter|1;9
+      -->GET_AVAILABLE_SPELL_SLOTS|[&levelCounter];slotCount
+      --/?[*S:lvl[&levelCounter]_slots_total] -gt 0|&spellSlotInfo;+L[&levelCounter]([&slotCount]) 
+      --?[*S:lvl[&levelCounter]_slots_total] -gt 0|&spellSlotInfo1;+[td align=center][b][i][&levelCounter][/i][/b][/td] 
+      --?[*S:lvl[&levelCounter]_slots_total] -gt 0|&spellSlotInfo2;+[td align=center][&slotCount][/td] 
+      --?[*S:lvl[&levelCounter]_slots_total] -gt 0|&anySpell;1 
+    --%|
+    --?[&anySpell] -eq 0|SKIP_SLOT_DISPLAY
+    --?[&showPCSpellSlotList] -eq 0|SKIP_SLOT_DISPLAY
+    --+|[c][b]Available Spell Slots[/b][/c][&spellSlotInfo1][&spellSlotInfo2][/tr][/t]
+    --:SKIP_SLOT_DISPLAY|
+  --]|
+
+  --/|The PC's level 1 thru 9 spells
+  --%levelCounter|1;9
+    -->BUILD_SPELL_BUTTON_LIST|[*S:character_id];repeating_spell-[&levelCounter];spellname;EXEC_PC_SPELL;Level [&levelCounter] Spells;none;[&levelCounter]    
+  --%|
+  --?[&DisplayButtonsForAMAbilities] -eq 1|>DISPLAY_ACTIONMENU_CHARACTER_ABILITIES;[*S:character_id]
+  --#buttonpadding|[&smallButtonPadding]
+  --X|
+
+  --/|=========================================================================================================
+  --/|Reentrant points for PC actions
+
+  --:EXEC_PC_ATTACK|
+  --?[&AMOriginalSendingPlayer] -ne [&SendingPlayerID]|YOU_CANNOT_DO_THAT
+  -->CAM_SetDamageApplyRoutines|
+  --/+|[hr #58180d]
+  --#whisper|
+  --#emotestate|visible
+  --&vfx|
+  --&sfx|
+  --&PcLookupCharId|[&AMCharacterId]
+  --?"X[&saveTokenID]" -ne "X" -and "[&saveTokenID]" -ne ""|[
+   --#sourcetoken|[&saveTokenID]
+   --&PcLookupCharId|[*S:character_id]
+  --]|
+  --?"X[&PcLookupCharId]" -eq "X" -or "[&PcLookupCharId]" -eq ""|&PcLookupCharId;[&AMCharacterId]
+  --&recoveredMenuTid|[*[&PcLookupCharId]:5ECAM_MENU_TID]
+  --?"X[&saveTokenID]" -eq "X" -or "[&saveTokenID]" -eq ""|[
+   --?"X[&recoveredMenuTid]" -ne "X" -and "[&recoveredMenuTid]" -ne ""|[
+    --#sourcetoken|[&recoveredMenuTid]
+    --&saveTokenID|[&recoveredMenuTid]
+    --&PcLookupCharId|[*S:character_id]
+   --]|
+  --]|
+  --~attack_part|string;before;|;[&reentryval]
+  --~attack_target|string;after;|;[&reentryval]
+  --?"[&attack_target]" -eq ""|&attack_target;NONE
+  --&attack_rowid|
+  --&attack_name|
+  --&PCRepeatPayload|[&attack_part]
+  --&RidTail|
+  --?"[&attack_part(0,3)]" -eq "RID"|[
+   --&RidTail|[&attack_part]
+  --]|[
+   --?"[&attack_part]" -inc "RID"|[
+    --~attack_name|string;before;RID;[&attack_part]
+    --&RidTail|RID[&attack_part(after,RID)]
+    --?"[&attack_name]" -inc ","|&attack_name;[&attack_name(before,,)]
+   --]|[
+    --~PcTildeName|string;before;~;[&attack_part]
+    --~RidTail|string;after;~;[&attack_part]
+    --?"[&PcTildeName]" -ne "[&attack_part]"|&attack_name;[&PcTildeName]
+    --?"[&PcTildeName]" -eq "[&attack_part]"|&RidTail;[&attack_part]
+   --]|
+  --]|
+  --:PC_ATK_CHECK_RID|
+  --&RidPrefix|[&RidTail(0,3)]
+  --?"[&RidPrefix]" -eq "RID"|PC_ATK_DECODE_RID|PC_ATK_NAME_ONLY
+  --:PC_ATK_DECODE_RID|
+  --&RidTail|[&RidTail(after,RID)]
+  --&RidTail|[&RidTail(after,-)]
+  --&attack_rowid|-[&RidTail]
+  --^PC_ATK_PARSE_DONE|
+  --:PC_ATK_NAME_ONLY|
+  --?"X[&attack_name]" -eq "X" -or "[&attack_name]" -eq ""|&attack_name;[&RidTail]
+  --:PC_ATK_PARSE_DONE|
+  --~attack_name|string;replace;-!-!-;;;[&attack_name]
+  --~attack_name|string;replace;-!plus!-;+;[&attack_name]
+  --~attack_name|string;replace;-!lpar!-;(;[&attack_name]
+  --~attack_name|string;replace;-!rpar!-;);[&attack_name]
+  --#targettoken|[&attack_target]
+  -->DETERMINE_NPC_STATUS_MODIFIERS|[*T:t-id];T
+  -->Find_Active_Global_Attack_Modifiers|[&PcLookupCharId];PC_GAM
+  -->Find_Active_Global_Damage_Modifiers|[&PcLookupCharId];PC_GDM
+  -->Find_Active_Global_Damage_Modifiers|[&PcLookupCharId];PC_GDM_CRIT;1
+  --?"[&attack_name]" -ne ""|[
+   --~|hashtable;fromrepeatingsection;[&PcLookupCharId];repeating_attack;atkname;PCAtkExecHash
+   --&PcHashSectionKey|[&attack_name]_sectionid
+   --&attack_rowid|[:PCAtkExecHash("[&PcHashSectionKey]")]
+  --]|
+  --/|Rfind by name before Rbysectionid â€” partial Rbysectionid loads can set atkname but leave dmgbase wrong (e.g. Greataxe +1 shows flat 1 + magic).
+  --?"[*R:atkname]" -eq "NoRepeatingAttributeLoaded" -and "[&attack_name]" -ne ""|[
+   --#parameterdelimiter|$$$
+   --Rfind|[&PcLookupCharId]$$$[&attack_name]$$$repeating_attack$$$atkname
+   --#parameterdelimiter|;
+  --]|
+  --?"[*R:atkname]" -eq "NoRepeatingAttributeLoaded" -and "[&attack_name]" -ne ""|[
+   --Rfind|[&PcLookupCharId];[&attack_name];repeating_attack;atkname
+  --]|
+  --?"[*R:atkname]" -eq "NoRepeatingAttributeLoaded" -and "X[&attack_rowid]" -ne "X" -and "[&attack_rowid]" -ne "" -and "[&attack_rowid]" -ne "undefined"|[
+   --?"[&attack_rowid(0,1)]" -ne "-"|&attack_rowid;-[&attack_rowid]
+   --Rbysectionid|[&PcLookupCharId];repeating_attack;[&attack_rowid]
+  --]|
+  --?"[*R:atkname]" -ne "NoRepeatingAttributeLoaded" -and "[&attack_name]" -ne "" -and "[*R:dmgbase]" -ninc "d"|[
+   --#parameterdelimiter|$$$
+   --Rfind|[&PcLookupCharId]$$$[&attack_name]$$$repeating_attack$$$atkname
+   --#parameterdelimiter|;
+  --]|
+  --?"[*R:atkname]" -ne "NoRepeatingAttributeLoaded" -and "[&attack_name]" -ne "" -and "[*R:dmgbase]" -ninc "d"|[
+   --Rfind|[&PcLookupCharId];[&attack_name];repeating_attack;atkname
+  --]|
+  --?"[*R:atkname]" -ne "NoRepeatingAttributeLoaded" -and "[&attack_name]" -ne ""|[
+   --?"X[*R:atkattr_base]" -eq "X"|PC_ATK_REFIX_ATTR
+   --?"[*R:atkattr_base]" -eq ""|PC_ATK_REFIX_ATTR
+   --?"[*R:atkattr_base]" -eq "NoRepeatingAttributeLoaded"|PC_ATK_REFIX_ATTR
+   --^PC_ATK_ATTR_OK|
+   --:PC_ATK_REFIX_ATTR|
+   --#parameterdelimiter|$$$
+   --Rfind|[&PcLookupCharId]$$$[&attack_name]$$$repeating_attack$$$atkname
+   --#parameterdelimiter|;
+   --?"[*R:atkname]" -eq "NoRepeatingAttributeLoaded"|[
+    --Rfind|[&PcLookupCharId];[&attack_name];repeating_attack;atkname
+   --]|
+   --:PC_ATK_ATTR_OK|
+  --]|
+  --?"[*R:atkname]" -eq "NoRepeatingAttributeLoaded" -and "X[&attack_rowid]" -ne "X" -and "[&attack_rowid]" -ne ""|[
+   --~|hashtable;fromrepeatingrow;[&PcLookupCharId];repeating_attack;[&attack_rowid];PCAtkRowHash
+   --&PCAtkFindName|[:PCAtkRowHash("atkname")]
+   --?"[&PCAtkFindName]" -ne "" -and "[&PCAtkFindName]" -ne "undefined"|[
+    --&attack_name|[&PCAtkFindName]
+    --#parameterdelimiter|$$$
+    --Rfind|[&PcLookupCharId]$$$[&attack_name]$$$repeating_attack$$$atkname
+    --#parameterdelimiter|;
+   --]|
+  --]|
+  --?"[*R:atkname]" -eq "NoRepeatingAttributeLoaded"|[
+   --#emotetext|
+   --&attackNotFoundLabel|[&attack_name]
+   --?"[&attackNotFoundLabel]" -eq ""|&attackNotFoundLabel;[&attack_part]
+   --?"[&attackNotFoundLabel]" -eq ""|&attackNotFoundLabel;empty payload
+   --+Attack Not Found|The attack "[&attackNotFoundLabel]" could not be loaded from [*S:character_name]'s sheet.
+   --X|
+  --]|
+  --&attackBtnName|[*R:atkname]
+  --&attackBtnName|[&attackBtnName(replace,;,-!-!-)]
+  --&attackBtnName|[&attackBtnName(replace,(,-!lpar!-)]
+  --&attackBtnName|[&attackBtnName(replace,),-!rpar!-)]
+  --&attackBtnName|[&attackBtnName(replace,+,-!plus!-)]
+  --&PCRepeatPayload|[&attack_part]
+  --?"X[&attack_rowid]" -ne "X" -and "[&attack_rowid]" -ne ""|[
+   --&PcRepeatEnc|RID[&attack_rowid(after,-)]
+   --&PCRepeatPayload|[&attackBtnName][&PcRepeatEnc]
+  --]|
+  --?"X[&attack_rowid]" -eq "X" -or "[&attack_rowid]" -eq ""|&PCRepeatPayload;[&attackBtnName]
+  --&emoteActionName|[*R:atkname]
+  --~emoteActionName|string;replace;(;[;[&emoteActionName]
+  --~emoteActionName|string;replace;);];[&emoteActionName]
+  --#emotetext|[*S:t-name] uses [&emoteActionName] against [*T:t-name]
+  --?[*R:attack_flag] -ne 1|
+  --?[&requireAmmo] -eq 0|NoAmmoNeededPC_Attack
+  --?"[*R:ammo]" -eq ""|NoAmmoNeededPC_Attack
+  --?"[*R:ammo]" -eq "NoRepeatingAttributeLoaded"|NoAmmoNeededPC_Attack
+  --~ResourceUsed|string;before;|;[*R:ammo]
+  -->FIND_REPEATING_RESOURCE|[&PcLookupCharId];[&ResourceUsed];AmmoAttrName;AmmoAttributeID;AmmoCount
+  --?[&AmmoCount] -lt 1|_NO_AMMO_AVAILABLE
+  --:NoAmmoNeededPC_Attack|
+  --#title|[*R:atkname]
+  --#leftsub|[*S:character_name]
+  --#rightsub|[rbutton][&RepeatImage]::EXEC_PC_ATTACK;[&PCRepeatPayload]|[&TB]target|token_id}[/rbutton]
+  --~|array;fromstring;fx;$;[*R:atk_desc]
+  --%loop|foreach;fx
+    --?"[&loop]" -inc "sfx:"|&sfx;[&loop(after,:)]
+    --?"[&loop]" -inc "vfx:"|&vfx;[&loop(after,:)]
+  --%|
+  --?"[&sfx]" -ne ""|[
+    --a|[&sfx]
+  --]|
+  --?"[&vfx]" -ne ""|[
+    --&vfxAt|[&attack_target]
+    --?"[&vfx]" -inc "s "|&vfxAt;[*S:t-id]
+    --vtoken|[&vfxAt] [&vfx(after, )]
+  --]|
+  --&attack_crit|0
+  --&rollType|1d20
+  --?"[*S:advantagetoggle]" -inc advantage|&rollType;2d20kh1
+  --?"[*S:advantagetoggle]" -inc disadvantage|&rollType;2d20kl1
+  --?[&selfHandleAdvantageMode] -eq 1 -and [&currentAdvantageMode] -eq 0|&rollType;1d20
+  --?[&selfHandleAdvantageMode] -eq 1 -and [&currentAdvantageMode] -eq 1|&rollType;2d20kh1
+  --?[&selfHandleAdvantageMode] -eq 1 -and [&currentAdvantageMode] -eq 2|&rollType;2d20kl1  
+  --?"[&TNPC_ATTACKAGAINSTMODE]" -eq ""|SKIP_PC_ATTACK_NPC_ROLL_MODE_CALC
+  --?"[&rollType]" -eq "1d20" -and "[&TNPC_ROLLMODE]" -eq "1d20"|&rollType;1d20
+  --?"[&rollType]" -eq "2d20kh1" -and "[&TNPC_ROLLMODE]" -eq "1d20"|&rollType;2d20kh1
+  --?"[&rollType]" -eq "2d20kl1" -and "[&TNPC_ROLLMODE]" -eq "1d20"|&rollType;2d20kl1
+  --?"[&rollType]" -eq "2d20kh1" -and "[&TNPC_ROLLMODE]" -eq "2d20kh1"|&rollType;2d20kh1
+  --?"[&rollType]" -eq "2d20kl1" -and "[&TNPC_ROLLMODE]" -eq "2d20kl1"|&rollType;2d20kl1
+  --?"[&rollType]" -eq "2d20kh1" -and "[&TNPC_ROLLMODE]" -eq "2d20kl1"|&rollType;1d20
+  --?"[&rollType]" -eq "2d20kl1" -and "[&TNPC_ROLLMODE]" -eq "2d20kh1"|&rollType;1d20
+  --:SKIP_PC_ATTACK_NPC_ROLL_MODE_CALC|
+  --?"X[&saveTokenID]" -ne "X" -and "[&saveTokenID]" -ne ""|[
+   --#sourcetoken|[&saveTokenID]
+  --]|
+  --?"X[&saveTokenID]" -eq "X" -or "[&saveTokenID]" -eq ""|[
+   --?"X[&recoveredMenuTid]" -ne "X" -and "[&recoveredMenuTid]" -ne ""|[
+    --#sourcetoken|[&recoveredMenuTid]
+   --]|
+  --]|
+  --&_gamCharId|[&PcLookupCharId]
+  --?"[*R:atkname]" -ne "NoRepeatingAttributeLoaded" -and "[&attack_name]" -ne ""|[
+   --Rfind|[*S:character_id];[&attack_name];repeating_attack;atkname
+  --]|
+  --&arString|[&rollType]
+  --=attrMod|0
+  --&attrName|Attr
+  -->Get_Ability_Modifier|[*R:atkattr_base];attrMod;attrName
+  --?"[$attrMod.Raw]" -eq 0|[
+   --?"[*R:atkattr]" -ne ""|[
+    --?"[*R:atkattr]" -ne "NoRepeatingAttributeLoaded"|-->Get_Ability_Modifier|[*R:atkattr];attrMod;attrName
+   --]|
+  --]|
+  --?"[$attrMod.Raw]" -eq 0|[
+   --?"[*R:attack_type]" -inc "Ranged"|-->Get_Ability_Modifier|dexterity_mod;attrMod;attrName
+   --?"[$attrMod.Raw]" -eq 0|[
+    --?"[*R:attack_type]" -inc "Melee"|-->Get_Ability_Modifier|strength_mod;attrMod;attrName
+    --?"[$attrMod.Raw]" -eq 0|[
+     --?"[*R:atkrange]" -inc "/"|-->Get_Ability_Modifier|dexterity_mod;attrMod;attrName
+     --?"[$attrMod.Raw]" -eq 0|-->Get_Ability_Modifier|strength_mod;attrMod;attrName
+    --]|
+   --]|
+  --]|
+  --=dmgMod|[$attrMod.Raw]
+  --&dmgAttrName|[&attrName]
+  -->Get_Ability_Modifier|[*R:dmgattr];dmgMod;dmgAttrName
+  --=dmg2Mod|[$attrMod.Raw]
+  --&dmg2AttrName|[&attrName]
+  -->Get_Ability_Modifier|[*R:dmg2attr];dmg2Mod;dmg2AttrName
+  --?[$attrMod.Raw] -gt 0|&arString;+ + [$attrMod.Raw] [&attrName]
+  --?[$attrMod.Raw] -lt 0|&arString;+ [$attrMod.Raw] [&attrName]
+  --?[$attrMod.Raw] -eq 0|[
+   -->PC_ATK_S_ABI_FALLBACK|arString
+  --]|
+  --?[*R:atkmod] -gt 0|&arString;+ + [*R:atkmod] [Special]
+  --?[*R:atkmod] -lt 0|&arString;+ [*R:atkmod] [Special]
+  --?[*R:atkprofflag] -ne 0|&arString;+ + [*S:pb] [Prof]
+  --?"[*R:atkprofflag]" -eq ""|&arString;+ + [*S:pb] [Prof]
+  --?[*R:atkmagic] -gt 0|&arString;+ + [*R:atkmagic] [Magic]
+  --?[*R:atkmagic] -lt 0|&arString;+ [*R:atkmagic] [Magic]
+  --=attackRoll|[&arString] [&PC_GAM]
+  --&dmgroll|[*R:dmgbase]
+  --?[$dmgMod.Raw] -gt 0|&dmgroll;+ + [$dmgMod.Raw] [&dmgAttrName]
+  --?[$dmgMod.Raw] -lt 0|&dmgroll;+ [$dmgMod.Raw] [&dmgAttrName]
+  --?[$dmgMod.Raw] -eq 0|[
+   -->PC_ATK_S_ABI_FALLBACK|dmgroll
+  --]|
+  --?[*R:dmgmod] -gt 0|&dmgroll;+ + [*R:dmgmod] [Special]
+  --?[*R:dmgmod] -lt 0|&dmgroll;+ [*R:dmgmod] [Special]
+  --?[*R:atkmagic] -gt 0|&dmgroll;+ + [*R:atkmagic] [Magic]
+  --?[*R:atkmagic] -lt 0|&dmgroll;+ [*R:atkmagic] [Magic]
+  --&dmgroll2|[*R:dmg2base]
+  --?[*R:dmg2attr] -gt 0|&dmgroll2;+ + [$dmg2Mod.Raw] [&dmg2AttrName]
+  --?[*R:dmg2attr] -lt 0|&dmgroll2;+ [$dmg2Mod.Raw] [&dmg2AttrName]
+  --?[*R:dmg2mod] -gt 0|&dmgroll2;+ + [*R:dmg2mod] [Special]
+  --?[*R:dmg2mod] -lt 0|&dmgroll2;+ [*R:dmg2mod] [Special]
+  --/?[*R:atkmagic] -gt 0|&dmgroll2;+ + [*R:atkmagic] [Magic]
+  --/?[*R:atkmagic] -lt 0|&dmgroll2;+ [*R:atkmagic] [Magic]
+  --=AC|[*T:ac]
+  --?"[*T:npc_ac]" -ne ""|=AC;[*T:npc_ac] [&NPC_ACMOD]
+  --?[&sendGmInfo] -eq 1|[
+    --+[*R:atkname] Attack|rolled [$attackRoll] vs the target's AC[br][br]
+    --*[*R:atkname] Attack|rolled [$attackRoll] vs AC [b][$AC.Raw][/b]
+  --]|[
+    --+[*R:atkname] Attack|rolled [$attackRoll] vs AC [b][$AC.Raw][/b][br][br]
+  --]|
+  --=CritNum|20
+  --?"[*S:default_critical_range]" -ne "" -and "[*S:default_critical_range]" -ne "undefined"|=CritNum;[*S:default_critical_range]
+  --?"[*R:atkcritrange]" -ne "" -and "[*R:atkcritrange]" -ne "undefined"|=CritNum;[*R:atkcritrange] {MAX:[$CritNum.Raw]}
+  --&critRoll|[*R:dmgbase]
+  --&critRoll2|[*R:dmg2base]
+  --?"[*R:dmgcustcrit]" -eq ""|DONE_ATK_CRIT
+  --&critRoll|[*R:dmgcustcrit]
+  --:DONE_ATK_CRIT|
+  --?"[*R:dmg2custcrit]" -eq ""|DONE_ATK_CRIT2
+  --&critRoll2|[*R:dmg2custcrit]
+  --:DONE_ATK_CRIT2|
+  --?[$attackRoll.Base] -ge [$CritNum.Raw]|=attack_crit;1|=attack_crit;0
+  --?[$attack_crit] -eq 1|&dmgroll;+ + [&critRoll] [Crit]
+  --?[$attack_crit] -eq 1|&dmgroll2;+ + [&critRoll2] [Crit]
+  --?[$attack_crit] -eq 1|&dmgroll;+ [&PC_GDM_CRIT]|&dmgroll;+ [&PC_GDM]
+  --?[$attackRoll.Base] -eq 1|ATTACK_FAIL
+  --?[$attackRoll.Total] -lt [$AC]|ATTACK_MISS
+  --?[$attack_crit] -eq 1|&hittag;Critical Hit!|&hittag;Hit!
+  --?[$attack_crit] -eq 1|&hitdesc;critically hits|&hitdesc;hits
+  --&dmgModType1|
+  --&dmgModType2|
+  --&isMagical|0
+  --?"[*R:atkmagic]" -ne "" -and "[*R:atkmagic]" -ne "0"|&isMagical;1
+  --&isSilver|0
+  --?"[*R:atkname]" -inc "Silver"|&isSilver;1
+  --&isAdamant|0
+  --?"[*R:atkname]" -inc "Adamantine"|&isAdamant;1
+  --?"[&UseResistances]" -eq 0|SKIP_CALC_DMG_MODS
+  -->CheckDamageModifiersNPC|[*T:character_id];dmgModType1;[*R:dmgtype];[&isMagical];[&isSilver];[&isAdamant];PC_GDM_RES
+  -->CheckDamageModifiersNPC|[*T:character_id];dmgModType2;[*R:dmg2type];[&isMagical];[&isSilver];[&isAdamant]
+  --~gdmlist|array;fromstring;GDM_RES;|;[&PC_GDM_RES]
+  --%gdmloop|foreach;GDM_RES
+  --%|
+  --:SKIP_CALC_DMG_MODS|
+  --=attackDamage|[&dmgroll] [&dmgModType1]
+  --=attackDamage2|[&dmgroll2] [&dmgModType2]
+  --?"[*R:dmg2flag]" -eq "0"|ATTACK_ONE_DAMAGE
+  --?"[*R:dmg2flag]" -eq ""|ATTACK_ONE_DAMAGE
+  --^ATTACK_TWO_DAMAGE|
+
+  --:ATTACK_ONE_DAMAGE|
+  --+[&hittag]|The [*R:atkname] [&hitdesc] and deals [$attackDamage] [*R:dmgtype] damage.[br][br]
+  -->[&damageRoutine]|[*T:t-id];[&hitPointsBar];[&tempHPBar];-[$attackDamage.Raw];0;0;1
+  --^ATTACK_DONE|
+
+  --:ATTACK_TWO_DAMAGE|
+  --+[&hittag]|The [*R:atkname] [&hitdesc] and deals [$attackDamage] [*R:dmgtype] and [$attackDamage2] [*R:dmg2type] damage.[br][br]
+  --=TotalDamage|[$attackDamage] + [$attackDamage2]
+  -->[&damageRoutine]|[*T:t-id];[&hitPointsBar];[&tempHPBar];-[$TotalDamage.Raw];0;0;1
+  --^ATTACK_DONE|
+
+  --:ATTACK_MISS|
+  --+The [*R:atkname] attack missed!|[br][br]
+  --^ATTACK_DONE|
+  
+  --:ATTACK_FAIL|
+   --+Critical Fail! | You rolled a [$attackRoll.Base] on your attack roll.
+   --?"[&UseFailTables]" -ne "1"|ATTACK_FAIL_SIMPLE|
+   --&failTable|
+   --?"[*R:attack_type]" -inc "Melee"|&failTable;[&FailTableMelee]
+   --?"[*R:attack_type]" -inc "Ranged"|&failTable;[&FailTableRanged]
+   --?"[&failTable]" -eq "" -and "[*R:atkrange]" -inc "/"|&failTable;[&FailTableRanged]
+   --?"[&failTable]" -eq ""|&failTable;[&FailTableMelee]
+   --?"[&failTable]" -eq ""|ATTACK_FAIL_SIMPLE|
+   --+|[br]
+   --=Fail|[T#[&failTable]]
+   --&failText|[$Fail.tableEntryText]
+   --?"[&failText]" -inc "[&obrac][&obrac]"|[
+	--~failText1|string;before;[&obrac][&obrac];[&failText]
+	--~failText2|string;after;[&cbrac][&cbrac];[&failText]
+	--~roll|string;before;[&cbrac][&cbrac];[&failText]
+	--~roll|string;after;[&obrac][&obrac];[&roll]
+	--=failRoll|[&roll]
+	--&failText|[&failText1][$failRoll][&failText2]
+	--]|
+   --+|[&failText]
+   --+|[br]
+   --?"[&failText]" -inc "Roll for damage"|[
+	--=attackDamage|[&dmgroll]
+	--+Damage: |[$attackDamage] [*R:dmgtype] damage
+	--+|[br]
+   --]|
+  --^ATTACK_DONE|
+
+  --:ATTACK_FAIL_SIMPLE|
+   --+|[br][br]
+  --^ATTACK_DONE|
+
+  --:ATTACK_DONE|
+  --&_gamCharId|
+  --?[&requireAmmo] -eq 0|NO_AMMO_USED
+  --?"[&AmmoAttrName]" -eq ""|NO_AMMO_USED
+  --!a:[*S:character_id]|[&AmmoAttributeID]:-=1
+
+  --:NO_AMMO_USED|
+  
+  --?"[&PCPostAttackFunction]" -ne ""|>[&PCPostAttackFunction]
+  --X|
+
+  --:EXEC_PC_CANTRIP|
+  --?[&AMOriginalSendingPlayer] -ne [&SendingPlayerID]|YOU_CANNOT_DO_THAT
+  -->CAM_SetDamageApplyRoutines|
+  --/+|[hr #58180d]
+  --&whisperTarget|
+  --?[*S:npc] -eq 1 -and [&AllNPCActionsToSender] -eq 1|&whisperTarget;self
+  --#whisper|[&whisperTarget]
+
+  --~cantrip_name|string;before;|;[&reentryval]
+  --~cantrip_target|string;after;|;[&reentryval]
+  --#whisper|
+  --#emotestate|visible
+  --#targettoken|[&cantrip_target]
+  --/\|Emote in PC Cantrip|[*S:t-name] uses [&attack_name] against [*T:t-name]
+  --#emotetext|[*S:t-name] uses [&cantrip_name] against [*T:t-name]
+  -->Find_Active_Global_Attack_Modifiers|[*S:character_id];PC_GAM
+  -->Find_Active_Global_Damage_Modifiers|[*S:character_id];PC_GDM
+  -->Find_Active_Global_Damage_Modifiers|[*S:character_id];PC_GDM_CRIT;1
+  -->Find_Active_Global_Save_Modifiers|[$cantrip_target];TARGET_GSM
+  --Rfind|[*S:character_id];[&cantrip_name];repeating_spell-cantrip;spellname
+  --?"[*R:spelloutput]" -eq ATTACK|PC_ATTACK_CANTRIP|PC_CARD_CANTRIP
+  --=cantrip_crit|0
+  --:PC_ATTACK_CANTRIP|
+  --?"[*R:spellattack]" -eq "Ranged" -or "[*R:spellattack]" -eq "Melee"|CANTRIP_ATTACK_ROLL|CANTRIP_DONE_ATTACK_ROLL
+  --:CANTRIP_ATTACK_ROLL|
+  --&rollType|1d20
+  --?"[*S:advantagetoggle]" -inc advantage|&rollType;2d20kh1
+  --?"[*S:advantagetoggle]" -inc disadvantage|&rollType;2d20kl1
+  --?[&selfHandleAdvantageMode] -eq 1 -and [&currentAdvantageMode] -eq 0|&rollType;1d20
+  --?[&selfHandleAdvantageMode] -eq 1 -and [&currentAdvantageMode] -eq 1|&rollType;2d20kh1
+  --?[&selfHandleAdvantageMode] -eq 1 -and [&currentAdvantageMode] -eq 2|&rollType;2d20kl1  
+  --=attackRoll|[&rollType] + [*S:spell_attack_bonus] [Spell Atk Bonus] [&PC_GAM]
+  --=AC|[*T:ac]
+  --?"[*T:npc_ac]" -ne ""|=AC;[*T:npc_ac]
+  --?[&sendGmInfo] -eq 1|[
+    --+[*R:spellattack] Attack|rolled [$attackRoll] vs the target's AC[br][br]
+    --*[*R:spellattack] Attack|rolled [$attackRoll] vs AC [b][$AC.Raw][/b]
+  --]|[
+    --+[*R:spellattack] Attack|rolled [$attackRoll] vs AC [b][$AC.Raw][/b][br][br]
+  --]|
+  --?[$attackRoll.Base] -ge 20|=cantrip_crit;1|=cantrip_crit;0
+  --?[$attackRoll.Base] -eq 1|CANTRIP_ATTACK_FAIL
+  --?[$attackRoll.Total] -lt [$AC]|CANTRIP_ATTACK_MISS
+  --:CANTRIP_DONE_ATTACK_ROLL|
+  --&damageRoll|[*R:spelldamage]
+  --~nonScale|array;indexof;NonScalingCantrips;[&cantrip_name]
+  --?[&nonScale] -ne "ArrayError"|SKIP_CANTRIP_SCALE
+  --?[*S:level] -ge 5|&damageRoll;+ + [*R:spelldamage]
+  --?[*S:level] -ge 11|&damageRoll;+ + [*R:spelldamage]
+  --?[*S:level] -ge 17|&damageRoll;+ + [*R:spelldamage]
+  --:SKIP_CANTRIP_SCALE|
+  --?[$cantrip_crit] -eq 1|&damageRoll;+ + [&damageRoll]
+  --?[$cantrip_crit] -eq 1|&damageRoll;+ [&PC_GDM_CRIT]|&damageRoll;+ [&PC_GDM]
+  --&dmgModType1|
+  --?"[&UseResistances]" -eq 0|SKIP_PC_CANTRIP_RESIST
+  -->CheckDamageModifiersNPC|[*T:character_id];dmgModType1;[*R:spelldamagetype];1;0;0
+  --:SKIP_PC_CANTRIP_RESIST|
+  --=cantripDamage|[&damageRoll] [&dmgModType1]
+  --?"[*R:spellsave]" -ne ""|CANTRIP_SAVE|CANTRIP_NO_SAVE
+  --:CANTRIP_NO_SAVE|
+  --?[$cantrip_crit] -eq 1|&hittag;Critical Hit!|&hittag;Hit!
+  --?[$cantrip_crit] -eq 1|&hitdesc;critically hits|&hitdesc;hits
+  --+[&hittag]|The [*R:spellname] [&hitdesc] and deals [$cantripDamage] [*R:spelldamagetype] damage.[br][br]
+  -->[&damageRoutine]|[&cantrip_target];[&hitPointsBar];[&tempHPBar];-[$cantripDamage.Raw];0;0;1
+  --^PC_CARD_CANTRIP|
+  --:CANTRIP_SAVE|
+  --+|The target needs to make a DC [*S:spell_save_dc] [*R:spellsave] saving throw or take [$cantripDamage] [*R:spelldamagetype] damage.[br][br]
+  --/&output|The [b][i][*R:spellname][/i][/b] deals [$cantripDamage] [*R:spelldamagetype] damage. 
+  --/?"[*R:spellsave]" -ne ""|&output;+ The target can make a [*R:spellsave] save vs DC [*S:spell_save_dc] to negate the damage.
+  --^PC_CARD_CANTRIP|
+  --:CANTRIP_ATTACK_MISS|
+  --+The [*R:spellname] attack missed!|[br][br]
+  --^PC_CARD_CANTRIP|
+  --:CANTRIP_ATTACK_FAIL|
+  --+Critical Fail! | You rolled a [$attackRoll.Base] on your attack roll.
+  --?"[&UseFailTables]" -ne "1"|CANTRIP_ATTACK_FAIL_SIMPLE|
+  --?"[&FailTableSpell]" -eq ""|CANTRIP_ATTACK_FAIL_SIMPLE|
+  --+|[br]
+  --&damageRoll|[*R:spelldamage]
+  -->CheckDamageModifiersNPC|[*T:character_id];dmgModType1;[*R:spelldamagetype];1;0;0
+  --=Fail|[T#[&FailTableSpell]]
+   --&failText|[$Fail.tableEntryText]
+   --?"[&failText]" -inc "[&obrac][&obrac]"|[
+	--~failText1|string;before;[&obrac][&obrac];[&failText]
+	--~failText2|string;after;[&cbrac][&cbrac];[&failText]
+	--~roll|string;before;[&cbrac][&cbrac];[&failText]
+	--~roll|string;after;[&obrac][&obrac];[&roll]
+	--=failRoll|[&roll]
+	--&failText|[&failText1][$failRoll][&failText2]
+	--]|
+   --+|[&failText]
+   --?"[&failText]" -inc "Roll for damage"|[
+	--=Damage|[&damageRoll][&dmgModType1]
+	--+|[br]
+	--+Damage: |[$Damage]
+	--]|
+  --+|[br]
+  --^PC_CARD_CANTRIP|
+  --:CANTRIP_ATTACK_FAIL_SIMPLE|
+  --+|[br][br]
+  --^PC_CARD_CANTRIP|
+  --:PC_CARD_CANTRIP|
+  --#title|[&cantrip_name]
+  --#leftsub|[*S:character_name]
+  --#rightsub|
+  --?[&nonScale] -eq "ArrayError"|SKIP_CANTRIP_REPEAT
+  --#rightsub|[rbutton][&RepeatImage]::EXEC_PC_CANTRIP;[&cantrip_name]|[&TB]target|token_id}[/rbutton]
+  --:SKIP_CANTRIP_REPEAT|
+  --+|[*R:spelldescription]
+  --:PC_DONE_CANTRIP|
+  --?"[&PCPostCantripCastFunction]" -ne ""|>[&PCPostCantripCastFunction]
+  --X|
+
+  --:EXEC_PC_SPELL|spellInfo1=Spell Level, 2=SpellName, 3=Target ID, 4=Slot Level
+  -->CAM_SetDamageApplyRoutines|
+  --/+|[hr #58180d]
+  --&whisperTarget|
+  --?[*S:npc] -eq 1 -and [&AllNPCActionsToSender] -eq 1|&whisperTarget;self
+  --#whisper|[&whisperTarget]
+  --/|Reentry: restore caster token before slot deduct (same as EXEC_PC_ATTACK).
+  --?"X[&saveTokenID]" -ne "X" -and "[&saveTokenID]" -ne ""|[
+   --#sourcetoken|[&saveTokenID]
+  --]|
+  --?"X[&AMCharacterId]" -eq "X" -or "[&AMCharacterId]" -eq ""|&AMCharacterId;[*S:character_id]
+  --&recoveredMenuTid|[*[&AMCharacterId]:5ECAM_MENU_TID]
+  --?"X[&saveTokenID]" -eq "X" -or "[&saveTokenID]" -eq ""|[
+   --?"X[&recoveredMenuTid]" -ne "X" -and "[&recoveredMenuTid]" -ne ""|[
+    --#sourcetoken|[&recoveredMenuTid]
+    --&saveTokenID|[&recoveredMenuTid]
+   --]|
+  --]|
+  --~spellInfo|string;split;|;[&reentryval]
+  --/|Buttons without a slot picker omit spellInfo4; treat as cast at the spell's list level ([&spellInfo1]).
+  --?"X[&spellInfo4]" -eq "X" -or "[&spellInfo4]" -eq ""|&spellInfo4;[&spellInfo1]
+
+  --=UpCast|[&spellInfo4] - [&spellInfo1]
+  --?"[&UseAMAShadowdarkSystem]" -eq "1" -and "[*S:class]" -eq "Wizard"|=UpCast;0
+  --?"[&UseAMAShadowdarkSystem]" -eq "1" -and "[*S:class]" -eq "Wizard"|DO_SHADOWDARK_SPELL_CHECK
+  --?[&trackPCSpellSlots] -eq 0|SKIP_CASTING_SLOT_CHECK
+  --?"[&spellInfo4]" -eq "As Ritual"|SKIP_CASTING_SLOT_CHECK
+  --?"[&UseAMAShadowdarkSystem]" -ne "1"|CAST_SKIP_SHADOWDARK
+
+  --:DO_SHADOWDARK_SPELL_CHECK|
+  --?"[*S:class]" -ne "Wizard"|CAST_SKIP_SHADOWDARK
+  --/|Suport for optional Shadowdark system
+  --Rfind|[*S:character_id];[&spellInfo2];repeating_spell-[&spellInfo1];spellname
+  --=SDCastMod|[*S:level] \ 2 {MAX:5} + [*S:intelligence_mod]
+  -->_LibAMA_SHADOWDARK_SPELLCAST_CHECK|[*R:spellprepared];[&spellInfo1];[*S:character_id];SD_Result;[*R>innate];[$SDCastMod.Raw]
+  --?[&SD_Result] -eq 0|CAST_SKIP_SHADOWDARK
+  --#whisper|
+  --^PC_DONE_SPELL|
+  --:CAST_SKIP_SHADOWDARK|
+  
+  -->GET_AVAILABLE_SPELL_SLOTS|[&spellInfo4];castSlotAvailable
+  --?[&castSlotAvailable] -le 0|NO_SLOTS_AVAILABLE
+  -->DEDUCT_SPELL_SLOT|[&spellInfo4]
+  --^SKIP_CASTING_SLOT_CHECK|
+  --:NO_SLOTS_AVAILABLE|
+  --#whisper|self
+  --+|You do not have a level [$spellInfo4] spell slot available to cast [&spellInfo2]
+  --^PC_DONE_SPELL|
+  --:SKIP_CASTING_SLOT_CHECK|
+  --&action_target|[&spellInfo3]
+  --#title|[&spellInfo2]
+  --#leftsub|[*S:character_name]
+  --#rightsub|
+  --#whisper|
+  --#emotestate|visible
+  --#targettoken|[&action_target]
+  --/\|Emote in PC Spell|[*S:t-name] uses [&attack_name] against [*T:t-name]
+  --#emotetext|[*S:t-name] uses [&spellInfo2] against [*T:t-name]
+  -->Find_Active_Global_Attack_Modifiers|[*S:character_id];PC_GAM
+  -->Find_Active_Global_Damage_Modifiers|[*S:character_id];PC_GDM
+  -->Find_Active_Global_Damage_Modifiers|[*S:character_id];PC_GDM_CRIT;1
+  -->Find_Active_Global_Damage_Modifiers|[*S:character_id];PC_GDM_RES
+  -->Find_Active_Global_Damage_Modifiers|[*S:character_id];PC_GDM_RES_CRIT;1
+  -->Find_Active_Global_Save_Modifiers|[$cantrip_target];TARGET_GSM
+  --Rfind|[*S:character_id];[&spellInfo2];repeating_spell-[&spellInfo1];spellname
+  --#targettoken|[&spellInfo3]
+  --?"[*R:spellconcentration]" -inc "concentration=1" -and "[&ConcentrationMarkerName]" -ne "0"|>ADD_STATUS_MARKER;[&saveTokenID];[&ConcentrationMarkerName]
+  --?"[*R:spelloutput]" -eq ATTACK|PC_ATTACK_SPELL|PC_CARD_SPELL
+
+  --:PC_ATTACK_SPELL|
+  --&spell_crit|0
+  --?"[*R:spellattack]" -eq "Ranged" -or "[*R:spellattack]" -eq "Melee"|SPELL_ATTACK_ROLL|SPELL_DONE_ATTACK_ROLL
+
+  --:SPELL_ATTACK_ROLL|
+  --&rollType|1d20
+  --?"[*S:advantagetoggle]" -inc advantage|&rollType;2d20kh1
+  --?"[*S:advantagetoggle]" -inc disadvantage|&rollType;2d20kl1
+  --?[&selfHandleAdvantageMode] -eq 1 -and [&currentAdvantageMode] -eq 0|&rollType;1d20
+  --?[&selfHandleAdvantageMode] -eq 1 -and [&currentAdvantageMode] -eq 1|&rollType;2d20kh1
+  --?[&selfHandleAdvantageMode] -eq 1 -and [&currentAdvantageMode] -eq 2|&rollType;2d20kl1  
+  --=attackRoll|[&rollType] + [*S:spell_attack_bonus] [Spell Atk Bonus] [&PC_GAM]
+  --=AC|[*T:ac]
+  --?"[*T:npc_ac]" -ne ""|=AC;[*T:npc_ac]
+    --?[&sendGmInfo] -eq 1|[
+    --+[*R:spellattack] Attack|rolled [$attackRoll] vs the target's AC[br][br]
+    --*[*R:spellattack] Attack|rolled [$attackRoll] vs AC [b][$AC.Raw][/b]
+  --]|[
+    --+[*R:spellattack] Attack|rolled [$attackRoll] vs AC [b][$AC.Raw][/b][br][br]
+  --]|
+  --?[$attackRoll.Base] -ge 20|=spell_crit;1|=spell_crit;0
+  --?[$attackRoll.Base] -eq 1|SPELL_ATTACK_FAIL
+  --?[$attackRoll.Total] -lt [$AC]|SPELL_ATTACK_MISS
+
+  --:SPELL_DONE_ATTACK_ROLL|
+  --&dmgModType1|
+  --&dmgModType2|
+  --?"[&UseResistances]" -eq 0|SKIP_PC_SPELL_RESIST
+  --?"[*R:spellhealing]" -ne ""|SKIP_PC_SPELL_RESIST
+  -->CheckDamageModifiersNPC|[*T:character_id];dmgModType1;[*R:spelldamagetype];1;0;0
+  -->CheckDamageModifiersNPC|[*T:character_id];dmgModType2;[*R:spelldamagetype2];1;0;0
+  --~gdmlist|array;fromstring;GDM_RES;|;[&PC_GDM_RES]
+  --%gdmloop|foreach;GDM_RES
+  --%|
+  --:SKIP_PC_SPELL_RESIST|
+  
+  --&damageRoll|[*R:spelldamage]
+  --?[$spell_crit] -eq 1|&damageRoll;+ [&PC_GDM_CRIT]|&damageRoll;+ [&PC_GDM]
+  --&damageRoll2|[*R:spelldamage2]
+
+  --&ability_bonus|
+    --?"[*R:spell_ability]" -eq "spell"|[
+      --~ability|string;before;};[*S:spellcasting_ability]
+      --~ability|string;after;{;[&ability]
+      --?[&ability] -eq strength_mod|&ability_bonus; + [*S:strength_mod] [Spellcasting Ability]
+      --?[&ability] -eq dexterity_mod|&ability_bonus; + [*S:dexterity_mod] [Spellcasting Ability]
+      --?[&ability] -eq constitution_mod|&ability_bonus; + [*S:constitution_mod] [Spellcasting Ability]
+      --?[&ability] -eq intelligence_mod|&ability_bonus; + [*S:intelligence_mod] [Spellcasting Ability]
+      --?[&ability] -eq wisdom_mod|&ability_bonus; + [*S:wisdom_mod] [Spellcasting Ability]
+      --?[&ability] -eq charisma_mod|&ability_bonus; + [*S:charisma_mod] [Spellcasting Ability]
+  --]|
+  --&spell_heal|0
+  --?"[*R:spellhealing]" -ne ""|&spell_heal;1
+  --?"[*R:spellhealing]" -ne ""|&damageRoll;[*R:spellhealing] [&ability_bonus]
+  --&damageToApply|-
+  --?[$UpCast] -eq 0|NO_UPCAST
+  --=upcastDice|[$UpCast.Raw] * [*R:spellhldie]
+  --&damageRoll|+ + [$upcastDice.Raw][*R:spellhldietype] [Upcasting]
+
+  --:NO_UPCAST|
+  --?[$spell_crit] -eq 1|&damageRoll;+ + [&damageRoll] 
+  --?[$spell_crit] -eq 1|&damageRoll2;+ + [&damageRoll2] 
+  --?[$spell_crit] -eq 1|&hittag;Critical Hit!|&hittag;Hit!
+  --?[$spell_crit] -eq 1|&hitdesc;critically hits|&hitdesc;hits and deals
+  --?[&spell_heal] -eq 1|&hittag;[b][/b]  
+  --?[&spell_heal] -eq 1|&hitdesc;heals for
+  --?[&spell_heal] -eq 1|[
+    --&damageToApply|
+  --]|
+ 
+  --=spellDamage|[&damageRoll] [&dmgModType1]
+  --=spellDamage2|[&damageRoll2] [&dmgModType2]
+  --=TotalDamage|[$spellDamage] + [$spellDamage2]
+
+  --?"[*R:spelldamage2]" -ne ""|TWO_DAMAGE
+  --+[&hittag]|The [*R:spellname] [&hitdesc] [$spellDamage] [*R:spelldamagetype] damage.[br][br]
+  --?[&spell_heal] -eq 1|[
+   -->[&damageRoutine]|[&action_target];[&hitPointsBar];[&tempHPBar];[$spellDamage.Raw];1;0;1
+  --]|[
+   -->[&damageRoutine]|[&action_target];[&hitPointsBar];[&tempHPBar];-[$spellDamage.Raw];0;0;1
+  --]|
+  --^DONE_SPELL_DAMAGE|
+
+  --:TWO_DAMAGE|
+  --+[&hittag]|The [*R:spellname] [&hitdesc] [$spellDamage] [*R:spelldamagetype] damage and [$spellDamage2] [*R:spelldamagetype2] damage.[br][br]
+  --?[&spell_heal] -eq 1|[
+   -->[&damageRoutine]|[&action_target];[&hitPointsBar];[&tempHPBar];[$TotalDamage.Raw];1;0;1
+  --]|[
+   -->[&damageRoutine]|[&action_target];[&hitPointsBar];[&tempHPBar];-[$TotalDamage.Raw];0;0;1
+  --]|
+  --^DONE_SPELL_DAMAGE|
+
+  --:DONE_SPELL_DAMAGE|
+  --?"[*R:spellsave]" -eq ""|PC_CARD_SPELL
+  --+|The target can make a [*R:spellsave] save vs DC [*S:spell_save_dc] to modify the damage as described below.[br][br]
+  --^PC_CARD_SPELL|
+
+  --:SPELL_ATTACK_FAIL|
+  --+Critical Fail! | You rolled a [$attackRoll.Base] on your attack roll.
+  --?"[&UseFailTables]" -ne "1"|SPELL_ATTACK_FAIL_SIMPLE|
+  --?"[&FailTableSpell]" -eq ""|SPELL_ATTACK_FAIL_SIMPLE|
+  --+|[br]
+  --&damageRoll|[*R:spelldamage]
+  -->CheckDamageModifiersNPC|[*T:character_id];dmgModType1;[*R:spelldamagetype];1;0;0
+  --=Fail|[T#[&FailTableSpell]]
+   --&failText|[$Fail.tableEntryText]
+   --?"[&failText]" -inc "[&obrac][&obrac]"|[
+	--~failText1|string;before;[&obrac][&obrac];[&failText]
+	--~failText2|string;after;[&cbrac][&cbrac];[&failText]
+	--~roll|string;before;[&cbrac][&cbrac];[&failText]
+	--~roll|string;after;[&obrac][&obrac];[&roll]
+	--=failRoll|[&roll]
+	--&failText|[&failText1][$failRoll][&failText2]
+	--]|
+   --+|[&failText]
+   --?"[&failText]" -inc "Roll for damage"|[
+	--=Damage|[&damageRoll][&dmgModType1]
+	--+Damage: |[$Damage]
+	--]|
+  --+|[br]
+  --^PC_CARD_SPELL|
+  
+  --:SPELL_ATTACK_FAIL_SIMPLE|
+  --+|[br][br]
+  --^PC_CARD_SPELL|
+  
+  --:SPELL_ATTACK_MISS|
+  --+The [*R:spellname] attack missed!|[br][br]
+
+  --:PC_CARD_SPELL|
+  
+  --+|[*R:spelldescription]
+
+  --:PC_DONE_SPELL|
+    --?"[&PCPostSpellCastFunction]" -ne ""|>[&PCPostSpellCastFunction]
+  --X|
+
+  --:SAVING_THROW|
+  --&whisperTarget|
+  --?[*S:npc] -eq 1 -and [&AllNPCActionsToSender] -eq 1|&whisperTarget;self
+  --#whisper|[&whisperTarget]
+  --&GSM_VALUES|
+  --?[*S:npc] -ne 1|>Find_Active_Global_Save_Modifiers;[*S:character_id];GSM_VALUES
+  --~saveInfo|string;split;|;[&reentryval]
+  --~saveAbility|string;tolowercase;[&saveInfo1]
+  --~saveShortAbility|string;left;3;[&saveAbility]
+  --~saveType|string;tolowercase;[&saveInfo1]_save_bonus
+  --&saveBonus|[*S:[&saveType]]
+  --&rollType|[&saveInfo2]
+  --&rollEquation|1d20
+  --?[&rollType] -eq "Advantage"|&rollEquation;2d20kh1
+  --?[&rollType] -eq "Disadvantage"|&rollEquation;2d20kl1
+  --?[*S:npc] -eq 1|[
+    --&saveModField|[&saveAbility]_save_bonus
+    --?[*S:npc_[&saveShortAbility]_save_flag] -gt 0|&saveModField;npc_[&saveShortAbility]_save
+    --?"[*S:[&saveModField]]" -eq ""|>SAVING_THROW_NPC_ABI
+    --~saveDisplay|string;touppercase;[&saveShortAbility]
+    --&attrName|[&obrac][&saveDisplay][&cbrac]
+    --=SavingThrow|[&rollEquation] + [*S:[&saveModField]] [&attrName] [&GSM_VALUES]
+    --^SAVING_THROW_DONE|
+  --]|
+  -->Get_Ability_Modifier|[&saveAbility]_mod;attrMod;attrName
+  --=SavingThrow|[&rollEquation] + [&saveBonus] [&attrName] [&GSM_VALUES]
+  --^SAVING_THROW_DONE|
+  --:SAVING_THROW_NPC_ABI|
+  -->Get_Ability_Modifier|[&saveAbility]_mod;attrMod;attrName
+  --=SavingThrow|[&rollEquation] + [&attrName] [&GSM_VALUES]
+  --:SAVING_THROW_DONE|
+  --#title|[&saveInfo1] Save
+  --#leftsub|[*S:character_name]
+  --#rightsub|
+  --+|Saving throw ([&attrName]) result: [$SavingThrow]
+  --X|
+
+  --:SKILL_CHECK|
+  --&whisperTarget|
+  --?[*S:npc] -eq 1 -and [&AllNPCActionsToSender] -eq 1|&whisperTarget;self
+  --#whisper|[&whisperTarget]
+  --&GSKM_VALUES|
+  --?[*S:npc] -ne 1|>Find_Active_Global_Skill_Modifiers;[*S:character_id];GSKM_VALUES
+  --~skillInfo|string;split;|;[&reentryval]
+  --~skillKey|string;tolowercase;[&skillInfo1]
+  --~skillType|string;tolowercase;[&skillKey]_bonus
+  --&rollType|[&skillInfo2]
+  --&skillDisplayName|[&skillInfo1]
+  --?[&skillDisplayName] -eq "animal_handling"|&skillDisplayName;Animal Handling
+  --?[&skillDisplayName] -eq "sleight_of_hand"|&skillDisplayName;Sleight of Hand
+  --?[*S:npc] -eq 1|[
+    --&skillModField|npc_[&skillKey]
+    --?"[*S:[&skillModField]]" -eq ""|&skillModField;[&skillKey]_bonus
+    --?"[*S:[&skillModField]]" -eq ""|>SKILL_CHECK_NPC_ABI
+    --=SkillMod|[*S:[&skillModField]]
+    --^SKILL_CHECK_ROLL|
+  --]|
+  --=SkillMod|[*S:[&skillType]]
+  --^SKILL_CHECK_ROLL|
+  --:SKILL_CHECK_NPC_ABI|
+  --&skillAbiAttr|wisdom_mod
+  --?[&skillKey] -eq acrobatics|&skillAbiAttr;dexterity_mod
+  --?[&skillKey] -eq sleight_of_hand|&skillAbiAttr;dexterity_mod
+  --?[&skillKey] -eq stealth|&skillAbiAttr;dexterity_mod
+  --?[&skillKey] -eq athletics|&skillAbiAttr;strength_mod
+  --?[&skillKey] -eq arcana|&skillAbiAttr;intelligence_mod
+  --?[&skillKey] -eq history|&skillAbiAttr;intelligence_mod
+  --?[&skillKey] -eq investigation|&skillAbiAttr;intelligence_mod
+  --?[&skillKey] -eq nature|&skillAbiAttr;intelligence_mod
+  --?[&skillKey] -eq religion|&skillAbiAttr;intelligence_mod
+  --?[&skillKey] -eq deception|&skillAbiAttr;charisma_mod
+  --?[&skillKey] -eq intimidation|&skillAbiAttr;charisma_mod
+  --?[&skillKey] -eq persuasion|&skillAbiAttr;charisma_mod
+  --?[&skillKey] -eq animal_handling|&skillAbiAttr;wisdom_mod
+  --?[&skillKey] -eq insight|&skillAbiAttr;wisdom_mod
+  --?[&skillKey] -eq medicine|&skillAbiAttr;wisdom_mod
+  --?[&skillKey] -eq perception|&skillAbiAttr;wisdom_mod
+  --?[&skillKey] -eq survival|&skillAbiAttr;wisdom_mod
+  -->Get_Ability_Modifier|[&skillAbiAttr];SkillMod;skillAbiName
+  --:SKILL_CHECK_ROLL|
+  --&rollEquation|1d20
+  --?[&rollType] -eq "Advantage"|&rollEquation;2d20kh1
+  --?[&rollType] -eq "Disadvantage"|&rollEquation;2d20kl1
+  --=SkillCheck|[&rollEquation] + [$SkillMod.Raw] [&obrac][&skillInfo1][&cbrac] [&GSKM_VALUES]
+  --#title|[&skillDisplayName] Check
+  --#leftsub|[*S:character_name]
+  --#rightsub|
+  --+|[&skillDisplayName] check result: [$SkillCheck]
+  --X|
+
+  --:TOOL_CHECK|
+  --&whisperTarget|
+  --?[*S:npc] -eq 1 -and [&AllNPCActionsToSender] -eq 1|&whisperTarget;self
+  --#whisper|[&whisperTarget]
+  --~toolInfo|string;split;|;[&reentryval]
+  --&tool_base_roll|1d20
+  --?[&toolInfo2] e-eq "Advantage"|&tool_base_roll;2d20kh1
+  --?[&toolInfo2] e-eq "Disadvantage"|&tool_base_roll;2d20kl1
+  --rfind|[*S:character_id];[&toolInfo1];repeating_tool;toolname
+  --?"[*R:toolname]" -eq "NoRepeatingAttributeLoaded"|BAD_TOOL_ROLL
+  --&toolattr|[*R:toolattr]_mod
+  --&toolattr|[&toolattr(tolowercase)]
+  --&toolbonus|[*R:toolbonus_base]
+  --&toolproftype|[PROF]
+  --?"[&toolbonus]" -inc "(pb*2)|&toolproftype;[EXPERT]
+  --?"[&toolbonus]" -inc "(pb/2)|&toolproftype;[JACK]
+    --~toolbonus|string;replace;(pb*2);[*S:pb] * 2;[&toolbonus]
+  --~toolbonus|string;replace;(floor(pb/2));[*S:pb] \ 2;[&toolbonus]
+  --?"[&toolbonus]" -eq ""|&toolbonus;[*S:pb]
+  --=toolprofbonus|[&toolbonus]
+  --?"[&toolattr]" -eq "query_mod"|TOOL_ATTR_QUERY
+  --:DO_TOOL_ROLL|
+  --&toolattr_display|[
+  --&toolattr_display|+[&toolattr(0,3)]
+  --&toolattr_display|+]
+  --&toolRoll|[&tool_base_roll] + [*S:[&toolattr]] [&toolattr_display(touppercase)] + [$toolprofbonus.Raw] [&toolproftype]
+  --=ToolRollResult|[&toolRoll]
+  --+[&toolInfo1] Result|[$ToolRollResult]
+  --X|
+  --:BAD_TOOL_ROLL|
+   --+|Bad tool info : [&toolInfo1]
+  --X|
+  --:TOOL_ATTR_QUERY|
+  --#whisper|self
+  --+[&toolInfo1]|This tool requires you to select the associated attribute to roll against. Please click the button below to choose.
+  --+|[c][rbutton]Choose Attribute::TOOL_ATTR_RETURN;[&QB]Skill to roll?|Strength,strength_mod|Dexterity,dexterity_mod|Constitution,constitution_mod|Intelligence,intelligence_mod|Wisdom,wisdom_mod|Charisma,charisma_mod[&QE][/rbutton][/c]
+  --X|
+  --:TOOL_ATTR_RETURN|
+  --~toolAttrInfo|string;split;|;[&reentryval]
+  --&toolattr|[&toolAttrInfo1]
+  --&whisperTarget|
+  --?[*S:npc] -eq 1 -and [&AllNPCActionsToSender] -eq 1|&whisperTarget;self
+  --#whisper|[&whisperTarget]
+  --^DO_TOOL_ROLL|
+  --?"[*R:toolname]" -eq "NoRepeatingAttributeLoaded"|BAD_TOOL_ROLL
+  --X|
+
+  --/|=========================================================================================================
+  --/| FUNCTIONS
+
+  --/|The three Find_Active_Global_X_Modifiers functions will loop through the various global modifiers repeating
+  --/|sections and construct a line containing the dice roll and description (in square brackets) for each entry
+  --/|that has an active flag set. This is set to a variable named after the second parameter and can be appended
+  --/|directly to an attack/damage/save roll. Toggle buttons use row ids (Rbysectionid) for names with
+  --/|apostrophes or hyphens. Find/append sanitizes GMMModName and builds roll fragments via GMMRollSep
+  --/|(no literal # on the same line as &var gosub params and # lines cannot expand &label).
+
+  --:SET_ADV_MODE|
+  --&currentAdvantageMode|[&reentryval]
+  --^AFTER_ADVMODE_CHANGE|
+
+  --:Find_Active_Global_Attack_Modifiers|character_id;StringVariableToSet
+  --&_GAM_Temp| 
+  --&_GAMDedupSeen|
+  --Rfirst|[%1%];repeating_tohitmod
+  --:_GAM_Loop|
+  --?"[*R:global_attack_active_flag]" -eq "1"|[
+   --&_GAMStgRoll|[*R:global_attack_roll]
+   --?"[&_GAMStgRoll]" -ninc "NoRepeatingAttributeLoaded"|[
+    --?"[&_GAMStgRoll]" -ne ""|[
+     --&GMMModName|[*R:global_attack_name]
+     --~GMMModName|string;replace;';’;[&GMMModName]
+     --~GMMModName|string;replace;-;‑;[&GMMModName]
+     --&GAMDedupKey||[&GMMModName]|
+     --?"[&_GAMDedupSeen]" -ninc "[&GAMDedupKey]"|[
+      --&_GAMDedupSeen|+ [&GAMDedupKey]
+      -->_AddGAM|
+     --]|
+    --]|
+   --]|
+  --]|
+  --Rnext| 
+  --?"[*R:global_attack_name]" -ne "NoRepeatingAttributeLoaded"|_GAM_Loop
+  --&[%2%]|[&_GAM_Temp] 
+  --<|
+  
+  --:_AddGAM|
+  --&GMMModBracket|[&obrac][&GMMModName][&cbrac]
+  --&GMMRollSep|#
+  --&GMMGamPiece|
+  --&GMMGamPiece|+ + [&_GAMStgRoll][&GMMRollSep] [&GMMModBracket]
+  --&_GAM_Temp|+ [&GMMGamPiece]
+  --<|
+
+  --:Find_Active_Global_Damage_Modifiers|character_id;StringVariableToSet;isCrit(1=true);StringVar2forResistances
+  --&_GDM_Temp| 
+  --&_GDM_Temp2|
+  --&_GDMDedupSeen|
+  --Rfirst|[%1%];repeating_damagemod
+  --:_GDM_Loop|
+  --?"[*R:global_damage_active_flag]" -eq "1"|[
+   --&_GDMStgDice|[*R:global_damage_damage]
+   --&_GDMStgCrit|[*R:global_damage_critical_damage]
+   --&_GDMStgType|[*R:global_damage_type]
+   --&GMMModName|[*R:global_damage_name]
+   --~GMMModName|string;replace;';’;[&GMMModName]
+   --~GMMModName|string;replace;-;‑;[&GMMModName]
+   --&GDMDedupKey||[&GMMModName]|
+   --?"[&_GDMDedupSeen]" -ninc "[&GDMDedupKey]"|[
+    --&_GDMDedupSeen|+ [&GDMDedupKey]
+    --&_GDMStgCritFlag|[%3]
+    -->_AddGDM|
+   --]|
+  --]|
+  --Rnext| 
+  --?"[*R:global_damage_name]" -ne "NoRepeatingAttributeLoaded"|_GDM_Loop
+  --&[%2%]|[&_GDM_Temp] 
+  --&[%4%]|[&_GDM_Temp2] 
+  --<|
+  
+  --:_AddGDM|
+  --&GMMModBracket|[&obrac][&GMMModName][&cbrac]
+  --&GMMRollSep|#
+  --&GMMDmgPiece|
+  --&GMMDmgPiece|+ + [&_GDMStgDice][&GMMRollSep]
+  --?"[&_GDMStgType]" -ne ""|&GMMDmgPiece;+ [&_GDMStgType] damage 
+  --&GMMDmgPiece|+ [&GMMModBracket]
+  --&_GDM_Temp|+ [&GMMDmgPiece]
+  --&GMMCritSuffix| CRIT [&GMMModBracket]
+  --?"[&_GDMStgCritFlag]" -eq "1"|&_GDM_Temp;+ + [&_GDMStgCrit] [&GMMCritSuffix]
+  --&GMMResPiece|
+  --&GMMResPiece|+ + [&_GDMStgDice][&GMMRollSep]
+  --?"[&_GDMStgType]" -ne ""|&GMMResPiece;+ [&_GDMStgType] damage 
+  --&GMMResPiece|+ [&GMMModBracket][&vbar]
+  --&_GDM_Temp2|+ [&GMMResPiece]
+  --<|
+
+  --:Find_Active_Global_Save_Modifiers|character_id;StringVariableToSet
+  --&[%2%]|
+  --&_GSM_Temp|
+  --&_GSMDedupSeen|
+  --Rfirst|[%1%];repeating_savemod
+  --?"[*R:global_save_name]" -eq "NoRepeatingAttributeLoaded"|<
+  --:_GSM_Loop|
+  --?"[*R:global_save_active_flag]" -eq "1"|[
+   --&_GSMStgRoll|[*R:global_save_roll]
+   --?"[&_GSMStgRoll]" -ninc "NoRepeatingAttributeLoaded"|[
+    --?"[&_GSMStgRoll]" -ne ""|[
+     --&GMMModName|[*R:global_save_name]
+     --~GMMModName|string;replace;';’;[&GMMModName]
+     --~GMMModName|string;replace;-;‑;[&GMMModName]
+     --&GSMDedupKey||[&GMMModName]|
+     --?"[&_GSMDedupSeen]" -ninc "[&GSMDedupKey]"|[
+      --&_GSMDedupSeen|+ [&GSMDedupKey]
+      -->_AddGSM|
+     --]|
+    --]|
+   --]|
+  --]|
+  --Rnext|
+  --?"[*R:global_save_name]" -ne "NoRepeatingAttributeLoaded"|_GSM_Loop
+  --&[%2%]|[&_GSM_Temp]
+  --<|
+
+  --:_AddGSM|
+  --&GMMModBracket|[&obrac][&GMMModName][&cbrac]
+  --&GMMRollSep|#
+  --&GMMSavPiece|
+  --&GMMSavPiece|+ + [&_GSMStgRoll][&GMMRollSep] [&GMMModBracket]
+  --&_GSM_Temp|+ [&GMMSavPiece]
+  --<|
+  
+  --:Find_Active_Global_Skill_Modifiers|character_id;StringVariableToSet
+  --&[%2%]|
+  --&_GSKM_Temp|
+  --&_GSKMDedupSeen|
+  --Rfirst|[%1%];repeating_skillmod
+  --?"[*R:global_skill_name]" -eq "NoRepeatingAttributeLoaded"|<
+  --:_GSKM_Loop|
+  --?"[*R:global_skill_active_flag]" -eq "1"|[
+   --&_GSKMStgRoll|[*R:global_skill_roll]
+   --?"[&_GSKMStgRoll]" -ninc "NoRepeatingAttributeLoaded"|[
+    --?"[&_GSKMStgRoll]" -ne ""|[
+     --&GMMModName|[*R:global_skill_name]
+     --~GMMModName|string;replace;';’;[&GMMModName]
+     --~GMMModName|string;replace;-;‑;[&GMMModName]
+     --&GSKMDedupKey||[&GMMModName]|
+     --?"[&_GSKMDedupSeen]" -ninc "[&GSKMDedupKey]"|[
+      --&_GSKMDedupSeen|+ [&GSKMDedupKey]
+      -->_AddGSKM|
+     --]|
+    --]|
+   --]|
+  --]|
+  --Rnext|
+  --?"[*R:global_skill_name]" -ne "NoRepeatingAttributeLoaded"|_GSKM_Loop
+  --&[%2%]|[&_GSKM_Temp]
+  --<|
+
+  --:_AddGSKM|
+  --&GMMModBracket|[&obrac][&GMMModName][&cbrac]
+  --&GMMRollSep|#
+  --&GMMSklPiece|
+  --&GMMSklPiece|+ + [&_GSKMStgRoll][&GMMRollSep] [&GMMModBracket]
+  --&_GSKM_Temp|+ [&GMMSklPiece]
+  --<|
+
+  --:Create_Global_Attack_Modifier_Buttons|character_id;StringVariableToSet
+  --&_GAMB_Temp|
+  --~|hashtable;fromrepeatingsection;[%1%];repeating_tohitmod;global_attack_name;GAMBHash
+  --~|array;fromkeys;GAMBKeys;GAMBHash
+  --%GAMBLoop|foreach;GAMBKeys
+   --?"[&GAMBLoop]" -inc "_sectionid"|GAMB_BUILD|GAMB_NEXT
+   --^GAMB_NEXT|
+   --:GAMB_BUILD|
+   --&GAMBRowName|[&GAMBLoop(replace,_sectionid,)]
+   --?"[&GAMBRowName]" -eq ""|GAMB_NEXT
+   --&GAMBRowId|[:GAMBHash("[&GAMBLoop]")]
+   --&GAMBLabel|[:GAMBHash("[&GAMBRowName]_global_attack_name")]
+   --&GAMBActive|[:GAMBHash("[&GAMBRowName]_global_attack_active_flag")]
+   --&GAMBBtnColor|[&GAM_Button_Inactive_Color]
+   --?"[&GAMBActive]" -eq "1"|&GAMBBtnColor;[&GAM_Button_Active_Color]
+   --&_GAMB_Temp|+[rbutton:#ffffff:#[&GAMBBtnColor]:8px][&GAMBLabel]::TOGGLE_GAM;[&GAMBRowId][/rbutton][&SPACE]
+   --:GAMB_NEXT|
+  --%|
+  --&[%2%]|[&_GAMB_Temp]
+  --<|
+
+  --:Create_Global_Damage_Modifier_Buttons|character_id;StringVariableToSet
+  --&_GDMB_Temp|
+  --~|hashtable;fromrepeatingsection;[%1%];repeating_damagemod;global_damage_name;GDMBHash
+  --~|array;fromkeys;GDMBKeys;GDMBHash
+  --%GDMBLoop|foreach;GDMBKeys
+   --?"[&GDMBLoop]" -inc "_sectionid"|GDMB_BUILD|GDMB_NEXT
+   --^GDMB_NEXT|
+   --:GDMB_BUILD|
+   --&GDMBRowName|[&GDMBLoop(replace,_sectionid,)]
+   --?"[&GDMBRowName]" -eq ""|GDMB_NEXT
+   --&GDMBRowId|[:GDMBHash("[&GDMBLoop]")]
+   --&GDMBLabel|[:GDMBHash("[&GDMBRowName]_global_damage_name")]
+   --&GDMBActive|[:GDMBHash("[&GDMBRowName]_global_damage_active_flag")]
+   --&GDMMBtnColor|[&GAM_Button_Inactive_Color]
+   --?"[&GDMBActive]" -eq "1"|&GDMMBtnColor;[&GAM_Button_Active_Color]
+   --&_GDMB_Temp|+[rbutton:#ffffff:#[&GDMMBtnColor]:8px][&GDMBLabel]::TOGGLE_GDM;[&GDMBRowId][/rbutton][&SPACE]
+   --:GDMB_NEXT|
+  --%|
+  --&[%2%]|[&_GDMB_Temp]
+  --<|
+
+  --:Create_Global_Save_Modifier_Buttons|character_id;StringVariableToSet
+  --&_GSMB_Temp|
+  --~|hashtable;fromrepeatingsection;[%1%];repeating_savemod;global_save_name;GSMBHash
+  --~|array;fromkeys;GSMBKeys;GSMBHash
+  --%GSMBLoop|foreach;GSMBKeys
+   --?"[&GSMBLoop]" -inc "_sectionid"|GSMB_BUILD|GSMB_NEXT
+   --^GSMB_NEXT|
+   --:GSMB_BUILD|
+   --&GSMBRowName|[&GSMBLoop(replace,_sectionid,)]
+   --?"[&GSMBRowName]" -eq ""|GSMB_NEXT
+   --&GSMBRowId|[:GSMBHash("[&GSMBLoop]")]
+   --&GSMBLabel|[:GSMBHash("[&GSMBRowName]_global_save_name")]
+   --&GSMBActive|[:GSMBHash("[&GSMBRowName]_global_save_active_flag")]
+   --&GSMBBtnColor|[&GAM_Button_Inactive_Color]
+   --?"[&GSMBActive]" -eq "1"|&GSMBBtnColor;[&GAM_Button_Active_Color]
+   --&_GSMB_Temp|+[rbutton:#ffffff:#[&GSMBBtnColor]:8px][&GSMBLabel]::TOGGLE_GSM;[&GSMBRowId][/rbutton][&SPACE]
+   --:GSMB_NEXT|
+  --%|
+  --&[%2%]|[&_GSMB_Temp]
+  --<|
+
+  --:Create_Global_AC_Modifier_Buttons|character_id;StringVariableToSet
+  --&_GACMB_Temp|
+  --~|hashtable;fromrepeatingsection;[%1%];repeating_acmod;global_ac_name;GACMBHash
+  --~|array;fromkeys;GACMBKeys;GACMBHash
+  --%GACMBLoop|foreach;GACMBKeys
+   --?"[&GACMBLoop]" -inc "_sectionid"|GACMB_BUILD|GACMB_NEXT
+   --^GACMB_NEXT|
+   --:GACMB_BUILD|
+   --&GACMBRowName|[&GACMBLoop(replace,_sectionid,)]
+   --?"[&GACMBRowName]" -eq ""|GACMB_NEXT
+   --&GACMBRowId|[:GACMBHash("[&GACMBLoop]")]
+   --&GACMBLabel|[:GACMBHash("[&GACMBRowName]_global_ac_name")]
+   --&GACMBActive|[:GACMBHash("[&GACMBRowName]_global_ac_active_flag")]
+   --&GACMBBtnColor|[&GAM_Button_Inactive_Color]
+   --?"[&GACMBActive]" -eq "1"|&GACMBBtnColor;[&GAM_Button_Active_Color]
+   --&_GACMB_Temp|+[rbutton:#ffffff:#[&GACMBBtnColor]:8px][&GACMBLabel]::TOGGLE_GACM;[&GACMBRowId][/rbutton][&SPACE]
+   --:GACMB_NEXT|
+  --%|
+  --&[%2%]|[&_GACMB_Temp]
+  --<|
+
+  --:Create_Global_Skill_Modifier_Buttons|character_id;StringVariableToSet
+  --&_GSKMB_Temp|
+  --~|hashtable;fromrepeatingsection;[%1%];repeating_skillmod;global_skill_name;GSKMBHash
+  --~|array;fromkeys;GSKMBKeys;GSKMBHash
+  --%GSKMBLoop|foreach;GSKMBKeys
+   --?"[&GSKMBLoop]" -inc "_sectionid"|GSKMB_BUILD|GSKMB_NEXT
+   --^GSKMB_NEXT|
+   --:GSKMB_BUILD|
+   --&GSKMBRowName|[&GSKMBLoop(replace,_sectionid,)]
+   --?"[&GSKMBRowName]" -eq ""|GSKMB_NEXT
+   --&GSKMBRowId|[:GSKMBHash("[&GSKMBLoop]")]
+   --&GSKMBLabel|[:GSKMBHash("[&GSKMBRowName]_global_skill_name")]
+   --&GSKMBActive|[:GSKMBHash("[&GSKMBRowName]_global_skill_active_flag")]
+   --&GSKMBBtnColor|[&GAM_Button_Inactive_Color]
+   --?"[&GSKMBActive]" -eq "1"|&GSKMBBtnColor;[&GAM_Button_Active_Color]
+   --&_GSKMB_Temp|+[rbutton:#ffffff:#[&GSKMBBtnColor]:8px][&GSKMBLabel]::TOGGLE_GSKM;[&GSKMBRowId][/rbutton][&SPACE]
+   --:GSKMB_NEXT|
+  --%|
+  --&[%2%]|[&_GSKMB_Temp]
+  --<|
+
+  --/|Kurt: read ability into roll vars via [*S:…] or [*[char_id]:…]. Fork: early exit on blank/0 keeps copied dmgMod; PC attacks set &_gamCharId.
+  --:Get_Ability_Modifier|attribute_string;returnnumericvalue;returnnamestring
+  --?"[%1%]" -eq ""|<
+  --?"[%1%]" -eq "NoRepeatingAttributeLoaded"|<
+  --?"[%1%]" -eq "0"|<
+  --?"[%1%]" -eq "-1"|<
+  --?"[%1%]" -eq "0"|<
+  --?"[%1%]" -eq "-1"|<
+  --?"[%1%]" -eq "undefined"|<
+  --=[%2%]|
+  --&[%3%]|
+  --&_gamModCid|[&_gamCharId]
+  --?"X[&_gamModCid]" -eq "X" -or "[&_gamModCid]" -eq ""|&_gamModCid;[*S:character_id]
+  --?"[%1%]" -eq "strength_mod"|=[%2%];[*[&_gamModCid]:strength_mod]
+  --?"[%1%]" -eq "strength_mod"|&[%3%];[STR]
+  --?"[%1%]" -eq "intelligence_mod"|=[%2%];[*[&_gamModCid]:intelligence_mod]
+  --?"[%1%]" -eq "intelligence_mod"|&[%3%];[INT]
+  --?"[%1%]" -eq "wisdom_mod"|=[%2%];[*[&_gamModCid]:wisdom_mod]
+  --?"[%1%]" -eq "wisdom_mod"|&[%3%];[WIS]
+  --?"[%1%]" -eq "dexterity_mod"|=[%2%];[*[&_gamModCid]:dexterity_mod]
+  --?"[%1%]" -eq "dexterity_mod"|&[%3%];[DEX]
+  --?"[%1%]" -eq "constitution_mod"|=[%2%];[*[&_gamModCid]:constitution_mod]
+  --?"[%1%]" -eq "constitution_mod"|&[%3%];[CON]
+  --?"[%1%]" -eq "charisma_mod"|=[%2%];[*[&_gamModCid]:charisma_mod]
+  --?"[%1%]" -eq "charisma_mod"|&[%3%];[CHA]
+  --<|
+
+  --/|Fork: if Kurt $dmgMod path left mod at 0, append [*[char]:ability_mod] to the roll string (Melee/Ranged).
+  --:PC_ATK_S_ABI_FALLBACK|arString;dmgroll;dmgroll2
+  --&_gamModCid|[&_gamCharId]
+  --?"X[&_gamModCid]" -eq "X" -or "[&_gamModCid]" -eq ""|&_gamModCid;[*S:character_id]
+  --?"[*R:attack_type]" -inc "Ranged"|[
+   --?"[%1%]" -eq "arString"|&arString;+ + [*[&_gamModCid]:dexterity_mod] [DEX]
+   --?"[%1%]" -eq "dmgroll"|&dmgroll;+ + [*[&_gamModCid]:dexterity_mod] [DEX]
+   --?"[%1%]" -eq "dmgroll2"|&dmgroll2;+ + [*[&_gamModCid]:dexterity_mod] [DEX]
+   --<|
+  --]|
+  --?"[%1%]" -eq "arString"|&arString;+ + [*[&_gamModCid]:strength_mod] [STR]
+  --?"[%1%]" -eq "dmgroll"|&dmgroll;+ + [*[&_gamModCid]:strength_mod] [STR]
+  --?"[%1%]" -eq "dmgroll2"|&dmgroll2;+ + [*[&_gamModCid]:strength_mod] [STR]
+  --<|
+
+  --/|There are four different options for applying damage. The selected option is set in the settings area of the macro.
+  --/|Token-mod apply (ApplyDamageTokenmod*): relative barN_value deltas only; do not re-set unchanged bars; no sheet hp_temp
+  --/|sync on token-mod temp writes (avoids double temp loss). Compatible with listen_to_tokenmod|1 change:graphic triggers.
+
+  --/|Set damageApplyRoutine + damageRoutine from settings (menu init and attack/damage reentry).
+  --:CAM_SetDamageApplyRoutines|
+  --&_dmgRouteScript|[&damageApplyScript]
+  --?"[&damageApplyScript]" -eq "damagebuttons"|&_dmgRouteScript;scriptcards
+  --&damageApplyRoutine|DontApplyDamage
+  --?"X[&UseTempHP]" -eq "X1"|[
+   --?"[&_dmgRouteScript]" -eq "scriptcards"|&damageApplyRoutine;ApplyDamageScriptCardsTempHP
+   --?"[&_dmgRouteScript]" -eq "token-mod"|&damageApplyRoutine;ApplyDamageTokenmodTempHP
+   --?"[&_dmgRouteScript]" -eq "alterbars"|&damageApplyRoutine;ApplyDamageAlterbarsTempHP
+  --]|
+  --?"X[&UseTempHP]" -ne "X1"|[
+   --?"[&_dmgRouteScript]" -eq "scriptcards"|&damageApplyRoutine;ApplyDamageScriptCardsSingle
+   --?"[&_dmgRouteScript]" -eq "token-mod"|&damageApplyRoutine;ApplyDamageTokenmodSingle
+   --?"[&_dmgRouteScript]" -eq "alterbars"|&damageApplyRoutine;ApplyDamageAlterbarsSingle
+  --]|
+  --?"[&damageApplyRoutine]" -eq "DontApplyDamage"|[
+   --?"[&_dmgRouteScript]" -eq "token-mod"|&damageApplyRoutine;ApplyDamageTokenmodSingle
+   --?"[&_dmgRouteScript]" -eq "scriptcards"|&damageApplyRoutine;ApplyDamageScriptCardsSingle
+   --?"[&_dmgRouteScript]" -eq "alterbars"|&damageApplyRoutine;ApplyDamageAlterbarsSingle
+  --]|
+  --?[&damageApplyScript] -eq "damagebuttons"|&damageRoutine;SHOW_DAMAGE_BUTTONS
+  --?"[&damageApplyScript]" -ne "damagebuttons"|&damageRoutine;CAM_ApplyDamageOrHealing
+  --<|
+
+  --/|Like LibSN_APPLY_DAMAGE_OR_HEALING: signed amount — negative = damage, positive = healing.
+  --/|Healing always uses main-HP apply (UseTempHP|0 / Single). Damage uses [&damageApplyRoutine] (TempHP when UseTempHP|1).
+  --:CAM_ApplyDamageOrHealing|tokenid;hp bar#;temp bar#;amount;display;allow overheal;allow negative hp
+  -->_ResolveDamageAmount|[%4%]
+  --?"[$_applyValue] -ge 0"|>CAM_ApplyDOR_MainHPOnly
+  -->[&damageApplyRoutine]|[%1%];[%2%];[%3%];[%4%];[%5%];[%6%];[%7%]
+  --<|
+
+  --:CAM_ApplyDOR_MainHPOnly|
+  --&_camDORRoute|[&damageApplyScript]
+  --?"[&damageApplyScript]" -eq "damagebuttons"|&_camDORRoute;scriptcards
+  --?"[&_camDORRoute]" -eq "scriptcards"|-->ApplyDamageScriptCardsSingle|[%1%];[%2%];[%3%];[%4%];[%5%];[%6%];[%7%]
+  --?"[&_camDORRoute]" -eq "alterbars"|-->ApplyDamageAlterbarsSingle|[%1%];[%2%];[%3%];[%4%];[%5%];[%6%];[%7%]
+  -->ApplyDamageTokenmodSingle|[%1%];[%2%];[%3%];[%4%];[%5%];[%6%];[%7%]
+  --<|
+
+  --/|Read temp HP from token bar; if bar empty/0, fall back to character hp_temp (common on NPCs).
+  --:ReadTokenTempHP|tokenId;tempBarNum;returnVarName
+   --&_rtthVal|[*[%1%]:t-bar[%2%]_value]
+   --?"X[&_rtthVal]" -eq "X"|&_rtthVal;0
+   --?"[&_rtthVal]" -eq ""|&_rtthVal;0
+   --?"[&_rtthVal]" -eq "undefined"|&_rtthVal;0
+   --?"[&_rtthVal]" -eq "0"|[
+    --?"X[*[%1%]:character_id]" -ne "X"|[
+     --&_tempFromSheet|[*[*[%1%]:character_id]:hp_temp]
+     --?"X[&_tempFromSheet]" -ne "X" -and "[&_tempFromSheet]" -ne "" -and "[&_tempFromSheet]" -ne "0"|&_rtthVal;[&_tempFromSheet]
+    --]|
+   --]|
+   --&[%3%]|[&_rtthVal]
+   --<|
+
+  --/|1 if token bar N exists for AlterBars / !t (max or value readable). 0 = PC sheet-only temp (hp_temp).
+  --:CAM_TokenBarExists|tokenId;barNum;returnVarName
+   --&_tbeExists|0
+   --&_tbeMax|[*[%1%]:t-bar[%2%]_max]
+   --?"X[&_tbeMax]" -ne "X"|&_tbeExists;1
+   --?"[&_tbeMax]" -ne "" -and "[&_tbeMax]" -ne "undefined"|&_tbeExists;1
+   --?"[&_tbeExists]" -eq "1"|[
+    --&[%3%]|1
+    --<|
+   --]|
+   --&_tbeVal|[*[%1%]:t-bar[%2%]_value]
+   --?"X[&_tbeVal]" -ne "X"|&_tbeExists;1
+   --?"[&_tbeVal]" -ne "" -and "[&_tbeVal]" -ne "undefined"|&_tbeExists;1
+   --&[%3%]|[&_tbeExists]
+   --<|
+
+  --/|Keep sheet hp_temp in sync when temp bar changes (OGL).
+  --:SyncTempHPSheet|tokenId;newTempValue
+   --?"X[*[%1%]:character_id]" -eq "X"|<
+   --!a:[*[%1%]:character_id]|!hp_temp:[%2%]
+   --<|
+
+  --/|Adjust incoming damage for temporary HP. Positive amounts (healing) pass through unchanged.
+  --/|Reads temp HP from the token bar. Sets &_tempAdjAmount, &_tempNewValue, &_tempAlterDelta (for AlterBars), &_tempBarChanged (0/1).
+  --:ADJUST_DAMAGE_FOR_TEMP_HP|TokenID;tempHPbar;Amount
+  --&_tempAdjAmount|[%3%]
+  --&_tempNewValue|
+  --&_tempAlterDelta|0
+  --=_tempAlterDeltaRoll|0
+  --&_tempBarChanged|0
+  --?"[%2%]" -eq ""|<
+  --=TempHPIncoming|[%3%]
+  --?[$TempHPIncoming.Raw] -ge 0|<
+  -->ReadTokenTempHP|[%1%];[%2%];TempHPCurrentValue
+  --?"[&TempHPCurrentValue]" -eq ""|<
+  --?"[&TempHPCurrentValue]" -eq "undefined"|<
+  --=TempHPCurrent|[&TempHPCurrentValue]
+  --?[$TempHPCurrent.Raw] -le 0|<
+  --=TempHPDamage|[$TempHPIncoming.Raw] {NEGATE}
+  --?[$TempHPCurrent.Raw] -ge [$TempHPDamage.Raw]|ADJUST_TEMP_HP_ABSORBS_ALL
+  --=TempHPAdjustedDamage|[$TempHPIncoming.Raw] + [$TempHPCurrent.Raw]
+  --&_tempAdjAmount|[$TempHPAdjustedDamage.Raw]
+  --&_tempNewValue|0
+  --=TempAlterDelta|0 - [$TempHPCurrent.Raw]
+  --&_tempAlterDelta|[$TempAlterDelta.Raw]
+  --=_tempAlterDeltaRoll|[$TempAlterDelta.Raw]
+  --&_tempBarChanged|1
+  --^ADJUST_TEMP_HP_DONE|
+  --:ADJUST_TEMP_HP_ABSORBS_ALL|
+  --=TempHPRemaining|[$TempHPCurrent.Raw] - [$TempHPDamage.Raw]
+  --&_tempAdjAmount|0
+  --&_tempNewValue|[$TempHPRemaining.Raw]
+  --=TempAlterDelta|[$TempHPRemaining.Raw] - [$TempHPCurrent.Raw]
+  --&_tempAlterDelta|[$TempAlterDelta.Raw]
+  --=_tempAlterDeltaRoll|[$TempAlterDelta.Raw]
+  --&_tempBarChanged|1
+  --:ADJUST_TEMP_HP_DONE|
+  --<|
+
+  --/|ScriptCards !t-only bar sync (ApplyDamageScriptCards TempHP path). Token-mod path must not call this.
+  --:SYNC_TEMP_HP_BAR|TokenID;tempHPbar;newValue
+  -->CAM_TokenBarExists|[%1%];[%2%];_syncTempBarExists
+  --?"[&_syncTempBarExists]" -eq "1"|[
+   --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[%3%]
+   --!t:[%1%]|bar[%2%]_value|[%3%]
+  --]|
+  --?"X[*[%1%]:character_id]" -ne "X"|--!a:[*[%1%]:character_id]|!hp_temp:[%3%]
+  --<|
+
+  --/|Shared: resolve roll amount (Total if non-zero, else Raw). Sets _applyValue.
+  --:_ResolveDamageAmount|amount
+  --=_applyIn|[%1%]
+  --=dmgTotalRoll|[$_applyIn.Total]
+  --=dmgRawRoll|[$_applyIn.Raw]
+  --?"[$dmgTotalRoll.Raw]" -ne "0"|=dmgResolvedRoll;[$dmgTotalRoll.Raw]
+  --?"[$dmgTotalRoll.Raw]" -eq "0"|=dmgResolvedRoll;[$dmgRawRoll.Raw]
+  --=_applyValue|[$dmgResolvedRoll.Raw]
+  --<|
+
+  --/|Shared: current HP + _applyValue -> _newValue, then clamp using AllowNegativeHP and allow-overheal param.
+  --:_ComputeClampedHP|tokenId;hpBar;allowOverheal
+  --=StartHP|[*[%1%]:t-bar[%2%]_value]
+  --=_newValue|[$StartHP] + [$_applyValue]
+  --?"X[&AllowNegativeHP]" -ne "X1" -and [$_newValue] -lt 0|=_newValue;0
+  --?"X[%3%]" -ne "X1" -and [$_newValue] -gt [*[%1%]:t-bar[%2%]_max]|=_newValue;[*[%1%]:t-bar[%2%]_max]
+  --<|
+
+  --/|Apply damage via ScriptCards !t (Single — hit bar only).
+  --:ApplyDamageScriptCardsSingle|Parameters are tokenid;bar#;tempHPbar;amount;display (0 or 1);allow overheal (0 or 1);allow negative hp (0 or 1)
+  --=applyValue|[%4%]
+  --=newValue|[*[%1%]:t-bar[%2%]_value] + [$applyValue]
+  --?"X[&AllowNegativeHP]" -ne "X1" -and [$newValue] -lt 0|=newValue;0
+  --?"X[%6%]" -ne "X1" -and [$newValue] -gt [*[%1%]:t-bar[%2%]_max]|=newValue;[*[%1%]:t-bar[%2%]_max]
+  --?"X[%5%]" -eq "X1"|+Applying;[%4%] HP to [*[%1%]:t-name]
+  --!t:[%1%]|bar[%2%]_value:[$newValue.Raw]
+  --<|
+
+  --/|Apply damage via ScriptCards !t (TempHP — temp bar then HP; same math as Alterbars TempHP).
+  --:ApplyDamageScriptCardsTempHP|Parameters are tokenid;bar#;tempHPbar;amount;display (0 or 1);allow overheal (0 or 1);allow negative hp (0 or 1)
+  -->ADJUST_DAMAGE_FOR_TEMP_HP|[%1%];[%3%];[%4%]
+  --?"[&_tempBarChanged]" -eq "1"|-->SYNC_TEMP_HP_BAR|[%1%];[%3%];[&_tempNewValue]
+  --=tempHpRemainToMain|[&_tempAdjAmount]
+  --?"X[$tempHpRemainToMain]" -eq "X"|=tempHpRemainToMain;0
+  --?"[$tempHpRemainToMain.Raw]" -eq 0|<
+  --=_applyValue|[$tempHpRemainToMain.Raw]
+  -->_ComputeClampedHP|[%1%];[%2%];[%6%]
+  --?"X[%5%]" -eq "X1"|+Applying;[$tempHpRemainToMain.Raw] HP to [*[%1%]:t-name]
+  --!t:[%1%]|bar[%2%]_value:[$_newValue.Raw]
+  --<|
+
+  --/|Token-mod Single — relative HP delta (listen_to_tokenmod). Clamp only when AllowNegativeHP is not 1.
+  --:ApplyDamageTokenmodSingle|Parameters are tokenid;bar#;tempHPbar;amount;display (0 or 1);allow overheal (0 or 1);allow negative hp (0 or 1)
+  --=applyValue|[%4%]
+  --=StartHP|[*[%1%]:t-bar[%2%]_value]
+  --=newValue|[$StartHP] + [$applyValue]
+  --?"X[&AllowNegativeHP]" -ne "X1" -and [$newValue] -lt 0|=newValue;0
+  --?"X[%6%]" -ne "X1" -and [$newValue] -gt [*[%1%]:t-bar[%2%]_max]|=newValue;[*[%1%]:t-bar[%2%]_max]
+  --=hpDelta|[$newValue] - [$StartHP]
+  --?"[$hpDelta]" -eq "0"|<
+  --?"X[%5%]" -eq "X1"|+Applying;[%4%] HP to [*[%1%]:t-name]
+  --?[$hpDelta] -lt 0|[
+   --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[$hpDelta.Raw]
+   --<|
+  --]|
+  --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|+[$hpDelta.Raw]
+  --<|
+
+  --/|Token-mod TempHP — relative temp then HP deltas (listen_to_tokenmod). No SyncTempHPSheet on this path.
+  --:ApplyDamageTokenmodTempHP|Parameters are tokenid;bar#;tempHPbar;amount;display (0 or 1);allow overheal (0 or 1);allow negative hp (0 or 1)
+  --/|Gosub amount is a roll object: use Total when non-zero, else Raw.
+  --&TempHPDrained|0
+  --=applyValue|[%4%]
+  --=camDmgTotal|[$applyValue.Total]
+  --=camDmgRaw|[$applyValue.Raw]
+  --?"[$camDmgTotal.Raw]" -ne "0"|=camDmgResolved;[$camDmgTotal.Raw]
+  --?"[$camDmgTotal.Raw]" -eq "0"|=camDmgResolved;[$camDmgRaw.Raw]
+  --=_applyValue|[$camDmgResolved.Raw]
+  --/|Damage-only — negative amounts from CAM_ApplyDamageOrHealing (positive healing never enters here).
+  --=StartHP|[*[%1%]:t-bar[%2%]_value]
+  -->ReadTokenTempHP|[%1%];[%3%];_tokTempHPRead
+  --=TempHP|[&_tokTempHPRead]
+  --?"X[$TempHP]" -eq "X"|=TempHP;0
+  --~damageValue|math;abs;[$_applyValue]
+  --?"X[$TempHP]" -nei "X" -and [$TempHP] -gt 0 -and [$TempHP] -ge [$damageValue]|[
+   --=newTempHP|[$TempHP]-[$damageValue]
+   --?"X[%5%]" -eq "X1"|+Applying;[%4%] HP to [*[%1%]:t-name]
+   --/|Temp-only: relative delta on temp bar only (do not touch HP bar).
+   --@token-mod|_ignore-selected _ids [%1%] _set bar[%3%]_value|-[$damageValue.Raw]
+   --^ApplyDamageTokenmodTempHP_Done|
+  --]|
+  --?"X[$TempHP]" -nei "X" -and [$TempHP] -gt 0 -and [$TempHP] -lt [$damageValue]|[
+   --=_applyValue|[$_applyValue] + [$TempHP]
+   --&TempHPDrained|[$TempHP.Raw]
+   --=_newValue|[$StartHP] + [$_applyValue]
+   --^_ApplyHPDamageTokenmod|
+  --]|
+  --=_newValue|[$StartHP] + [$_applyValue]
+  --:_ApplyHPDamageTokenmod|
+  --=hpDelta|[$_applyValue]
+  --?"X[&AllowNegativeHP]" -ne "X1" -and [$_newValue] -lt 0|[
+   --=_newValue|0
+   --=hpDelta|[$StartHP] {NEGATE}
+  --]|
+  --?"X[%6%]" -ne "X1" -and [$_newValue] -gt [*[%1%]:t-bar[%2%]_max]|[
+   --=_newValue|[*[%1%]:t-bar[%2%]_max]
+   --=hpDelta|[$_newValue] - [$StartHP]
+  --]|
+  --=TempHPDrainedNum|[&TempHPDrained]
+  --?"[$hpDelta]" -eq "0" -and [$TempHPDrainedNum] -eq 0|^ApplyDamageTokenmodTempHP_Done|
+  --?"X[%5%]" -eq "X1"|+Applying;[%4%] HP to [*[%1%]:t-name]
+  --?"[$hpDelta]" -ne "0" -and [$TempHPDrainedNum] -gt 0|[
+   --?[$hpDelta] -lt 0|[
+    --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[$hpDelta.Raw] bar[%3%]_value|-[$TempHPDrained.Raw]
+    --^ApplyDamageTokenmodTempHP_Done|
+   --]|
+   --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|+[$hpDelta.Raw] bar[%3%]_value|-[$TempHPDrained.Raw]
+   --^ApplyDamageTokenmodTempHP_Done|
+  --]|
+  --?"[$hpDelta]" -ne "0"|[
+   --?[$hpDelta] -lt 0|[
+    --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|[$hpDelta.Raw]
+    --^ApplyDamageTokenmodTempHP_Done|
+   --]|
+   --@token-mod|_ignore-selected _ids [%1%] _set bar[%2%]_value|+[$hpDelta.Raw]
+   --^ApplyDamageTokenmodTempHP_Done|
+  --]|
+  --@token-mod|_ignore-selected _ids [%1%] _set bar[%3%]_value|-[$TempHPDrained.Raw]
+  --:ApplyDamageTokenmodTempHP_Done|
+  --<|
+
+  --/|AlterBars Single — relative delta on hit bar (clamped; Kurt passed raw amount, we pass actual bar change).
+  --:ApplyDamageAlterbarsSingle|Parameters are tokenid;bar#;tempHPbar;amount;display (0 or 1);allow overheal (0 or 1);allow negative hp (0 or 1)
+  --=StartHP|[*[%1%]:t-bar[%2%]_value]
+  --=applyValue|[%4%]
+  --=newValue|[$StartHP] + [$applyValue]
+  --?"X[&AllowNegativeHP]" -ne "X1" -and [$newValue] -lt 0|=newValue;0
+  --?"X[%6%]" -ne "X1" -and [$newValue] -gt [*[%1%]:t-bar[%2%]_max]|=newValue;[*[%1%]:t-bar[%2%]_max]
+  --=hpAlterDelta|[$newValue] - [$StartHP]
+  --?"[$hpAlterDelta.Raw]" -eq 0|<
+  --?"X[%5%]" -eq "X1"|+Applying;[$hpAlterDelta.Raw] HP to [*[%1%]:t-name]
+  --@alter|_target|[%1%] _bar|[%2%] _amount|[$hpAlterDelta.Raw] _show|none
+  --<|
+
+  --/|AlterBars TempHP — temp bar delta then relative HP amount (same temp math as ScriptCards TempHP).
+  --:ApplyDamageAlterbarsTempHP|Parameters are tokenid;bar#;tempHPbar;amount;display (0 or 1);allow overheal (0 or 1);allow negative hp (0 or 1)
+  -->ADJUST_DAMAGE_FOR_TEMP_HP|[%1%];[%3%];[%4%]
+  --?"[&_tempBarChanged]" -eq "1"|[
+   --?"[$_tempAlterDeltaRoll.Raw]" -ne "0"|[
+    --@alter|_target|[%1%] _bar|[%3%] _amount|[$_tempAlterDeltaRoll.Raw] _show|none
+   --]|
+   --?"X[*[%1%]:character_id]" -ne "X"|[
+    --=tempNewSheet|[&_tempNewValue]
+    --!a:[*[%1%]:character_id]|!hp_temp:[$tempNewSheet.Raw]
+   --]|
+  --]|
+  --=tempHpRemainToMain|[&_tempAdjAmount]
+  --?"X[$tempHpRemainToMain]" -eq "X"|=tempHpRemainToMain;0
+  --?"[$tempHpRemainToMain.Raw]" -eq 0|<
+  --=StartHP|[*[%1%]:t-bar[%2%]_value]
+  --=applyValue|[$tempHpRemainToMain.Raw]
+  --=newValue|[$StartHP] + [$applyValue]
+  --?"X[&AllowNegativeHP]" -ne "X1" -and [$newValue] -lt 0|=newValue;0
+  --?"X[%6%]" -ne "X1" -and [$newValue] -gt [*[%1%]:t-bar[%2%]_max]|=newValue;[*[%1%]:t-bar[%2%]_max]
+  --=hpAlterDelta|[$newValue] - [$StartHP]
+  --?"[$hpAlterDelta.Raw]" -eq 0|<
+  --?"X[%5%]" -eq "X1"|+Applying;[$hpAlterDelta.Raw] HP to [*[%1%]:t-name]
+  --@alter|_target|[%1%] _bar|[%2%] _amount|[$hpAlterDelta.Raw] _show|none
+  --<|
+
+  --/|Just a dummy routine that doesn't do anything, but it is easier to do it this way than adding logic to see if we are
+  --/|skipping applying damage in the main routine.
+  --:DontApplyDamage|
+  --<|
+
+  --:SHOW_DAMAGE_BUTTONS|DamageAmount
+  --=FullDamage|[%4%]
+  --=HalfDamage|[%4%] {NEGATE} \\ 2 {NEGATE}
+  --=QuarterDamage|[%4%] {NEGATE} \\ 4 {NEGATE}
+  --=HealDamage|[%4%] {NEGATE}
+  --?[&whisperDamageButtonsToDM] -eq 1|[
+    --*|[c][rbutton]Full ([$FullDamage.Raw])::APPLY_DAMAGE;[$FullDamage.Raw][/rbutton] | [rbutton]1/2 ([$HalfDamage.Raw])::APPLY_DAMAGE;[$HalfDamage.Raw][/rbutton] | [rbutton]1/4 ([$QuarterDamage.Raw])::APPLY_DAMAGE;[$QuarterDamage.Raw][/rbutton] &nbsp;&nbsp;|&nbsp;&nbsp; [rbutton]Heal::APPLY_DAMAGE;[$HealDamage.Raw][/rbutton][/c]
+  --]|[
+    --+|[c][rbutton]Full::APPLY_DAMAGE;[$FullDamage.Raw][/rbutton] | [rbutton]1/2::APPLY_DAMAGE;[$HalfDamage.Raw][/rbutton] | [rbutton]1/4::APPLY_DAMAGE;[$QuarterDamage.Raw][/rbutton] &nbsp;&nbsp;|&nbsp;&nbsp; [rbutton]Heal::APPLY_DAMAGE;[$HealDamage.Raw][/rbutton][/c]      
+  --]|
+  --<|
+
+  --/|Reentry point to apply damage/healing to selected tokens (damagebuttons — Kurt: always ScriptCards apply; fork: CAM_ApplyDamageOrHealing for heal vs damage + temp).
+  --:APPLY_DAMAGE|Amount
+  -->CAM_SetDamageApplyRoutines|
+  --?[&whisperDamageButtonResultsToDM] -eq 1|[
+    --#whisper|gm
+    --#title|Damage Applied
+  --]|[
+    --#whisper|nobody
+    --#title|Should never show
+  --]|
+  --~tokenCount|array;getlength;SC_SelectedTokens
+  --=tokenCount|[&tokenCount] - 1
+  --%loop|0;[$tokenCount.Raw]
+    --&thisToken|[@SC_SelectedTokens([&loop])]
+    --+Applying|[&reentryval] HP to [*[&thisToken]:t-name]
+    -->CAM_ApplyDamageOrHealing|[&thisToken];[&hitPointsBar];[&tempHPBar];[&reentryval];0;0;1
+  --%|
+  --X|
+
+  --:FIND_REPEATING_RESOURCE|character_id;resourceName;resourceReturnNameStringVariable;ResourceReturnValueStringVariable;ResouceCurrentValue
+    --?"[%2%]" -eq "[*[%1%]:class_resource_name]"|_IsResourceClass
+    --?"[%2%]" -eq "[*[%1%]:other_resource_name]"|_IsResourceOther
+    --Rfirst|[%1%];repeating_resource
+    --:_ResourceLoop|
+    --?"[*R:resource_left_name]" -eq "[%2%]"|_IsResourceLeft
+    --?"[*R:resource_right_name]" -eq "[%2%]"|_IsResourceRight
+    --Rnext|
+    --?"[*R:resource_left_name]" -ne "NoRepeatingAttributeLoaded"|_ResourceLoop
+    --&[%3%]|NotFound --&[%4%]|NotFound --&[%5%]|0 
+  --<|
+  
+  --:_IsResourceClass| --&[%3%]|class_resource_name --&[%4%]|class_resource --&[%5%]|[*[%1%]:class_resource] --<|
+  --:_IsResourceOther| --&[%3%]|other_resource_name --&[%4%]|other_resource --&[%5%]|[*[%1%]:other_resource] --<|
+  --:_IsResourceLeft| --&[%3%]|[*R:resource_left_name]  --&[%4%]|[*R>resource_left] --&[%5%]|[*S:[*R>resource_left]]    --<|  
+  --:_IsResourceRight| --&[%3%]|[*R:resource_left_name] --&[%4%]|[*R>resource_right] --&[%5%]|[*S:[*R>resource_right]] --<|
+
+  --:_NO_AMMO_AVAILABLE|
+  --#whisper|
+  --+|[*S:character_name] has no [&ResourceUsed] left.
+  --#emoteText|[*S:character_name] is all out of [&ResourceUsed].
+  --X|
+
+  --:FIND_CLASS_LEVEL|class;variableToSet
+  --&[%2%]|0
+  --?"[*S:class]" -eq "[%1%]"|&[%2%];[*S:base_level]
+  --?"[*S:multiclass1]" -eq "[%1%]"|&[%2%];[*S:multiclass1_lvl]
+  --?"[*S:multiclass2]" -eq "[%1%]"|&[%2%];[*S:multiclass2_lvl]
+  --?"[*S:multiclass3]" -eq "[%1%]"|&[%2%];[*S:multiclass3_lvl]
+  --<|
+
+  --/|OGL on this table: lvlN_slots_expended = remaining slots (long rest sets to slots_total). Verified 3.6.1+.
+  --:GET_AVAILABLE_SPELL_SLOTS|slotlevel;variableToSet
+  --&[%2%]|[*S:lvl[%1%]_slots_expended]
+  --?"X[&[%2%]]" -eq "X"|&[%2%];0
+  --?"[&[%2%]]" -eq ""|&[%2%];0
+  --<|
+
+  --:DEDUCT_SPELL_SLOT|slotlevel
+  --!a:[*S:character_id]|lvl[%1%]_slots_expended:-=1
+  --<|
+
+  --:GET_HIGHEST_LEVEL_SPELL_SLOT|variableToSet
+  --&[%1%]|0
+  --%levelCounter|1;9
+    -->GET_AVAILABLE_SPELL_SLOTS|[&levelCounter];slotTest
+    --?[&slotTest] -gt 0|&[%1%];[&levelCounter]
+  --%|
+  --<|
+
+  --/|Reassert source token + character id before global-mod toggles (reentry skips main init).
+  --:TOGGLE_ENSURE_SOURCE|
+  --?"X[&saveTokenID]" -ne "X" -and "[&saveTokenID]" -ne ""|[
+   --#sourcetoken|[&saveTokenID]
+  --]|
+  --?"X[&AMCharacterId]" -eq "X" -or "[&AMCharacterId]" -eq ""|&AMCharacterId;[*S:character_id]
+  --<|
+
+  --:TOGGLE_GAM|GAM row id (legacy: name)
+  -->TOGGLE_ENSURE_SOURCE|
+  --Rbysectionid|[*S:character_id];repeating_tohitmod;[&reentryval]
+  --?"[*R:global_attack_name]" -eq "NoRepeatingAttributeLoaded"|[
+   --Rfind|[*S:character_id];[&reentryval];repeating_tohitmod;global_attack_name
+  --]|
+  --?"[*R:global_attack_name]" -eq "NoRepeatingAttributeLoaded"|_TOGGLE_ERROR
+  --?"[*R:global_attack_active_flag]" -eq "1"|>_setGlobalMod;[*R>global_attack_active_flag];0|>_setGlobalMod;[*R>global_attack_active_flag];1
+  --^AFTER_ADVMODE_CHANGE|
+  --X|
+
+  --:TOGGLE_GDM|GDM row id (legacy: name)
+  -->TOGGLE_ENSURE_SOURCE|
+  --Rbysectionid|[*S:character_id];repeating_damagemod;[&reentryval]
+  --?"[*R:global_damage_name]" -eq "NoRepeatingAttributeLoaded"|[
+   --Rfind|[*S:character_id];[&reentryval];repeating_damagemod;global_damage_name
+  --]|
+  --?"[*R:global_damage_name]" -eq "NoRepeatingAttributeLoaded"|_TOGGLE_ERROR
+  --?"[*R:global_damage_active_flag]" -eq "1"|>_setGlobalMod;[*R>global_damage_active_flag];0|>_setGlobalMod;[*R>global_damage_active_flag];1
+  --^AFTER_ADVMODE_CHANGE|
+  --X|
+
+  --:TOGGLE_GSM|GSM row id (legacy: name)
+  -->TOGGLE_ENSURE_SOURCE|
+  --Rbysectionid|[*S:character_id];repeating_savemod;[&reentryval]
+  --?"[*R:global_save_name]" -eq "NoRepeatingAttributeLoaded"|[
+   --Rfind|[*S:character_id];[&reentryval];repeating_savemod;global_save_name
+  --]|
+  --?"[*R:global_save_name]" -eq "NoRepeatingAttributeLoaded"|_TOGGLE_ERROR
+  --?"[*R:global_save_active_flag]" -eq "1"|>_setGlobalMod;[*R>global_save_active_flag];0|>_setGlobalMod;[*R>global_save_active_flag];1
+  --^AFTER_ADVMODE_CHANGE|
+  --X|
+
+  --:TOGGLE_GACM|GACM row id (legacy: name)
+  -->TOGGLE_ENSURE_SOURCE|
+  --Rbysectionid|[*S:character_id];repeating_acmod;[&reentryval]
+  --?"[*R:global_ac_name]" -eq "NoRepeatingAttributeLoaded"|[
+   --Rfind|[*S:character_id];[&reentryval];repeating_acmod;global_ac_name
+  --]|
+  --?"[*R:global_ac_name]" -eq "NoRepeatingAttributeLoaded"|_TOGGLE_ERROR
+  --?"[*R:global_ac_active_flag]" -eq "1"|>_setGlobalMod;[*R>global_ac_active_flag];0|>_setGlobalMod;[*R>global_ac_active_flag];1
+  --^AFTER_ADVMODE_CHANGE|
+  --X|  
+
+  --:TOGGLE_GSKM|GSKM row id (legacy: name)
+  -->TOGGLE_ENSURE_SOURCE|
+  --Rbysectionid|[*S:character_id];repeating_skillmod;[&reentryval]
+  --?"[*R:global_skill_name]" -eq "NoRepeatingAttributeLoaded"|[
+   --Rfind|[*S:character_id];[&reentryval];repeating_skillmod;global_skill_name
+  --]|
+  --?"[*R:global_skill_name]" -eq "NoRepeatingAttributeLoaded"|_TOGGLE_ERROR
+  --?"[*R:global_skill_active_flag]" -eq "1"|>_setGlobalMod;[*R>global_skill_active_flag];0|>_setGlobalMod;[*R>global_skill_active_flag];1
+  --^AFTER_ADVMODE_CHANGE|
+  --X|  
+
+  --:_setGlobalMod|name;value
+  --!a:[&saveTokenID]|[%1%]:[%2%]
+  --<|
+
+  --:_TOGGLE_ERROR|
+  --#whisper|self
+  --+Global mod toggle failed|Could not find "[&reentryval]" on the character sheet. Reopen the Action Menu from your token.
+  --^AFTER_ADVMODE_CHANGE|
+  --X|
+
+  --:SUBSTITUTE_GLOBAL_MOD_IMAGE|mod name;ReturnVariableName
+  --&[%2%]|[%1%]
+  --~SGMI_TEMP|string;tolowercase;[%1%]
+  --#parameterseparator|$
+  --?"[&SGMI_TEMP]" -eq "bless"|&[%2%]$&#128519;
+  --#parameterseparator|;
+  --<|
+
+  --:BuildCharacterSummary|charid;Return variable;ac attribute (either ac or npc_ac)
+  --?"[%3%]" -eq "npc_ac"|BuildNPCSummary
+  --&[%2%]|[t width='100%' align='left'][tr][td valign='top' align='left'][p style='font-size:8pt; margin-top:2px; margin-left:3px; margin-bottom:3px; line-height:1.05em;'][*[%1%]:race] [*[%1%]:class_display][/p][/td][td valign='top' align='right' width='60%'][p style='font-size:8pt; margin-top:2px; margin-right:3px; margin-bottom:3px; line-height:1.05em;'][&ACImage][*[%1%]:[%3%]], [&HPImage][*[%1%]:hp]/[*[%1%]:hp^], [&SpeedImage][*[%1%]:speed][/p][/td][/tr]
+  -->REPLACE_WORDS_WITH_EMOJIS|[%2%]
+  --<|
+  --:BuildNPCSummary|
+  --&[%2%]|[t width='100%' align='left'][tr][td valign='top' align='left'][p style='font-size:8pt; margin-top:2px; margin-left:3px; margin-bottom:3px; line-height:1.05em;']CR[*[%1%]:npc_challenge] [*[%1%]:npc_type][/p][/td][td valign='top' align='right' width='60%'][p style='font-size:8pt; margin-top:2px; margin-right:3px; margin-bottom:3px; line-height:1.05em;'][&ACImage][*[%1%]:[%3%]], [&HPImage][*[%1%]:t-bar[&hitPointsBar]_value]/[*[%1%]:t-bar[&hitPointsBar]_max], [&SpeedImage][*[%1%]:npc_speed][/p][/td][/tr][/t]
+  -->REPLACE_WORDS_WITH_EMOJIS|[%2%]
+  --<|
+ 
+  --:CheckDamageModifiersNPC|characterid;damageVariableName;damageType;isMagical(0 or 1);IsSilver (0 or 1);IsAdamantine (0 or 1);NPCType(A or T)
+  --&[%2%]|
+  --#parameterdelimiter|!!
+  --~Vulns|string!!split!!;!![*[%1%]:npc_vulnerabilities];[&[%7%]NPC_VULNS]
+  --~Resists|string!!split!!;!![*[%1%]:npc_resistances];[&[%7%]NPC_RESISTS]
+  --~Immunes|string!!split!!;!![*[%1%]:npc_immunities];[&[%7%]NPC_IMMUNES]
+  --#parameterdelimiter|;
+  --%VulnLoop|1;[$VulnsCount]
+    --&hasModifier|0
+    --?"[&Vulns[&VulnLoop]]" -inc "silver" -or "[&Vulns[&VulnLoop]]" -inc "adamantine" -or "[&Vulns[&VulnLoop]]" -inc "magical"|&hasModifier;1
+    --?"[&Vulns[&VulnLoop]]" -inc "[%3%]" -and "[&Vulns[&VulnLoop]]" -inc "adamantine" -and [%6%] -eq 1|>IsVulnerable;[%2%]
+    --?"[&Vulns[&VulnLoop]]" -inc "[%3%]" -and "[&Vulns[&VulnLoop]]" -inc "silver" -and [%5%] -eq 1|>IsVulnerable;[%2%]
+    --?"[&Vulns[&VulnLoop]]" -inc "[%3%]" -and "[&Vulns[&VulnLoop]]" -inc "magical" -and [%4%] -eq 1|>IsVulnerable;[%2%]
+    --?"[&Vulns[&VulnLoop]]" -inc "[%3%]" -and [&hasModifier] -eq 0|>IsVulnerable;[%2%]
+  --%|
+  --:SKIP_VULN_CHECK|
+  --%ResistLoop|1;[$ResistsCount]
+    --&hasModifier|0
+    --?"[&Resists[&ResistLoop]]" -inc "silver" -or "[&Resists[&ResistLoop]]" -inc "adamantine" -or "[&Resists[&ResistLoop]]" -inc "magical"|&hasModifier;1
+    --?"[&Resists[&ResistLoop]]" -inc "[%3%]" -and [&hasModifier] -eq 0|>IsResistant;[%2%]
+    --?"[&Resists[&ResistLoop]]" -inc "[%3%]" -and [&hasModifier] -eq 0|FINISH_RESIST_CHECK
+    --?"[&Resists[&ResistLoop]]" -inc "[%3%]" -and "[&Resists[&ResistLoop]]" -inc "adamantine" -and [%6%] -eq 1|FINISH_RESIST_CHECK
+    --?"[&Resists[&ResistLoop]]" -inc "[%3%]" -and "[&Resists[&ResistLoop]]" -inc "silver" -and [%5%] -eq 1|FINISH_RESIST_CHECK
+    --?"[&Resists[&ResistLoop]]" -inc "[%3%]" -and "[&Resists[&ResistLoop]]" -inc "magical" -and [%4%] -eq 1|FINISH_RESIST_CHECK
+    --?"[&Resists[&ResistLoop]]" -inc "[%3%]"|>IsResistant;[%2%]
+    --:FINISH_RESIST_CHECK|
+  --%|
+  --:SKIP_RESIST_CHECK|
+  --%ImmuneLoop|1;[$ImmunesCount]
+    --&hasModifier|0
+    --?"[&Immunes[&ImmuneLoop]]" -inc "silver" -or "[&Immunes[&ImmuneLoop]]" -inc "adamantine" -or "[&Immunes[&ImmuneLoop]]" -inc "magical"|&hasModifier;1
+    --?"[&Immunes[&ImmuneLoop]]" -inc "[%3%]" -and [&hasModifier] -eq 0|>IsImmune;[%2%]
+    --?"[&Immunes[&ImmuneLoop]]" -inc "[%3%]" -and [&hasModifier] -eq 0|FINISH_IMMUNE_CHECK
+    --?"[&Immunes[&ImmuneLoop]]" -inc "[%3%]" -and [&hasModifier] -eq 1 -and "[&Immunes[&ImmuneLoop]]" -inc "adamantine" -and [%6%] -eq 1|FINISH_IMMUNE_CHECK
+    --?"[&Immunes[&ImmuneLoop]]" -inc "[%3%]" -and [&hasModifier] -eq 1 -and "[&Immunes[&ImmuneLoop]]" -inc "silver" -and [%5%] -eq 1|>FINISH_IMMUNE_CHECK;[%2%]
+    --?"[&Immunes[&ImmuneLoop]]" -inc "[%3%]" -and [&hasModifier] -eq 1 -and "[&Immunes[&ImmuneLoop]]" -inc "magical" -and [%4%] -eq 1|>FINISH_IMMUNE_CHECK;[%2%]
+    --?"[&Immunes[&ImmuneLoop]]" -inc "[%3%]"|>IsImmune;[%2%]
+    --:FINISH_IMMUNE_CHECK|
+  --%|
+  --:SKIP_IMMUNE_CHECK|
+  --<|
+  --:IsVulnerable| --&[%1%]| * 2 [Vulnerable] --<|
+  --:IsResistant| --&[%1%]| \\ 2 [Resistant] --<|
+  --:IsImmune| --&[%1%]| * 0 [Immune] --<|
+
+  --:DISPLAY_CHARACTER_CONFIG_MENU|
+  --#whisper|self
+  --#rightsub|
+  --#leftsub|Action Menu Configuration [rbutton]&#x21b6;::AFTER_ADVMODE_CHANGE[/rbutton]
+
+  --+|[b][c]Display Global Mods[/c][/b]
+  -->CREATE_SETTINGS_TOGGLE_BUTTON|[*S:character_id];Attack;SGAM;BTN_SGAM
+  -->CREATE_SETTINGS_TOGGLE_BUTTON|[*S:character_id];Damage;SGDM;BTN_SGDM
+  -->CREATE_SETTINGS_TOGGLE_BUTTON|[*S:character_id];Save;SGSM;BTN_SGSM
+  -->CREATE_SETTINGS_TOGGLE_BUTTON|[*S:character_id];AC;SGCM;BTN_SGAC
+  -->CREATE_SETTINGS_TOGGLE_BUTTON|[*S:character_id];Skill;SGKM;BTN_SGSK
+  --+|[c][&BTN_SGAM] [&BTN_SGDM] [&BTN_SGSM] [&BTN_SGAC] [&BTN_SGSK][/c]
+  --+|[b][c]Display Skill and Saves Buttons[/c][/b]
+  -->CREATE_SETTINGS_TOGGLE_BUTTON|[*S:character_id];Skills & Saves;SSAS;BTN_SSAS
+  --+|[c][&BTN_SSAS][/c]
+  -->CREATE_SETTINGS_TOGGLE_BUTTON|[*S:character_id];Rest Buttons in Header;SHRB;BTN_SHRB
+  --+|[b][c]Other Features[/c][/b]
+  --+|[c][&BTN_SHRB][/c]
+  --X|
+
+  --:CLEAR_CHARACTER_CACHE|
+  --!a:[*S:character_id]|5ECAM_CACHE_Actions:|5ECAM_CACHE_Bonus Actions:|5ECAM_CACHE_Reactions:|5ECAM_CACHE_Legendary Actions:
+  --!a:[*S:character_id]|5ECAM_CACHE_Attacks and Actions:
+  --!a:[*S:character_id]|5ECAM_CACHE_Cantrips_0:
+  --!a:[*S:character_id]|5ECAM_CACHE_Level 1 Spells_1:
+  --!a:[*S:character_id]|5ECAM_CACHE_Level 2 Spells_2:
+  --!a:[*S:character_id]|5ECAM_CACHE_Level 3 Spells_3:
+  --!a:[*S:character_id]|5ECAM_CACHE_Level 4 Spells_4:
+  --!a:[*S:character_id]|5ECAM_CACHE_Level 5 Spells_5:
+  --!a:[*S:character_id]|5ECAM_CACHE_Level 6 Spells_6:
+  --!a:[*S:character_id]|5ECAM_CACHE_Level 7 Spells_7:
+  --!a:[*S:character_id]|5ECAM_CACHE_Level 8 Spells_8:
+  --!a:[*S:character_id]|5ECAM_CACHE_Level 9 Spells_9:
+  --+|Cleared cached action menu items
+  --X|
+
+  --:CREATE_SETTINGS_TOGGLE_BUTTON|character_id;SettingName;SettingCode;ReturnStringVar
+  -->GET_PER_CHARACTER_SETTING|[%1%];[%3%];_THIS_SETTING
+  --&_BUTTON_COLOR|[&GAM_Button_Inactive_Color]
+  --?[&_THIS_SETTING] -eq 1|&_BUTTON_COLOR;[&GAM_Button_Active_Color]
+  --&[%4%]|[rbutton:#ffffff:#[&_BUTTON_COLOR]:8px][%2%]::TOGGLE_PER_CHARACTER_SETTING;[%1%]|[%3%][/rbutton]
+  --<|
+
+  --:GET_PER_CHARACTER_SETTING|CharID;SettingCode;Return String Var Name
+  --&[%3%]|0
+  --?"[*[%1%]:5ECAM_SETTINGS]" -inc "[%2%]1"|&[%3%];1
+  --<|
+
+  --:LOAD_PER_CHARACTER_CONFIG_OPTIONS|characterID
+  --&_LoadCharId|[%1%]
+  --?"X[&_LoadCharId]" -eq "X"|&_LoadCharId;[&AMCharacterId]
+  --?"[&_LoadCharId]" -eq ""|<
+  --?"[*[&_LoadCharId]:5ECAM_SETTINGS]" -eq ""|>SET_DEFAULT_PER_CHARACTER_SETTINGS;[&_LoadCharId]
+  --?"[*[&_LoadCharId]:5ECAM_SETTINGS]" -eq "undefined"|>SET_DEFAULT_PER_CHARACTER_SETTINGS;[&_LoadCharId]
+  --&perCharacterOptions|[*[&_LoadCharId]:5ECAM_SETTINGS]
+  --<|
+
+  --:SET_DEFAULT_PER_CHARACTER_SETTINGS|CharacterID
+  --?"X[%1%]" -eq "X"|<
+  --?"[%1%]" -eq ""|<
+  --&SettingsString|$SGAM1$$SGDM1$$SGSM1$$SGMB1$$SSAS1$$SGCM1$$SGKM1$$SHRB1$
+  --!a:[%1%]|!5ECAM_SETTINGS:[&SettingsString]
+  --<|
+
+  --:TOGGLE_PER_CHARACTER_SETTING|CharacterID;Setting
+  --~TOG_CHAR_ID|string;before;|;[&reentryval]
+  --~TOG_SETTING|string;after;|;[&reentryval]
+  --~beforeText|string;before;[&TOG_SETTING];[*[&TOG_CHAR_ID]:5ECAM_SETTINGS]
+  --~beforeLength|string;length;[&beforeText]
+  --~wholeLength|string;length;[*[&TOG_CHAR_ID]:5ECAM_SETTINGS]
+  --?[$beforeLength] -eq [$wholeLength]|SETTING_NOT_FOUND
+  --~oldSetting|string;substring;[$beforeLength];7;[*[&TOG_CHAR_ID]:5ECAM_SETTINGS]
+  --~oldValue|string;substring;6;1;[&oldSetting]
+  --~newSetting|string;left;5;[&oldSetting]
+  --?"[&oldValue]" -eq "1"|&newSetting;+0$
+  --?"[&oldValue]" -ne "1"|&newSetting;+1$
+  --~replacement|string;replace;[&oldSetting];[&newSetting];[*[&TOG_CHAR_ID]:5ECAM_SETTINGS]
+  --!a:[&TOG_CHAR_ID]|5ECAM_SETTINGS:[&replacement]
+  --^DISPLAY_CHARACTER_CONFIG_MENU|
+  --:SETTING_NOT_FOUND|
+  --!a:[&TOG_CHAR_ID]|5ECAM_SETTINGS:[*[&TOG_CHAR_ID]:5ECAM_SETTINGS]$[&TOG_SETTING]1$
+  --^DISPLAY_CHARACTER_CONFIG_MENU|
+  --X|
+
+  --:ADD_STATUS_MARKER|Token_ID;Status Marker;Count
+  -->REMOVE_STATUS_MARKER|[%1%];[%2%]
+  --~|array;statusmarkers;Conditions;[%1%]
+  --&toAdd|[%2%]
+  --?"[%3%]" -ne "" -and "[%3%]" -ne "0"|&toAdd;[%2%]@[%3%]
+  --~|array;add;Conditions;[&toAdd]
+  --~newConditions|array;stringify;Conditions
+  --#parameterdelimiter|$
+  --~newConditions|string$replaceall$;$,$[&newConditions]
+  --#parameterdelimiter|;
+  --!t:[%1%]|statusmarkers:[&newConditions]
+  --:DONE_ADD_STATUS_MARKER|
+  --<|
+
+  --:REMOVE_STATUS_MARKER|Token_ID;Status Marker
+  -->CHECK_STATUS_MARKER|[%1%];[%2%];MarkerExists;MarkerCounter  
+  --?[&MarkerExists] -eq 0|<
+  --~|array;statusmarkers;Conditions;[%1%]
+  --?[&MarkerCounter] -eq 0|&toCheckFor;[%2%]|&toCheckFor;[%2%]@[&MarkerCounter]
+  --~hasCondition|array;indexof;Conditions;[&toCheckFor]
+  --?[&hasCondition] -eq "ArrayError"|DONE_REMOVE_STATUS_MARKER
+  --~|array;remove;Conditions;[&toCheckFor]
+  --~newConditions|array;stringify;Conditions
+  --#parameterdelimiter|$
+  --~newConditions|string$replaceall$;$,$[&newConditions]
+  --#parameterdelimiter|;
+  --!t:[%1%]|statusmarkers: [&newConditions]
+  --:DONE_REMOVE_STATUS_MARKER|
+  --<|  
+  
+  --:CHECK_STATUS_MARKER|TokenID;MarkerToFind;Exists;Counter
+  --~|array;statusmarkers;Conditions;[%1%]
+  --&FoundMarker|-1
+  --%loop|0;[@Conditions(maxindex)]
+    --&Temp|[@Conditions([&loop])]
+	--?[&Temp(indexof,[%2%])] -eq 0|&FoundMarker;[&loop]
+  --%|
+  --?[&FoundMarker] -ne -1|FOUND_STATUS_MARKER
+  --&[%3%]|0 --&[%4%]|0 --<|
+  --:FOUND_STATUS_MARKER|
+  --&[%3%]|1
+  --&[%4%]|0
+  --&ThisMarker|[@Conditions([&FoundMarker])]
+  --?[&ThisMarker(contains,@)] -eq 0|<
+  --~[%4%]|string;after;@;[@Conditions([&FoundMarker])]
+  --<|
+
+  --:GET_CONTROLLED_TOKENS_FROM_PAGETOKENS|
+  --~|array;pagetokens;_FCT_Tokens;[*C:playerpageid];pc
+  --%_loop|0;[@_FCT_Tokens(maxindex)]
+    --&_FCT_TID|[@_FCT_Tokens([&_loop])]
+    --&_FCT_CHAR|[*[&_FCT_TID]:t-represents]
+    --?"X[&_FCT_CHAR]" -eq "X"|%
+    --?"[&_FCT_CHAR]" -eq ""|%
+    --?"[*[&_FCT_TID]:t-name]" -eq "AoEControlToken"|%
+    --?"[*O:[&_FCT_CHAR]:character_name]" -eq "AoEControlToken"|%
+    --?"[*O:[&_FCT_CHAR]:character:controlledby]" -ninc [&SendingPlayerID]|%
+    --?"[&[%1%]]" -eq ""|&[%1%];+[&_FCT_TID]|&[%1%];+,[&_FCT_TID]]
+  --%|
+  --<|
+
+  --:VALIDATE_ACTION_MENU_CHARACTER|
+  --?"X[*S:character_id]" -eq "X"|REPORT_INVALID_ACTION_MENU_TOKEN
+  --?"[*S:character_id]" -eq ""|REPORT_INVALID_ACTION_MENU_TOKEN
+  --?"X[&AMCharacterId]" -eq "X"|REPORT_INVALID_ACTION_MENU_TOKEN
+  --?"[&AMCharacterId]" -eq ""|REPORT_INVALID_ACTION_MENU_TOKEN
+  --?"[*S:character_name]" -eq "AoEControlToken"|REPORT_INVALID_ACTION_MENU_TOKEN
+  --~|array;attributes;_AMSheetNpc;[&AMCharacterId];npc
+  --?"[@_AMSheetNpc(length)]" -eq 0|REPORT_INVALID_ACTION_MENU_TOKEN
+  --<|
+
+  --:REPORT_INVALID_ACTION_MENU_TOKEN|
+  --#whisper|self
+  --+Invalid Token|Select a PC or NPC with a D&D 5e character sheet. Utility tokens (such as SmartAoE control tokens) cannot use the Action Menu.
+  --X|
+
+  --:REPORT_NEED_SELECTED_TOKEN|
+  --#whisper|self
+  --+No Token Selected|You need to have a single token selected in order to use the 5E Character Action Menu.
+  --X|
+
+  --:REPORT_BAD_SC_VERSION|
+  --#whisper|self
+  --+NOTE|This version of the 5E Character action Menu requires ScriptCards version 2.6.6b or higher. Please update your SC installation.
+  --X|
+
+  --:REPORT_MULTIPLE_SELECTED_TOKEN|
+  --#whisper|self
+  --+Multiple Tokens Selected|You need to have a single token selected in order to use the 5E Character Action Menu.
+  --X|
+
+  --:REPORT_NO_TOKENS_ON_PAGE|
+  --#whisper|self
+  --+No Controlled Tokens|You do not appear to have any tokens on this page under your control.
+  --X|
+
+  --:REPORT_MULTIPLE_POSSIBLE_TOKENS|
+  --#whisper|self
+  --+Multiple Tokens|You appear to have more than one controlled token on this page. You will need to select a token manually to use the 5E Character Action Menu
+  --X|
+
+  --:DO_SHORT_REST|
+  --#whisper|self
+  --#title|[*S:character_name]
+  --#leftsub|Short Rest
+  --#rightsub|
+  --&hitDieRolls|
+  --=hitDiceUsed|0
+  --=hitpointsRegained|0
+  --:CONTINUE_SHORT_RESTING|
+  --+Current Hit Points|[*S:hp]
+  --+Max Hit Points|[*S:hp^]
+  --+Hit Dice Available|[*S:hit_dice]
+  --?"[&hitDieRolls]" -eq ""|SKIP_SHOW_HD_ROLLS
+  --+Hit Die Roll(s)|[&hitDieRolls]
+  --:SKIP_SHOW_HD_ROLLS|
+  --?[*S:hit_dice] -lt 1|SKIP_SHOW_HITDIE_BUTTON
+  --+|[c][rbutton]Spend Hit Die::SPEND_HIT_DIE[/rbutton][/c]
+  --:SKIP_SHOW_HITDIE_BUTTON|
+  --+|[c][rbutton]Complete Short Rest::COMPLETE_SHORT_REST[/rbutton][/c]
+  --X|
+
+  --:SPEND_HIT_DIE|
+  --?[*S:hit_dice] -lt 1|CONTINUE_SHORT_RESTING
+  --=HitDieRoll|1d[*S:hitdietype]
+  --=HitDiceUsed|[$HitDiceUsed] + 1
+  --=hitpointsRegained|[$hitpointsRegained] + [$HitDieRoll]
+  --=NewHitPoints|[*S:hp] + [$HitDieRoll] {MAX:[*S:hp^]}
+  --&hitDieRolls|+[$HitDieRoll][&SPACE]
+  --!a:[&saveTokenID]|hp:[$NewHitPoints]
+  --!a:[&saveTokenID]|hit_dice:-=1
+  --^CONTINUE_SHORT_RESTING|
+
+  --:COMPLETE_SHORT_REST|
+  --#whisper|
+  --#title|[*S:character_name]
+  --#leftsub|Takes a short rest
+  --#rightsub|
+  --?[$hitDiceUsed] -eq 0|SKIP_HDUSED
+  --+Hit Dice|[$hitDiceUsed.Raw] expended to regain [$hitpointsRegained.Raw] HP
+  --:SKIP_HDUSED|
+  -->RESTORE_WARLOCK_SPELLSLOTS|
+  -->RESET_RESOURCES_ON_REST|[*S:character_id];s;[&ReportResourceReset]
+  --X|
+
+  --:DO_LONG_REST|
+  --#whisper|
+  --#title|[*S:character_name]
+  --#leftsub|Takes a long rest
+  --#rightsub|
+  -->RESET_HITPOINTS|
+  -->RESET_SPELL_SLOTS|
+  -->RESTORE_HIT_DICE|
+  --?"[&UseAMAShadowdarkSystem]" -ne "1" -or "[*S:class]" -ne "Wizard"|LONG_REST_SKIP_SD
+  -->_LibAMA_SHADOWDARK_SPELL_CLEAR_INNATE|[*S:character_id]
+  --+|Rest: Failed spells restored
+  --:LONG_REST_SKIP_SD|
+  -->RESET_RESOURCES_ON_REST|[*S:character_id];l;[&ReportResourceReset]
+  --X|
+
+  --:RESET_HITPOINTS|
+  --!a:[&saveTokenID]|hp:[*S:hp^]
+  --+Rest:|All hitpoints healed
+  --<|
+
+  --:RESET_SPELL_SLOTS|
+  --!a:[&saveTokenID]|lvl1_slots_expended:[*S:lvl1_slots_total]
+  --!a:[&saveTokenID]|lvl2_slots_expended:[*S:lvl2_slots_total]
+  --!a:[&saveTokenID]|lvl3_slots_expended:[*S:lvl3_slots_total]
+  --!a:[&saveTokenID]|lvl4_slots_expended:[*S:lvl4_slots_total]
+  --!a:[&saveTokenID]|lvl5_slots_expended:[*S:lvl5_slots_total]
+  --!a:[&saveTokenID]|lvl6_slots_expended:[*S:lvl6_slots_total]
+  --!a:[&saveTokenID]|lvl7_slots_expended:[*S:lvl7_slots_total]
+  --!a:[&saveTokenID]|lvl8_slots_expended:[*S:lvl8_slots_total]
+  --!a:[&saveTokenID]|lvl9_slots_expended:[*S:lvl9_slots_total]
+  --+Rest:|Spell slots restored
+  --<|
+
+  --:RESTORE_HIT_DICE|
+  --?[*S:hit_dice] -ge [*S:hit_dice^]|<
+  --=HD_TO_RESTORE|[*S:level] / 2 {FLOOR} {MIN:1}
+  --=NEW_HITDICE|[*S:hit_dice] + [$HD_TO_RESTORE] {MAX:[*S:hit_dice^]}
+  --=REST_HD|[$NEW_HITDICE] - [*S:hit_dice]
+  --!a:[&saveTokenID]|hit_dice:[$NEW_HITDICE.Raw]
+  --+Rest:|Restored [$REST_HD] hit dice
+  --<|
+
+  --:RESTORE_WARLOCK_SPELLSLOTS|
+  -->GET_WARLOCK_LEVEL|WarlockLevel
+  --?[&WarlockLevel] -eq 0|<
+  --=warlockSlotLevel|[&WarlockLevel] / 2 {CEIL} {MAX:5}
+  --&NumWarlockSlots|1
+  --?[&WarlockLevel] -ge 1|&NumWarlockSlots;2
+  --?[&WarlockLevel] -ge 11|&NumWarlockSlots;3
+  --?[&WarlockLevel] -ge 14|&NumWarlockSlots;4
+  --=NewWarlockSlotExpended|[*S:lvl[$warlockSlotLevel.Raw]_slots_expended] + [&NumWarlockSlots] {MAX:[*S:lvl[$warlockSlotLevel.Raw]_slots_total]}
+  --?[*S:lvl[$warlockSlotLevel.Raw]_slots_expended] -eq [$NewWarlockSlotExpended.Raw]|<
+  --!a:[&saveTokenID]|lvl[$warlockSlotLevel.Raw]_slots_expended:[$NewWarlockSlotExpended.Raw]
+  --+Rest:|[&NumWarlockSlots] level [$warlockSlotLevel.Raw] Pact Magic slots restored
+  --<|
+
+  --:GET_WARLOCK_LEVEL|LevelVariable
+  --&[%1%]|0
+  --?[*S:class] -eq "Warlock"|&[%1%];[*S:base_level]
+  --?"[*S:multiclass1_flag]" -eq "1" -and [*S:multiclass1] -eq "Warlock"|&[%1%];[*S:multiclass1_lvl]
+  --?"[*S:multiclass2_flag]" -eq "1" -and [*S:multiclass2] -eq "Warlock"|&[%1%];[*S:multiclass2_lvl]
+  --?"[*S:multiclass3_flag]" -eq "1" -and [*S:multiclass3] -eq "Warlock"|&[%1%];[*S:multiclass3_lvl]
+  --<|
+
+  --:CHECK_SPELLS_TO_KEEP|AttackName; Return variable;suffix
+  --~index|array;indexof;SpellsToKeepWithSuffix;[%1%]
+  --~index2|array;indexof;SpellsToKeepNoSuffix;[%1%]
+  --?"[&index]" -eq "ArrayError" -and "[&index2]" -eq "ArrayError"|<
+  --?"[&index]" -ne "ArrayError"|&[%3%]; [After Cast]
+  --&[%2%]|Y
+  --<|
+
+  --:DETERMINE_NPC_STATUS_MODIFIERS|TokenID;A for Attacker or T for Target
+  --&[%2%]NPC_ATKMOD| --&[%2%]NPC_DMGMOD| --&[%2%]NPC_ACMOD| --&[%2%]NPC_ROLLMODE| --&[%2%]NPC_SAVEMODE_str| --&[%2%]NPC_SAVEMODE_dex| --&[%2%]NPC_SAVEMODE_con|
+  --&[%2%]NPC_SAVEMODE_int| --&[%2%]NPC_SAVEMODE_wis| --&[%2%]NPC_SAVEMODE_cha| --&[%2%]NPC_RESISTS| --&[%2%]NPC_VULNS| --&[%2%]NPC_IMMUNES|
+  --&[%2%]NPC_ATTACKAGAINSTMODE|
+  --?[&useTokenMarkersForNPCModifiers] -eq "0"|<
+  --?"[*[%1%]:t-statusmarkers]" -eq ""|<
+  --~|array;fromstring;tokenMarkers;,;[*[%1%]:t-statusmarkers]
+  --%loop|foreach;tokenMarkers
+    --~markerName|string;before;@;[&loop]
+    --?"[&statusmod_[&markerName]]" -eq ""|%
+    --~param|string;split;:;[&statusmod_[&markerName]]
+    --?[&param1] -eq "attack"|&[%2%]NPC_ATKMOD;+ [&param2]
+    --?[&param1] -eq "damage"|&[%2%]NPC_DMGMOD;+ [&param2]
+    --?[&param1] -eq "ac"|&[%2%]NPC_ACMOD;+ [&param2]
+    --?[&param1] -eq "rollmode" -and [&param2] -eq "d"|&[%2%]NPC_ROLLMODE;2d20kl1
+    --?[&param1] -eq "rollmode" -and [&param2] -eq "a"|&[%2%]NPC_ROLLMODE;2d20kh1
+    --?[&param1] -eq "rollmode" -and [&param2] -eq "n"|&[%2%]NPC_ROLLMODE;2d20
+    --?[&param1] -eq "attackermode" -and [&param2] -eq "d"|&[%2%]NPC_ATTACKAGAINSTMODE;2d20kl1
+    --?[&param1] -eq "attackermode" -and [&param2] -eq "a"|&[%2%]NPC_ATTACKAGAINSTMODE;2d20kh1
+    --?[&param1] -eq "attackermode" -and [&param2] -eq "n"|&[%2%]NPC_ATTACKAGAINSTMODE;2d20
+    --?[&param1] -eq "resist"|&[%2%]NPC_RESISTS;+ [&param2]
+    --?[&param1] -eq "immune"|&[%2%]NPC_IMMUNES;+ [&param2]
+    --?[&param1] -eq "vuln"|&[%2%]NPC_VULNS;+ [&param2]
+    --?[&param1] -ne "savemode"|%
+    --?"[*S:[%1%]]" -inc advantage|&[%2%]NPC_ROLLMODE;2d20kh1
+    --?"[*S:[%1%]]" -inc disadvantage|&[%2%]NPC_ROLLMODE;2d20kl1
+    --~|array;fromstring;savelist;-;[&param3]
+    --%saves|foreach;savelist
+        --?[&param2] -eq "d"|&[%2%]NPC_SAVEMODE_[&saves];2d20kl1
+        --?[&param2] -eq "a"|&[%2%]NPC_SAVEMODE_[&saves];2d20kh1
+        --?[&param2] -eq "n"|&[%2%]NPC_SAVEMODE_[&saves];2d20
+    --%|
+  --%|
+  --<|
+
+  --:DISPLAY_ACTIONMENU_CHARACTER_ABILITIES|Character ID
+  --&DACA_BUTTONS|
+
+  --/|Character-specific AM-* abilities (name must start with AM-, not AMLIST)
+  --~|array;objects:ability;AbilArray;AM-;[%1%]
+  --?"[@AbilArray(length)]" -eq "0"|DACA_SHARED_MULE
+  --%abilLoop|foreach;AbilArray
+   --&abilName|[*O:[&abilLoop]:ability:name]
+   --?"X[&abilName]" -eq "X"|DACA_ABIL_NEXT
+   --?"[&abilName]" -eq ""|DACA_ABIL_NEXT
+   --?"[&abilName]" -eq "false"|DACA_ABIL_NEXT
+   --~_dacaAbilId|system;findability;[%1%];[&abilName]
+   --?"[&_dacaAbilId]" -eq "AbilityNotFound"|DACA_ABIL_NEXT
+   --&_muleBtnPiece|[button][&abilName(replaceall,-, )]::~[%1]|[&abilName][/button][&SPACE]
+   --&DACA_BUTTONS|+[&_muleBtnPiece]
+   --:DACA_ABIL_NEXT|
+  --%|
+  --^DACA_SHARED_MULE|
+
+  --/|Parse AMLIST and build mule buttons â€” no --+ output here (card lines abort gosub after parse debug)
+  --:DACA_BUILD_MULE_BUTTONS|
+  --&dacaParseCount|0
+  --=dacaBtnCount|0
+  --&dacaBuildHint|ok
+  --~|array;define;MuleNameList|
+  --?"X[&amListSafe]" -ne "X"|DACA_BUILD_DOSPLIT
+  --?"[&amListObjId]" -eq "AbilityNotFound"|[
+   --&dacaBuildHint|no-amlist-text
+   --<|
+  --]|
+  --&amListSource|[*O:[&amListObjId]:ability:action]
+  --&amListSafe|[&amListSource(replaceall,;,&&&)]
+  --?"X[&amListSafe]" -eq "X"|[
+   --&amListSource|[*O:[&amListObjId]:ability:description]
+   --&amListSafe|[&amListSource(replaceall,;,&&&)]
+  --]|
+  --:DACA_BUILD_DOSPLIT|
+  --?"X[&amListSafe]" -eq "X"|[
+   --&dacaBuildHint|no-amlist-text
+   --<|
+  --]|
+  --?"[&amListSafe]" -eq ""|[
+   --&dacaBuildHint|no-amlist-text
+   --<|
+  --]|
+  --~|array;fromstring;MuleNameList;&&&;[&amListSafe]
+  --?"[@MuleNameList(length)]" -eq "0"|[
+   --~|array;define;MuleNameList;[&amListSafe]
+  --]|
+  --&dacaParseCount|[@MuleNameList(length)]
+  --?"[&dacaParseCount]" -eq "0"|[
+   --&dacaBuildHint|parse-empty
+   --<|
+  --]|
+  --?"[&dacaParseCount]" -eq "1"|[
+   --?"[@MuleNameList(0)]" -eq ""|[
+    --&dacaBuildHint|parse-empty
+    --<|
+   --]|
+  --]|
+  --&dacaMuleRef|[&sharedmacromulename]
+  --%mi|0;[@MuleNameList(maxindex)]
+   --&muleAbilityName|[@MuleNameList([&mi])]
+   --~muleAbilityName|string;trim;[&muleAbilityName]
+   --?"[&muleAbilityName]" -eq ""|DACA_MULE_NEXT
+   --~muleSheetName|string;replaceall; ;-;[&muleAbilityName]
+   --~testMule|system;findability;[&dacaMuleRef];[&muleSheetName]
+   --?"[&testMule]" -eq "AbilityNotFound"|[
+    --~testMule|system;findability;[&dacaMuleRef];[&muleAbilityName]
+    --&muleSheetName|[&muleAbilityName]
+   --]|
+   --?"[&testMule]" -eq "AbilityNotFound"|DACA_MULE_NEXT
+   --&_muleBtnPiece|[button][&muleAbilityName(replaceall,-, )]::~[&dacaMuleRef]|[&muleSheetName][/button][&SPACE]
+   --&DACA_BUTTONS|+[&_muleBtnPiece]
+   --=dacaBtnCount|[$dacaBtnCount.Raw] + 1
+   --:DACA_MULE_NEXT|
+  --%|
+  --?"[$dacaBtnCount.Raw]" -eq "0"|&dacaBuildHint;mule-not-found
+  --<|
+
+  --/|Shared macro mule â€” AMLIST ability lists mule names (semicolon-separated)
+  --:DACA_SHARED_MULE|
+  --?"[&sharedmacromulename]" -eq ""|DACA_FINISH_BUTTONS
+  --?"[&sharedmacromulename]" -eq "none"|DACA_FINISH_BUTTONS
+  --&amListObjId|AbilityNotFound
+  --&dacaParseCount|0
+  --=dacaBtnCount|0
+  --&dacaBuildHint|
+  --?"X[*[%1%]:5ECAM_AMLIST]" -eq "X"|[
+   --!a:[%1%]|5ECAM_AMLIST:
+  --]|
+  --?"X[*[%1%]:5ECAM_AMLIST]" -ne "X"|[
+   --?"[*[%1%]:5ECAM_AMLIST]" -eq "undefined"|DACA_ATTR0_SKIP
+   --&amListSource|[*[%1%]:5ECAM_AMLIST]
+   --&amListSafe|[&amListSource(replaceall,;,&&&)]
+   --:DACA_ATTR0_SKIP|
+  --]|
+  --~|array;objects:ability;AmListObjs;AMLIST;[%1%]
+  --?"[@AmListObjs(length)]" -eq "0"|[
+   --~|array;objects:ability;AmListObjs;AM_SHARED_LIST;[%1%]
+  --]|
+  --?"[@AmListObjs(length)]" -ne "0"|&amListObjId;[@AmListObjs(0)]
+  -->DACA_BUILD_MULE_BUTTONS|
+  --?"[&AmListDebug]" -eq "1"|[
+   --#whisper|self,gm
+   --+AMLIST Debug|5ECAM_AMLIST=[*[%1]:5ECAM_AMLIST] abilObjs=[@AmListObjs(length)] obj=[&amListObjId] parse=[&dacaParseCount] btnCount=[$dacaBtnCount.Raw] hint=[&dacaBuildHint]
+  --]|
+
+  --:DACA_FINISH_BUTTONS|
+  --?"[&DACA_BUTTONS]" -eq ""|<
+
+  --+Custom Actions|
+  --+|[&DACA_BUTTONS]
+  --<|
+
+  --:GET_CHARACTER_ID_BY_NAME|
+  --~|array;objects:character;found_char_list;[%1%]
+  --?[@found_char_list(maxindex)] -lt 0|&[%2%];0|&[%2%];[@found_char_list(0)]
+  --<|
+
+  --/|To customize for other games : remove or update the items between 5E SPECIFIC START and 5E SPECIFIC END
+
+  --:BUILD_BUTTON_LIST|Character ID;Repeating_section_name;repeating field for name;reentrant point;section header;mule char name/id;filter out spells
+  --/|See if we have a cached version of the button list
+  --/|Note that we are not using a cache for NPC Actions, Bonus Actions, Reactions, or Legendary Actions
+  --?"[%5%]" -eq "Actions"|DO_BUILD_BUTTON_LIST
+  --?"[%5%]" -eq "Bonus Actions"|DO_BUILD_BUTTON_LIST
+  --?"[%5%]" -eq "Reactions"|DO_BUILD_BUTTON_LIST
+  --?"[%5%]" -eq "Legendary Actions"|DO_BUILD_BUTTON_LIST
+  --?"[%5%]" -eq "Attacks and Actions"|DO_BUILD_BUTTON_LIST
+  --&AM_CACHED_BUTTON_LIST|[*[%1%]:5ECAM_CACHE_[%5%]]
+  --?"[&AM_CACHED_BUTTON_LIST]" -eq "undefined"|DO_BUILD_BUTTON_LIST
+  --?"[&AM_CACHED_BUTTON_LIST]" -eq ""|DO_BUILD_BUTTON_LIST
+  -->MULE_BTN_CACHE_UNESC|AM_CACHED_BUTTON_LIST;AM_CACHED_BUTTON_LIST
+  --+[%5%]|[BR][&AM_CACHED_BUTTON_LIST]
+  --<|
+
+  --:DO_BUILD_BUTTON_LIST|
+  --~|hashtable;fromrepeatingsection;[%1%];[%2%];[%3%];BuiltButtonHash
+  --~|array;fromkeys;Hash_Keys;BuiltButtonHash
+  --?[@Hash_Keys(length)] -eq 0|AM_BUTTON_LIST_NOTHING
+  --&AM_BUTTON_LIST|[br]
+  --%loop|foreach;Hash_Keys
+    --?"[&loop]" -inc "_sectionid"|AM_LIST_NEXT_ROW|AM_LIST_CONTINUE
+    --:AM_LIST_NEXT_ROW|
+    --&DisplayName|[&loop(replace,_sectionid,)]
+    --&RowSectionId|[:BuiltButtonHash("[&DisplayName]_sectionid")]
+    --?"[&RowSectionId]" -eq ""|&RowSectionId;[:BuiltButtonHash("[&loop]")]
+    --&ActionName|[&DisplayName(replace,;,-!-!-)]
+    --&ActionName|[&ActionName(replace,(,-!lpar!-)]
+    --&ActionName|[&ActionName(replace,),-!rpar!-)]
+    --&ActionName|[&ActionName(replace,+,-!plus!-)]
+    --/|5E SPECIFIC START 
+    --?"[&DisplayName(contains,Multiattack)]" -eq 1|>SHOW_MULTIATTACK;[:BuiltButtonHash("[&DisplayName]_description")]
+    --?"[&DisplayName(contains,Multiattack)]" -eq 1|AM_LIST_CONTINUE
+    --?"[%8%]" -eq "0"|SKIP_BUTTON_LIST_SPELL_CHECK
+    --&keepSpell|N
+    --&spellSuffix|
+    -->CHECK_SPELLS_TO_KEEP|"[&DisplayName]";keepSpell;spellSuffix
+    --&spellLink|[:BuiltButtonHash("[&DisplayName]_spelldesc_link")]
+    --?"[&spellLink]" -eq ""|&spellLink;undefined
+    --?"[&spellLink]" -ne "undefined" -and "[&keepSpell]" -eq "N"|AM_LIST_CONTINUE
+    --:SKIP_BUTTON_LIST_SPELL_CHECK|
+    --/|5E SPECIFIC END
+
+    --?"[%6%]" -eq "none"|AM_LIST_SKIP_MULE_CHECK
+    --~testName|string;replaceall; ;-;[&DisplayName]
+    --~testMule|system;findability;[%6%];[&testName]
+    --?"[&testMule]" -eq "AbilityNotFound"|AM_LIST_SKIP_MULE_CHECK
+    --&_muleBtnPiece|[button][&DisplayName(totitlecase)]::~[%6%]|[&testName][/button][&SPACE]
+    --&AM_BUTTON_LIST|+[&_muleBtnPiece]
+    --^AM_LIST_CONTINUE|
+    --:AM_LIST_SKIP_MULE_CHECK|
+    --&actionAttackFlag|[:BuiltButtonHash("[&DisplayName]_attack_flag")]
+    --?"[%4%]" -eq "EXEC_PC_ATTACK"|AM_LIST_PC_ATTACK_TARGET
+    --?"[%4%]" -eq "EXEC_NPC_ACTION"|AM_LIST_ATTACK_TARGET
+    --?"[%4%]" -inc "EXEC_NPC"|AM_LIST_NPC_ATTACK_SUFFIX
+    --^AM_LIST_BUILD_RBUTTON|
+    --:AM_LIST_PC_ATTACK_TARGET|
+    --&actionTargetSuffix|[&TB]target|token_id}
+    --?"[&actionAttackFlag]" -eq "0"|AM_LIST_PC_NO_TARGET|AM_LIST_BUILD_RBUTTON
+    --?"[&actionAttackFlag]" -eq 0|AM_LIST_PC_NO_TARGET|AM_LIST_BUILD_RBUTTON
+    --^AM_LIST_BUILD_RBUTTON|
+    --:AM_LIST_NPC_ATTACK_SUFFIX|
+    --&actionTargetSuffix|NONE
+    --&actionToHit|[:BuiltButtonHash("[&DisplayName]_attack_tohit")]
+    --?"[&actionAttackFlag]" -inc "on"|AM_LIST_ATTACK_TARGET
+    --?"[&actionAttackFlag]" -eq "1"|AM_LIST_ATTACK_TARGET
+    --?"X[&actionToHit]" -ne "X" -and "[&actionToHit]" -ne "" -and "[&actionToHit]" -ne "undefined"|AM_LIST_ATTACK_TARGET
+    --^AM_LIST_BUILD_RBUTTON|
+    --:AM_LIST_ATTACK_TARGET|
+    --&actionTargetSuffix|[&TB]target|token_id}
+    --^AM_LIST_BUILD_RBUTTON|
+    --:AM_LIST_PC_NO_TARGET|
+    --&actionTargetSuffix|NONE
+    --:AM_LIST_BUILD_RBUTTON|
+    --&PcAttackPayload|[&ActionName]
+    --?"[%4%]" -eq "EXEC_PC_ATTACK" -and "X[&RowSectionId]" -ne "X" -and "[&RowSectionId]" -ne "" -and "[&RowSectionId]" -ne "undefined"|[
+     --&PcRidBody|[&RowSectionId(after,-)]
+     --?"[&DisplayName]" -inc "+"|AM_LIST_PC_NAME_PAYLOAD|AM_LIST_PC_RID_PAYLOAD
+     --:AM_LIST_PC_RID_PAYLOAD|
+     --&PcAttackPayload|RID[&PcRidBody]
+     --^AM_LIST_PC_PAYLOAD_DONE|
+     --:AM_LIST_PC_NAME_PAYLOAD|
+     --&PcAttackPayload|[&ActionName]
+     --:AM_LIST_PC_PAYLOAD_DONE|
+    --]|
+    --?"[%4%]" -eq "EXEC_NPC_ACTION"|AM_LIST_NPC_RID
+    --?"[%4%]" -eq "EXEC_NPC_BONUS_ACTION"|AM_LIST_NPC_RID
+    --?"[%4%]" -eq "EXEC_NPC_REACTION"|AM_LIST_NPC_RID
+    --?"[%4%]" -eq "EXEC_NPC_LEGENDARY_ACTION"|AM_LIST_NPC_RID
+    --^AM_LIST_PAYLOAD_DONE|
+    --:AM_LIST_NPC_RID|
+    --?"X[&RowSectionId]" -ne "X" -and "[&RowSectionId]" -ne "" -and "[&RowSectionId]" -ne "undefined"|[
+     --&PcRidBody|[&RowSectionId(after,-)]
+     --&PcAttackPayload|RID[&PcRidBody]
+    --]|
+    --:AM_LIST_PAYLOAD_DONE|
+    --&AM_BUTTON_LIST|+[rbutton][&DisplayName(totitlecase)]::[%4%];[&PcAttackPayload]|[&actionTargetSuffix][/rbutton][&SPACE]
+    --:AM_LIST_CONTINUE|
+  --%|
+  -->MULE_BTN_CACHE_ESC|AM_BUTTON_LIST;cacheList
+  --?"[%5%]" -eq "Attacks and Actions"|AM_LIST_SKIP_CACHE_WRITE
+  --?"[%5%]" -eq "Actions"|AM_LIST_SKIP_CACHE_WRITE
+  --?"[%5%]" -eq "Bonus Actions"|AM_LIST_SKIP_CACHE_WRITE
+  --?"[%5%]" -eq "Reactions"|AM_LIST_SKIP_CACHE_WRITE
+  --?"[%5%]" -eq "Legendary Actions"|AM_LIST_SKIP_CACHE_WRITE
+  --?"[%1%]" -ne ""|[
+   --!a:[%1%]|!5ECAM_CACHE_[%5%]:[&cacheList]
+  --]|
+  --:AM_LIST_SKIP_CACHE_WRITE|
+  --+[%5%]|[BR][&AM_BUTTON_LIST]
+  --:AM_BUTTON_LIST_NOTHING|
+  --<|
+
+  --:BUILD_SPELL_BUTTON_LIST|Character ID;Repeating_section_name;repeating field for name;reentrant point;section header;mule char name/id;spell level
+
+    --?"[&trackPCSpellSlots]" -eq "1"|DO_BUILD_SPELL_BUTTON_LIST
+    --&AM_CACHED_BUTTON_LIST|[*[%1%]:5ECAM_CACHE_[%5%]_[%7%]]
+    --?"[&AM_CACHED_BUTTON_LIST]" -eq "undefined"|DO_BUILD_SPELL_BUTTON_LIST
+    --?"[&AM_CACHED_BUTTON_LIST]" -eq ""|DO_BUILD_SPELL_BUTTON_LIST
+    --&AM_CACHED_BUTTON_LIST|[&AM_CACHED_BUTTON_LIST(replaceall,!#!,:)]
+    --&AM_CACHED_BUTTON_LIST|[&AM_CACHED_BUTTON_LIST(replaceall,!$!,;)]
+    --&AM_CACHED_BUTTON_LIST|[&AM_CACHED_BUTTON_LIST(replaceall,!@!,|)]
+    --+[%5%]|[&AM_CACHED_BUTTON_LIST]
+    --<|
+
+    --:DO_BUILD_SPELL_BUTTON_LIST|
+    --&_buildSpellLevel|[%7%]
+    --&slotString|
+    --&RitualslotString|
+    --&LevelString|[&_buildSpellLevel]
+    --?"[%7%]" -eq 0|&LevelString; 
+    --?"[%7%]" -eq 0|BEGIN_BUILDING_SPELL_BUTTONS
+    --?"[&UseAMAShadowdarkSystem]" -eq "1" -and "[*S:class]" -eq "Wizard"|BEGIN_BUILDING_SPELL_BUTTONS
+    --?"[%7%]" -gt 0|>BUILD_SLOT_LIST;[%7%];slotString;
+    --?"[%7%]" -gt 0|>BUILD_SLOT_LIST;[%7%];RitualslotString;Yes
+    --:BEGIN_BUILDING_SPELL_BUTTONS|
+    --~|hashtable;fromrepeatingsection;[%1%];[%2%];[%3%];BuiltButtonHash
+    --~|array;fromkeys;Hash_Keys;BuiltButtonHash
+    --?[@Hash_Keys(length)] -eq 0|AM_SPELL_BUTTON_LIST_NOTHING
+    --~|array;define;HashList;dummy
+    --~|array;removeat;HashList;0
+    --%loop|foreach;Hash_Keys
+      --?"[&loop]" -inc "_sectionid"|&HashList(99999);[&loop(replace,_sectionid,)]
+    --%|
+
+    --&AM_BUTTON_LIST|[br]
+
+    --/|Remaining slots for this spell level (once per section; used by per-spell filter below).
+    --&_spellBtnSlotsAtLevel|0
+    --?"[&_buildSpellLevel]" -eq 0|PC_SPELL_BTN_SLOTS_READ_DONE
+    --?[*[%1%]:npc] -eq 1|PC_SPELL_BTN_SLOTS_READ_DONE
+    --?[&trackPCSpellSlots] -eq 0|PC_SPELL_BTN_SLOTS_READ_DONE
+    -->GET_AVAILABLE_SPELL_SLOTS|[&_buildSpellLevel];_spellBtnSlotsAtLevel
+    --=spellBtnSlotsAtLevelNum|[&_spellBtnSlotsAtLevel]
+    --?"X[$spellBtnSlotsAtLevelNum]" -eq "X"|=spellBtnSlotsAtLevelNum;0
+    --:PC_SPELL_BTN_SLOTS_READ_DONE|
+
+    --%spellloop|foreach;HashList
+      --/\|Loop: [&spellloop]
+
+      --?[*[%1%]:npc] -eq 1 -and "[&skipNPCPrepCheck]" -eq "1"|SKIP_PREP_CHECK
+      --?[&skipPreppedSpellsCheck] -eq 1|SKIP_PREP_CHECK
+      --?"[%7%]" -eq 0|SKIP_PREP_CHECK   
+      --?"[&SorcererLevel]" -gt 0 -or "[&WarlockLevel]" -gt 0|SKIP_PREP_CHECK
+      --?"[:BuiltButtonHash("[&spellloop]_spellprepared")]" -eq "1" -or "[:BuiltButtonHash("[&spellloop]_spellritual")]" -eq "Yes"|SKIP_PREP_CHECK
+      --^SPELL_BUTTON_END_GENERATE|
+      --:SKIP_PREP_CHECK|
+      --?"[&UseAMAShadowdarkSystem]" -eq "1" -and "[*S:class]" -eq "Wizard" -and "[:BuiltButtonHash("[&spellloop]_innate")]" -eq 1|SPELL_BUTTON_END_GENERATE
+      --&targetString|[&TB]target|token_id}
+      --&DisplayName|[&spellloop]
+      --&DisplayName|[&DisplayName(totitlecase)]
+      --/\|DisplayName [&DisplayName]
+      --&thisSlotString|[&slotString]
+      --?"[:BuiltButtonHash("[&spellloop]_spellritual")]" -ne "Yes"|SPELL_BUTTON_LIST_NOT_RITUAL
+      --&thisSlotString|[&RitualslotString]
+      --&DisplayName|+ [R]
+      --:SPELL_BUTTON_LIST_NOT_RITUAL|
+      --?"[:BuiltButtonHash("[&spellloop]_spellcastingtime")]" -inc "reaction"|&DisplayName;+ [RA]
+      --?"[:BuiltButtonHash("[&spellloop]_spellcastingtime")]" -inc "bonus"|&DisplayName;+ [BA]
+      --?"[:BuiltButtonHash("[&spellloop]_spellconcentration")]" -inc "concentration=1"|&DisplayName;+ [C]
+      --/|PC slot filter (per spell): at 0 slots for this level, hide unless ritual [R].
+      --?"[&_buildSpellLevel]" -eq 0|AM_SPELL_BUTTON_SKIP_SLOT_INFO 
+      --?[*[%1%]:npc] -eq 1|AM_SPELL_BUTTON_SKIP_SLOT_INFO
+      --?[&trackPCSpellSlots] -eq 0|AM_SPELL_BUTTON_SKIP_SLOT_INFO
+      --?"[$spellBtnSlotsAtLevelNum.Raw]" -ne 0|AM_SPELL_BUTTON_SKIP_SLOT_INFO
+      --?"[:BuiltButtonHash("[&spellloop]_spellritual")]" -eq "Yes"|AM_SPELL_BUTTON_SKIP_SLOT_INFO
+      --^SPELL_BUTTON_END_GENERATE|
+      --:AM_SPELL_BUTTON_SKIP_SLOT_INFO|
+      --~testName|string;replaceall; ;-;[&spellloop]
+      --~testMule|system;findability;[&spellmulename];[&testName]
+      --?[&testMule] -ne "AbilityNotFound"|SPELL_BUTTON_MULE
+      --?"[:BuiltButtonHash("[&spellloop]_spelloutput")]" -eq ATTACK|SPELL_BUTTON_GENERATE_WITH_TARGET
+      --&AM_BUTTON_LIST|+[rbutton][&DisplayName]::[%4%];[&LevelString][&spellloop]|NONE[&thisSlotString][/rbutton][&SPACE]
+      --^SPELL_BUTTON_END_GENERATE|
+      --:SPELL_BUTTON_GENERATE_WITH_TARGET|
+      --&AM_BUTTON_LIST|+[rbutton][&DisplayName]::[%4%];[&LevelString][&spellloop]|[&targetString][&thisSlotString][/rbutton][&SPACE]
+      --^SPELL_BUTTON_END_GENERATE|
+      --:SPELL_BUTTON_MULE|
+      --&AM_BUTTON_LIST|+[button][&DisplayName]::~[&spellmulename]|[&testName][/button][&SPACE]
+      --:SPELL_BUTTON_END_GENERATE|
+    --%|
+      
+    --/|If the list is empty, skip the output|
+    --?"[&AM_BUTTON_LIST]" -eq ""|AM_SPELL_BUTTON_LIST_NOTHING
+    --?"[&AM_BUTTON_LIST]" -eq "[br]"|AM_SPELL_BUTTON_LIST_NOTHING
+
+  --?"[&trackPCSpellSlots]" -ne "1"|[
+   --&cacheList|[&AM_BUTTON_LIST(replaceall,:,!#!)]
+   --&cacheList|[&cacheList(replaceall,;,!$!)]
+   --&cacheList|[&cacheList(replaceall,|,!@!)]
+   --!a:[%1%]|!5ECAM_CACHE_[%5%]_[%7%]:[&cacheList]
+  --]|
+
+    --+[%5%]|[&AM_BUTTON_LIST]
+    --:AM_SPELL_BUTTON_LIST_NOTHING|
+  --<|
+
+  --:SHOW_MULTIATTACK|description
+  --+Multiattack|[%1%] [br][br]
+  --<|
+
+  --:BUILD_SLOT_LIST|Spell Level;return string;is ritual (Yes for true)
+  --&buildslotString|
+  --?[%1%] -eq 9 -and "[%3%]" -eq ""|SKIP_BUILD_SLOT_LIST
+  --&buildslotString||
+  --&buildslotString|+[&QB]Slot Level|
+  --?"[%3%]" -ne "Yes"|SLOT_LIST_NOT_RITUAL
+  --&buildslotString|+As Ritual|
+  --:SLOT_LIST_NOT_RITUAL|
+  --%slotcounter|[%1%];9
+    --&buildslotString|+[&slotcounter]
+    --?[&slotcounter] -eq 9|SKIP_SLOT_LIST_VERTICAL_BAR
+    --&buildslotString|+|
+    --:SKIP_SLOT_LIST_VERTICAL_BAR|
+  --%|
+  --&buildslotString|+[&QE]
+  --^BUILD_SLOT_LIST_DONE|
+  --:SKIP_BUILD_SLOT_LIST|
+  --&buildslotString||9
+  --:BUILD_SLOT_LIST_DONE|
+  --&[%2%]|[&buildslotString]
+  --<|
+
+  --:BUILD_TARGET_STRING|
+  --&[%1%]|[&TB]target|token_id}
+  --<|
+
+  --:BUILD_SAVES_AND_SKILLS_BUTTONS|[%1%]
+  --&advantageMenu|[&QB]Roll Type?|Normal|Advantage|Disadvantage[&QE]
+  --&skillMenu|[&QB]Skill to roll?|Acrobatics|Animal Handling,animal_handling|Arcana|Athletics|Deception|History|Insight|Intimidation|Investigation|Medicine|Nature|Perception|Persuasion|Religion|Sleight of Hand,sleight_of_hand|Stealth|Survival[&QE]
+  --=ToolCount|0
+    --RFirst|[*S:character_id];repeating_tool
+  --:reptoollist|
+  --?"[*R:toolname]" -eq "NoRepeatingAttributeLoaded"|endToolMenu
+    --=ToolCount|[$ToolCount.Raw] + 1
+    --&toolMenu|+|[*R:toolname],[*R:toolname]
+    --&saveFirstTool|[*R:toolname]
+    --rNext|
+  --?"[*R:toolname]" -ne "NoRepeatingAttributeLoaded"|reptoollist
+  --:endToolMenu|
+  --?[$ToolCount.Raw] -eq 1|[
+    --&toolMenu|+[&vbar]
+  --]|
+  --&toolMenu|[&QB]Tool to roll?[&toolMenu][&QE]
+  
+  --&saveMenu|[&QB]Saving Throw Type?|Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma[&QE]
+  --&toolButton|
+  --?[$ToolCount] -gt 0|[
+      --&toolButton|[&NB] [rbutton:Execute a Tool Check][&ToolCheckImage]::TOOL_CHECK;[&toolMenu]|[&advantageMenu][/rbutton] 
+  --]|
+  --&[%1%]|[rbutton:Execute a Skill Check][&SkillCheckImage]::SKILL_CHECK;[&skillMenu]|[&advantageMenu][/rbutton] [&toolButton] [&NB] [rbutton][&SavingThrowImage]::SAVING_THROW;[&saveMenu]|[&advantageMenu][/rbutton]
+  --<|
+
+  --:REPLACE_WORDS_WITH_EMOJIS|Input variable NAME (not the variable refernce). Will be updated in place
+  --?[&UseEmojisToReplaceText] -ne 1|<
+  --&work|[&[%1%]]
+  --&work|[&work(replaceall,AC,[&emoShield])]
+  --&work|[&work(replaceall,HP,[&emoHeart])]
+  --&work|[&work(replaceall,SPEED,[&emoSpeed])]
+  --&[%1%]|[&work]
+  --<|
+
+  --:YOU_CANNOT_DO_THAT| Used when someone other than the original sender tries to use the repeat button
+  --#whisper|self
+  --#title|You Can't Do That!
+  --#emotetext|
+  --#leftsub|
+  --#rightsub|
+  --+|You aren't the original sender of this action, so you can't use the repeat button
+  --X|
+
+  --/|Sanitized mule ability name. Caller sets &_muleBtnFindName (colons break gosub params).
+  --:MAKE_MULE_ABILITY_NAME|returnVar
+  --~_muleName|string;replaceall; ;-;[&_muleBtnFindName]
+  --~_muleName|string;replaceall;:-;-;[&_muleName]
+  --~_muleName|string;replaceall;:;-;[&_muleName]
+  --~_muleName|string;replaceall;';;[&_muleName]
+  --&[%1%]|[&_muleName]
+  --<|
+
+  --/|Lowercase key with spaces, hyphens, colons, underscores, apostrophes stripped â€” for fuzzy mule name matching.
+  --/|Caller sets &_muleKeySource before calling (colons break gosub params).
+  --:MULE_NAME_KEY|returnVar
+  --~[%1%]|string;tolower;[&_muleKeySource]
+  --~[%1%]|string;replaceall; ;;[&[%1%]]
+  --~[%1%]|string;replaceall;-;;[&[%1%]]
+  --~[%1%]|string;replaceall;:;;[&[%1%]]
+  --~[%1%]|string;replaceall;';;[&[%1%]]
+  --~[%1%]|string;replaceall;_;;[&[%1%]]
+  --<|
+
+  --/|Escape button-list text for 5ECAM_CACHE (Kurt: : ; | only — do not escape ~ or ::~ breaks).
+  --:MULE_BTN_CACHE_ESC|sourceVar;destVar
+  --&[%2%]|[&[%1%]]
+  --&[%2%]|[&[%2%](replaceall,,:,!#!)]
+  --&[%2%]|[&[%2%](replaceall,;,!$!)]
+  --&[%2%]|[&[%2%](replaceall,|,!@!)]
+  --<|
+
+  --/|Restore button-list text read from 5ECAM_CACHE attributes.
+  --:MULE_BTN_CACHE_UNESC|sourceVar;destVar
+  --&[%2%]|[&[%1%]]
+  --&[%2%]|[&[%2%](replaceall,!#!,:)]
+  --&[%2%]|[&[%2%](replaceall,!$!,;)]
+  --&[%2%]|[&[%2%](replaceall,!@!,|)]
+  --<|
+
+  --/|Sets _muleHyphName, _muleBtnLabel, _mulePipeName, _muleHyphTest. Input: _muleTraitChar, _muleTraitRowName. Colon traits match mule by suffix after ":" only (see settings note).
+  --:MULE_TRAIT_RESOLVE|
+  --?"[&CamTraceDebug]" -ne "1"|MTR_TRACE_IN_OFF
+  --#debug|1
+  --:MTR_TRACE_IN_OFF|
+  --&_muleShortName|[&_muleTraitRowName]
+  --&_muleColonTrait|0
+  --?"[&_muleTraitRowName]" -inc ":"|MTR_COLON_SUFFIX
+  --^MTR_SEARCH_READY|
+  --:MTR_COLON_SUFFIX|
+  --&_muleColonTrait|1
+  --~_muleShortName|string;after;:;[&_muleTraitRowName]
+  --~_muleShortName|string;trim;[&_muleShortName]
+  --:MTR_SEARCH_READY|
+  --&_muleBtnLabel|[&_muleTraitRowName]
+  --&_muleBtnLabel|[&_muleBtnLabel(replaceall,:,&#58;)]
+  --~_muleHyphShort|string;replaceall; ;-;[&_muleShortName]
+  --~_muleHyphFull|string;replaceall; ;-;[&_muleTraitRowName]
+  --&_muleHyphName|[&_muleHyphShort]
+  --&_muleHyphTest|AbilityNotFound
+  --~|array;objects:character;_pcMuleCidList;[&_muleTraitChar]
+  --?"[@_pcMuleCidList(maxindex)]" -lt "0"|MTR_FAIL
+  --~_muleHyphTest|system;findability;[&_muleTraitChar];[&_muleHyphShort]
+  --?"[&_muleHyphTest]" -eq "AbilityNotFound"|MTR_TRY_CID_SHORT
+  --^MTR_USE_HYPH_SHORT|
+  --:MTR_USE_HYPH_SHORT|
+  --&_muleHyphName|[&_muleHyphShort]
+  --^MTR_DONE|
+  --:MTR_TRY_CID_SHORT|
+  --~_muleHyphTest|system;findability;[@_pcMuleCidList(0)];[&_muleHyphShort]
+  --?"[&_muleHyphTest]" -eq "AbilityNotFound"|MTR_SHORT_FAIL
+  --^MTR_USE_HYPH_SHORT|
+  --:MTR_SHORT_FAIL|
+  --?"[&_muleColonTrait]" -eq "1"|MTR_TRY_SPACED_SUFFIX
+  --?"[&_muleHyphShort]" -eq "[&_muleHyphFull]"|MTR_FAIL
+  --^MTR_TRY_FULL|
+  --:MTR_TRY_SPACED_SUFFIX|
+  --?"[&_muleShortName]" -eq ""|MTR_FAIL
+  --~_muleHyphTest|system;findability;[&_muleTraitChar];[&_muleShortName]
+  --?"[&_muleHyphTest]" -eq "AbilityNotFound"|MTR_TRY_CID_SPACED
+  --&_muleHyphName|[&_muleHyphShort]
+  --^MTR_DONE|
+  --:MTR_TRY_CID_SPACED|
+  --~_muleHyphTest|system;findability;[@_pcMuleCidList(0)];[&_muleShortName]
+  --?"[&_muleHyphTest]" -eq "AbilityNotFound"|MTR_FAIL
+  --&_muleHyphName|[&_muleHyphShort]
+  --^MTR_DONE|
+  --:MTR_TRY_FULL|
+  --&_muleHyphName|[&_muleHyphFull]
+  --~_muleHyphTest|system;findability;[&_muleTraitChar];[&_muleHyphFull]
+  --?"[&_muleHyphTest]" -eq "AbilityNotFound"|MTR_TRY_CID_FULL
+  --^MTR_USE_HYPH_FULL|
+  --:MTR_USE_HYPH_FULL|
+  --&_muleHyphName|[&_muleHyphFull]
+  --^MTR_DONE|
+  --:MTR_TRY_CID_FULL|
+  --~_muleHyphTest|system;findability;[@_pcMuleCidList(0)];[&_muleHyphFull]
+  --?"[&_muleHyphTest]" -eq "AbilityNotFound"|MTR_FAIL
+  --^MTR_USE_HYPH_FULL|
+  --:MTR_FAIL|
+  --&_muleHyphTest|AbilityNotFound
+  --:MTR_DONE|
+  --?"[&_muleHyphTest]" -eq "AbilityNotFound"|MTR_TRACE_OUT_CHK
+  --&_muleBtnFindName|[&_muleHyphName]
+  --&_mulePipeName|[*O:[&_muleHyphTest]:ability:name]
+  --?"X[&_mulePipeName]" -eq "X"|MTR_PIPE_HYPH
+  --?"[&_mulePipeName]" -eq ""|MTR_PIPE_HYPH
+  --?"[&_mulePipeName]" -eq "false"|MTR_PIPE_HYPH
+  --^MTR_PIPE_DONE|
+  --:MTR_PIPE_HYPH|
+  --?"[&_muleColonTrait]" -eq "1"|MTR_PIPE_SUFFIX
+  --&_mulePipeName|[&_muleHyphName]
+  --^MTR_PIPE_DONE|
+  --:MTR_PIPE_SUFFIX|
+  --&_mulePipeName|[&_muleShortName]
+  --:MTR_PIPE_DONE|
+  --:MTR_TRACE_OUT_CHK|
+  --?"[&CamTraceDebug]" -ne "1"|MTR_TRACE_OUT_OFF
+  --#debug|0
+  --:MTR_TRACE_OUT_OFF|
+  --<|
+
+  --/|Append Kurt-style [button]Label::~MuleChar|ExactMuleAbilityName[/button]. Caller sets &_muleBtnFindName first (avoids colon breakage in gosub params).
+  --:ADD_MULE_SHEET_BUTTON|muleChar;buttonLabel;listVar
+  --&_lastMuleAbilId|
+  --&_amsbPipeName|
+  --?"[%1%]" -eq ""|AMSB_DONE
+  --?"[%1%]" -eq "none"|AMSB_DONE
+  --?"X[&_muleBtnFindName]" -eq "X"|AMSB_DONE
+  --?"[&_muleBtnFindName]" -eq ""|AMSB_DONE
+  --~_amsbHyph|string;replaceall; ;-;[&_muleBtnFindName]
+  --~_amsbTest|system;findability;[%1%];[&_amsbHyph]
+  --?"[&_amsbTest]" -ne "AbilityNotFound"|AMSB_USE_HYPH
+  -->GET_CHARACTER_ID_BY_NAME|[%1%];_amsbMuleCid
+  --?"[&_amsbMuleCid]" -eq "0"|AMSB_TRY_FIND
+  --~_amsbTest|system;findability;[&_amsbMuleCid];[&_amsbHyph]
+  --?"[&_amsbTest]" -ne "AbilityNotFound"|AMSB_USE_HYPH
+  --:AMSB_TRY_FIND|
+  --&_amsbAbilId|
+  -->FIND_MULE_ABILITY|[%1%];_amsbAbilId
+  --?"[&_amsbAbilId]" -eq ""|AMSB_DONE
+  --&_lastMuleAbilId|[&_amsbAbilId]
+  --&_amsbPipeName|[*O:[&_amsbAbilId]:ability:name]
+  --?"X[&_amsbPipeName]" -eq "X"|AMSB_PIPE_HYPH
+  --?"[&_amsbPipeName]" -eq ""|AMSB_PIPE_HYPH
+  --?"[&_amsbPipeName]" -eq "false"|AMSB_PIPE_HYPH
+  --^AMSB_APPEND|
+  --:AMSB_PIPE_HYPH|
+  --&_amsbPipeName|[&_amsbHyph]
+  --:AMSB_USE_HYPH|
+  --&_lastMuleAbilId|[&_amsbTest]
+  --&_amsbPipeName|[&_amsbHyph]
+  --:AMSB_APPEND|
+  --&_amsbBtnPiece|[button][%2]::~[%1]|[&_amsbPipeName][/button][&SPACE]
+  --&[%3%]|+[&_amsbBtnPiece]
+  --:AMSB_DONE|
+  --<|
+
+  --/|Returns mule ability object id. Reads &_muleBtnFindName (not gosub param — colons break nested calls).
+  --:FIND_MULE_ABILITY|muleChar;abilityIdReturnVar
+  --&[%2%]|
+  --?"[%1%]" -eq ""|FMA_FAIL
+  --?"[%1%]" -eq "none"|FMA_FAIL
+  --?"X[&_muleBtnFindName]" -eq "X"|FMA_FAIL
+  --?"[&_muleBtnFindName]" -eq ""|FMA_FAIL
+  -->GET_CHARACTER_ID_BY_NAME|[%1%];_fmaMuleCid
+  --&_muleKeySource|[&_muleBtnFindName]
+  -->MULE_NAME_KEY|_fmaWantKey
+  --?"[&_fmaMuleCid]" -eq "0"|FMA_ENUM_BY_NAME
+  --~|array;objects:ability;_fmaAbilArr;;[&_fmaMuleCid]
+  --?[@_fmaAbilArr(length)] -gt 0|FMA_ENUM_START
+  --:FMA_ENUM_BY_NAME|
+  --~|array;objects:ability;_fmaAbilArr;;[%1%]
+  --?[@_fmaAbilArr(length)] -eq 0|FMA_TRY_FINDABILITY
+  --^FMA_ENUM_START|
+  --:FMA_ENUM_START|
+  --&_fmaAbilIdx|0
+  --^FMA_ENUM_LOOP|
+  --:FMA_ENUM_LOOP|
+  --?[@_fmaAbilArr(length)] -eq 0|FMA_TRY_FINDABILITY
+  --?[_fmaAbilIdx] -ge [@_fmaAbilArr(length)]|FMA_TRY_FINDABILITY
+  --&_fmaCurAbilId|@_fmaAbilArr([&_fmaAbilIdx])
+  --&_fmaAbilName|[*O:[&_fmaCurAbilId]:ability:name]
+  --?"[&_fmaAbilName]" -eq ""|FMA_ENUM_NEXT
+  --?"[&_fmaAbilName]" -eq "false"|FMA_ENUM_NEXT
+  --&_muleKeySource|[&_fmaAbilName]
+  --~_fmaGotKey|string;tolower;[&_muleKeySource]
+  --~_fmaGotKey|string;replaceall; ;;[&_fmaGotKey]
+  --~_fmaGotKey|string;replaceall;-;;[&_fmaGotKey]
+  --~_fmaGotKey|string;replaceall;:;;[&_fmaGotKey]
+  --~_fmaGotKey|string;replaceall;';;[&_fmaGotKey]
+  --~_fmaGotKey|string;replaceall;_;;[&_fmaGotKey]
+  --?"[&_fmaGotKey]" -ne "[&_fmaWantKey]"|FMA_ENUM_NEXT
+  --&[%2%]|[&_fmaCurAbilId]
+  --^FMA_DONE|
+  --:FMA_ENUM_NEXT|
+  --=FmaIdxNext|[$_fmaAbilIdx.Raw]+1
+  --&_fmaAbilIdx|[$FmaIdxNext.Raw]
+  --^FMA_ENUM_LOOP|
+  --:FMA_TRY_FINDABILITY|
+  --~_findTest|system;findability;[%1%];[&_muleBtnFindName]
+  --?"[&_findTest]" -eq "AbilityNotFound"|FMA_TRY_COLON_OR_SAN
+  --&[%2%]|[&_findTest]
+  --&_fmaFoundMsg|findability exact
+  --^FMA_FOUND|
+  --:FMA_TRY_COLON_OR_SAN|
+  --?"[&_muleBtnFindName]" -inc ":"|FMA_TRY_HYPHONLY
+  --^FMA_TRY_SANITIZED|
+  --:FMA_TRY_SANITIZED|
+  -->MAKE_MULE_ABILITY_NAME|_findSanitized
+  --~_findTest|system;findability;[%1%];[&_findSanitized]
+  --?"[&_findTest]" -eq "AbilityNotFound"|FMA_TRY_HYPHONLY
+  --&[%2%]|[&_findTest]
+  --&_fmaFoundMsg|findability sanitized=[&_findSanitized]
+  --^FMA_FOUND|
+  --:FMA_TRY_HYPHONLY|
+  --~_findHyphOnly|string;replaceall; ;-;[&_muleBtnFindName]
+  --~_findTest|system;findability;[%1%];[&_findHyphOnly]
+  --?"[&_findTest]" -eq "AbilityNotFound"|FMA_TRY_HYPH_NOAPOST
+  --&[%2%]|[&_findTest]
+  --&_fmaFoundMsg|findability hyphOnly=[&_findHyphOnly]
+  --^FMA_FOUND|
+  --:FMA_TRY_HYPH_NOAPOST|
+  --~_findNoApos|string;replaceall;';;[&_muleBtnFindName]
+  --~_findHyphOnly|string;replaceall; ;-;[&_findNoApos]
+  --~_findTest|system;findability;[%1%];[&_findHyphOnly]
+  --?"[&_findTest]" -eq "AbilityNotFound"|FMA_TRY_CID
+  --&[%2%]|[&_findTest]
+  --&_fmaFoundMsg|findability hyphNoApost=[&_findHyphOnly]
+  --^FMA_FOUND|
+  --:FMA_TRY_CID|
+  --?"[&_fmaMuleCid]" -eq "0"|FMA_FAIL
+  --~_findTest|system;findability;[&_fmaMuleCid];[&_muleBtnFindName]
+  --?"[&_findTest]" -eq "AbilityNotFound"|FMA_TRY_CID_SAN
+  --&[%2%]|[&_findTest]
+  --&_fmaFoundMsg|findability cid+exact
+  --^FMA_FOUND|
+  --:FMA_TRY_CID_SAN|
+  --~_findTest|system;findability;[&_fmaMuleCid];[&_findSanitized]
+  --?"[&_findTest]" -eq "AbilityNotFound"|FMA_TRY_CID_HYPH
+  --&[%2%]|[&_findTest]
+  --&_fmaFoundMsg|findability cid+sanitized
+  --^FMA_FOUND|
+  --:FMA_TRY_CID_HYPH|
+  --~_findTest|system;findability;[&_fmaMuleCid];[&_findHyphOnly]
+  --?"[&_findTest]" -eq "AbilityNotFound"|FMA_FAIL
+  --&[%2%]|[&_findTest]
+  --&_fmaFoundMsg|findability cid+hyphOnly
+  --^FMA_FOUND|
+  --:FMA_FOUND|
+  --^FMA_DONE|
+  --:FMA_FAIL|
+  --^FMA_DONE|
+  --:FMA_DONE|
+  --<|
+
+  --:IS_TRAIT_FEAT|source_type;sourceName;returnVar
+  --&[%3%]|0
+  --~_featST|string;tolower;[%1%]
+  --~_featSrc|string;tolower;[%2%]
+  --?"[&_featST]" -eq "feat"|IS_FEAT_MATCH
+  --?"[&_featSrc]" -eq "feat"|IS_FEAT_MATCH
+  --?"[&_featST]" -inc "epic boon"|IS_FEAT_MATCH
+  --?"[&_featSrc]" -inc "epic boon"|IS_FEAT_MATCH
+  --?"[&_featST]" -inc "fighting style"|IS_FEAT_MATCH
+  --?"[&_featSrc]" -inc "fighting style"|IS_FEAT_MATCH
+  --?"[&_featST]" -ninc " feat"|IS_TRAIT_FEAT_CHK_SRC
+  --?"[&_featST]" -inc "feature"|<
+  --^IS_FEAT_MATCH|
+  --:IS_TRAIT_FEAT_CHK_SRC|
+  --?"[&_featSrc]" -ninc " feat"|<
+  --?"[&_featSrc]" -inc "feature"|<
+  --^IS_FEAT_MATCH|
+  --<|
+  --:IS_FEAT_MATCH|
+  --&[%3%]|1
+  --<|
+
+  --:DISPLAY_PC_OTHER_ACTIONS|
+    --&BA_BUTTON_LIST|
+    --&RA_BUTTON_LIST|
+    --~|hashtable;fromrepeatingsection;[*S:character_id];repeating_traits;name;TraitBtnHash
+    --~|array;fromkeys;TraitBtnKeys;TraitBtnHash
+    --%baTrait|foreach;TraitBtnKeys
+      --?"[&baTrait]" -inc "_sectionid"|PC_BA_TRAIT_ROW
+      --^PC_BA_TRAIT_NEXT|
+      --:PC_BA_TRAIT_ROW|
+      --&TraitRowName|[&baTrait(replace,_sectionid,)]
+      --?"[&TraitRowName]" -eq ""|PC_BA_TRAIT_NEXT
+      --&TraitSourceType|[:TraitBtnHash("[&TraitRowName]_source_type")]
+      --&TraitSource|[:TraitBtnHash("[&TraitRowName]_source")]
+      -->IS_TRAIT_FEAT|[&TraitSourceType];[&TraitSource];_TraitIsFeat
+      --?"[&_TraitIsFeat]" -eq "1"|PC_BA_TRAIT_NEXT
+      --&TraitRowId|[:TraitBtnHash("[&baTrait]")]
+      --&TraitDesc|[:TraitBtnHash("[&TraitRowName]_description")]
+      --~TraitDesc|string;replaceall;";;[&TraitDesc]
+      --?"[&TraitDesc]" -inc "bonus action"|PC_BA_TRAIT_ADD
+      --?"[&TraitRowName]" -inc "Two-Weapon Fighting"|PC_BA_TRAIT_ADD
+      --?"[&TraitRowName]" -inc "Two Weapon Fighting"|PC_BA_TRAIT_ADD
+      --^PC_BA_TRAIT_NEXT|
+      --:PC_BA_TRAIT_ADD|
+      --&TraitBtnLabel|[&TraitRowName]
+      --&_muleTraitChar|[&pcabilitymulename]
+      --&_muleTraitRowName|[&TraitRowName]
+      -->MULE_TRAIT_RESOLVE|
+      --?"[&_muleHyphTest]" -eq "AbilityNotFound"|PC_BA_TRAIT_RBUTTON
+      --&_muleBtnPiece|[button][&_muleBtnLabel]::~[&pcabilitymulename]|[&_mulePipeName][/button][&SPACE]
+      --&BA_BUTTON_LIST|+[&_muleBtnPiece]
+      --&_lastMuleAbilId|[&_muleHyphTest]
+      --&_baRaShownTraits|+;[&TraitRowName];
+      --^PC_BA_TRAIT_NEXT|
+      --:PC_BA_TRAIT_RBUTTON|
+      --&BA_BUTTON_LIST|+[rbutton][&TraitBtnLabel]::EXEC_PC_TRAIT;[&TraitRowId][/rbutton][&SPACE]
+      --&_baRaShownTraits|+;[&TraitRowName];
+      --:PC_BA_TRAIT_NEXT|
+    --%|
+    --%raTrait|foreach;TraitBtnKeys
+      --?"[&raTrait]" -inc "_sectionid"|PC_RA_TRAIT_ROW
+      --^PC_RA_TRAIT_NEXT|
+      --:PC_RA_TRAIT_ROW|
+      --&TraitRowName|[&raTrait(replace,_sectionid,)]
+      --?"[&TraitRowName]" -eq ""|PC_RA_TRAIT_NEXT
+      --&TraitSourceType|[:TraitBtnHash("[&TraitRowName]_source_type")]
+      --&TraitSource|[:TraitBtnHash("[&TraitRowName]_source")]
+      -->IS_TRAIT_FEAT|[&TraitSourceType];[&TraitSource];_TraitIsFeat
+      --?"[&_TraitIsFeat]" -eq "1"|PC_RA_TRAIT_NEXT
+      --&TraitRowId|[:TraitBtnHash("[&raTrait]")]
+      --&TraitDesc|[:TraitBtnHash("[&TraitRowName]_description")]
+      --~TraitDesc|string;replaceall;";;[&TraitDesc]
+      --?"[&TraitDesc]" -inc "bonus action"|PC_RA_TRAIT_NEXT
+      --?"[&TraitDesc]" -inc "as an action"|PC_RA_TRAIT_NEXT
+      --?"[&TraitDesc]" -inc "can't take reaction"|PC_RA_TRAIT_NEXT
+      --?"[&TraitDesc]" -inc "cannot take reaction"|PC_RA_TRAIT_NEXT
+      --?"[&TraitDesc]" -inc "without using your movement, action, or reaction"|PC_RA_TRAIT_NEXT
+      --?"[&TraitDesc]" -ninc "reaction"|PC_RA_TRAIT_NEXT
+      --^PC_RA_TRAIT_ADD|
+      --:PC_RA_TRAIT_ADD|
+      --&TraitBtnLabel|[&TraitRowName]
+      --&_muleTraitChar|[&pcabilitymulename]
+      --&_muleTraitRowName|[&TraitRowName]
+      -->MULE_TRAIT_RESOLVE|
+      --?"[&_muleHyphTest]" -eq "AbilityNotFound"|PC_RA_TRAIT_RBUTTON
+      --&_muleBtnPiece|[button][&_muleBtnLabel]::~[&pcabilitymulename]|[&_mulePipeName][/button][&SPACE]
+      --&RA_BUTTON_LIST|+[&_muleBtnPiece]
+      --&_lastMuleAbilId|[&_muleHyphTest]
+      --&_baRaShownTraits|+;[&TraitRowName];
+      --^PC_RA_TRAIT_NEXT|
+      --:PC_RA_TRAIT_RBUTTON|
+      --&RA_BUTTON_LIST|+[rbutton][&TraitBtnLabel]::EXEC_PC_TRAIT;[&TraitRowId][/rbutton][&SPACE]
+      --&_baRaShownTraits|+;[&TraitRowName];
+      --:PC_RA_TRAIT_NEXT|
+    --%|
+    --~_muleHyphName|string;replaceall; ;-;Opportunity Attack
+    --~_muleHyphTest|system;findability;[&pcabilitymulename];[&_muleHyphName]
+    --?"[&_muleHyphTest]" -eq "AbilityNotFound"|PC_RA_OPP_RBUTTON
+    --&_muleBtnPiece|[button]Opportunity Attack::~[&pcabilitymulename]|[&_muleHyphName][/button][&SPACE]
+    --&RA_BUTTON_LIST|+[&_muleBtnPiece]
+    --^PC_RA_OPP_DONE|
+    --:PC_RA_OPP_RBUTTON|
+    --&RA_BUTTON_LIST|+[rbutton]Opportunity Attack::OPP_ATTACK[/rbutton][&SPACE]
+    --:PC_RA_OPP_DONE|
+    --+Bonus Actions|
+    --+|[&BA_BUTTON_LIST]
+    --+Reactions|
+    --+|[&RA_BUTTON_LIST]
+  --<|
+
+  --:DISPLAY_PC_FEATS|
+    --?"[&CamTraceDebug]" -ne "1"|PC_FEAT_TRACE_IN_OFF
+    --#debug|1
+    --:PC_FEAT_TRACE_IN_OFF|
+    --&FEAT_BUTTON_LIST|
+    --~|hashtable;fromrepeatingsection;[*S:character_id];repeating_traits;name;FeatBtnHash
+    --~|array;fromkeys;FeatBtnKeys;FeatBtnHash
+    --%featTrait|foreach;FeatBtnKeys
+      --?"[&featTrait]" -inc "_sectionid"|PC_FEAT_TRAIT_ROW
+      --^PC_FEAT_TRAIT_NEXT|
+      --:PC_FEAT_TRAIT_ROW|
+      --&TraitRowName|[&featTrait(replace,_sectionid,)]
+      --?"[&TraitRowName]" -eq ""|PC_FEAT_TRAIT_NEXT
+      --?"[&_baRaShownTraits]" -inc ";[&TraitRowName];"|PC_FEAT_TRAIT_NEXT
+      --&TraitRowId|[:FeatBtnHash("[&featTrait]")]
+      --&TraitBtnLabel|[&TraitRowName]
+      --&_lastMuleAbilId|
+      --?"[&pcabilitymulename]" -eq "none"|PC_FEAT_TRY_NPC_MULE
+      --&_muleTraitChar|[&pcabilitymulename]
+      --&_muleTraitRowName|[&TraitRowName]
+      -->MULE_TRAIT_RESOLVE|
+      --?"[&_muleHyphTest]" -ne "AbilityNotFound"|PC_FEAT_PC_BTN
+      --:PC_FEAT_TRY_NPC_MULE|
+      --?"[&sharednpcmacromulename]" -eq "none"|PC_FEAT_TRAIT_RBUTTON
+      --&_muleTraitChar|[&sharednpcmacromulename]
+      -->MULE_TRAIT_RESOLVE|
+      --?"[&_muleHyphTest]" -eq "AbilityNotFound"|PC_FEAT_TRAIT_RBUTTON
+      --&_muleBtnPiece|[button][&_muleBtnLabel]::~[&sharednpcmacromulename]|[&_mulePipeName][/button][&SPACE]
+      --&FEAT_BUTTON_LIST|+[&_muleBtnPiece]
+      --&_lastMuleAbilId|[&_muleHyphTest]
+      --^PC_FEAT_TRAIT_NEXT|
+      --:PC_FEAT_PC_BTN|
+      --&_muleBtnPiece|[button][&_muleBtnLabel]::~[&pcabilitymulename]|[&_mulePipeName][/button][&SPACE]
+      --&FEAT_BUTTON_LIST|+[&_muleBtnPiece]
+      --&_lastMuleAbilId|[&_muleHyphTest]
+      --^PC_FEAT_TRAIT_NEXT|
+      --:PC_FEAT_TRAIT_RBUTTON|
+      --&FEAT_BUTTON_LIST|+[rbutton][&TraitBtnLabel]::EXEC_PC_TRAIT;[&TraitRowId][/rbutton][&SPACE]
+      --:PC_FEAT_TRAIT_NEXT|
+    --%|
+    --+Traits/Feats|
+    --+|[&FEAT_BUTTON_LIST]
+    --?"[&CamTraceDebug]" -ne "1"|PC_FEAT_TRACE_OUT_OFF
+    --#debug|0
+    --:PC_FEAT_TRACE_OUT_OFF|
+  --<|
+
+  --:EXEC_PC_TRAIT|
+  --#whisper|self
+  --#emotestate|visible
+  --&trait_rowid|[&reentryval]
+  --Rbysectionid|[*S:character_id];repeating_traits;[&trait_rowid]
+  --?"[*R:name]" -eq "NoRepeatingAttributeLoaded"|[
+   --&trait_name|[&reentryval]
+   --&trait_name|[&trait_name(replace,-!-!-,;)]
+   --&trait_name|[&trait_name(replace,-!lpar!-,(,)]
+   --&trait_name|[&trait_name(replace,-!rpar!-,))]
+   --Rfind|[*S:character_id];[&trait_name];repeating_traits;name
+  --]|
+  --?"[*R:name]" -eq "NoRepeatingAttributeLoaded"|[
+   --+Trait Not Found|The trait could not be loaded from [*S:character_name]'s sheet.
+   --X|
+  --]|
+  --#title|[*R:name]
+  --#leftsub|[*S:character_name]
+  --#rightsub|
+  --+Source|[i][*R:source] - [*R:source_type][/i]
+  --+|[*R:description]
+  --X|
+
+  --:TWO_WEAPON_FIGHTING|
+  --#whisper|self
+  --#emotestate|nope
+  --#title|Two-Weapon Fighting
+  --#leftsub|[*S:character_name]
+  --#rightsub|
+  --+Source|[i]General[/i]
+  --+|When you take the Attack action and attack with a light melee weapon that you're holding in one hand, you can use a bonus action to attack with a different light melee weapon that you're holding in the other hand. You don't add your ability modifier to the damage of the bonus attack, unless that modifier is negative.  
+  --+|[BR]
+  --+|If either weapon has the thrown property, you can throw the weapon, instead of making a melee attack with it.
+  --X|
+
+  --:OPP_ATTACK|
+  --#whisper|self
+  --#emotestate|nope
+  --#title|Opportunity Attack
+  --#leftsub|[*S:character_name]
+  --#rightsub|
+  --+Source|[i]General[/i]
+  --+|In a fight, everyone is constantly watching for a chance to strike an enemy who is fleeing or passing by. Such a strike is called an opportunity attack.
+  --+|[BR]
+  --+|You can make an opportunity attack when a hostile creature that you can see moves out of your reach. To make the opportunity attack, you use your reaction to make one melee attack against the provoking creature. The attack occurs right before the creature leaves your reach.
+  --+|[BR]  
+  --+|You can avoid provoking an opportunity attack by taking the Disengage action. You also don't provoke an opportunity attack when you teleport or when someone or something moves you without using your movement, action, or reaction. For example, you don't provoke an opportunity attack if an explosion hurls you out of a foe's reach or if gravity causes you to fall past an enemy.
+  --X|  
+
+  --:CHECK_VERSION_INFO|
+  --/?"[&SC_VERSION_NUMERIC]" -eq "" -or "[&SC_VERSION_NUMERIC]" -lt 207150|REPORT_BAD_SC_VERSION
+  --<|
+
+--:RESET_RESOURCES_ON_REST|CharacterID;RestType (S or L);Report? (y or n)
+--&_LIB_REST_TYPE|UNKNOWN
+--?"[%2%]" -eq "L" -or "[%2%]" -eq "l"|>RESET_RESOURCES_ON_REST;[%1%];s;[%3%]
+--?"[%2%]" -eq "S" -or "[%2%]" -eq "s"|&_LIB_REST_TYPE;short
+--?"[%2%]" -eq "L" -or "[%2%]" -eq "l"|&_LIB_REST_TYPE;long
+--?"[&_LIB_REST_TYPE]" -eq "UNKNOWN"|<
+
+--?"[*[%1%]:class_resource_reset]" -ne "[&_LIB_REST_TYPE]"|_LibAMA_RESET_SKIPCLASS
+--?"[*[%1%]:class_resource]" -eq "[*[%1%]:class_resource^]"|_LibAMA_RESET_SKIPCLASS
+--!a:[%1%]|class_resource:[*[%1%]:class_resource^]
+--?"[%3%]" -eq "y"|+;Resource [*[%1%]:class_resource_name] reset to [*[%1%]:class_resource^].
+--:_LibAMA_RESET_SKIPCLASS|
+--?"[*[%1%]:other_resource_reset]" -ne "[&_LIB_REST_TYPE]"|_LibAMA_RESET_SKIPOTHER
+--?"[*[%1%]:other_resource]" -eq "[*[%1%]:other_resource^]"|_LibAMA_RESET_SKIPOTHER
+--!a:[%1%]|other_resource:[*[%1%]:other_resource^]
+--?"[%3%]" -eq "y"|+;Resource [*[%1%]:other_resource_name] reset to [*[%1%]:other_resource^].
+--:_LibAMA_RESET_SKIPOTHER|
+
+--Rfirst|[%1%];repeating_resource
+--?"[*R:resource_left_name]" -eq "NoRepeatingAttributeLoaded"|<
+--:_LibAMA_RESET_REPEAT|
+--?"[*R:resource_left_reset]" -ne "[&_LIB_REST_TYPE]"|_LIB_AMA_RESET_SKIP_LEFT
+--?"[*R:resource_left]" -eq "[*R:resource_left^]"|_LIB_AMA_RESET_SKIP_LEFT
+--!a:[%1%]|[*R>resource_left]:[*R:resource_left^] 
+--?"[%3%]" -eq "y"|+;Resource [*R:resource_left_name] reset to [*R:resource_left^].
+--:_LIB_AMA_RESET_SKIP_LEFT|
+--?"[*R:resource_right_reset]" -ne "[&_LIB_REST_TYPE]"|_LIB_AMA_RESET_SKIP_RIGHT
+--?"[*R:resource_right]" -eq "[*R:resource_right^]"|_LIB_AMA_RESET_SKIP_RIGHT
+--!a:[%1%]|[*R>resource_right]:[*R:resource_right^]
+--?"[%3%]" -eq "y"|+;Resource [*R:resource_right_name] reset to [*R:resource_right^].
+--:_LIB_AMA_RESET_SKIP_RIGHT|
+--Rnext|
+--?"[*R:resource_left_name]" -ne "NoRepeatingAttributeLoaded"|_LibAMA_RESET_REPEAT
+--<|
+}}
