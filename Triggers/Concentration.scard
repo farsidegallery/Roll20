@@ -1,19 +1,11 @@
 !script {{
   --/|Script Name : Concentration
-  --/|Version     : 1.5.0
-  --/|Requires SC : ScriptCards 3.0.25+, 5Elib/snlib/Farsidelib 1.5.2+
+  --/|Version     : 1.5.6
+  --/|Requires SC : ScriptCards 3.0.25+, 5Elib/snlib/Farsidelib 1.5.2+ (this handout; other damage sources need not use Farsidelib)
   --/|
-  --/|Trigger setup (ScriptCards_Triggers character):
-  --/|  Ability name must be exactly: change:graphic
-  --/|  Requires listen_to_tokenmod set to 1 on ScriptCards_Triggers. Triggers run on TokenMod announcements, not ScriptCards !t bar updates.
-  --/|  When listen_to_tokenmod is 1, TokenMod injects gmnotes into trigger replacements without escaping embedded
-  --/|  double-hyphen text, which breaks ScriptCards parsing (common when bulk-heal uses @token-mod). Bulk heal should
-  --/|  use !t bar updates instead of @token-mod, or temporarily disable listen_to_tokenmod.
-  --/|  On NPC death (hp to 0): applies dead marker; Corpse Cart auto-buries NPCs on dead marker (no chat call needed).
-  --/|
-  --/|This example watches for graphics objects (in this case tokens) to change. if the value that changed is the current hit points
-  --/|(as specified by the hitPointBar variable below), it will be checked to see if it has hit 0. If so, the token will be marked 
-  --/|with the "dead" status marker. If not, it will be checked for Concentration, and if needed, remove concentration spell affects and tokens.
+  --/|Trigger wiring: ScriptCards_Triggers ability change:graphic, listen_to_tokenmod|1, paste this macro. Tune bars/marker in Global User Variables below.
+  --/|Damage sources (e.g. 5E Action Menu): set hitPointsBar/tempHPBar/UseTempHP and damageApplyScript|token-mod to match this trigger’s bars.
+  --/|listen_to_tokenmod: external @token-mod bar writes fire this trigger; !t-only writes may not. Bulk heal via !t avoids gmnotes parse issues.
   
   --#hidecard|1
 
@@ -54,6 +46,11 @@
   --/|Set to 1 to print bar old/new damage breakdown on concentration cards (for validating temp HP / trigger timing).
   --&ConcDebugOutput|0
 
+  --/|Trigger entry points — edit these for your game (restored after far_LoadTokenMarkers below).
+  --&ConcEntry_hitPointBar|1
+  --&ConcEntry_tempHPBar|4
+  --&ConcEntry_ConcentrationMarker|Concentrating::7409928
+
   --/|Helper brackets for save roll display.
   --&obrac|[ 
   --&cbrac|]
@@ -64,27 +61,37 @@
   +++5Elib;snlib;Farsidelib+++
   
   --#reentrant|My Cool Script [*[&GraphicOld_id]:character_id]
-  --&hitPointBar|1
-  --&tempHPBar|4
 
   -->far_LoadTokenMarkers|
+  --&hitPointBar|[&ConcEntry_hitPointBar]
+  --&tempHPBar|[&ConcEntry_tempHPBar]
+  --&ConcentrationMarker|[&ConcEntry_ConcentrationMarker]
   -->ConcSkipIfNoDamageEvent|
 
   --/|Gate: damage taken only (ConcCalcDamage never counts increases).
   --?[$ConcRawTotal] -le 0|SKIP
   --?"[&GraphicOldstatusmarkers]" -inc "dead"|SKIP
 
-  --&newstatus|[&GraphicOldstatusmarkers],dead
+  --/|TokenMod bar updates often omit or shorten GraphicOldstatusmarkers; use live token markers when building dead status.
+  --&ConcStatusForDead|[&GraphicOldstatusmarkers]
+  --?"X[&ConcStatusForDead]" -eq "X"|&ConcStatusForDead;[*[&GraphicOld_id]:t-statusmarkers]
+  --?"[&ConcStatusForDead]" -eq ""|&ConcStatusForDead;[*[&GraphicOld_id]:t-statusmarkers]
+  --&newstatus|[&ConcStatusForDead],dead
   --?[&ConcHPnew] -le 0|SETSTATUS
   --^Concentration|
   
   --:SETSTATUS|
+   -->LibSN_CHECK_STATUS_MARKER|[&GraphicOld_id];[&ConcentrationMarker];ConcHadConcOnDeath;ConcHadConcOnDeathCount
+   --#leftsub|
    --#hidecard|0
    --+Died: |[*[&GraphicOld_id]:character_name] died from the damage!
    --!t:[&GraphicOld_id]|statusmarkers:[&newstatus]
+   --/|Always strip conc marker on death (LibSN CHECK can miss builtin markers e.g. blue@1).
+   -->far_RemoveTokenMarker|[&GraphicOld_id];[&ConcentrationMarker]
    -->ConcIsNpcToken|ConcIsNpc
    --?[&ConcIsNpc] -eq 1|>NpcDeathCleanup
-   --?"[&GraphicOldstatusmarkers]" -inc "&ConcentrationMarker"|>DeadEntry
+   -->ConcShouldRunDeadEntry|ConcRunDeadEntry
+   --?[&ConcRunDeadEntry] -eq 1|>DeadEntry
    --X|
 
   --/|NPC = sheet npc flag or uncontrolled character (matches Corpse Cart logic).
@@ -100,8 +107,18 @@
   --/|NPC death: Lazy Experience prompt. Corpse Cart auto-buries when the dead marker is applied above.
   --:NpcDeathCleanup|
    --@xp|npcdeath [&GraphicOld_id]
-   --?"[&GraphicOldstatusmarkers]" -inc "&ConcentrationMarker"|>DeadEntry
+   -->ConcShouldRunDeadEntry|ConcRunDeadEntry
+   --?[&ConcRunDeadEntry] -eq 1|>DeadEntry
    --X|
+
+  --/|Death / fail-save drop: LibSN CHECK can miss markers; sheet ConcentrationSpell is source of truth for --C cleanup.
+  --:ConcShouldRunDeadEntry|return-var
+   --&[%1%]|0
+   --&ConcSpellOnSheet|[*[&GraphicOld_id]:ConcentrationSpell]
+   --?"X[&ConcSpellOnSheet]" -eq "X"|&ConcSpellOnSheet|
+   --?"[&ConcHadConcOnDeath]" -eq "1"|&[%1%];1
+   --?"[&ConcSpellOnSheet]" -ne ""|&[%1%];1
+   --<|
  
   --:SKIP|
    --X|
@@ -131,6 +148,8 @@
    --/|TokenMod often omits GraphicNew bar values; manual bar edits too. If payload old=new, take post-change from live token (same as ConcResolveBars).
    --?"[&ConcMoveHPold]" -eq "[&ConcMoveHPnew]"|&ConcMoveHPnew;[&ConcLiveHP]
    --?"[&ConcMoveTempold]" -eq "[&ConcMoveTempnew]"|&ConcMoveTempnew;[&ConcLiveTemp]
+   --/|TokenMod temp-only relative updates: payload may omit bar4 or keep old=new while live temp already dropped.
+   --?"[&ConcMoveHPold]" -eq "[&ConcMoveHPnew]" -and "[&ConcMoveTempold]" -ne "[&ConcLiveTemp]"|&ConcMoveTempnew;[&ConcLiveTemp]
    --/|Position-only move: after sync, HP and temp still unchanged.
    --?"[&ConcMoveHPold]" -eq "[&ConcMoveHPnew]" -and "[&ConcMoveTempold]" -eq "[&ConcMoveTempnew]"|SKIP
    -->ConcResolveBars|
@@ -176,7 +195,8 @@
    --<|
   
   --:Concentration|
-   --?"[&GraphicOldstatusmarkers]" -ninc "[&ConcentrationMarker]"|SKIP
+   -->LibSN_CHECK_STATUS_MARKER|[&GraphicOld_id];[&ConcentrationMarker];ConcActiveFlag;ConcActiveCount
+   --?[&ConcActiveFlag] -ne 1|SKIP
    -->far_PCConcenCheck|PCConcen;Scriptcheck
    --=Scriptcheck|[&Scriptcheck]
    --#hidecard|0
@@ -305,6 +325,8 @@
    --:DeadEntry|
    --+|[br]
    --+Result: |[*[&GraphicOld_id]:character_name] lost concentration.
+   --?"X[&SpellTokenName]" -eq "X"|&SpellTokenName;[*[&GraphicOld_id]:ConcentrationSpell]
+   --?"[&SpellTokenName]" -eq ""|&SpellTokenName;[*[&GraphicOld_id]:ConcentrationSpell]
    
    --C[&SpellTokenName]|Bane:>Bane|Banishment:>Banishment|Bless:>Bless|Divine Favor:>Favor|Faerie Fire:>Faerie|Greater Invisibility:>Invisibility|Invisibility:>Invisibility|Guidance:>Guidance|Hex:>Hex|Hold Person:>Hold|Tasha's Hideous Laughter:>HideousLaughter|Holy Weapon:>Weapon|Hunter's Mark:>Hunter|Shield of Faith:>Faith|Spirit Guardians:>Guardians|Shadow Blade:>ShadowBlade|Vampiric Touch:>Vampiric|Witch Bolt:>Witch|Zephyr Strike:>Zephyr
    
@@ -314,6 +336,7 @@
     --~|object;token;delete;[@tokens(0)]
    --]|
    --!a:[*[&GraphicOld_id]:character_id]|!ConcentrationSpell:**
+   --!a:[*[&GraphicOld_id]:character_id]|!ConcentrationSpellTargetToken:**
    --X|
 
   
@@ -541,28 +564,10 @@
    
    --+|[br]
    --%loop|foreach;Invis
-    -->RevealInvisTarget|[*[&loop]:t-id]
+    -->far_RevealInvisToken|[*[&loop]:t-id]
     --+|[*[&loop]:character_name] is no longer Invisible.
     --%|
-   --<|
-
-  --:RevealInvisTarget|masterTokenId
-   --&MasterTID|[%1%]
-   --#targettoken|[&MasterTID]
-   --&RevealInvisCharId|[*T:character_id]
-   --&ProxyTID|[*T:InvisProxyID]
-   --?"X[&ProxyTID]" -ne "X" -and "[&ProxyTID]" -ne ""|[
-    --#targettoken|[&ProxyTID]
-    --!t:[&MasterTID]|left:[*T:t-left]|top:[*T:t-top]
-    --~|object;token;delete;[&ProxyTID]
-   --]|
-   --#targettoken|[&MasterTID]
-   --!t:[&MasterTID]|layer:objects
-   -->LibSN_REMOVE_STATUS_MARKER|[&MasterTID];[&InvisibilityMarker]
-   --?"X[&RevealInvisCharId]" -ne "X"|[
-    --!a:[&RevealInvisCharId]|!MageID:**
-    --!a:[&RevealInvisCharId]|!InvisProxyID:**
-   --]|
+   -->far_ClearInvisCasterSheet|[*[&GraphicOld_id]:character_id]
    --<|
   
   --:ShadowBlade|
