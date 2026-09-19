@@ -1,4 +1,4 @@
---/|ScriptCards Library: Farsidelib  version 1.7.1
+--/|ScriptCards Library: Farsidelib  version 1.7.10
 --/|Provides various utility procedures for Roll20
 
 --/|This library contains a number of functions that are customized to meet the different needs of spell or ability
@@ -81,6 +81,12 @@
 --/|
 --/|   far_GetTokenCharAttr|token-id;attribute-name;default-value;return-var
 --/|      Same as far_GetCharAttr using the token's represents character.
+--/|
+--/|   far_RevealInvisToken|master-token-id
+--/|      Drops CARRY_TOKENS link, deletes proxy, restores master token, clears target MageID/InvisProxyID.
+--/|
+--/|   far_ClearInvisCasterSheet|caster-character-id
+--/|      Clears concentration target + Bump mod sheet attrs left on the caster after invisibility ends.
 --/|
 --/|   far_IsHexbladeCurseFrom|target-token-id;caster-token-id;return-var
 --/|      Returns 1 when target has Hexblade marker and CurseCaster matches caster token id.
@@ -549,6 +555,37 @@
   --&[%4%]|[%3%]
   --?"X[*[%1%]:character_id]" -eq "X"|<
   -->far_GetCharAttr|[*[%1%]:character_id];[%2%];[%3%];[%4%]
+  --<|
+
+ --:far_RevealInvisToken|master-token-id
+  --&MasterTID|[%1%]
+  --#targettoken|[&MasterTID]
+  --&RevealInvisCharId|[*T:character_id]
+  --&ProxyTID|[*T:InvisProxyID]
+  --?"X[&ProxyTID]" -ne "X" -and "[&ProxyTID]" -ne ""|[
+   --@CARRY_TOKENS_DROP_ALL|[&ProxyTID]
+   --#targettoken|[&ProxyTID]
+   --!t:[&MasterTID]|left:[*T:t-left]|top:[*T:t-top]
+   --~|object;token;delete;[&ProxyTID]
+  --]|
+  --#targettoken|[&MasterTID]
+  --!t:[&MasterTID]|layer:objects
+  -->LibSN_REMOVE_STATUS_MARKER|[&MasterTID];[&InvisibilityMarker]
+  --?"X[&RevealInvisCharId]" -ne "X"|[
+   --!a:[&RevealInvisCharId]|!MageID:**
+   --!a:[&RevealInvisCharId]|!InvisProxyID:**
+  --]|
+  --<|
+
+ --:far_ClearInvisCasterSheet|caster-character-id
+  --?"X[%1]" -eq "X"|<
+  --!a:[%1]|!ConcentrationSpellTargetToken:**
+  --!a:[%1]|!BumpCasterToken:**
+  --!a:[%1]|!BumpQueue:**
+  --!a:[%1]|!BumpCount:**
+  --!a:[%1]|!BumpCasterInvis:**
+  --!a:[%1]|!InvisProxyID:**
+  --!a:[%1]|!MageID:**
   --<|
 
  --:far_IsHexbladeCurseFrom|target-token-id;caster-token-id;return-var
@@ -1466,9 +1503,10 @@
    --=PADScale|5
   --]|
   --=PADPalReach|([*T:t-width] + [*T:t-height]) / 140 * [$PADScale]
+  --?"X[&PADPalTID]" -eq "X"|paDismissDone
+  --?"[&PADPalTID]" -eq ""|paDismissDone
   --~|array;pagetokens;PageTokens;[&PADPalTID]
-  --?"[@PageTokens()]" -eq "undefined array"|<
-  --?[@PageTokens(length)] -eq 0|<
+  --?[@PageTokens(length)] -gt 0|[
   --%paTok|foreach;PageTokens
    --#targettoken|[&paTok]
    --?"X[*T:t-id]" -eq "X"|paDismissSkip
@@ -1497,6 +1535,8 @@
    -->far_RemoveTokenMarker|[*T:t-id];[&PADismissIcon]
    --:paDismissSkip|
    --%|
+  --]|
+  --:paDismissDone|
   --#targettoken|[&PADPalTID]
   -->far_RemoveTokenMarker|[&PADPalTID];[&PADismissIcon]
   --?"X[*T:character_id]" -ne "X"|[
@@ -1732,9 +1772,10 @@
    --=PARefScale|5
   --]|
   --=PARefMaxGrid|[$PARefAuraFeet] / [$PARefScale] + 1
+  --?"X[&PARefPalTID]" -eq "X"|paRescanDone
+  --?"[&PARefPalTID]" -eq ""|paRescanDone
   --~|array;pagetokens;PARefTokens;[&PARefPalTID]
-  --?"[@PARefTokens()]" -eq "undefined array"|<
-  --?[@PARefTokens(length)] -eq 0|<
+  --?[@PARefTokens(length)] -gt 0|[
   --%paRefTok|foreach;PARefTokens
    --#targettoken|[&paRefTok]
    --?"X[*T:t-id]" -eq "X"|paRefSkip
@@ -1766,6 +1807,8 @@
    --&PAPaladinTokId|
    --:paRefSkip|
    --%|
+  --]|
+  --:paRescanDone|
   --<|
 
  --:far_AuraTriggerDied|
