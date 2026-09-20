@@ -56,7 +56,7 @@
   --/|created for that spell will be a sheet-button for that ability instead of a reentrant button back to
   --/|this script for generic processing. This lets you define "special case" macros for non-standard spells.
   --/|The name of the ability on the spell mule needs to exactly match the spell name (case sensitive)
-  --&spellmulename|Spell_Mule_Old
+  --&spellmulename|Spell_Mule
 
   --/|If you create a "shared macro mule" character and put its name here, you can define macros to be used
   --/|generally in your game. Each PC needs EITHER an AMLIST ability OR a 5ECAM_AMLIST text attribute (not both).
