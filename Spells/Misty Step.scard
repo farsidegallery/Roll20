@@ -8,7 +8,7 @@
   --#whisper|self,gm
 
   --/|Script Name : Misty Step
-  --/|Version     : 2.0.0
+  --/|Version     : 2.0.1
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Arak Stoneboulder
   --/|Modified By : Farsidegallery
@@ -37,7 +37,7 @@
 
   --^Cast|
 
-  --/| ==================== CAST ===================================================================================
+  --/| =============================================== CAST ========================================================
 
   --:Cast|
   --#title|[&SpellName]
@@ -58,8 +58,9 @@
 
   --:SkipSorcerer|
   --&StoredTokenID|[*S:t-id]
-  --!a:[*S:character_id]|!MS_tokenID:[&StoredTokenID]
-  --!a:[*S:character_id]|!MS_casterToken:[&CasterToken]
+  --&MSCharId|[*S:character_id]
+  --!a:[&MSCharId]|!MS_tokenID:[&StoredTokenID]
+  --!a:[&MSCharId]|!MS_casterToken:[&CasterToken]
   -->CAST_SPELL|
   --X|
 
@@ -83,7 +84,7 @@
   --&TargetName|[*T:character_name]
   --?"[&TargetName]" -eq "[&SpellTargetToken]"|Teleport
   --?"X[&PlacementTID]" -ne "X" -and "[&PlacementTID]" -ne "" -and "[&reentryval]" -eq "[&PlacementTID]"|Teleport
-  -->far_FatalError;Wrong Target;ERROR;Target the spell placement token.
+  -->far_FatalError|Wrong Target;ERROR;Target the spell placement token.
   --<|
 
   --:Teleport|
@@ -96,8 +97,11 @@
   --&CasterTID|[&StoredTokenID]
   --?"X[&CasterTID]" -eq "X" -or "[&CasterTID]" -eq ""|&CasterTID;[*S:MS_tokenID]
   --?"X[&CasterTID]" -eq "X" -or "[&CasterTID]" -eq ""|>far_FatalError;Teleport Failed;ERROR;Could not resolve stored caster token. Cast the spell again.
-  --!a:[*S:character_id]|!MS_tokenID:**
-  --!a:[*S:character_id]|!MS_casterToken:**
+  --#sourceToken|[&CasterTID]
+  --&MSCharId|[*[&CasterTID]:character_id]
+  --?"X[&MSCharId]" -eq "X"|&MSCharId;[*S:character_id]
+  --!a:[&MSCharId]|!MS_tokenID:**
+  --!a:[&MSCharId]|!MS_casterToken:**
 
   --vtoken|[&CasterTID] burst-magic
   --vtoken|[&MistyTID] burst-magic
@@ -119,7 +123,9 @@
 
   --+Desc: |[&desc]
   --+[br]|
-  -->far_DeductSpellSlot|[*S:t-id];[&MinimumSpellLevel]
+  -->far_DeductSpellSlot|[&CasterTID];[&MinimumSpellLevel]
+  --!a:[&MSCharId]|!MS_tokenID:**
+  --!a:[&MSCharId]|!MS_casterToken:**
   --X|
 
   --:GetCharID|CharacterName;StringVariableForCharID
