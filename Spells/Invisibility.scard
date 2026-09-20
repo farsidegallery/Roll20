@@ -6,7 +6,7 @@
   --#whisper|self,gm
 
   --/|Script Name : Invisibility
-  --/|Version     : 1.2.2
+  --/|Version     : 1.2.4
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib, CARRY_TOKENS API mod
   --/|Author      : Farsidegallery
   --/|
@@ -107,6 +107,10 @@
 
   --:ActionSpell|
    --%loop|foreach;Invis
+    --?"X[&InvisConcTargetSet]" -ne "X1"|[
+     --&InvisConcTargetSet|1
+     --!a:[*S:character_id]|!ConcentrationSpellTargetToken:[*[&loop]:t-id]
+    --]|
     -->HideTarget|[*[&loop]:t-id]
     --+|[c][*[&loop]:character_name][/c]
    --%|
@@ -137,11 +141,12 @@
    --+|[*S:character_name] is no longer concentrating on [&SpellName].
    --+|[br]
    --%loop|foreach;Invis
-    -->RevealTarget|[*[&loop]:t-id]
+    -->far_RevealInvisToken|[*[&loop]:t-id]
     --+|[*[&loop]:character_name] is no longer Invisible.
    --%|
    -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker]
    --!a:[*S:character_id]|!ConcentrationSpell:**
+   -->far_ClearInvisCasterSheet|[*S:character_id]
    --X|
 
   --:FindInvisTargets|
@@ -176,21 +181,6 @@
    --!t:[*T:t-id]|layer:gmlayer
    --@CARRY_TOKENS_CARRY_BELOW|[&ProxyTID] [*T:t-id]
    --!a:[*T:character_id]|!InvisProxyID:[&ProxyTID]
-   --<|
-
-  --:RevealTarget|masterTokenId
-   --&MasterTID|[%1%]
-   --#targettoken|[&MasterTID]
-   --&ProxyTID|[*T:InvisProxyID]
-   --?"X[&ProxyTID]" -ne "X" -and "[&ProxyTID]" -ne ""|[
-    --#targettoken|[&ProxyTID]
-    --!t:[&MasterTID]|left:[*T:t-left]|top:[*T:t-top]
-    --~|object;token;delete;[&ProxyTID]
-   --]|
-   --!t:[&MasterTID]|layer:objects
-   -->LibSN_REMOVE_STATUS_MARKER|[&MasterTID];[&InvisibilityMarker]
-   --!a:[*T:character_id]|!MageID:**
-   --!a:[*T:character_id]|!InvisProxyID:**
    --<|
 
 }}
