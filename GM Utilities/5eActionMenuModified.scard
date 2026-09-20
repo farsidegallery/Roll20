@@ -1,6 +1,6 @@
 ﻿!script {{
   --/|Script Name : 5E Action Menu
-  --/|Version     : 3.6.0
+  --/|Version     : 3.7.0
   --/|Requires SC : 2.7.15+
   --/|Author      : Kurt Jaegers
   --/|Modified By : Farsidegallery
@@ -56,7 +56,7 @@
   --/|created for that spell will be a sheet-button for that ability instead of a reentrant button back to
   --/|this script for generic processing. This lets you define "special case" macros for non-standard spells.
   --/|The name of the ability on the spell mule needs to exactly match the spell name (case sensitive)
-  --&spellmulename|Spell_Mule
+  --&spellmulename|Spell_Mule_Old
 
   --/|If you create a "shared macro mule" character and put its name here, you can define macros to be used
   --/|generally in your game. Each PC needs EITHER an AMLIST ability OR a 5ECAM_AMLIST text attribute (not both).
@@ -1215,6 +1215,34 @@
   --?"[&PCPostCantripCastFunction]" -ne ""|>[&PCPostCantripCastFunction]
   --X|
 
+  --/|EXEC_PC_SPELL reentry: gluedLevelName|target|slot (As Ritual or level). Extra | segments from slot query use last segment as slot.
+  --:CAM_ParseSpellReentry|
+   --~CAM_sp|string;split;|;[&reentryval]
+   --&CAM_spHead|[&CAM_sp1]
+   --?"X[&CAM_sp2]" -eq "X" -or "[&CAM_sp2]" -eq ""|&spellInfo3;NONE|&spellInfo3;[&CAM_sp2]
+   --&spellInfo4|
+   --?"X[&CAM_sp4]" -ne "X" -and "[&CAM_sp4]" -ne ""|&spellInfo4;[&CAM_sp4]
+   --?"X[&spellInfo4]" -eq "X" -or "[&spellInfo4]" -eq ""|&spellInfo4;[&CAM_sp3]
+   --?"[&CAM_spHead]" -inc ";"|[
+    --~spellInfo1|string;before;|;[&CAM_spHead]
+    --~spellInfo2|string;after;|;[&CAM_spHead]
+   --]|[
+    --&spellInfo1|
+    --&spellInfo2|
+    --%CAM_lvl|9;1;-1
+     --?"[&CAM_spHead(0,1)]" -eq "[&CAM_lvl]"|[
+      --&spellInfo1|[&CAM_lvl]
+      --&spellInfo2|[&CAM_spHead(1)]
+      --^CAM_ParseSpellDone|
+     --]|
+    --%|
+   --]|
+   --:CAM_ParseSpellDone|
+   --?"X[&spellInfo2]" -eq "X"|&spellInfo2|
+   --?"X[&spellInfo3]" -eq "X"|&spellInfo3|
+   --?"X[&spellInfo4]" -eq "X"|&spellInfo4|
+   --<|
+
   --:EXEC_PC_SPELL|spellInfo1=Spell Level, 2=SpellName, 3=Target ID, 4=Slot Level
   -->CAM_SetDamageApplyRoutines|
   --/+|[hr #58180d]
@@ -1233,11 +1261,17 @@
     --&saveTokenID|[&recoveredMenuTid]
    --]|
   --]|
-  --~spellInfo|string;split;|;[&reentryval]
+  --&spellInfo1|
+  --&spellInfo2|
+  --&spellInfo3|
+  --&spellInfo4|
+  -->CAM_ParseSpellReentry|
+
   --/|Buttons without a slot picker omit spellInfo4; treat as cast at the spell's list level ([&spellInfo1]).
   --?"X[&spellInfo4]" -eq "X" -or "[&spellInfo4]" -eq ""|&spellInfo4;[&spellInfo1]
 
-  --=UpCast|[&spellInfo4] - [&spellInfo1]
+  --?"[&spellInfo4]" -eq "As Ritual"|=UpCast;0
+  --?"[&spellInfo4]" -ne "As Ritual"|=UpCast|[&spellInfo4] - [&spellInfo1]
   --?"[&UseAMAShadowdarkSystem]" -eq "1" -and "[*S:class]" -eq "Wizard"|=UpCast;0
   --?"[&UseAMAShadowdarkSystem]" -eq "1" -and "[*S:class]" -eq "Wizard"|DO_SHADOWDARK_SPELL_CHECK
   --?[&trackPCSpellSlots] -eq 0|SKIP_CASTING_SLOT_CHECK
@@ -1261,8 +1295,8 @@
   --^SKIP_CASTING_SLOT_CHECK|
   --:NO_SLOTS_AVAILABLE|
   --#whisper|self
-  --+|You do not have a level [$spellInfo4] spell slot available to cast [&spellInfo2]
-  --^PC_DONE_SPELL|
+  --+|You do not have a level [&spellInfo4] spell slot available to cast [&spellInfo2]
+  --X|
   --:SKIP_CASTING_SLOT_CHECK|
   --&action_target|[&spellInfo3]
   --#title|[&spellInfo2]
@@ -1270,9 +1304,12 @@
   --#rightsub|
   --#whisper|
   --#emotestate|visible
-  --#targettoken|[&action_target]
-  --/\|Emote in PC Spell|[*S:t-name] uses [&attack_name] against [*T:t-name]
-  --#emotetext|[*S:t-name] uses [&spellInfo2] against [*T:t-name]
+  --?"[&action_target]" -eq "NONE"|[
+   --#emotetext|[*S:t-name] casts [&spellInfo2]
+  --]|[
+   --#targettoken|[&action_target]
+   --#emotetext|[*S:t-name] uses [&spellInfo2] against [*T:t-name]
+  --]|
   -->Find_Active_Global_Attack_Modifiers|[*S:character_id];PC_GAM
   -->Find_Active_Global_Damage_Modifiers|[*S:character_id];PC_GDM
   -->Find_Active_Global_Damage_Modifiers|[*S:character_id];PC_GDM_CRIT;1
@@ -1280,7 +1317,14 @@
   -->Find_Active_Global_Damage_Modifiers|[*S:character_id];PC_GDM_RES_CRIT;1
   -->Find_Active_Global_Save_Modifiers|[$cantrip_target];TARGET_GSM
   --Rfind|[*S:character_id];[&spellInfo2];repeating_spell-[&spellInfo1];spellname
-  --#targettoken|[&spellInfo3]
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|[
+   --#whisper|self
+   --+|Could not find "[&spellInfo2]" on the character sheet (spell list level [&spellInfo1]).
+   --^PC_DONE_SPELL|
+  --]|
+  --?"[&action_target]" -ne "NONE"|[
+   --#targettoken|[&spellInfo3]
+  --]|
   --?"[*R:spellconcentration]" -inc "concentration=1" -and "[&ConcentrationMarkerName]" -ne "0"|>ADD_STATUS_MARKER;[&saveTokenID];[&ConcentrationMarkerName]
   --?"[*R:spelloutput]" -eq ATTACK|PC_ATTACK_SPELL|PC_CARD_SPELL
 
@@ -1471,6 +1515,7 @@
   --&skillDisplayName|[&skillInfo1]
   --?[&skillDisplayName] -eq "animal_handling"|&skillDisplayName;Animal Handling
   --?[&skillDisplayName] -eq "sleight_of_hand"|&skillDisplayName;Sleight of Hand
+  --?[&skillDisplayName] -eq "performance"|&skillDisplayName;Performance
   --?[*S:npc] -eq 1|[
     --&skillModField|npc_[&skillKey]
     --?"[*S:[&skillModField]]" -eq ""|&skillModField;[&skillKey]_bonus
@@ -1494,6 +1539,7 @@
   --?[&skillKey] -eq deception|&skillAbiAttr;charisma_mod
   --?[&skillKey] -eq intimidation|&skillAbiAttr;charisma_mod
   --?[&skillKey] -eq persuasion|&skillAbiAttr;charisma_mod
+  --?[&skillKey] -eq performance|&skillAbiAttr;charisma_mod
   --?[&skillKey] -eq animal_handling|&skillAbiAttr;wisdom_mod
   --?[&skillKey] -eq insight|&skillAbiAttr;wisdom_mod
   --?[&skillKey] -eq medicine|&skillAbiAttr;wisdom_mod
@@ -3082,7 +3128,7 @@
 
   --:BUILD_SAVES_AND_SKILLS_BUTTONS|[%1%]
   --&advantageMenu|[&QB]Roll Type?|Normal|Advantage|Disadvantage[&QE]
-  --&skillMenu|[&QB]Skill to roll?|Acrobatics|Animal Handling,animal_handling|Arcana|Athletics|Deception|History|Insight|Intimidation|Investigation|Medicine|Nature|Perception|Persuasion|Religion|Sleight of Hand,sleight_of_hand|Stealth|Survival[&QE]
+  --&skillMenu|[&QB]Skill to roll?|Acrobatics|Animal Handling,animal_handling|Arcana|Athletics|Deception|History|Insight|Intimidation|Investigation|Medicine|Nature|Perception|Performance,performance|Persuasion|Religion|Sleight of Hand,sleight_of_hand|Stealth|Survival[&QE]
   --=ToolCount|0
     --RFirst|[*S:character_id];repeating_tool
   --:reptoollist|
