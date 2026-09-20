@@ -6,7 +6,7 @@
   --#whisper|self,gm
 
   --/|Script Name : Divine Favor
-  --/|Version     : 1.0.0
+  --/|Version     : 1.0.1
   --/|Requires SC : ScriptCards Library snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|  
@@ -70,6 +70,8 @@
    --#targettoken|[&reentryval]
    --#whisper|
    -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];0
+   --&_FarGMCharId|[*S:character_id]
+   --&_FarGMName|[&ModName]
    -->Lib5E_SET_GLOBAL_MOD_STATUS|[*S:character_id];damage;[&ModName];0
    --!a:[*S:character_id]|!ConcentrationSpell:**
    --&finishtext|[*S:character_name] dismisses Divine Favor!
@@ -78,8 +80,9 @@
    --X|
   
   --:CheckForMod|
-   -->far_Check_GLOBAL_MOD_EXISTS|[*S:t-id]; damage; [&ModName]; Exists
-   --?[&Exists] -eq 1|>SetMod |>CreateMod|
+   --&_FarGMName|[&ModName]
+   -->far_Check_GLOBAL_MOD_EXISTS|[*S:character_id];damage;[&ModName];Exists
+   --?"X[&Exists]" -eq "X1"|>SetMod |>CreateMod
    --<|
   
   --:CreateMod|
@@ -93,6 +96,8 @@
 	--<|
   
   --:SetMod|  
+   --&_FarGMCharId|[*S:character_id]
+   --&_FarGMName|[&ModName]
    -->Lib5E_SET_GLOBAL_MOD_STATUS|[*S:character_id];damage;[&ModName];1
    -->far_PlayEffects|[*S:t-id];;;burn-holy
    --<|
