@@ -1,12 +1,12 @@
-!script {{
+!scriptcards {{
   +++5Elib;snlib;Farsidelib+++
 
   --#sourceToken|@{selected|token_id}
-  --#reentrant|My Cool Script @{selected|character_id}
+  --#reentrant|Prismatic Spray @{selected|character_id}
   --#whisper|self,gm  
   
   --/|Script Name : Prismatic Spray
-  --/|Version     : 2.1.1
+  --/|Version     : 2.0.0
   --/|Requires SC : TokenMod, SuperNotes (for template override only), ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|Base Code   : Base code taken from Matt M.'s Cone of Cold. That was in turn based on Kurt's Burning Hands script.
@@ -14,21 +14,19 @@
   --/|  Script prompts user direction of spell cone, determines targets affects, rolls saving throws, and applies damage or conditions as appropriate. 
   --/|  Results are output in a table format.
   --/|
- 
 
   --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
   
   --&SpellName|Prismatic Spray
   --&MinimumSpellLevel|7
   
+  --/|Per-grid-square VFX in the cone (TokenMod). Leave blank to skip square VFX.
   --&tokenVFX|burn-magic
+  --/|Line VFX from caster center to the farthest cone square (TokenMod). Leave blank to skip.
   --&lineVFX|breath-magic
   
   --/|Set this to either "token-mod", "alterbars", or anything else to not apply damage
   --&damageApplyScript|token-mod
-  
-  --&hpBar|1
-  --&tempHPbar|4
    
   --&attrib|dexterity
   
@@ -41,17 +39,6 @@
   
   --/|Are you using the matching Bardic Inspiration Script from FarsideGallery? (Default is No using 0. Change to 1 if using the script.)
   --=Scriptcheck|1
-  
-  --/|Enter the Token Markers you use for each condition
-  --&BardicMarker|BardicInspiration::7409920
-  --&BlessedMarker|angel-outfit
-  --&InspirationMarker|Inspiration::7409921
-  --&BaneMarker|Hexed3::7409911
-  --&HexMarker|Hexed::7409913
-  --&HexBladeMarker|Hexed2::7409912
-  --&DeathMarker|dead
-  --&RestrainedMarker|Restrained::7409937
-  --&BlindedMarker|Blinded::7409948
   
   --/| ____________________ End Global User Variables ___________________________________________________________________________________________ 
  
@@ -68,6 +55,8 @@
   --~shortattrib|string;left;3;[&attrib]
   --~Displayattrib|string;touppercase;[&shortattrib]
   
+  -->far_LoadTokenMarkers|
+  
   --#title|[&SpellName]
   --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
   --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
@@ -76,7 +65,7 @@
   
   -->far_GetAndCheckSlotInformation|[*S:t-id];[&MinimumSpellLevel]
   
-  --=DC|[*S:spell_save_DC]
+  --=DC|[*S:spell_save_dc]
   
   --#leftsub|Range: [*R:spellrange]
   --#rightsub|[&Displayattrib] Save DC: [$DC]
@@ -96,7 +85,13 @@
   
   --:ChooseLevel|
   --/|Get all of the tokens on the page so we can cache their positions
-  --~|array;pagetokens;alltokens;[*S:t-id] 
+  --~|array;pagetokens;alltokens;[*S:t-id]
+  --#activepage|[*S:t-_pageid]
+  --=scaler|[*P:snapping_increment] * 70
+  --?[$scaler] -eq 0|=scaler;70
+  --=halfscaler|[$scaler] \ 2
+  --=doublescaler|[$scaler] * 2
+  --=triplescaler|[$scaler] * 3
   
   --/|Calculate base damage of each ray.
   --=RedBaseDam|10d6
@@ -130,6 +125,7 @@
   
   --:AttackDirection|
   --&Direction|[&reentryval]
+  --#activepage|[*S:t-_pageid]
   --~|array;define;U;0,-1;-1,-2;0,-2;1,-2;-1,-3;0,-3;1,-3;-2,-4;-1,-4;0,-4;1,-4;2,-4;-2,-5;-1,-5;0,-5;1,-5;2,-5;-3,-6;-2,-6;-1,-6;0,-6;1,-6;2,-6;3,-6;-3,-7;-2,-7;-1,-7;0,-7;1,-7;2,-7;3,-7;-4,-8;-3,-8;-2,-8;-1,-8;0,-8;1,-8;2,-8;3,-8;4,-8;-4,-9;-3,-9;-2,-9;-1,-9;0,-9;1,-9;2,-9;3,-9;4,-9;-5,-10;-4,-10;-3,-10;-2,-10;-1,-10;0,-10;1,-10;2,-10;3,-10;4,-10;5,-10;-5,-11;-4,-11;-3,-11;-2,-11;-1,-11;0,-11;1,-11;2,-11;3,-11;4,-11;5,-11;-6,-12;-5,-12;-4,-12;-3,-12;-2,-12;-1,-12;0,-12;1,-12;2,-12;3,-12;4,-12;5,-12;6,-12
   --~|array;define;D;0,1;-1,2;0,2;1,2;-1,3;0,3;1,3;-2,4;-1,4;0,4;1,4;2,4;-2,5;-1,5;0,5;1,5;2,5;-3,6;-2,6;-1,6;0,6;1,6;2,6;3,6;-3,7;-2,7;-1,7;0,7;1,7;2,7;3,7;-4,8;-3,8;-2,8;-1,8;0,8;1,8;2,8;3,8;4,8;-4,9;-3,9;-2,9;-1,9;0,9;1,9;2,9;3,9;4,9;-5,10;-4,10;-3,10;-2,10;-1,10;0,10;1,10;2,10;3,10;4,10;5,10;-5,11;-4,11;-3,11;-2,11;-1,11;0,11;1,11;2,11;3,11;4,11;5,11;-6,12;-5,12;-4,12;-3,12;-2,12;-1,12;0,12;1,12;2,12;3,12;4,12;5,12;6,12
   --~|array;define;R;1,0;2,-1;2,0;2,1;3,-1;3,0;3,1;4,-2;4,-1;4,0;4,1;4,2;5,-2;5,-1;5,0;5,1;5,2;6,-3;6,-2;6,-1;6,0;6,1;6,2;6,3;7,-3;7,-2;7,-1;7,0;7,1;7,2;7,3;8,-4;8,-3;8,-2;8,-1;8,0;8,1;8,2;8,3;8,4;9,-4;9,-3;9,-2;9,-1;9,0;9,1;9,2;9,3;9,4;10,-5;10,-4;10,-3;10,-2;10,-1;10,0;10,1;10,2;10,3;10,4;10,5;11,-5;11,-4;11,-3;11,-2;11,-1;11,0;11,1;11,2;11,3;11,4;11,5;12,-6;12,-5;12,-4;12,-3;12,-2;12,-1;12,0;12,1;12,2;12,3;12,4;12,5;12,6
@@ -157,17 +153,11 @@
   --?[&tokenid] -eq ArrayError|endOutput
   --:loopDisplay|
    --=RayColor|1d8
-   --c[$RayColor.Raw]|1:>Physical;[&tokenid];Red;fire;[$RedBaseDam]|2:>Physical;[&tokenid];Orange;acid;[$OrangeBaseDam]|3:>Physical;[&tokenid];Yellow;lightning;[$YellowBaseDam]|4:>Physical;[&tokenid];Green;poison;[$GreenBaseDam]|5:>Physical;[&tokenid];Blue;cold;[$BlueBaseDam]|6:>Condition;[&tokenid];Indigo;Restrained|7:>Condition;[&tokenid];Violet;Blinded|8:>Special;[&tokenid] 
-   --^afterSave| 
-  
-  --:afterSave|
-  --~tokenid|array;getnext;tokensHit
-  --?[&tokenid] -ne ArrayError|loopDisplay
-  --/|Put a visual effect on impacted tokens
-  --vtoken|[&tokenid] [&tokenVFX]
-  --~tokenid|array;getnext;inRange
-  --?[&tokenid] -ne ArrayError|loopDisplay
-  
+   --c[$RayColor.Raw]|1:>Physical;[&tokenid];Red;fire;[$RedBaseDam]|2:>Physical;[&tokenid];Orange;acid;[$OrangeBaseDam]|3:>Physical;[&tokenid];Yellow;lightning;[$YellowBaseDam]|4:>Physical;[&tokenid];Green;poison;[$GreenBaseDam]|5:>Physical;[&tokenid];Blue;cold;[$BlueBaseDam]|6:>Condition;[&tokenid];Indigo;Restrained|7:>Condition;[&tokenid];Violet;Blinded|8:>Special;[&tokenid]
+   --~tokenid|array;getnext;tokensHit
+   --?[&tokenid] -eq ArrayError|endOutput
+   --^loopDisplay|
+
   --:endOutput| 
    --#whisper|
    --+|[br]
@@ -175,6 +165,7 @@
    
    --+|[br]
    --+Desc: |[&desc]
+   --+|[br]
    -->far_DeductSpellSlot|[*S:t-id];[&MinimumSpellLevel]
    
    --?"X[$EmpoweredDamageFlag]" -eq "X1" -or "X[$TwinFlag]" -eq "X1"|[
@@ -188,71 +179,96 @@
   --/| ____________________ Procedures_______________________________________________________________________________________
   
   --:Physical|targetID;color;damageType;baseDam
-   --&BlessFlag|
-   --&BaneMarkerFlag|
+   --&tid|[%1%]
    --&GlobalSave|
    --&GlobalSkill|
-   
+   --&Baneroll|
+   --&BardRoll|
+   --&Hex|
+   --&HexBlade|
+   --&GlobalDamage|
    --&saveDice|1d20
    
-   --?"X[*[%1%]:race]" -ne "X"|[
-    -->far_Check_GLOBAL_MOD_EXISTS|[*[%1%]:character_id]; save; [%3%]; damageSave
-    -->far_Check_GLOBAL_ATTRIB_SAVE_EXISTS|[*[%1%]:character_id]; [&attrib]; attribSaveRoll
-    --?[&damageSave] -eq 1 -or [&attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "1d20"|&saveDice;2d20kh1
-    --?[&damageSave] -eq 1 -or [&attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "2d20kl1"|&saveDice;1d20
-    
-    -->far_FIND_ACTIVE_GLOBAL_SAVE_MODS|[*[%1%]:character_id];GlobalSave
-    -->far_FIND_ACTIVE_GLOBAL_SKILL_MODS|[*[%1%]:character_id];GlobalSkill
-	--]|
+   --?[*[&tid]:npc] -eq 1|[
+    --?[*[&tid]:npc_dexterity_save_flag] -gt 0|&SaveField;npc_dexterity_save|&SaveField;dexterity_mod
+    --=InitSave|[&saveDice]
+    --=TargetSave|[$InitSave] + [*[&tid]:[&SaveField]] [&obrac][&Displayattrib][&cbrac]
+   --]|[
+    -->far_Check_GLOBAL_MOD_EXISTS|[*[&tid]:character_id]; save; [%3%]; damageSave
+    -->far_Check_GLOBAL_ATTRIB_SAVE_EXISTS|[*[&tid]:character_id]; [&attrib]; attribSaveRoll
+    --?[&damageSave] -eq 1 -and "[&saveDice]" -eqi "1d20"|&saveDice;2d20kh1
+    --?[&attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "1d20"|&saveDice;2d20kh1
+    --?[&damageSave] -eq 1 -and "[&saveDice]" -eqi "2d20kl1"|&saveDice;1d20
+    --?[&attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "2d20kl1"|&saveDice;1d20
+    -->LibSN_CHECK_STATUS_MARKER|[&tid];[&InspirationMarker];InspiredFlag;InspiredCount
+    -->LibSN_CHECK_STATUS_MARKER|[&tid];[&BardicMarker];BardicFlag;BardicCount
+    -->LibSN_CHECK_STATUS_MARKER|[&tid];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
+    -->far_FIND_ACTIVE_GLOBAL_SAVE_MODS|[*[&tid]:character_id];GlobalSave
+    -->far_FIND_ACTIVE_GLOBAL_SKILL_MODS|[*[&tid]:character_id];GlobalSkill
+    --?[&InspiredFlag] -ne 0 |>far_Inspiration;[&tid];[&InspirationMarker];[&saveDice];saveDice
+    --=InitSave|[&saveDice]
+    --=midSave|[$InitSave] + [*[&tid]:[&attrib]_save_bonus] [&Displayattrib]
+    --?[&BardicFlag] -eq 1|>far_Bardic;[&tid];[&BardicMarker];[$Scriptcheck];[$InitSave.Base];[$midSave];BardRoll
+    --?[&BaneMarkerFlag] -eq 1|&Baneroll;+ - 1d4 [Bane] |&Baneroll;
+    --=TargetSave|[$InitSave] + [*[&tid]:[&attrib]_save_bonus] [&obrac][&Displayattrib][&cbrac] [&GlobalSave] [&GlobalSkill] [&Baneroll] [&BardRoll]
+   --]|
    
-   -->LibSN_CHECK_STATUS_MARKER|[*[%1%]:t-id];[&BlessedMarker];BlessFlag;BlessCount
-   -->LibSN_CHECK_STATUS_MARKER|[*[%1%]:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
-   -->far_CheckDamageModifiers|[%1%];[%3%];damageMod;0;0;0
-
-   --?[&BaneMarkerFlag] -eq 1|&Baneroll;+ - 1d4 [Bane] |&Baneroll;
-   
-   --=TargetSave|[&saveDice] + [*[%1%]:[&attrib]_save_bonus] [&obrac][&Displayattrib][&cbrac] [&GlobalSave] [&GlobalSkill] [&Baneroll]
+   -->far_CheckDamageModifiers|[*[&tid]:character_id];[%3%];damageMod;0;0;0
+   --?"[&damageMod]" -inc "Immune"|[
+    --&DexSave|I
+    --=FinalDamage|0
+    --+|[t border=3 width=100%][tr][td style="width:100px"][c][*[&tid]:t-name][/c][/td][td style="width:50px"][c][%2%][/c][/td][td style="width:50px"][c][&DexSave][/c][/td][td style="width:50px"][c]Immune[/c][/td][/tr]
+    --<|
+   --]|
+   -->LibSN_CHECK_STATUS_MARKER|[&tid];[&HexMarker];HexMarkerFlag;HexMarkerCount
+   -->LibSN_CHECK_STATUS_MARKER|[&tid];[&HexBladeMarker];HexBladeMarkerFlag;HexBladeMarkerCount
+   --&GlobalDamage|
+   -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0;[*[&tid]:character_id]
+   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*[&tid]:t-id]"|&Hex; + 1d6 [Hex] |&Hex;
+   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*[&tid]:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade; + [*S:pb] [Hexblade Curse] |&HexBlade;
    
    --?[$TargetSave] -ge [$DC]|[
     --&DexSave|P
-	--=FinalDamage|[%4%]\2 [&HexBlade] [&Hex][&GlobalDamage][&damageMod]
-    --]|[
-	--&DexSave|F
-	--=FinalDamage|[%4%] [&HexBlade] [&Hex][&GlobalDamage][&damageMod]
-    --]|  
-   --+|[t border=3 width=100%][tr][td style="width:100px"][c][*[%1%]:t-name][/c][/td][td style="width:50px"][c][%2%][/c][/td][td style="width:50px"][c][&DexSave][/c][/td][td style="width:50px"][c][$FinalDamage][/c][/td][/tr]
-   --/|>LibSN_APPLY_DAMAGE_OR_HEALING|[%1%];1;-[$FinalDamage];0;0;1
-   -->far_DamageTokenmod|[*[%1%]:t-id];[&hpBar];[&tempHPbar];-[$FinalDamage];0;0;1
-   --=FinalHP|[*[%1%]:t-bar[&hpBar]_value]-[$FinalDamage]
-   --?[$FinalHP] -le 0|>Died
+    --=FinalDamage|[%4%]\2 [&HexBlade] [&Hex][&GlobalDamage][&damageMod]
+   --]|[
+    --&DexSave|F
+    --=FinalDamage|[%4%] [&HexBlade] [&Hex][&GlobalDamage][&damageMod]
+   --]|  
+   --+|[t border=3 width=100%][tr][td style="width:100px"][c][*[&tid]:t-name][/c][/td][td style="width:50px"][c][%2%][/c][/td][td style="width:50px"][c][&DexSave][/c][/td][td style="width:50px"][c][$FinalDamage][/c][/td][/tr]
+   -->far_DamageTokenmod|[&tid];[&hpBar];[&tempHPbar];-[$FinalDamage];0;0;1
+   --=FinalHP|[*[&tid]:t-bar[&hpBar]_value]+[*[&tid]:t-bar[&tempHPbar]_value]-[$FinalDamage]
+   --?[$FinalHP] -le 0|>Died;[&tid]
    --<|
   
   --:Condition|targetID;color;cname
+   --&tid|[%1%]
    --&colorname|[%2%]
-   --&BlessFlag|
-   --&BaneMarkerFlag|
    --&GlobalSave|
    --&GlobalSkill|
-   
+   --&Baneroll|
+   --&BardRoll|
    --&saveDice|1d20
    
-   --?"X[*[%1%]:race]" -ne "X"|[
-    -->far_Check_GLOBAL_MOD_EXISTS|[*[%1%]:character_id]; save; [&damageType]; damageSave
-    -->far_Check_GLOBAL_ATTRIB_SAVE_EXISTS|[*[%1%]:character_id]; [&attrib]; attribSaveRoll
-    --?[&damageSave] -eq 1 -or [&attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "1d20"|&saveDice;2d20kh1
-    --?[&damageSave] -eq 1 -or [&attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "2d20kl1"|&saveDice;1d20
-    
-    -->far_FIND_ACTIVE_GLOBAL_SAVE_MODS|[*[%1%]:character_id];GlobalSave
-    -->far_FIND_ACTIVE_GLOBAL_SKILL_MODS|[*[%1%]:character_id];GlobalSkill
-	--]|
-   
-   -->LibSN_CHECK_STATUS_MARKER|[*[%1%]:t-id];[&BlessedMarker];BlessFlag;BlessCount
-   -->LibSN_CHECK_STATUS_MARKER|[*[%1%]:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
-   -->far_CheckDamageModifiers|[%1%];[%3%];damageMod;0;0;0
-
-   --?[&BaneMarkerFlag] -eq 1|&Baneroll;+ - 1d4 [Bane] |&Baneroll;
-   
-   --=TargetSave|[&saveDice] + [*[%1%]:[&attrib]_save_bonus] [&obrac][&Displayattrib][&cbrac] [&GlobalSave] [&GlobalSkill] [&Baneroll]
+   --?[*[&tid]:npc] -eq 1|[
+    --?[*[&tid]:npc_dexterity_save_flag] -gt 0|&SaveField;npc_dexterity_save|&SaveField;dexterity_mod
+    --=InitSave|[&saveDice]
+    --=TargetSave|[$InitSave] + [*[&tid]:[&SaveField]] [&obrac][&Displayattrib][&cbrac]
+   --]|[
+    -->far_Check_GLOBAL_ATTRIB_SAVE_EXISTS|[*[&tid]:character_id]; [&attrib]; attribSaveRoll
+    --?[&attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "1d20"|&saveDice;2d20kh1
+    --?[&attribSaveRoll] -eq 1 -and "[&saveDice]" -eqi "2d20kl1"|&saveDice;1d20
+    -->LibSN_CHECK_STATUS_MARKER|[&tid];[&InspirationMarker];InspiredFlag;InspiredCount
+    -->LibSN_CHECK_STATUS_MARKER|[&tid];[&BardicMarker];BardicFlag;BardicCount
+    -->LibSN_CHECK_STATUS_MARKER|[&tid];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
+    -->far_FIND_ACTIVE_GLOBAL_SAVE_MODS|[*[&tid]:character_id];GlobalSave
+    -->far_FIND_ACTIVE_GLOBAL_SKILL_MODS|[*[&tid]:character_id];GlobalSkill
+    --?[&InspiredFlag] -ne 0 |>far_Inspiration;[&tid];[&InspirationMarker];[&saveDice];saveDice
+    --=InitSave|[&saveDice]
+    --=midSave|[$InitSave] + [*[&tid]:[&attrib]_save_bonus] [&Displayattrib]
+    --?[&BardicFlag] -eq 1|>far_Bardic;[&tid];[&BardicMarker];[$Scriptcheck];[$InitSave.Base];[$midSave];BardRoll
+    --?[&BaneMarkerFlag] -eq 1|&Baneroll;+ - 1d4 [Bane] |&Baneroll;
+    --=TargetSave|[$InitSave] + [*[&tid]:[&attrib]_save_bonus] [&obrac][&Displayattrib][&cbrac] [&GlobalSave] [&GlobalSkill] [&Baneroll] [&BardRoll]
+   --]|
    
    --?[$TargetSave] -ge [$DC] | [
     --&DexSave|P
@@ -261,19 +277,19 @@
 	--&DexSave|F
 	--&Condition|[%3%]
 	--?[&Condition] -eqi "Blinded" |&ConMarker;[&BlindedMarker]|&ConMarker;[&RestrainedMarker]
-	--?"[*[%1%]:npc_immunities]" -inc "[&Condition]" -or "[*[%1%]:npc_condition_immunities]" -inc "[&Condition]"|[
+	--?"[*[&tid]:npc_immunities]" -inc "[&Condition]" -or "[*[&tid]:npc_condition_immunities]" -inc "[&Condition]"|[
 	 --&Condition|[&Condition] (Immune)
 	 --]|[
-	 -->LibSN_ADD_STATUS_MARKER|[%1%];[&ConMarker];9
+	 -->LibSN_ADD_STATUS_MARKER|[&tid];[&ConMarker];9
 	 --]|
    --]|
-   --+|[t border=3 width=100%][tr][td style="width:100px"][c][*[%1%]:t-name][/c][/td][td style="width:50px"][c][&colorname][/c][/td][td style="width:50px"][c][&DexSave][/c][/td][td style="width:50px"][c][&Condition][/c][/td][/tr]   
+   --+|[t border=3 width=100%][tr][td style="width:100px"][c][*[&tid]:t-name][/c][/td][td style="width:50px"][c][&colorname][/c][/td][td style="width:50px"][c][&DexSave][/c][/td][td style="width:50px"][c][&Condition][/c][/td][/tr]   
    --<|
   
   --:Special|targetID
    --+|[t border=3 width=100%][tr][td][c][*[%1%]:t-name] Rolled an 8![/c] [/td][/tr]
    -->Special1|
-   -->Speacial2|
+   -->Special2|
    --<|
    
   --:Special1| 
@@ -281,30 +297,38 @@
    --c[$SpecialDie1.Raw]|1:>Physical;[&tokenid];Red;fire;[$RedBaseDam]|2:>Physical;[&tokenid];Orange;acid;[$OrangeBaseDam]|3:>Physical;[&tokenid];Yellow;lightning;[$YellowBaseDam]|4:>Physical;[&tokenid];Green;poison;[$GreenBaseDam]|5:>Physical;[&tokenid];Blue;cold;[$BlueBaseDam]|6:>Condition;[&tokenid];Indigo;Restrained|7:>Condition;[&tokenid];Violet;Blinded;
    --<|
    
-  --:Speacial2|
+  --:Special2|
    --=SpecialDie2| 1d8r>8 
    --c[$SpecialDie2.Raw]|1:>Physical;[&tokenid];Red;fire;[$RedBaseDam]|2:>Physical;[&tokenid];Orange;acid;[$OrangeBaseDam]|3:>Physical;[&tokenid];Yellow;lightning;[$YellowBaseDam]|4:>Physical;[&tokenid];Green;poison;[$GreenBaseDam]|5:>Physical;[&tokenid];Blue;cold;[$BlueBaseDam]|6:>Condition;[&tokenid];Indigo;Restrained|7:>Condition;[&tokenid];Violet;Blinded;
    --<|  
   
   --:checkForTokenHits|parameter is vfx descriptor
-   --=baseX|[*S:t-left] - 1 \ 70
-   --=baseY|[*S:t-top] - 1 \ 70
+   --#activepage|[*S:t-_pageid]
+   --=baseX|[*S:t-left] - 1 \ [$scaler]
+   --=baseY|[*S:t-top] - 1 \ [$scaler]
    --~offset|array;getfirst;[&Direction]
   --:checkTokenLoop|
    --?"[&offset]" -eq "ArrayError"|endCheckForTokenHits
    --~split|string;split;,;[&offset]
    --=thisX|[$baseX] + [&split1]
    --=thisY|[$baseY] + [&split2]
+   --=farConeX|[$thisX]
+   --=farConeY|[$thisY]
    --/|IF we passed a visual effect specifier in %1%, create a point VFX in the square
-   --?"X[%1%]X" -ne "XX" |[
-    --=VX|[$thisX] * 70 + 35   
-    --=VY|[$thisY] * 70 + 35   
+   --?"X[%1%]X" -ne "XX"|[
+    --=VX|[$thisX] * [$scaler] + [$halfscaler]
+    --=VY|[$thisY] * [$scaler] + [$halfscaler]
     --vpoint|[$VX] [$VY] [%1%]
    --]|
    -->checkTokens|[$thisX];[$thisY]
    --~offset|array;getnext;[&Direction]
    --^checkTokenLoop|
   --:endCheckForTokenHits|
+   --?"X[&lineVFX]X" -ne "XX"|[
+    --=LX|[$farConeX] * [$scaler] + [$halfscaler]
+    --=LY|[$farConeY] * [$scaler] + [$halfscaler]
+    --vline|[*S:t-left] [*S:t-top] [$LX] [$LY] [&lineVFX]
+   --]|
    --<|
     
   --/|Reads the variables created by createTokenLookup to find any tokens that occupy a given space.
@@ -332,15 +356,14 @@
   --:tokenSetupLoop|
     --?[&tokenid] -eq ArrayError|endSetupLoop
     --?[&checkLayers] -ninc [*[&tokenid]:t-layer]|skipThisToken
-    --?[*[&tokenid]:t-bar[&hitPointsBar]_value] -le 0|skipThisToken
-    --=tLeft|[*[&tokenid]:t-left] - 1 \ 70
-   --=tTop|[*[&tokenid]:t-top] - 1 \ 70
+    --?[*[&tokenid]:t-bar[&hpBar]_value] -le 0|skipThisToken
+    --=tLeft|[*[&tokenid]:t-left] - 1 \ [$scaler]
+   --=tTop|[*[&tokenid]:t-top] - 1 \ [$scaler]
    --=tWidth|[*[&tokenid]:t-width]
-   --?[$tWidth] -eq 70|[ 
+   --?[$tWidth] -eq [$scaler]|[ 
     --&tok[$tLeft]-[$tTop]|+[&tokenid]!
-    --/+[*[&tokenid]:t-name]|At [$tLeft],[$tTop] : [&tok[$tLeft.Total]-[$tTop.Total]]
    --]|
-   --?[$tWidth] -eq 140|[ 
+   --?[$tWidth] -eq [$doublescaler]|[ 
     --=NX|[$tLeft] + 1
     --=NY|[$tTop] + 1
     --&tok[$tLeft]-[$tTop]|+[&tokenid]!
@@ -348,7 +371,7 @@
     --&tok[$NX]-[$tTop]|+[&tokenid]!
     --&tok[$NX]-[$NY]|+[&tokenid]!
    --]|
-   --?[$tWidth] -eq 210|[ 
+   --?[$tWidth] -eq [$triplescaler]|[  
     --=PX|[$tLeft] - 1
     --=PY|[$tTop] - 1
     --=NX|[$tLeft] + 1
@@ -369,14 +392,19 @@
   --:endSetupLoop|
    --<|
   
-  --:Died|
+  --:Died|tokenid
    --#whisper|
-   --~|turnorder;removetoken;[*T:t-id]
-   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|[
-    -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexMarker];0
-	-->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];0
-	--]|
-   -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DeathMarker]
+   --~|turnorder;removetoken;[%1%]
+   -->LibSN_CHECK_STATUS_MARKER|[%1%];[&HexMarker];HexMarkerFlag;HexMarkerCount
+   --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*[%1%]:t-id]"|[
+    -->LibSN_REMOVE_STATUS_MARKER|[%1%];[&HexMarker];0
+    -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];0
+   --]|
+   -->LibSN_CHECK_STATUS_MARKER|[%1%];[&HexBladeMarker];HexBladeMarkerFlag;HexBladeMarkerCount
+   --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*[%1%]:CurseCaster]" -eq "X[*S:t-id]"|[
+    -->LibSN_REMOVE_STATUS_MARKER|[%1%];[&HexBladeMarker];0
+   --]|
+   -->LibSN_ADD_STATUS_MARKER|[%1%];[&DeathMarker]
    --<|
   
   --:EmpowerArray|
