@@ -1513,9 +1513,9 @@
   --~skillType|string;tolowercase;[&skillKey]_bonus
   --&rollType|[&skillInfo2]
   --&skillDisplayName|[&skillInfo1]
-  --?[&skillDisplayName] -eq "animal_handling"|&skillDisplayName;Animal Handling
-  --?[&skillDisplayName] -eq "sleight_of_hand"|&skillDisplayName;Sleight of Hand
-  --?[&skillDisplayName] -eq "performance"|&skillDisplayName;Performance
+  --?[&skillKey] -eq "animal_handling"|&skillDisplayName;Animal Handling
+  --?[&skillKey] -eq "sleight_of_hand"|&skillDisplayName;Sleight of Hand
+  --?[&skillKey] -eq "performance"|&skillDisplayName;Performance
   --?[*S:npc] -eq 1|[
     --&skillModField|npc_[&skillKey]
     --?"[*S:[&skillModField]]" -eq ""|&skillModField;[&skillKey]_bonus
@@ -1550,7 +1550,7 @@
   --&rollEquation|1d20
   --?[&rollType] -eq "Advantage"|&rollEquation;2d20kh1
   --?[&rollType] -eq "Disadvantage"|&rollEquation;2d20kl1
-  --=SkillCheck|[&rollEquation] + [$SkillMod.Raw] [&obrac][&skillInfo1][&cbrac] [&GSKM_VALUES]
+  --=SkillCheck|[&rollEquation] + [$SkillMod.Raw] [&obrac][&skillDisplayName][&cbrac] [&GSKM_VALUES]
   --#title|[&skillDisplayName] Check
   --#leftsub|[*S:character_name]
   --#rightsub|
