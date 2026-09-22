@@ -1,10 +1,10 @@
 ﻿!script {{
   --/|Script Name : 5E Action Menu
-  --/|Version     : 3.7.0
+  --/|Version     : 3.8.0
   --/|Requires SC : 2.7.15+
   --/|Author      : Kurt Jaegers
   --/|Modified By : Farsidegallery
-  --&CAM_VERSION|3.7.0
+  --&CAM_VERSION|3.8.0
 
   --/|IMPORTANT NOTE: Updating this macro via the in-game editor will cause it to exhibit strange behavior. If you wish
   --/|to make settings changes, make them in an external editor (like NOTEPAD) and copy/paste the whole
@@ -87,7 +87,7 @@
   --&damageApplyScript|token-mod        --/|Set this to either "scriptcards", "token-mod", "alterbars", "damagebuttons" or anything else to not apply damage
   --&whisperDamageButtonsToDM|1         --/|If using "damagebuttons" and this is set to 1, the damage buttons will be whispered to the DM instead of being added to the card
   --&whisperDamageButtonResultsToDM|1   --/|If using "damagebuttons" for damage and this value is 1, the DM is whispered a message about damage application
-  --&selfHandleAdvantageMode|1          --/|If set to 1, the Action Menu will include advantage/normal/disadvantage toggles (and won't use the character sheet toggle)
+  --&selfHandleAdvantageMode|0          --/|If set to 1, the Action Menu will include advantage/normal/disadvantage toggles (and won't use the character sheet toggle)
   --&defaultAdvantageMode|0             --/|Used with SelfHandleAdvantageMode. 0=Normal, 1=Advantage, 2=Disadvantage
   --&showAdvantageModeText|0            --/|Used with SelfHandleAdvantageMode. 0=Button color coding only. 1=Show "Normal", "Advantage", "Disadvantage" text
   --&compactGlobalModDisplay|1          --/|If set to 1, Global X Mods will use more compact display layouts
@@ -714,6 +714,7 @@
     --#buttonpadding|[&smallButtonPadding]
     --+|[p style='text-align:center; font-weight:bold; margin-bottom:0px;']- - - - G L O B A L [&NB][&NB] M O D S - - - -[/p]
     --+|[t width='100%'][tr][td width='25%' align='center'][b]ATK[/b][/td][td width='25%' align='center'][b]DMG[/b][/td][td width='25%' align='center'][b]AC[/b][/td][td width='25%' align='center'][b]SAVE[/b][/td][/tr][tr][td width='25%' align='center'][&gambuttons][/td][td width='25%' align='center'][&gdmbuttons][/td][td width='25%' align='center'][&gacmbuttons][/td][td width='25%' align='center'][&gsmbuttons][/td][/tr][/t]
+    --+|[br]
   --]| 
 
   -->BUILD_BUTTON_LIST|[*S:character_id];repeating_attack;atkname;EXEC_PC_ATTACK;Attacks and Actions;[&pcabilitymulename];0;1
@@ -729,12 +730,24 @@
     --&spellSlotInfo1|[t align=center width=100% border=1][tr][td][b]Level[/b][/td]
     --&spellSlotInfo2|[/tr][tr][td][b]Slots[/b][/td]
     --&anySpell|0
+    --?"[&WarlockLevel]" -gt 0|[
+      -->GET_WARLOCK_PACT_SLOT_LEVEL|_pcPactSlotLvl
+      -->GET_AVAILABLE_SPELL_SLOTS|[&_pcPactSlotLvl];slotCount
+      --&spellSlotInfo1|+[td align=center][b][i]Pact [&_pcPactSlotLvl][/i][/b][/td]
+      --&spellSlotInfo2|+[td align=center][&slotCount][/td]
+      --&anySpell|1
+    --]|
     --%levelCounter|1;9
+      --?"[&WarlockLevel]" -gt 0|[
+       -->GET_WARLOCK_PACT_SLOT_LEVEL|_pcPactSlotLvl
+       --?"[&levelCounter]" -eq "[&_pcPactSlotLvl]"|PC_SLOT_DISPLAY_NEXT
+      --]|
       -->GET_AVAILABLE_SPELL_SLOTS|[&levelCounter];slotCount
-      --/?[*S:lvl[&levelCounter]_slots_total] -gt 0|&spellSlotInfo;+L[&levelCounter]([&slotCount]) 
+      --?[*S:lvl[&levelCounter]_slots_total] -gt 0|&spellSlotInfo;+L[&levelCounter]([&slotCount]) 
       --?[*S:lvl[&levelCounter]_slots_total] -gt 0|&spellSlotInfo1;+[td align=center][b][i][&levelCounter][/i][/b][/td] 
       --?[*S:lvl[&levelCounter]_slots_total] -gt 0|&spellSlotInfo2;+[td align=center][&slotCount][/td] 
       --?[*S:lvl[&levelCounter]_slots_total] -gt 0|&anySpell;1 
+      --:PC_SLOT_DISPLAY_NEXT|
     --%|
     --?[&anySpell] -eq 0|SKIP_SLOT_DISPLAY
     --?[&showPCSpellSlotList] -eq 0|SKIP_SLOT_DISPLAY
@@ -1266,9 +1279,16 @@
   --&spellInfo3|
   --&spellInfo4|
   -->CAM_ParseSpellReentry|
+  -->FIND_CLASS_LEVEL|Warlock;WarlockLevel
 
   --/|Buttons without a slot picker omit spellInfo4; treat as cast at the spell's list level ([&spellInfo1]).
   --?"X[&spellInfo4]" -eq "X" -or "[&spellInfo4]" -eq ""|&spellInfo4;[&spellInfo1]
+
+  --/|Pact Magic: non-ritual casts always use the warlock's pact slot level on the sheet.
+  --?"[&WarlockLevel]" -gt 0 -and "[&spellInfo4]" -ne "As Ritual"|[
+   -->GET_WARLOCK_PACT_SLOT_LEVEL|_execPactSlotLvl
+   --&spellInfo4|[&_execPactSlotLvl]
+  --]|
 
   --?"[&spellInfo4]" -eq "As Ritual"|=UpCast;0
   --?"[&spellInfo4]" -ne "As Ritual"|=UpCast|[&spellInfo4] - [&spellInfo1]
@@ -1768,6 +1788,7 @@
   --&_GAMB_Temp|
   --~|hashtable;fromrepeatingsection;[%1%];repeating_tohitmod;global_attack_name;GAMBHash
   --~|array;fromkeys;GAMBKeys;GAMBHash
+  --?[@GAMBKeys(length)] -gt 0|[
   --%GAMBLoop|foreach;GAMBKeys
    --?"[&GAMBLoop]" -inc "_sectionid"|GAMB_BUILD|GAMB_NEXT
    --^GAMB_NEXT|
@@ -1782,6 +1803,7 @@
    --&_GAMB_Temp|+[rbutton:#ffffff:#[&GAMBBtnColor]:8px][&GAMBLabel]::TOGGLE_GAM;[&GAMBRowId][/rbutton][&SPACE]
    --:GAMB_NEXT|
   --%|
+  --]|
   --&[%2%]|[&_GAMB_Temp]
   --<|
 
@@ -1789,6 +1811,7 @@
   --&_GDMB_Temp|
   --~|hashtable;fromrepeatingsection;[%1%];repeating_damagemod;global_damage_name;GDMBHash
   --~|array;fromkeys;GDMBKeys;GDMBHash
+  --?[@GDMBKeys(length)] -gt 0|[
   --%GDMBLoop|foreach;GDMBKeys
    --?"[&GDMBLoop]" -inc "_sectionid"|GDMB_BUILD|GDMB_NEXT
    --^GDMB_NEXT|
@@ -1803,6 +1826,7 @@
    --&_GDMB_Temp|+[rbutton:#ffffff:#[&GDMMBtnColor]:8px][&GDMBLabel]::TOGGLE_GDM;[&GDMBRowId][/rbutton][&SPACE]
    --:GDMB_NEXT|
   --%|
+  --]|
   --&[%2%]|[&_GDMB_Temp]
   --<|
 
@@ -1810,6 +1834,7 @@
   --&_GSMB_Temp|
   --~|hashtable;fromrepeatingsection;[%1%];repeating_savemod;global_save_name;GSMBHash
   --~|array;fromkeys;GSMBKeys;GSMBHash
+  --?[@GSMBKeys(length)] -gt 0|[
   --%GSMBLoop|foreach;GSMBKeys
    --?"[&GSMBLoop]" -inc "_sectionid"|GSMB_BUILD|GSMB_NEXT
    --^GSMB_NEXT|
@@ -1824,6 +1849,7 @@
    --&_GSMB_Temp|+[rbutton:#ffffff:#[&GSMBBtnColor]:8px][&GSMBLabel]::TOGGLE_GSM;[&GSMBRowId][/rbutton][&SPACE]
    --:GSMB_NEXT|
   --%|
+  --]|
   --&[%2%]|[&_GSMB_Temp]
   --<|
 
@@ -1831,6 +1857,7 @@
   --&_GACMB_Temp|
   --~|hashtable;fromrepeatingsection;[%1%];repeating_acmod;global_ac_name;GACMBHash
   --~|array;fromkeys;GACMBKeys;GACMBHash
+  --?[@GACMBKeys(length)] -gt 0|[
   --%GACMBLoop|foreach;GACMBKeys
    --?"[&GACMBLoop]" -inc "_sectionid"|GACMB_BUILD|GACMB_NEXT
    --^GACMB_NEXT|
@@ -1845,6 +1872,7 @@
    --&_GACMB_Temp|+[rbutton:#ffffff:#[&GACMBBtnColor]:8px][&GACMBLabel]::TOGGLE_GACM;[&GACMBRowId][/rbutton][&SPACE]
    --:GACMB_NEXT|
   --%|
+  --]|
   --&[%2%]|[&_GACMB_Temp]
   --<|
 
@@ -1852,6 +1880,7 @@
   --&_GSKMB_Temp|
   --~|hashtable;fromrepeatingsection;[%1%];repeating_skillmod;global_skill_name;GSKMBHash
   --~|array;fromkeys;GSKMBKeys;GSKMBHash
+  --?[@GSKMBKeys(length)] -gt 0|[
   --%GSKMBLoop|foreach;GSKMBKeys
    --?"[&GSKMBLoop]" -inc "_sectionid"|GSKMB_BUILD|GSKMB_NEXT
    --^GSKMB_NEXT|
@@ -1866,6 +1895,7 @@
    --&_GSKMB_Temp|+[rbutton:#ffffff:#[&GSKMBBtnColor]:8px][&GSKMBLabel]::TOGGLE_GSKM;[&GSKMBRowId][/rbutton][&SPACE]
    --:GSKMB_NEXT|
   --%|
+  --]|
   --&[%2%]|[&_GSKMB_Temp]
   --<|
 
@@ -2714,6 +2744,14 @@
   --?"[*S:multiclass3_flag]" -eq "1" -and [*S:multiclass3] -eq "Warlock"|&[%1%];[*S:multiclass3_lvl]
   --<|
 
+  --/|Pact Magic slot level (5e: ceil(warlockLevel/2), max 5). Requires WarlockLevel already set.
+  --:GET_WARLOCK_PACT_SLOT_LEVEL|variableToSet
+  --&[%1%]|0
+  --?"[&WarlockLevel]" -eq 0|<
+  --=warlockPactCalc|[&WarlockLevel] / 2 {CEIL} {MAX:5}
+  --&[%1%]|[$warlockPactCalc.Raw]
+  --<|
+
   --:CHECK_SPELLS_TO_KEEP|AttackName; Return variable;suffix
   --~index|array;indexof;SpellsToKeepWithSuffix;[%1%]
   --~index2|array;indexof;SpellsToKeepNoSuffix;[%1%]
@@ -2894,11 +2932,13 @@
   --+[%5%]|[BR][&AM_CACHED_BUTTON_LIST]
   --<|
 
+  --/|Title and buttons in one --+ with [BR] only (no leading [br] on the list; two --+ lines add a blank chat row).
+
   --:DO_BUILD_BUTTON_LIST|
   --~|hashtable;fromrepeatingsection;[%1%];[%2%];[%3%];BuiltButtonHash
   --~|array;fromkeys;Hash_Keys;BuiltButtonHash
   --?[@Hash_Keys(length)] -eq 0|AM_BUTTON_LIST_NOTHING
-  --&AM_BUTTON_LIST|[br]
+  --&AM_BUTTON_LIST|
   --%loop|foreach;Hash_Keys
     --?"[&loop]" -inc "_sectionid"|AM_LIST_NEXT_ROW|AM_LIST_CONTINUE
     --:AM_LIST_NEXT_ROW|
@@ -2959,10 +2999,10 @@
      --?"[&DisplayName]" -inc "+"|AM_LIST_PC_NAME_PAYLOAD|AM_LIST_PC_RID_PAYLOAD
      --:AM_LIST_PC_RID_PAYLOAD|
      --&PcAttackPayload|RID[&PcRidBody]
-     --^AM_LIST_PC_PAYLOAD_DONE|
+     --^AM_LIST_PAYLOAD_DONE|
      --:AM_LIST_PC_NAME_PAYLOAD|
      --&PcAttackPayload|[&ActionName]
-     --:AM_LIST_PC_PAYLOAD_DONE|
+     --:AM_LIST_PAYLOAD_DONE|
     --]|
     --?"[%4%]" -eq "EXEC_NPC_ACTION"|AM_LIST_NPC_RID
     --?"[%4%]" -eq "EXEC_NPC_BONUS_ACTION"|AM_LIST_NPC_RID
@@ -3001,7 +3041,7 @@
     --&AM_CACHED_BUTTON_LIST|[&AM_CACHED_BUTTON_LIST(replaceall,!#!,:)]
     --&AM_CACHED_BUTTON_LIST|[&AM_CACHED_BUTTON_LIST(replaceall,!$!,;)]
     --&AM_CACHED_BUTTON_LIST|[&AM_CACHED_BUTTON_LIST(replaceall,!@!,|)]
-    --+[%5%]|[&AM_CACHED_BUTTON_LIST]
+    --+[%5%]|[BR][&AM_CACHED_BUTTON_LIST]
     --<|
 
     --:DO_BUILD_SPELL_BUTTON_LIST|
@@ -3012,8 +3052,9 @@
     --?"[%7%]" -eq 0|&LevelString; 
     --?"[%7%]" -eq 0|BEGIN_BUILDING_SPELL_BUTTONS
     --?"[&UseAMAShadowdarkSystem]" -eq "1" -and "[*S:class]" -eq "Wizard"|BEGIN_BUILDING_SPELL_BUTTONS
-    --?"[%7%]" -gt 0|>BUILD_SLOT_LIST;[%7%];slotString;
-    --?"[%7%]" -gt 0|>BUILD_SLOT_LIST;[%7%];RitualslotString;Yes
+    --?"[%7%]" -gt 0 -and "[&WarlockLevel]" -gt 0"|>BUILD_WARLOCK_SPELL_SLOT_STRING;slotString;RitualslotString
+    --?"[%7%]" -gt 0 -and "[&WarlockLevel]" -eq 0"|>BUILD_SLOT_LIST;[%7%];slotString;
+    --?"[%7%]" -gt 0 -and "[&WarlockLevel]" -eq 0"|>BUILD_SLOT_LIST;[%7%];RitualslotString;Yes
     --:BEGIN_BUILDING_SPELL_BUTTONS|
     --~|hashtable;fromrepeatingsection;[%1%];[%2%];[%3%];BuiltButtonHash
     --~|array;fromkeys;Hash_Keys;BuiltButtonHash
@@ -3023,15 +3064,21 @@
     --%loop|foreach;Hash_Keys
       --?"[&loop]" -inc "_sectionid"|&HashList(99999);[&loop(replace,_sectionid,)]
     --%|
+    --~|array;sort;HashList
 
-    --&AM_BUTTON_LIST|[br]
+    --&AM_BUTTON_LIST|
 
     --/|Remaining slots for this spell level (once per section; used by per-spell filter below).
     --&_spellBtnSlotsAtLevel|0
     --?"[&_buildSpellLevel]" -eq 0|PC_SPELL_BTN_SLOTS_READ_DONE
     --?[*[%1%]:npc] -eq 1|PC_SPELL_BTN_SLOTS_READ_DONE
     --?[&trackPCSpellSlots] -eq 0|PC_SPELL_BTN_SLOTS_READ_DONE
-    -->GET_AVAILABLE_SPELL_SLOTS|[&_buildSpellLevel];_spellBtnSlotsAtLevel
+    --?"[&WarlockLevel]" -gt 0"|[
+     -->GET_WARLOCK_PACT_SLOT_LEVEL|_spellBtnPactLvl
+     -->GET_AVAILABLE_SPELL_SLOTS|[&_spellBtnPactLvl];_spellBtnSlotsAtLevel
+    --]|[
+     -->GET_AVAILABLE_SPELL_SLOTS|[&_buildSpellLevel];_spellBtnSlotsAtLevel
+    --]|
     --=spellBtnSlotsAtLevelNum|[&_spellBtnSlotsAtLevel]
     --?"X[$spellBtnSlotsAtLevelNum]" -eq "X"|=spellBtnSlotsAtLevelNum;0
     --:PC_SPELL_BTN_SLOTS_READ_DONE|
@@ -3092,12 +3139,21 @@
    --!a:[%1%]|!5ECAM_CACHE_[%5%]_[%7%]:[&cacheList]
   --]|
 
-    --+[%5%]|[&AM_BUTTON_LIST]
+    --+[%5%]|[BR][&AM_BUTTON_LIST]
     --:AM_SPELL_BUTTON_LIST_NOTHING|
   --<|
 
   --:SHOW_MULTIATTACK|description
   --+Multiattack|[%1%] [br][br]
+  --<|
+
+  --/|Warlock pact slot picker: pact level only (no upcast), plus As Ritual on the ritual string.
+  --:BUILD_WARLOCK_SPELL_SLOT_STRING|slotStringVar;ritualSlotStringVar
+  -->GET_WARLOCK_PACT_SLOT_LEVEL|_wlPactLvl
+  --&buildslotString||[&QB]Slot Level|[&_wlPactLvl][&QE]
+  --&[%1%]|[&buildslotString]
+  --&buildslotString||[&QB]Slot Level|As Ritual[&QE]
+  --&[%2%]|[&buildslotString]
   --<|
 
   --:BUILD_SLOT_LIST|Spell Level;return string;is ritual (Yes for true)
@@ -3120,10 +3176,6 @@
   --&buildslotString||9
   --:BUILD_SLOT_LIST_DONE|
   --&[%2%]|[&buildslotString]
-  --<|
-
-  --:BUILD_TARGET_STRING|
-  --&[%1%]|[&TB]target|token_id}
   --<|
 
   --:BUILD_SAVES_AND_SKILLS_BUTTONS|[%1%]
@@ -3169,26 +3221,6 @@
   --#rightsub|
   --+|You aren't the original sender of this action, so you can't use the repeat button
   --X|
-
-  --/|Sanitized mule ability name. Caller sets &_muleBtnFindName (colons break gosub params).
-  --:MAKE_MULE_ABILITY_NAME|returnVar
-  --~_muleName|string;replaceall; ;-;[&_muleBtnFindName]
-  --~_muleName|string;replaceall;:-;-;[&_muleName]
-  --~_muleName|string;replaceall;:;-;[&_muleName]
-  --~_muleName|string;replaceall;';;[&_muleName]
-  --&[%1%]|[&_muleName]
-  --<|
-
-  --/|Lowercase key with spaces, hyphens, colons, underscores, apostrophes stripped â€” for fuzzy mule name matching.
-  --/|Caller sets &_muleKeySource before calling (colons break gosub params).
-  --:MULE_NAME_KEY|returnVar
-  --~[%1%]|string;tolower;[&_muleKeySource]
-  --~[%1%]|string;replaceall; ;;[&[%1%]]
-  --~[%1%]|string;replaceall;-;;[&[%1%]]
-  --~[%1%]|string;replaceall;:;;[&[%1%]]
-  --~[%1%]|string;replaceall;';;[&[%1%]]
-  --~[%1%]|string;replaceall;_;;[&[%1%]]
-  --<|
 
   --/|Escape button-list text for 5ECAM_CACHE (Kurt: : ; | only — do not escape ~ or ::~ breaks).
   --:MULE_BTN_CACHE_ESC|sourceVar;destVar
@@ -3288,144 +3320,11 @@
   --:MTR_TRACE_OUT_OFF|
   --<|
 
-  --/|Append Kurt-style [button]Label::~MuleChar|ExactMuleAbilityName[/button]. Caller sets &_muleBtnFindName first (avoids colon breakage in gosub params).
-  --:ADD_MULE_SHEET_BUTTON|muleChar;buttonLabel;listVar
-  --&_lastMuleAbilId|
-  --&_amsbPipeName|
-  --?"[%1%]" -eq ""|AMSB_DONE
-  --?"[%1%]" -eq "none"|AMSB_DONE
-  --?"X[&_muleBtnFindName]" -eq "X"|AMSB_DONE
-  --?"[&_muleBtnFindName]" -eq ""|AMSB_DONE
-  --~_amsbHyph|string;replaceall; ;-;[&_muleBtnFindName]
-  --~_amsbTest|system;findability;[%1%];[&_amsbHyph]
-  --?"[&_amsbTest]" -ne "AbilityNotFound"|AMSB_USE_HYPH
-  -->GET_CHARACTER_ID_BY_NAME|[%1%];_amsbMuleCid
-  --?"[&_amsbMuleCid]" -eq "0"|AMSB_TRY_FIND
-  --~_amsbTest|system;findability;[&_amsbMuleCid];[&_amsbHyph]
-  --?"[&_amsbTest]" -ne "AbilityNotFound"|AMSB_USE_HYPH
-  --:AMSB_TRY_FIND|
-  --&_amsbAbilId|
-  -->FIND_MULE_ABILITY|[%1%];_amsbAbilId
-  --?"[&_amsbAbilId]" -eq ""|AMSB_DONE
-  --&_lastMuleAbilId|[&_amsbAbilId]
-  --&_amsbPipeName|[*O:[&_amsbAbilId]:ability:name]
-  --?"X[&_amsbPipeName]" -eq "X"|AMSB_PIPE_HYPH
-  --?"[&_amsbPipeName]" -eq ""|AMSB_PIPE_HYPH
-  --?"[&_amsbPipeName]" -eq "false"|AMSB_PIPE_HYPH
-  --^AMSB_APPEND|
-  --:AMSB_PIPE_HYPH|
-  --&_amsbPipeName|[&_amsbHyph]
-  --:AMSB_USE_HYPH|
-  --&_lastMuleAbilId|[&_amsbTest]
-  --&_amsbPipeName|[&_amsbHyph]
-  --:AMSB_APPEND|
-  --&_amsbBtnPiece|[button][%2]::~[%1]|[&_amsbPipeName][/button][&SPACE]
-  --&[%3%]|+[&_amsbBtnPiece]
-  --:AMSB_DONE|
-  --<|
-
-  --/|Returns mule ability object id. Reads &_muleBtnFindName (not gosub param — colons break nested calls).
-  --:FIND_MULE_ABILITY|muleChar;abilityIdReturnVar
-  --&[%2%]|
-  --?"[%1%]" -eq ""|FMA_FAIL
-  --?"[%1%]" -eq "none"|FMA_FAIL
-  --?"X[&_muleBtnFindName]" -eq "X"|FMA_FAIL
-  --?"[&_muleBtnFindName]" -eq ""|FMA_FAIL
-  -->GET_CHARACTER_ID_BY_NAME|[%1%];_fmaMuleCid
-  --&_muleKeySource|[&_muleBtnFindName]
-  -->MULE_NAME_KEY|_fmaWantKey
-  --?"[&_fmaMuleCid]" -eq "0"|FMA_ENUM_BY_NAME
-  --~|array;objects:ability;_fmaAbilArr;;[&_fmaMuleCid]
-  --?[@_fmaAbilArr(length)] -gt 0|FMA_ENUM_START
-  --:FMA_ENUM_BY_NAME|
-  --~|array;objects:ability;_fmaAbilArr;;[%1%]
-  --?[@_fmaAbilArr(length)] -eq 0|FMA_TRY_FINDABILITY
-  --^FMA_ENUM_START|
-  --:FMA_ENUM_START|
-  --&_fmaAbilIdx|0
-  --^FMA_ENUM_LOOP|
-  --:FMA_ENUM_LOOP|
-  --?[@_fmaAbilArr(length)] -eq 0|FMA_TRY_FINDABILITY
-  --?[_fmaAbilIdx] -ge [@_fmaAbilArr(length)]|FMA_TRY_FINDABILITY
-  --&_fmaCurAbilId|@_fmaAbilArr([&_fmaAbilIdx])
-  --&_fmaAbilName|[*O:[&_fmaCurAbilId]:ability:name]
-  --?"[&_fmaAbilName]" -eq ""|FMA_ENUM_NEXT
-  --?"[&_fmaAbilName]" -eq "false"|FMA_ENUM_NEXT
-  --&_muleKeySource|[&_fmaAbilName]
-  --~_fmaGotKey|string;tolower;[&_muleKeySource]
-  --~_fmaGotKey|string;replaceall; ;;[&_fmaGotKey]
-  --~_fmaGotKey|string;replaceall;-;;[&_fmaGotKey]
-  --~_fmaGotKey|string;replaceall;:;;[&_fmaGotKey]
-  --~_fmaGotKey|string;replaceall;';;[&_fmaGotKey]
-  --~_fmaGotKey|string;replaceall;_;;[&_fmaGotKey]
-  --?"[&_fmaGotKey]" -ne "[&_fmaWantKey]"|FMA_ENUM_NEXT
-  --&[%2%]|[&_fmaCurAbilId]
-  --^FMA_DONE|
-  --:FMA_ENUM_NEXT|
-  --=FmaIdxNext|[$_fmaAbilIdx.Raw]+1
-  --&_fmaAbilIdx|[$FmaIdxNext.Raw]
-  --^FMA_ENUM_LOOP|
-  --:FMA_TRY_FINDABILITY|
-  --~_findTest|system;findability;[%1%];[&_muleBtnFindName]
-  --?"[&_findTest]" -eq "AbilityNotFound"|FMA_TRY_COLON_OR_SAN
-  --&[%2%]|[&_findTest]
-  --&_fmaFoundMsg|findability exact
-  --^FMA_FOUND|
-  --:FMA_TRY_COLON_OR_SAN|
-  --?"[&_muleBtnFindName]" -inc ":"|FMA_TRY_HYPHONLY
-  --^FMA_TRY_SANITIZED|
-  --:FMA_TRY_SANITIZED|
-  -->MAKE_MULE_ABILITY_NAME|_findSanitized
-  --~_findTest|system;findability;[%1%];[&_findSanitized]
-  --?"[&_findTest]" -eq "AbilityNotFound"|FMA_TRY_HYPHONLY
-  --&[%2%]|[&_findTest]
-  --&_fmaFoundMsg|findability sanitized=[&_findSanitized]
-  --^FMA_FOUND|
-  --:FMA_TRY_HYPHONLY|
-  --~_findHyphOnly|string;replaceall; ;-;[&_muleBtnFindName]
-  --~_findTest|system;findability;[%1%];[&_findHyphOnly]
-  --?"[&_findTest]" -eq "AbilityNotFound"|FMA_TRY_HYPH_NOAPOST
-  --&[%2%]|[&_findTest]
-  --&_fmaFoundMsg|findability hyphOnly=[&_findHyphOnly]
-  --^FMA_FOUND|
-  --:FMA_TRY_HYPH_NOAPOST|
-  --~_findNoApos|string;replaceall;';;[&_muleBtnFindName]
-  --~_findHyphOnly|string;replaceall; ;-;[&_findNoApos]
-  --~_findTest|system;findability;[%1%];[&_findHyphOnly]
-  --?"[&_findTest]" -eq "AbilityNotFound"|FMA_TRY_CID
-  --&[%2%]|[&_findTest]
-  --&_fmaFoundMsg|findability hyphNoApost=[&_findHyphOnly]
-  --^FMA_FOUND|
-  --:FMA_TRY_CID|
-  --?"[&_fmaMuleCid]" -eq "0"|FMA_FAIL
-  --~_findTest|system;findability;[&_fmaMuleCid];[&_muleBtnFindName]
-  --?"[&_findTest]" -eq "AbilityNotFound"|FMA_TRY_CID_SAN
-  --&[%2%]|[&_findTest]
-  --&_fmaFoundMsg|findability cid+exact
-  --^FMA_FOUND|
-  --:FMA_TRY_CID_SAN|
-  --~_findTest|system;findability;[&_fmaMuleCid];[&_findSanitized]
-  --?"[&_findTest]" -eq "AbilityNotFound"|FMA_TRY_CID_HYPH
-  --&[%2%]|[&_findTest]
-  --&_fmaFoundMsg|findability cid+sanitized
-  --^FMA_FOUND|
-  --:FMA_TRY_CID_HYPH|
-  --~_findTest|system;findability;[&_fmaMuleCid];[&_findHyphOnly]
-  --?"[&_findTest]" -eq "AbilityNotFound"|FMA_FAIL
-  --&[%2%]|[&_findTest]
-  --&_fmaFoundMsg|findability cid+hyphOnly
-  --^FMA_FOUND|
-  --:FMA_FOUND|
-  --^FMA_DONE|
-  --:FMA_FAIL|
-  --^FMA_DONE|
-  --:FMA_DONE|
-  --<|
-
-  --:IS_TRAIT_FEAT|source_type;sourceName;returnVar
-  --&[%3%]|0
-  --~_featST|string;tolower;[%1%]
-  --~_featSrc|string;tolower;[%2%]
+  --/|Uses TraitSourceType and TraitSource already set by caller (avoids apostrophes in gosub params).
+  --:IS_TRAIT_FEAT_FROM_VARS|returnVar
+  --&[%1%]|0
+  --~_featST|string;tolower;[&TraitSourceType]
+  --~_featSrc|string;tolower;[&TraitSource]
   --?"[&_featST]" -eq "feat"|IS_FEAT_MATCH
   --?"[&_featSrc]" -eq "feat"|IS_FEAT_MATCH
   --?"[&_featST]" -inc "epic boon"|IS_FEAT_MATCH
@@ -3441,7 +3340,7 @@
   --^IS_FEAT_MATCH|
   --<|
   --:IS_FEAT_MATCH|
-  --&[%3%]|1
+  --&[%1%]|1
   --<|
 
   --:DISPLAY_PC_OTHER_ACTIONS|
@@ -3449,24 +3348,37 @@
     --&RA_BUTTON_LIST|
     --~|hashtable;fromrepeatingsection;[*S:character_id];repeating_traits;name;TraitBtnHash
     --~|array;fromkeys;TraitBtnKeys;TraitBtnHash
-    --%baTrait|foreach;TraitBtnKeys
-      --?"[&baTrait]" -inc "_sectionid"|PC_BA_TRAIT_ROW
-      --^PC_BA_TRAIT_NEXT|
-      --:PC_BA_TRAIT_ROW|
-      --&TraitRowName|[&baTrait(replace,_sectionid,)]
-      --?"[&TraitRowName]" -eq ""|PC_BA_TRAIT_NEXT
+    --~|array;define;TraitNameList;dummy
+    --~|array;removeat;TraitNameList;0
+    --%traitKeyLoop|foreach;TraitBtnKeys
+      --?"[&traitKeyLoop]" -inc "_sectionid"|&TraitNameList(99999);[&traitKeyLoop(replace,_sectionid,)]
+    --%|
+    --~|array;sort;TraitNameList
+    --~|array;define;BaNameList;dummy
+    --~|array;removeat;BaNameList;0
+    --%baScan|foreach;TraitNameList
+      --&TraitRowName|[&baScan]
+      --?"[&TraitRowName]" -eq ""|PC_BA_SCAN_NEXT
       --&TraitSourceType|[:TraitBtnHash("[&TraitRowName]_source_type")]
       --&TraitSource|[:TraitBtnHash("[&TraitRowName]_source")]
-      -->IS_TRAIT_FEAT|[&TraitSourceType];[&TraitSource];_TraitIsFeat
-      --?"[&_TraitIsFeat]" -eq "1"|PC_BA_TRAIT_NEXT
-      --&TraitRowId|[:TraitBtnHash("[&baTrait]")]
+      -->IS_TRAIT_FEAT_FROM_VARS|_TraitIsFeat
+      --?"[&_TraitIsFeat]" -eq "1"|PC_BA_SCAN_NEXT
       --&TraitDesc|[:TraitBtnHash("[&TraitRowName]_description")]
       --~TraitDesc|string;replaceall;";;[&TraitDesc]
-      --?"[&TraitDesc]" -inc "bonus action"|PC_BA_TRAIT_ADD
-      --?"[&TraitRowName]" -inc "Two-Weapon Fighting"|PC_BA_TRAIT_ADD
-      --?"[&TraitRowName]" -inc "Two Weapon Fighting"|PC_BA_TRAIT_ADD
-      --^PC_BA_TRAIT_NEXT|
-      --:PC_BA_TRAIT_ADD|
+      --?"[&TraitDesc]" -inc "bonus action"|PC_BA_SCAN_ADD
+      --?"[&TraitRowName]" -inc "Two-Weapon Fighting"|PC_BA_SCAN_ADD
+      --?"[&TraitRowName]" -inc "Two Weapon Fighting"|PC_BA_SCAN_ADD
+      --^PC_BA_SCAN_NEXT|
+      --:PC_BA_SCAN_ADD|
+      --&BaNameList(99999)|[&TraitRowName]
+      --:PC_BA_SCAN_NEXT|
+    --%|
+    --~|array;sort;BaNameList
+    --?[@BaNameList(length)] -gt 0|[
+    --%baItem|foreach;BaNameList
+      --&TraitRowName|[&baItem]
+      --&TraitRowId|[:TraitBtnHash("[&TraitRowName]_sectionid")]
+      --?"[&TraitRowId]" -eq ""|&TraitRowId;[:TraitBtnHash("[&TraitRowName]")]
       --&TraitBtnLabel|[&TraitRowName]
       --&_muleTraitChar|[&pcabilitymulename]
       --&_muleTraitRowName|[&TraitRowName]
@@ -3476,33 +3388,44 @@
       --&BA_BUTTON_LIST|+[&_muleBtnPiece]
       --&_lastMuleAbilId|[&_muleHyphTest]
       --&_baRaShownTraits|+;[&TraitRowName];
-      --^PC_BA_TRAIT_NEXT|
+      --^PC_BA_ITEM_NEXT|
       --:PC_BA_TRAIT_RBUTTON|
       --&BA_BUTTON_LIST|+[rbutton][&TraitBtnLabel]::EXEC_PC_TRAIT;[&TraitRowId][/rbutton][&SPACE]
       --&_baRaShownTraits|+;[&TraitRowName];
-      --:PC_BA_TRAIT_NEXT|
+      --:PC_BA_ITEM_NEXT|
     --%|
-    --%raTrait|foreach;TraitBtnKeys
-      --?"[&raTrait]" -inc "_sectionid"|PC_RA_TRAIT_ROW
-      --^PC_RA_TRAIT_NEXT|
-      --:PC_RA_TRAIT_ROW|
-      --&TraitRowName|[&raTrait(replace,_sectionid,)]
-      --?"[&TraitRowName]" -eq ""|PC_RA_TRAIT_NEXT
+    --]|
+    --~|array;define;RaNameList;dummy
+    --~|array;removeat;RaNameList;0
+    --%raScan|foreach;TraitNameList
+      --&TraitRowName|[&raScan]
+      --?"[&TraitRowName]" -eq ""|PC_RA_SCAN_NEXT
       --&TraitSourceType|[:TraitBtnHash("[&TraitRowName]_source_type")]
       --&TraitSource|[:TraitBtnHash("[&TraitRowName]_source")]
-      -->IS_TRAIT_FEAT|[&TraitSourceType];[&TraitSource];_TraitIsFeat
-      --?"[&_TraitIsFeat]" -eq "1"|PC_RA_TRAIT_NEXT
-      --&TraitRowId|[:TraitBtnHash("[&raTrait]")]
+      -->IS_TRAIT_FEAT_FROM_VARS|_TraitIsFeat
+      --?"[&_TraitIsFeat]" -eq "1"|PC_RA_SCAN_NEXT
       --&TraitDesc|[:TraitBtnHash("[&TraitRowName]_description")]
       --~TraitDesc|string;replaceall;";;[&TraitDesc]
-      --?"[&TraitDesc]" -inc "bonus action"|PC_RA_TRAIT_NEXT
-      --?"[&TraitDesc]" -inc "as an action"|PC_RA_TRAIT_NEXT
-      --?"[&TraitDesc]" -inc "can't take reaction"|PC_RA_TRAIT_NEXT
-      --?"[&TraitDesc]" -inc "cannot take reaction"|PC_RA_TRAIT_NEXT
-      --?"[&TraitDesc]" -inc "without using your movement, action, or reaction"|PC_RA_TRAIT_NEXT
-      --?"[&TraitDesc]" -ninc "reaction"|PC_RA_TRAIT_NEXT
-      --^PC_RA_TRAIT_ADD|
-      --:PC_RA_TRAIT_ADD|
+      --?"[&TraitDesc]" -inc "bonus action"|PC_RA_SCAN_NEXT
+      --?"[&TraitDesc]" -inc "as an action"|PC_RA_SCAN_NEXT
+      --?"[&TraitDesc]" -inc "can't take reaction"|PC_RA_SCAN_NEXT
+      --?"[&TraitDesc]" -inc "cannot take reaction"|PC_RA_SCAN_NEXT
+      --?"[&TraitDesc]" -inc "without using your movement, action, or reaction"|PC_RA_SCAN_NEXT
+      --?"[&TraitDesc]" -ninc "reaction"|PC_RA_SCAN_NEXT
+      --&RaNameList(99999)|[&TraitRowName]
+      --:PC_RA_SCAN_NEXT|
+    --%|
+    --&_raOppLabel|Opportunity Attack
+    --&RaNameList(99999)|[&_raOppLabel]
+    --~|array;sort;RaNameList
+    --?[@RaNameList(length)] -gt 0|[
+    --%raItem|foreach;RaNameList
+      --?"[&raItem]" -eq "Opportunity Attack"|PC_RA_OPP_BUILD|PC_RA_TRAIT_ROW
+      --^PC_RA_ITEM_NEXT|
+      --:PC_RA_TRAIT_ROW|
+      --&TraitRowName|[&raItem]
+      --&TraitRowId|[:TraitBtnHash("[&TraitRowName]_sectionid")]
+      --?"[&TraitRowId]" -eq ""|&TraitRowId;[:TraitBtnHash("[&TraitRowName]")]
       --&TraitBtnLabel|[&TraitRowName]
       --&_muleTraitChar|[&pcabilitymulename]
       --&_muleTraitRowName|[&TraitRowName]
@@ -3512,25 +3435,25 @@
       --&RA_BUTTON_LIST|+[&_muleBtnPiece]
       --&_lastMuleAbilId|[&_muleHyphTest]
       --&_baRaShownTraits|+;[&TraitRowName];
-      --^PC_RA_TRAIT_NEXT|
+      --^PC_RA_ITEM_NEXT|
       --:PC_RA_TRAIT_RBUTTON|
       --&RA_BUTTON_LIST|+[rbutton][&TraitBtnLabel]::EXEC_PC_TRAIT;[&TraitRowId][/rbutton][&SPACE]
       --&_baRaShownTraits|+;[&TraitRowName];
-      --:PC_RA_TRAIT_NEXT|
+      --^PC_RA_ITEM_NEXT|
+      --:PC_RA_OPP_BUILD|
+      --~_muleHyphName|string;replaceall; ;-;Opportunity Attack
+      --~_muleHyphTest|system;findability;[&pcabilitymulename];[&_muleHyphName]
+      --?"[&_muleHyphTest]" -eq "AbilityNotFound"|PC_RA_OPP_RBUTTON
+      --&_muleBtnPiece|[button]Opportunity Attack::~[&pcabilitymulename]|[&_muleHyphName][/button][&SPACE]
+      --&RA_BUTTON_LIST|+[&_muleBtnPiece]
+      --^PC_RA_ITEM_NEXT|
+      --:PC_RA_OPP_RBUTTON|
+      --&RA_BUTTON_LIST|+[rbutton]Opportunity Attack::OPP_ATTACK[/rbutton][&SPACE]
+      --:PC_RA_ITEM_NEXT|
     --%|
-    --~_muleHyphName|string;replaceall; ;-;Opportunity Attack
-    --~_muleHyphTest|system;findability;[&pcabilitymulename];[&_muleHyphName]
-    --?"[&_muleHyphTest]" -eq "AbilityNotFound"|PC_RA_OPP_RBUTTON
-    --&_muleBtnPiece|[button]Opportunity Attack::~[&pcabilitymulename]|[&_muleHyphName][/button][&SPACE]
-    --&RA_BUTTON_LIST|+[&_muleBtnPiece]
-    --^PC_RA_OPP_DONE|
-    --:PC_RA_OPP_RBUTTON|
-    --&RA_BUTTON_LIST|+[rbutton]Opportunity Attack::OPP_ATTACK[/rbutton][&SPACE]
-    --:PC_RA_OPP_DONE|
-    --+Bonus Actions|
-    --+|[&BA_BUTTON_LIST]
-    --+Reactions|
-    --+|[&RA_BUTTON_LIST]
+    --]|
+    --+Bonus Actions|[BR][&BA_BUTTON_LIST]
+    --+Reactions|[BR][&RA_BUTTON_LIST]
   --<|
 
   --:DISPLAY_PC_FEATS|
@@ -3540,14 +3463,19 @@
     --&FEAT_BUTTON_LIST|
     --~|hashtable;fromrepeatingsection;[*S:character_id];repeating_traits;name;FeatBtnHash
     --~|array;fromkeys;FeatBtnKeys;FeatBtnHash
-    --%featTrait|foreach;FeatBtnKeys
-      --?"[&featTrait]" -inc "_sectionid"|PC_FEAT_TRAIT_ROW
-      --^PC_FEAT_TRAIT_NEXT|
+    --~|array;define;FeatNameList;dummy
+    --~|array;removeat;FeatNameList;0
+    --%featKeyLoop|foreach;FeatBtnKeys
+      --?"[&featKeyLoop]" -inc "_sectionid"|&FeatNameList(99999);[&featKeyLoop(replace,_sectionid,)]
+    --%|
+    --~|array;sort;FeatNameList
+    --%featTrait|foreach;FeatNameList
       --:PC_FEAT_TRAIT_ROW|
-      --&TraitRowName|[&featTrait(replace,_sectionid,)]
+      --&TraitRowName|[&featTrait]
       --?"[&TraitRowName]" -eq ""|PC_FEAT_TRAIT_NEXT
       --?"[&_baRaShownTraits]" -inc ";[&TraitRowName];"|PC_FEAT_TRAIT_NEXT
-      --&TraitRowId|[:FeatBtnHash("[&featTrait]")]
+      --&TraitRowId|[:FeatBtnHash("[&TraitRowName]_sectionid")]
+      --?"[&TraitRowId]" -eq ""|&TraitRowId;[:FeatBtnHash("[&TraitRowName]")]
       --&TraitBtnLabel|[&TraitRowName]
       --&_lastMuleAbilId|
       --?"[&pcabilitymulename]" -eq "none"|PC_FEAT_TRY_NPC_MULE
@@ -3573,8 +3501,7 @@
       --&FEAT_BUTTON_LIST|+[rbutton][&TraitBtnLabel]::EXEC_PC_TRAIT;[&TraitRowId][/rbutton][&SPACE]
       --:PC_FEAT_TRAIT_NEXT|
     --%|
-    --+Traits/Feats|
-    --+|[&FEAT_BUTTON_LIST]
+    --+Traits/Feats|[BR][&FEAT_BUTTON_LIST]
     --?"[&CamTraceDebug]" -ne "1"|PC_FEAT_TRACE_OUT_OFF
     --#debug|0
     --:PC_FEAT_TRACE_OUT_OFF|
