@@ -3002,7 +3002,6 @@
      --^AM_LIST_PAYLOAD_DONE|
      --:AM_LIST_PC_NAME_PAYLOAD|
      --&PcAttackPayload|[&ActionName]
-     --:AM_LIST_PAYLOAD_DONE|
     --]|
     --?"[%4%]" -eq "EXEC_NPC_ACTION"|AM_LIST_NPC_RID
     --?"[%4%]" -eq "EXEC_NPC_BONUS_ACTION"|AM_LIST_NPC_RID
