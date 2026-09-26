@@ -1,10 +1,10 @@
 ﻿!script {{
   --/|Script Name : 5E Action Menu
-  --/|Version     : 3.8.1
+  --/|Version     : 3.8.2
   --/|Requires SC : 2.7.15+
   --/|Author      : Kurt Jaegers
   --/|Modified By : Farsidegallery
-  --&CAM_VERSION|3.8.1
+  --&CAM_VERSION|3.8.2
 
   --/|IMPORTANT NOTE: Updating this macro via the in-game editor will cause it to exhibit strange behavior. If you wish
   --/|to make settings changes, make them in an external editor (like NOTEPAD) and copy/paste the whole
@@ -105,6 +105,7 @@
   --&DisplayButtonsForAMAbilities|1     --/|If set to 1, the menu will include custom buttons defined on characters that include the "AM-" prefix in their names.
   --&AmListDebug|0                      --/|Set to 1 to whisper GM debug lines while building Custom Actions (AMLIST troubleshooting)
   --&CamTraceDebug|0                    --/|Set to 1 for ScriptCards debug trace lines on trait/mule button building. Set 0 when done.
+  --&CamTargetDebug|0                   --/|Set to 1 to whisper GM target/AC diagnostics on EXEC_PC_ATTACK and NPC attacks. Set 0 when done.
   --&UseEmojisToReplaceText|0           --/|If set to 1, emojis will be used in place of text in some places
 
   --/|Adjusting these values will allow you to customize the padding around the action buttons. The default for Roll20 is 5px. The Action
@@ -372,6 +373,7 @@
   --&action_name|[&action_name(replace,-!lpar!-,(,)]
   --&action_name|[&action_name(replace,-!rpar!-,))]
   --&action_name|[&action_name(replace,-!plus!-,+,)]
+  -->CAM_TargetDebugWhisper|EXEC_NPC_ACTION reentry|reentryval=[&reentryval] action_target=[&action_target]
   --<|
 
   --/|Load repeating_npcaction* row by RID payload or Rfind by name. Sets *R; on failure jumps to :NPC_ROW_NOT_FOUND|
@@ -393,6 +395,11 @@
   --?"[*R:name]" -eq "NoRepeatingAttributeLoaded"|>NPC_ROW_NOT_FOUND
   --&action_name|[*R:name]
   --:LNAR_DONE|
+  --&actionBtnName|[&action_name]
+  --&actionBtnName|[&actionBtnName(replace,;,-!-!-)]
+  --&actionBtnName|[&actionBtnName(replace,(,-!lpar!-)]
+  --&actionBtnName|[&actionBtnName(replace,),-!rpar!-)]
+  --&actionBtnName|[&actionBtnName(replace,+,-!plus!-)]
   --<|
 
   --:NPC_ROW_NOT_FOUND|
@@ -475,8 +482,10 @@
     -->CheckDamageModifiersNPC|[*T:character_id];dmgModType1;[*R:attack_damagetype];0;0;0;T
     -->CheckDamageModifiersNPC|[*T:character_id];dmgModType2;[*R:attack_damagetype2];0;0;0;T
     --:SKIP_NPC_DMG_MODS|
+    -->CAM_TargetDebugSnapshot|[&action_target];EXEC_NPC_ACTION AC
     --=AC|[*T:ac]
     --?"[*T:npc_ac]" -ne ""|=AC;[*T:npc_ac]
+    -->CAM_TargetDebugWhisper|EXEC_NPC_ACTION AC used|AC=[$AC.Raw] npc_ac=[*T:npc_ac]
     --?[&sendGmInfo] -eq 1|[
       --+[*R:name] Attack|rolled [$ToHit] vs the target's AC[br][br]
       --*[*R:name] Attack|rolled [$ToHit] vs AC [b][$AC.Raw][/b]
@@ -537,11 +546,15 @@
 	
 	--:NPCA_FAIL|
     --+Critical Fail! | You rolled a [$ToHit.Base] on your attack roll.
-	--?"[&UseFailTables]" -ne "1"|^NPCA_DONE|
+	--?"[&UseFailTables]" -ne "1"|[
+	 --^NPCA_DONE|
+	--]|
 	--&failTable|
 	--?"[*R:attack_type]" -inc "Melee"|&failTable;[&FailTableMelee]
 	--?"[*R:attack_type]" -inc "Ranged"|&failTable;[&FailTableRanged]
-	--?"[&failTable]" -eq ""|^NPCA_DONE|
+	--?"[&failTable]" -eq ""|[
+	 --^NPCA_DONE|
+	--]|
 	--+|[br]
 	--=Fail|[T#[&failTable]]
     --&failText|[$Fail.tableEntryText]
@@ -768,6 +781,9 @@
 
   --:EXEC_PC_ATTACK|
   --?[&AMOriginalSendingPlayer] -ne [&SendingPlayerID]|YOU_CANNOT_DO_THAT
+  --?"[&CamTargetDebug]" -eq "1"|[
+   --#debug|1
+  --]|
   -->CAM_SetDamageApplyRoutines|
   --/+|[hr #58180d]
   --#whisper|
@@ -813,18 +829,19 @@
   --&RidPrefix|[&RidTail(0,3)]
   --?"[&RidPrefix]" -eq "RID"|PC_ATK_DECODE_RID|PC_ATK_NAME_ONLY
   --:PC_ATK_DECODE_RID|
-  --&RidTail|[&RidTail(after,RID)]
-  --&RidTail|[&RidTail(after,-)]
-  --&attack_rowid|-[&RidTail]
+  --/|Match NPC LNAR_BY_RID: RID + id body (no leading hyphen); do not strip (after,-) again or row ids truncate.
+  --&attack_rowid|-[&RidTail(after,RID)]
   --^PC_ATK_PARSE_DONE|
   --:PC_ATK_NAME_ONLY|
   --?"X[&attack_name]" -eq "X" -or "[&attack_name]" -eq ""|&attack_name;[&RidTail]
   --:PC_ATK_PARSE_DONE|
+  -->CAM_TargetDebugWhisper|EXEC_PC_ATTACK reentry|reentryval=[&reentryval] attack_part=[&attack_part] attack_target=[&attack_target]
   --~attack_name|string;replace;-!-!-;;;[&attack_name]
   --~attack_name|string;replace;-!plus!-;+;[&attack_name]
   --~attack_name|string;replace;-!lpar!-;(;[&attack_name]
   --~attack_name|string;replace;-!rpar!-;);[&attack_name]
   --#targettoken|[&attack_target]
+  -->CAM_TargetDebugSnapshot|[&attack_target];EXEC_PC_ATTACK after #targettoken
   -->DETERMINE_NPC_STATUS_MODIFIERS|[*T:t-id];T
   -->Find_Active_Global_Attack_Modifiers|[&PcLookupCharId];PC_GAM
   -->Find_Active_Global_Damage_Modifiers|[&PcLookupCharId];PC_GDM
@@ -892,12 +909,7 @@
   --&attackBtnName|[&attackBtnName(replace,(,-!lpar!-)]
   --&attackBtnName|[&attackBtnName(replace,),-!rpar!-)]
   --&attackBtnName|[&attackBtnName(replace,+,-!plus!-)]
-  --&PCRepeatPayload|[&attack_part]
-  --?"X[&attack_rowid]" -ne "X" -and "[&attack_rowid]" -ne ""|[
-   --&PcRepeatEnc|RID[&attack_rowid(after,-)]
-   --&PCRepeatPayload|[&attackBtnName][&PcRepeatEnc]
-  --]|
-  --?"X[&attack_rowid]" -eq "X" -or "[&attack_rowid]" -eq ""|&PCRepeatPayload;[&attackBtnName]
+  --&PCRepeatPayload|[&attackBtnName]
   --&emoteActionName|[*R:atkname]
   --~emoteActionName|string;replace;(;[;[&emoteActionName]
   --~emoteActionName|string;replace;);];[&emoteActionName]
@@ -1008,8 +1020,10 @@
   --?[*R:dmg2mod] -lt 0|&dmgroll2;+ [*R:dmg2mod] [Special]
   --/?[*R:atkmagic] -gt 0|&dmgroll2;+ + [*R:atkmagic] [Magic]
   --/?[*R:atkmagic] -lt 0|&dmgroll2;+ [*R:atkmagic] [Magic]
+  -->CAM_TargetDebugSnapshot|[&attack_target];EXEC_PC_ATTACK AC
   --=AC|[*T:ac]
   --?"[*T:npc_ac]" -ne ""|=AC;[*T:npc_ac] [&NPC_ACMOD]
+  -->CAM_TargetDebugWhisper|EXEC_PC_ATTACK AC used|AC=[$AC.Raw] npc_ac=[*T:npc_ac] NPC_ACMOD=[&NPC_ACMOD] damageRoutine=[&damageRoutine] applyTid=[*T:t-id]
   --?[&sendGmInfo] -eq 1|[
     --+[*R:atkname] Attack|rolled [$attackRoll] vs the target's AC[br][br]
     --*[*R:atkname] Attack|rolled [$attackRoll] vs AC [b][$AC.Raw][/b]
@@ -1969,6 +1983,32 @@
   --?"[&damageApplyScript]" -ne "damagebuttons"|&damageRoutine;CAM_ApplyDamageOrHealing
   --<|
 
+  --/|Diagnostics only (CamTargetDebug|1). Does not change targeting or AC logic.
+  --:CAM_TargetDebugWhisper|title;body
+  --?"[&CamTargetDebug]" -ne "1"|<
+  --#whisper|self,gm
+  --+[%1%]|[%2%]
+  --<|
+
+  --:CAM_TargetDebugSnapshot|tokenId;label
+  --?"[&CamTargetDebug]" -ne "1"|<
+  --?"[%1%]" -eq "NONE"|<
+  --?"X[%1%]" -eq "X"|<
+  --?"[%1%]" -eq ""|<
+  --&_camSnapTid|[%1%]
+  --&_tdsTname|[*[&_camSnapTid]:t-name]
+  --&_tdsCid|[*[&_camSnapTid]:character_id]
+  --&_tdsNpc|[*[&_camSnapTid]:npc]
+  --&_tdsTokAc|[*[&_camSnapTid]:ac]
+  --&_tdsSheetAc|
+  --?"X[&_tdsCid]" -ne "X" -and "[&_tdsCid]" -ne ""|&_tdsSheetAc;[*[&_tdsCid]:ac]
+  --&_tdsTctxName|[*T:t-name]
+  --&_tdsTctxCid|[*T:character_id]
+  --&_tdsTctxAc|[*T:ac]
+  --&_tdsTctxNpcAc|[*T:npc_ac]
+  -->CAM_TargetDebugWhisper|[%2%]|snapTid=[&_camSnapTid] id t-name=[&_tdsTname] cid=[&_tdsCid] npc=[&_tdsNpc] id tokAC=[&_tdsTokAc] sheetAC=[&_tdsSheetAc] *T t-name=[&_tdsTctxName] *T cid=[&_tdsTctxCid] *T ac=[&_tdsTctxAc] *T npc_ac=[&_tdsTctxNpcAc]
+  --<|
+
   --/|Like LibSN_APPLY_DAMAGE_OR_HEALING: signed amount — negative = damage, positive = healing.
   --/|Healing always uses main-HP apply (UseTempHP|0 / Single). Damage uses [&damageApplyRoutine] (TempHP when UseTempHP|1).
   --:CAM_ApplyDamageOrHealing|tokenid;hp bar#;temp bar#;amount;display;allow overheal;allow negative hp
@@ -2168,7 +2208,9 @@
    --=hpDelta|[$_newValue] - [$StartHP]
   --]|
   --=TempHPDrainedNum|[&TempHPDrained]
-  --?"[$hpDelta]" -eq "0" -and [$TempHPDrainedNum] -eq 0|^ApplyDamageTokenmodTempHP_Done|
+  --?"[$hpDelta]" -eq "0" -and [$TempHPDrainedNum] -eq 0|[
+   --^ApplyDamageTokenmodTempHP_Done|
+  --]|
   --?"X[%5%]" -eq "X1"|+Applying;[%4%] HP to [*[%1%]:t-name]
   --?"[$hpDelta]" -ne "0" -and [$TempHPDrainedNum] -gt 0|[
    --?[$hpDelta] -lt 0|[
@@ -2993,26 +3035,8 @@
     --:AM_LIST_PC_NO_TARGET|
     --&actionTargetSuffix|NONE
     --:AM_LIST_BUILD_RBUTTON|
+    --/|Kurt-style payload: encoded atkname/action name (Rfind on exec). Legacy RID-only chat buttons still decode via PC_ATK_DECODE_RID.
     --&PcAttackPayload|[&ActionName]
-    --?"[%4%]" -eq "EXEC_PC_ATTACK" -and "X[&RowSectionId]" -ne "X" -and "[&RowSectionId]" -ne "" -and "[&RowSectionId]" -ne "undefined"|[
-     --&PcRidBody|[&RowSectionId(after,-)]
-     --?"[&DisplayName]" -inc "+"|AM_LIST_PC_NAME_PAYLOAD|AM_LIST_PC_RID_PAYLOAD
-     --:AM_LIST_PC_RID_PAYLOAD|
-     --&PcAttackPayload|RID[&PcRidBody]
-     --^AM_LIST_PAYLOAD_DONE|
-     --:AM_LIST_PC_NAME_PAYLOAD|
-     --&PcAttackPayload|[&ActionName]
-    --]|
-    --?"[%4%]" -eq "EXEC_NPC_ACTION"|AM_LIST_NPC_RID
-    --?"[%4%]" -eq "EXEC_NPC_BONUS_ACTION"|AM_LIST_NPC_RID
-    --?"[%4%]" -eq "EXEC_NPC_REACTION"|AM_LIST_NPC_RID
-    --?"[%4%]" -eq "EXEC_NPC_LEGENDARY_ACTION"|AM_LIST_NPC_RID
-    --^AM_LIST_PAYLOAD_DONE|
-    --:AM_LIST_NPC_RID|
-    --?"X[&RowSectionId]" -ne "X" -and "[&RowSectionId]" -ne "" -and "[&RowSectionId]" -ne "undefined"|[
-     --&PcRidBody|[&RowSectionId(after,-)]
-     --&PcAttackPayload|RID[&PcRidBody]
-    --]|
     --:AM_LIST_PAYLOAD_DONE|
     --&AM_BUTTON_LIST|+[rbutton][&DisplayName(totitlecase)]::[%4%];[&PcAttackPayload]|[&actionTargetSuffix][/rbutton][&SPACE]
     --:AM_LIST_CONTINUE|
