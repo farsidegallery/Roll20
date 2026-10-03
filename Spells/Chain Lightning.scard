@@ -1,4 +1,4 @@
-!script{{
+﻿!script{{
  +++5Elib;snlib;Farsidelib+++	
  
   --#sourceToken|@{selected|token_id}
@@ -6,7 +6,7 @@
   --#whisper|self,gm
 
  --/|Script Name : Chain Lightning
- --/|Version     : 2.1.1
+ --/|Version     : 2.1.2
  --/|Requires SC : TokenMod, ScriptCards Library 5Elib/snlib/Farsidelib
  --/|Author      : Farsidegallery
  --/|  
@@ -150,7 +150,7 @@
 	  --&MidDamage|[$SpellDamage]
 	 --]|  
 	-->far_CheckDamageModifiers|[&loop];[&damageType];DamageMod;0;0;0
-	-->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0   
+	-->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0;[*[&loop]:character_id]
     --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*[&loop]:t-id]"|&Hex; + 1d6 [Hex] |&Hex;
     --?"X[&HexBladeMarkerFlag]" -eq 1 -and "X[*[&loop]:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade; + [*S:pb] [Hexblade Curse] |&HexBlade;
     
