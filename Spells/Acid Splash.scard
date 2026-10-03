@@ -1,4 +1,4 @@
-!scriptcards {{
+﻿!scriptcards {{
   +++5Elib;snlib;Farsidelib+++	
   
   --#sourceToken|@{selected|token_id}
@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Acid Splash
-  --/|Version     : 1.1.4
+  --/|Version     : 1.1.5
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|  
@@ -199,7 +199,7 @@
    --<|
    
   --:Fail|
-   -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0   
+   -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0;[*T:character_id]
    --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex; + 1d6 [Hex] |&Hex;
    --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade; + [*S:pb] [Hexblade Curse] |&HexBlade;  
    --=Damage|[&DamageDice] [&HexBlade] [&Hex][&GlobalDamage][&damageMod]
