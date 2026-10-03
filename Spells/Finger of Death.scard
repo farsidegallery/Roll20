@@ -1,4 +1,4 @@
-!scriptcards {{
+﻿!scriptcards {{
   +++5Elib;snlib;Farsidelib+++
   
   --#sourceToken|@{selected|token_id}
@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Finger of Death
-  --/|Version     : 1.1.3
+  --/|Version     : 1.1.4
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|  
@@ -178,7 +178,7 @@
    --X|
    
   --:Crit|
-   -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage[*T:t-id];0
+   -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage[*T:t-id];0;[*T:character_id]
    --?"X[&HexMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex[*T:t-id]; + 1d6 [Hex] |&Hex[*T:t-id];
    --?"X[&HexBladeMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade[*T:t-id]; + [*S:pb] [Hexblade Curse] |&HexBlade[*T:t-id];
    --=Damage[*T:t-id]|[$Damage] [&HexBlade[*T:t-id]] [&Hex[*T:t-id]][&GlobalDamage[*T:t-id]][&damageMod[*T:t-id]]\2
@@ -187,7 +187,7 @@
    --^BottomForEachTarget|
   
   --:Pass|
-   -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage[*T:t-id];0
+   -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage[*T:t-id];0;[*T:character_id]
    --?"X[&HexMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex[*T:t-id]; + 1d6 [Hex] |&Hex[*T:t-id];
    --?"X[&HexBladeMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade[*T:t-id]; + [*S:pb] [Hexblade Curse] |&HexBlade[*T:t-id];
    --=Damage[*T:t-id]|[$Damage] [&HexBlade[*T:t-id]] [&Hex[*T:t-id]][&GlobalDamage[*T:t-id]][&damageMod[*T:t-id]]\2
@@ -196,7 +196,7 @@
    --^BottomForEachTarget|
 
   --:Fail|
-   -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage[*T:t-id];0
+   -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage[*T:t-id];0;[*T:character_id]
    --?"X[&HexMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex[*T:t-id]; + 1d6 [Hex] |&Hex[*T:t-id];
    --?"X[&HexBladeMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade[*T:t-id]; + [*S:pb] [Hexblade Curse] |&HexBlade[*T:t-id];
    --=Damage[*T:t-id]|[$Damage] [&HexBlade[*T:t-id]] [&Hex[*T:t-id]][&GlobalDamage[*T:t-id]][&damageMod[*T:t-id]]
