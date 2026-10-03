@@ -1,8 +1,8 @@
-!scriptcards {{
+﻿!scriptcards {{
   +++5Elib;snlib;Farsidelib+++	
   
   --/|Script Name : Eldritch Blast
-  --/|Version     : 2.0.6
+  --/|Version     : 2.0.7
   --/|Requires SC : TokenMod, SuperNotes (for template override only), ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : 
   --/|Modified By : Farsidegallery
@@ -200,7 +200,7 @@
   --^MissileLoop|
 
  --:Hit| pass Damage string 
-  -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0
+  -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0;[*T:character_id]
   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexMarker];HexMarkerFlag;HexMarkerCount
   -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];HexBladeMarkerFlag;HexBladeMarkerCount
   
@@ -218,7 +218,7 @@
   --^MissileLoop|
 
   --:Crit|
-   -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;1
+   -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;1;[*T:character_id]
    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexMarker];HexMarkerFlag;HexMarkerCount
    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];HexBladeMarkerFlag;HexBladeMarkerCount
    --?[$BlastFlag] -eq 1|&Blast; + [*S:charisma_mod] [Agonizing Blast] |&Blast;
