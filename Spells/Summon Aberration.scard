@@ -2,16 +2,16 @@
   +++snlib;Farsidelib+++	
  
   --#sourceToken|@{selected|token_id}
-  --#reentrant|My Cool Script @{selected|character_id}
+  --#reentrant|Summon Aberration @{selected|character_id}
   --#whisper|self,gm
 
   --/|Script Name : Summon Aberration
-  --/|Version     : 1.0
-  --/|Requires SC : SpawnDefaultToken, SelectManager, Token Action Maker, ScriptCards Library snlib/Farsidelib
+  --/|Version     : 2.0.0
+  --/|Requires SC : Token Action Maker, ScriptCards Library snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|  
-  --/|  Script prompts user for spell level used and then queries for shape of the spirit. It will deduct 1 spell slot from the appropriate level and spawn the designated token to the VTT. Script calculates
-  --/|  to hit, AC, proficiency bonus, speed, and damage of the spirit and populates the fields on the character (NPC) sheet. Character/NPC sheet must be represented by a three sided rollable token.
+  --/|  Script prompts for aberration form, then spell level, deducts a slot, updates the spirit NPC sheet, and places a token via ScriptCards object-token API.
+  --/|  Pre-stage artwork URLs below (split long URLs into link1 + link2 like Absorb Elements / Color Spray).
   --/|
  
   --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
@@ -19,11 +19,19 @@
   --/|Enter name for Aberration Spirit Character.
   --&SpiritName|[*S:character_name] Aberrant Spirit
   
-  --/|Enter marker used for Concentration.
-  --&ConcentrationMarker|Concentrating::7409928
-  
   --&SpellName|Summon Aberration
   --&MinimumSpellLevel|4
+
+  --&VFX|nova-magic
+
+  --/| Aberration spirit token art (user-uploaded images; one face per form)
+  --&BeholderkinURL|https://files.d20.io/images/403176293/Jf3vuOpa_P14c4PAIvgOQQ/original.png?1722467041
+  --&SlaadURL|https://files.d20.io/images/403176311/xrI5qgE_p8EI1cKVAdn2uQ/original.png?1722467053
+  --&StarSpawnURL|https://files.d20.io/images/403176336/UoavXWHWMtv_UjodBtrUbg/original.png?1722467065
+
+  --/| Spell placement token (move on map, then target to confirm summon location)
+  --&SpellTargetToken|Spell Token
+  --&PlaceURLlink|https://files.d20.io/images/469753332/ew1SU1DcQK4eborJlOqNQw/original.png
   
   --/| ____________________ End Global User Variables ___________________________________________________________________________________________
   
@@ -36,53 +44,108 @@
   --&cbrac|]
   --&oparen|(
   --&cparen|)
+   
+  -->far_LoadTokenMarkers|
+
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+   --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
   
-  --#title|[&SpellName]
   -->GetSpiritID|[&SpiritName];SpiritID
   --&control|[*O:[*S:t-represents]:character:controlledby]
-  --#title|Summon Aberration
-  -->ChooseLevel|
+  --#title|[&SpellName]
+  -->ChooseShape|
   --X|  
   
-  --:ChooseLevel|
-   --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
-   --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
-   -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
-   --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
-  
-   --+|[c][b]Cast At What Level?[/b][/c]
-    --&splvlMsg|
-    --%splvl|foreach;SpellCastLevel
-     --&splvlMsg|+ [rbutton][&splvl]::ChooseShape;[&splvl][/rbutton]
-    --%|
-   --+|[c][&splvlMsg][/c]
-  --X|
-  
   --:ChooseShape|
-   --=SpellLevel|[&reentryval]
-   --&SpellLevel|[&reentryval]
-   --#leftsub|[*R:spellcastingtime]
-   --#rightsub|[*R:spellrange]
-   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
-   --&spelldesc|[*R:spelldescription]
-   --&spellhigherdesc|[*R:spellathigherlevels]  
-   -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
-   --+Choose Spirit Type: |[rbutton]Beholderkin::Summon;Beholderkin[/rbutton][rbutton]Slaad::Summon;Slaad[/rbutton][rbutton]Star Spawn::Summon;StarSpawn[/rbutton]
+   --+|[c][b]Choose Form:[/b][/c]
+   --+|[c][rbutton]Beholderkin::Summon;Beholderkin[/rbutton][rbutton]Slaad::Summon;Slaad[/rbutton][rbutton]Star Spawn::Summon;StarSpawn[/rbutton][/c]
+   --+|[br]
+   --+|[c][rbutton]Dismiss::Remove[/rbutton][/c]
    --X|
    
   --:Summon|
    --&Shape|[&reentryval]
-   --#emoteText|[*S:character_name] summons a [&Shape] Aberration!
+   --^ChooseLevel|
+
+  --:ChooseLevel|
+   -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+   --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+   --#rightsub|[&Shape] Aberration
+   --+|[c][b]Cast At What Level?[/b][/c]
+    --&splvlMsg|
+    --%splvl|foreach;SpellCastLevel
+     --&splvlMsg|+ [rbutton][&splvl]::PickLevel;[&splvl][/rbutton]
+    --%|
+   --+|[c][&splvlMsg][/c]
+   --X|
+
+  --:PickLevel|
+   --=SpellLevel|[&reentryval]
+   --&SpellLevel|[&reentryval]
+   --#leftsub|[*R:spellcastingtime]
+   --#rightsub|[&Shape] Aberration | [*R:spellrange]
+   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+   --&spelldesc|[*R:spelldescription]
+   --&spellhigherdesc|[*R:spellathigherlevels]
+   -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
+   --^SummonPlacement|
+
+  --:SummonPlacement|
+   --#whisper|self,gm
+   --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&SpellTargetToken]
+   --?[@tokens(length)] -gt 0|[
+    --~|object;token;delete;[@tokens(0)]
+   --]|
+   --+|Move the [&SpellTargetToken] to where the [&Shape] aberration should appear, then target it below.
+   --!ot:NewTID|name:"[&SpellTargetToken]"|_pageid:[*S:t-_pageid]|left:[=[*S:t-left]+70]|top:[*S:t-top]|width:[*S:t-width]|height:[*S:t-height]|imgsrc:"[&PlaceURLlink]"|bar1_value:1|represents:"[&SpellTargetToken]"|showname:0
+   --z:graphic:[&NewTID]|tofront
+   --+Target: |[rbutton]Target the Spell Token.::SetSummonTarget;[&TB]target|token_id}[/rbutton]
+   --X|
+
+  --:SetSummonTarget|
+   --#whisper|self,gm
+   --#targettoken|[&reentryval]
+   --?"[*T:t-name]" -ne "[&SpellTargetToken]"|[
+    --+|[c]Please target the [&SpellTargetToken], not [*T:t-name].[/c]
+    --X|
+   --]|
+   --^CompleteSummon|
+
+  --:CompleteSummon|
    --#whisper|
+   --#rightsub|[&Shape] Aberration
+   --#emoteText|[*S:character_name] summons a [&Shape] Aberration!
    -->DetermineStats|
    --+Duration: |[&duration]
    --+Desc: |[&spelldesc]
    --+At Higher Levels: |[&spellhigherdesc]
+   --+|[br]
    -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
    --!a:[*S:character_id]|!ConcentrationSpell:[&SpiritName]
    -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];
    --!c:[&SpiritID]|controlledby:[&control]
-   --@forselected+|Spawn _name|[&SpiritName] _qty|1 _bar1|[$HP] _bar2|[$AC]/ _side|[$side] _offset|1,1 _force|yes _tokenProps|showname:true,showplayers_name:true _order|toFront _fx|nova-magic _expand|15,30 {^&select @{selected|token_id}}
+   -->PlaceSpiritToken|
+   --~|object;token;delete;[*T:t-id]
+   --X|
+
+  --:PlaceSpiritToken|
+   --!ot:SpiritTID|name:"[&SpiritName]"|_pageid:[*T:t-_pageid]|left:[*T:t-left]|top:[*T:t-top]|width:[*S:t-width]|height:[*S:t-height]|imgsrc:"[&URLlink]"|represents:[&SpiritID]|bar1_value:[$HP]|bar1_max:[$HP]|bar2_value:[$AC]|showname:true|showplayers_name:true
+   -->far_PlayEffects|[&SpiritTID];;[&VFX];;;
+   --z:graphic:[&SpiritTID]|tofront
+   --<|
+
+  --:Remove|
+   --?"[*S:ConcentrationSpell]" -eq "[&SpiritName]"|[
+    --!a:[*S:character_id]|!ConcentrationSpell:**
+   --]|
+   --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&SpiritName]
+   --?[@tokens(length)] -gt 0|[
+    --~|object;token;delete;[@tokens(0)]
+   --]|
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker]
+   --#whisper|
+   --#emoteText|[*S:character_name] dismisses the [&SpellName] spirit!
+   --+|[*S:character_name]'s aberrant spirit vanishes.
    --X|
   
   --:GetSpiritID|CharacterName;StringVariableForCharID
@@ -92,17 +155,19 @@
    --<|
   
   --:DetermineStats|
-   --c[&Shape]|Beholderkin:=side;1|Slaad:=side;2|StarSpawn:=side;3
-   --=HPMod|[$SpellLevel]-4
+   --?[&Shape] -eq Beholderkin|&URLlink;[&BeholderkinURL]
+   --?[&Shape] -eq Slaad|&URLlink;[&SlaadURL]
+   --?[&Shape] -eq StarSpawn|&URLlink;[&StarSpawnURL]
+   --=HPMod|[&SpellLevel]-4
    --=HPMod|[$HPMod]*10
    --=HP|40+[$HPMod] 
-   --=AC|11+[$SpellLevel]
+   --=AC|11+[&SpellLevel]
    --=PB|[*S:pb]
    --?[&Shape] -eq Beholderkin|&Speed;30 ft.; fly 30 ft. (hover)|&Speed;30 ft.
    --c[&Shape]|Beholderkin:=action;2|Slaad:=action;1|StarSpawn:=action;3
    --c[&Shape]|Beholderkin:&damage;1d8+3+[&SpellLevel]|Slaad:&damage;1d10+3+[&SpellLevel]|StarSpawn:&damage;1d8+3+[&SpellLevel]
    --?[&Shape] -eq Slaad|&description;If the target is a creature, it can’t regain hit points until the start of the aberration’s next turn.|&description;
-   --=attacks|[$SpellLevel]\2
+   --=attacks|[&SpellLevel]\2
    --&traitdesc|At the start of each of the aberration’s turns, each creature within 5 feet of the aberration must succeed on a Wisdom saving throw against DC [*S:spell_save_dc] or take 2d6 psychic damage, provided that the aberration isn’t incapacitated.
    -->SetStats|[$action];[&damage];[&description]
    --<|
