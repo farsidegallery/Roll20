@@ -2,16 +2,16 @@
   +++snlib;Farsidelib+++	
  
   --#sourceToken|@{selected|token_id}
-  --#reentrant|My Cool Script @{selected|character_id}
+  --#reentrant|Summon Shadowspawn @{selected|character_id}
   --#whisper|self,gm
 
   --/|Script Name : Summon Shadowspawn
-  --/|Version     : 1.0
-  --/|Requires SC : SpawnDefaultToken, SelectManager, Token Action Maker, ScriptCards Library snlib/Farsidelib
+  --/|Version     : 2.0.0
+  --/|Requires SC : Token Action Maker, ScriptCards Library snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|  
-  --/|  Script prompts user for spell level used and then queries for shape of the spirit. It will deduct 1 spell slot from the appropriate level and spawn the designated token to the VTT. Script calculates
-  --/|  to hit, AC, proficiency bonus, speed, and damage of the spirit and populates the fields on the character (NPC) sheet. Character/NPC sheet must be represented by a three sided rollable token.
+  --/|  Script prompts for shadowspawn form, then spell level, deducts a slot, updates the spirit NPC sheet, and places a token via ScriptCards object-token API.
+  --/|  Pre-stage artwork URLs below (one face per form).
   --/|
  
   --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
@@ -19,11 +19,19 @@
   --/|Enter name for Shadow Spirit Character.
   --&SpiritName|[*S:character_name] Shadow Spirit
   
-  --/|Enter marker used for Concentration.
-  --&ConcentrationMarker|Concentrating::7409928
-  
   --&SpellName|Summon Shadowspawn
   --&MinimumSpellLevel|3
+
+  --&VFX|nova-magic
+
+  --/| Shadowspawn token art (user-uploaded images; one face per form)
+  --&FuryURL|https://files.d20.io/images/503514202/t4KRprvC9AhPMY4vMjWvzA/original.webp?1791421679
+  --&DespairURL|https://files.d20.io/images/503514203/czxouLnzEoWXiJoWXwRxtg/original.webp?1791421679
+  --&FearURL|https://files.d20.io/images/503514204/zOiua7B9T7DrvuRKeVvcZA/original.webp?1791421679
+
+  --/| Spell placement token (move on map, then target to confirm summon location)
+  --&SpellTargetToken|Spell Token
+  --&PlaceURLlink|https://files.d20.io/images/469753332/ew1SU1DcQK4eborJlOqNQw/original.png
   
   --/| ____________________ End Global User Variables ___________________________________________________________________________________________
   
@@ -37,53 +45,107 @@
   --&oparen|(
   --&cparen|)
    
+  -->far_LoadTokenMarkers|
+
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+   --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  
   -->GetSpiritID|[&SpiritName];SpiritID
   --&control|[*O:[*S:t-represents]:character:controlledby]
   --#title|[&SpellName]
-  -->ChooseLevel|
+  -->ChooseShape|
   --X|  
   
-  --:ChooseLevel|
-   --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
-   --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
-   -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
-   --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
-  
-   --+|[c][b]Cast At What Level?[/b][/c]
-    --&splvlMsg|
-    --%splvl|foreach;SpellCastLevel
-     --&splvlMsg|+ [rbutton][&splvl]::ChooseShape;[&splvl][/rbutton]
-    --%|
-   --+|[c][&splvlMsg][/c]
-  --X|
-  
   --:ChooseShape|
-   --=SpellLevel|[&reentryval]
-   --&SpellLevel|[&reentryval]
-   --#leftsub|[*R:spellcastingtime]
-   --#rightsub|[*R:spellrange]
-   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
-   --&spelldesc|[*R:spelldescription]
-   --&spellhigherdesc|[*R:spellathigherlevels]
-   -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
-   --+Choose Spirit Type: |
+   --+|[c][b]Choose Form:[/b][/c]
    --+|[c][rbutton]Fury::Summon;Fury[/rbutton][rbutton]Despair::Summon;Despair[/rbutton][rbutton]Fear::Summon;Fear[/rbutton][/c]
+   --+|[br]
+   --+|[c][rbutton]Dismiss::Remove[/rbutton][/c]
    --X|
    
   --:Summon|
    --&Shape|[&reentryval]
-   --#emoteText|[*S:character_name] summons a [&Shape] Shadowspawn!
+   --^ChooseLevel|
+
+  --:ChooseLevel|
+   -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+   --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+   --#rightsub|[&Shape] Shadowspawn
+   --+|[c][b]Cast At What Level?[/b][/c]
+    --&splvlMsg|
+    --%splvl|foreach;SpellCastLevel
+     --&splvlMsg|+ [rbutton][&splvl]::PickLevel;[&splvl][/rbutton]
+    --%|
+   --+|[c][&splvlMsg][/c]
+   --X|
+
+  --:PickLevel|
+   --=SpellLevel|[&reentryval]
+   --&SpellLevel|[&reentryval]
+   --#leftsub|[*R:spellcastingtime]
+   --#rightsub|[&Shape] Spirit | [*R:spellrange]
+   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+   --&spelldesc|[*R:spelldescription]
+   --&spellhigherdesc|[*R:spellathigherlevels]
+   -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
+   --^SummonPlacement|
+
+  --:SummonPlacement|
+   --#whisper|self,gm
+   --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&SpellTargetToken]
+   --?[@tokens(length)] -gt 0|[
+    --~|object;token;delete;[@tokens(0)]
+   --]|
+   --+|Move the [&SpellTargetToken] to where the [&Shape] shadowspawn should appear, then target it below.
+   --!ot:NewTID|name:"[&SpellTargetToken]"|_pageid:[*S:t-_pageid]|left:[=[*S:t-left]+70]|top:[*S:t-top]|width:[*S:t-width]|height:[*S:t-height]|imgsrc:"[&PlaceURLlink]"|bar1_value:1|represents:"[&SpellTargetToken]"|showname:0
+   --z:graphic:[&NewTID]|tofront
+   --+Target: |[rbutton]Target the Spell Token.::SetSummonTarget;[&TB]target|token_id}[/rbutton]
+   --X|
+
+  --:SetSummonTarget|
+   --#whisper|self,gm
+   --#targettoken|[&reentryval]
+   --?"[*T:t-name]" -ne "[&SpellTargetToken]"|[
+    --+|[c]Please target the [&SpellTargetToken], not [*T:t-name].[/c]
+    --X|
+   --]|
+   --^CompleteSummon|
+
+  --:CompleteSummon|
    --#whisper|
    --#rightsub|[&Shape] Spirit
+   --#emoteText|[*S:character_name] summons a [&Shape] Shadowspawn!
    -->DetermineStats|
    --+Duration: |[&duration]
    --+Desc: |[&spelldesc]
    --+At Higher Levels: |[&spellhigherdesc]
+   --+|[br]
    -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
    --!a:[*S:character_id]|!ConcentrationSpell:[&SpiritName]
    -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];
    --!c:[&SpiritID]|controlledby:[&control]
-   --@forselected+|Spawn _name|[&SpiritName] _qty|1 _bar1|[$HP] _bar2|[$AC]/ _side|[$side] _offset|1,1 _force|yes _tokenProps|showname:true,showplayers_name:true _order|toFront _fx|nova-magic _expand|15,30 {^&select @{selected|token_id}}
+   -->PlaceSpiritToken|
+   --~|object;token;delete;[*T:t-id]
+   --X|
+
+  --:PlaceSpiritToken|
+   --!ot:SpiritTID|name:"[&SpiritName]"|_pageid:[*T:t-_pageid]|left:[*T:t-left]|top:[*T:t-top]|width:[*S:t-width]|height:[*S:t-height]|imgsrc:"[&URLlink]"|represents:[&SpiritID]|bar1_value:[$HP]|bar1_max:[$HP]|bar2_value:[$AC]|showname:true|showplayers_name:true
+   -->far_PlayEffects|[&SpiritTID];;[&VFX];;;
+   --z:graphic:[&SpiritTID]|tofront
+   --<|
+
+  --:Remove|
+   --?"[*S:ConcentrationSpell]" -eq "[&SpiritName]"|[
+    --!a:[*S:character_id]|!ConcentrationSpell:**
+   --]|
+   --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&SpiritName]
+   --?[@tokens(length)] -gt 0|[
+    --~|object;token;delete;[@tokens(0)]
+   --]|
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker]
+   --#whisper|
+   --#emoteText|[*S:character_name] dismisses the [&SpellName] spirit!
+   --+|[*S:character_name]'s shadow spirit vanishes.
    --X|
   
   --:GetSpiritID|CharacterName;StringVariableForCharID
@@ -93,8 +155,10 @@
    --<|
   
   --:DetermineStats|
-   --c[&Shape]|Fury:=side;1|Despair:=side;2|Fear:=side;3   
-   --=HPMod|[$SpellLevel]-3
+   --?[&Shape] -eq Fury|&URLlink;[&FuryURL]
+   --?[&Shape] -eq Despair|&URLlink;[&DespairURL]
+   --?[&Shape] -eq Fear|&URLlink;[&FearURL]
+   --=HPMod|[&SpellLevel]-3
    --=HPMod|[$HPMod]*15
    --=HP|35+[$HPMod] 
    --=AC|11+[$SpellLevel]
@@ -102,7 +166,7 @@
    --=action|1
    --&damage|1d12+3+[&SpellLevel]
    --&description|
-   --=attacks|[$SpellLevel]\2
+   --=attacks|[&SpellLevel]\2
    -->SetStats|[$action];[&damage];[&description]
    --<|
    

@@ -2,16 +2,16 @@
   +++snlib;Farsidelib+++	
  
   --#sourceToken|@{selected|token_id}
-  --#reentrant|My Cool Script @{selected|character_id}
+  --#reentrant|Summon Construct @{selected|character_id}
   --#whisper|self,gm
 
   --/|Script Name : Summon Construct
-  --/|Version     : 1.0
-  --/|Requires SC : SpawnDefaultToken, SelectManager, Token Action Maker, ScriptCards Library snlib/Farsidelib
+  --/|Version     : 2.0.0
+  --/|Requires SC : Token Action Maker, ScriptCards Library snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|  
-  --/|  Script prompts user for spell level used and then queries for shape of the spirit. It will deduct 1 spell slot from the appropriate level and spawn the designated token to the VTT. Script calculates
-  --/|  to hit, AC, proficiency bonus, speed, and damage of the spirit and populates the fields on the character (NPC) sheet. Character/NPC sheet must be represented by a three sided rollable token.
+  --/|  Script prompts for construct form, then spell level, deducts a slot, updates the spirit NPC sheet, and places a token via ScriptCards object-token API.
+  --/|  Pre-stage artwork URLs below (ClayURL, MetalURL, StoneURL).
   --/|
  
   --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
@@ -19,11 +19,19 @@
   --/|Enter name for Construct Spirit Character.
   --&SpiritName|[*S:character_name] Construct Spirit
   
-  --/|Enter marker used for Concentration.
-  --&ConcentrationMarker|Concentrating::7409928
- 
   --&SpellName|Summon Construct
   --&MinimumSpellLevel|4
+
+  --&VFX|nova-magic
+
+  --/| Construct spirit token art (user-uploaded images; one face per material)
+  --&ClayURL|https://files.d20.io/images/503502258/rmwLijb6AQYC1xuy8OOKeg/original.webp?1791414857
+  --&MetalURL|https://files.d20.io/images/503502257/NRsb7nLZ-K2epDB0T4G6nA/original.webp?1791414857
+  --&StoneURL|https://files.d20.io/images/503502312/HdKR7M3H8jw-CUzKSZT-Qg/original.webp
+
+  --/| Spell placement token (move on map, then target to confirm summon location)
+  --&SpellTargetToken|Spell Token
+  --&PlaceURLlink|https://files.d20.io/images/469753332/ew1SU1DcQK4eborJlOqNQw/original.png
   
   --/| ____________________ End Global User Variables ___________________________________________________________________________________________
   
@@ -36,54 +44,108 @@
   --&cbrac|]
   --&oparen|(
   --&cparen|)
-     
+   
+  -->far_LoadTokenMarkers|
+
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+   --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  
   -->GetSpiritID|[&SpiritName];SpiritID
   --&control|[*O:[*S:t-represents]:character:controlledby]
   --#title|[&SpellName]
-  -->ChooseLevel|
+  -->ChooseShape|
   --X|  
   
-  --:ChooseLevel|
-   --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
-   --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
-   -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
-   --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
-  
-   --+|[c][b]Cast At What Level?[/b][/c]
-    --&splvlMsg|
-    --%splvl|foreach;SpellCastLevel
-     --&splvlMsg|+ [rbutton][&splvl]::ChooseShape;[&splvl][/rbutton]
-    --%|
-   --+|[c][&splvlMsg][/c]
-  --X|
-  
   --:ChooseShape|
-   --=SpellLevel|[&reentryval]
-   --&SpellLevel|[&reentryval]
-   --#leftsub|[*R:spellcastingtime]
-   --#rightsub|[*R:spellrange]
-   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
-   --&spelldesc|[*R:spelldescription]
-   --&spellhigherdesc|[*R:spellathigherlevels]
-   -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
-   --+Choose Spirit Type: |
+   --+|[c][b]Choose Form:[/b][/c]
    --+|[c][rbutton]Clay::Summon;Clay[/rbutton][rbutton]Metal::Summon;Metal[/rbutton][rbutton]Stone::Summon;Stone[/rbutton][/c]
+   --+|[br]
+   --+|[c][rbutton]Dismiss::Remove[/rbutton][/c]
    --X|
    
   --:Summon|
    --&Shape|[&reentryval]
-   --#emoteText|[*S:character_name] summons a [&Shape] Construct!
+   --^ChooseLevel|
+
+  --:ChooseLevel|
+   -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+   --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+   --#rightsub|[&Shape] Construct
+   --+|[c][b]Cast At What Level?[/b][/c]
+    --&splvlMsg|
+    --%splvl|foreach;SpellCastLevel
+     --&splvlMsg|+ [rbutton][&splvl]::PickLevel;[&splvl][/rbutton]
+    --%|
+   --+|[c][&splvlMsg][/c]
+   --X|
+
+  --:PickLevel|
+   --=SpellLevel|[&reentryval]
+   --&SpellLevel|[&reentryval]
+   --#leftsub|[*R:spellcastingtime]
+   --#rightsub|[&Shape] Construct | [*R:spellrange]
+   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+   --&spelldesc|[*R:spelldescription]
+   --&spellhigherdesc|[*R:spellathigherlevels]
+   -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
+   --^SummonPlacement|
+
+  --:SummonPlacement|
+   --#whisper|self,gm
+   --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&SpellTargetToken]
+   --?[@tokens(length)] -gt 0|[
+    --~|object;token;delete;[@tokens(0)]
+   --]|
+   --+|Move the [&SpellTargetToken] to where the [&Shape] construct should appear, then target it below.
+   --!ot:NewTID|name:"[&SpellTargetToken]"|_pageid:[*S:t-_pageid]|left:[=[*S:t-left]+70]|top:[*S:t-top]|width:[*S:t-width]|height:[*S:t-height]|imgsrc:"[&PlaceURLlink]"|bar1_value:1|represents:"[&SpellTargetToken]"|showname:0
+   --z:graphic:[&NewTID]|tofront
+   --+Target: |[rbutton]Target the Spell Token.::SetSummonTarget;[&TB]target|token_id}[/rbutton]
+   --X|
+
+  --:SetSummonTarget|
+   --#whisper|self,gm
+   --#targettoken|[&reentryval]
+   --?"[*T:t-name]" -ne "[&SpellTargetToken]"|[
+    --+|[c]Please target the [&SpellTargetToken], not [*T:t-name].[/c]
+    --X|
+   --]|
+   --^CompleteSummon|
+
+  --:CompleteSummon|
    --#whisper|
    --#rightsub|[&Shape] Construct
+   --#emoteText|[*S:character_name] summons a [&Shape] Construct!
    -->DetermineStats|
    --+Duration: |[&duration]
    --+Desc: |[&spelldesc]
    --+At Higher Levels: |[&spellhigherdesc]
+   --+|[br]
    -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
    --!a:[*S:character_id]|!ConcentrationSpell:[&SpiritName]
    -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];
    --!c:[&SpiritID]|controlledby:[&control]
-   --@forselected+|Spawn _name|[&SpiritName] _qty|1 _bar1|[$HP] _bar2|[$AC]/ _side|[$side] _offset|1,1 _force|yes _tokenProps|showname:true,showplayers_name:true _order|toFront _fx|nova-magic _expand|15,30 {^&select @{selected|token_id}}
+   -->PlaceSpiritToken|
+   --~|object;token;delete;[*T:t-id]
+   --X|
+
+  --:PlaceSpiritToken|
+   --!ot:SpiritTID|name:"[&SpiritName]"|_pageid:[*T:t-_pageid]|left:[*T:t-left]|top:[*T:t-top]|width:[*S:t-width]|height:[*S:t-height]|imgsrc:"[&URLlink]"|represents:[&SpiritID]|bar1_value:[$HP]|bar1_max:[$HP]|bar2_value:[$AC]|showname:true|showplayers_name:true
+   -->far_PlayEffects|[&SpiritTID];;[&VFX];;;
+   --z:graphic:[&SpiritTID]|tofront
+   --<|
+
+  --:Remove|
+   --?"[*S:ConcentrationSpell]" -eq "[&SpiritName]"|[
+    --!a:[*S:character_id]|!ConcentrationSpell:**
+   --]|
+   --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&SpiritName]
+   --?[@tokens(length)] -gt 0|[
+    --~|object;token;delete;[@tokens(0)]
+   --]|
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker]
+   --#whisper|
+   --#emoteText|[*S:character_name] dismisses the [&SpellName] spirit!
+   --+|[*S:character_name]'s construct spirit vanishes.
    --X|
   
   --:GetSpiritID|CharacterName;StringVariableForCharID
@@ -93,17 +155,19 @@
    --<|
   
   --:DetermineStats|
-   --c[&Shape]|Clay:=side;1|Metal:=side;2|Stone:=side;3
-   --=HPMod|[$SpellLevel]-4
+   --?[&Shape] -eq Clay|&URLlink;[&ClayURL]
+   --?[&Shape] -eq Metal|&URLlink;[&MetalURL]
+   --?[&Shape] -eq Stone|&URLlink;[&StoneURL]
+   --=HPMod|[&SpellLevel]-4
    --=HPMod|[$HPMod]*15
    --=HP|40+[$HPMod] 
-   --=AC|13+[$SpellLevel]
+   --=AC|13+[&SpellLevel]
    --=PB|[*S:pb]
    --=action|1
    --&damage|1d8+4+[&SpellLevel]
    --&description|
-   --=attacks|[$SpellLevel]\2   
-   --&lethargydesc|When a creature the construct can see starts its turn within 10 feet of the construct, the construct can force it to make a Wisdom saving throw against DC [*S:spell_save_dc]. On a failed save, the target can’t use reactions and its speed is halved until the start of its next turn.
+   --=attacks|[&SpellLevel]\2
+   --&lethargydesc|When a creature the construct can see starts its turn within 10 feet of the construct, the construct can force it to make a Wisdom saving throw against DC [*S:spell_save_dc]. On a failed save, the target can't use reactions and its speed is halved until the start of its next turn.
    -->SetStats|[$action];[&damage];[&description]
    --<|
    

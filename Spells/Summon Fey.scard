@@ -1,32 +1,40 @@
 !script{{
-  +++5E;snlib;Farsidelib+++	
+  +++snlib;Farsidelib+++	
  
   --#sourceToken|@{selected|token_id}
-  --#reentrant|My Cool Script @{selected|character_id}
+  --#reentrant|Summon Fey @{selected|character_id}
   --#whisper|self,gm
 
   --/|Script Name : Summon Fey
-  --/|Version     : 1.0
-  --/|Requires SC : SpawnDefaultToken, SelectManager, Token Action Maker, ScriptCards Library snlib/Farsidelib
+  --/|Version     : 2.0.0
+  --/|Requires SC : Token Action Maker, ScriptCards Library snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|  
-  --/|  Script prompts user for spell level used and then queries for shape of the spirit. It will deduct 1 spell slot from the appropriate level and spawn the designated token to the VTT. Script calculates
-  --/|  to hit, AC, proficiency bonus, speed, and damage of the spirit and populates the fields on the character (NPC) sheet. Character/NPC sheet must be represented by a three sided rollable token.
+  --/|  Script prompts for fey form, then spell level, deducts a slot, updates the spirit NPC sheet, and places a token via ScriptCards object-token API.
+  --/|  Pre-stage artwork URLs below (one face per form).
   --/|
  
   --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
     
-  --/|Enter name for Shadow Spirit Character.
+  --/|Enter name for Fey Spirit Character.
   --&SpiritName|[*S:character_name] Fey Spirit
-  
-  --/|Enter marker used for Concentration.
-  --&ConcentrationMarker|Concentrating::7409928
   
   --&SpellName|Summon Fey
   --&MinimumSpellLevel|3
+
+  --&VFX|nova-magic
+
+  --/| Fey spirit token art (user-uploaded images; one face per form)
+  --&FumingURL|https://files.d20.io/images/403332218/3l5bvi9e2980OpDQjGqNPg/original.png?1722564109
+  --&MirthfulURL|https://files.d20.io/images/403332237/KsB6MpTr-PeQ8HOuoJnuvQ/original.png?1722564122
+  --&TricksyURL|https://files.d20.io/images/403332273/4E8UoAKdR9b9ZISqkEFkDA/original.png?1722564140
+
+  --/| Spell placement token (move on map, then target to confirm summon location)
+  --&SpellTargetToken|Spell Token
+  --&PlaceURLlink|https://files.d20.io/images/469753332/ew1SU1DcQK4eborJlOqNQw/original.png
   
   --/| ____________________ End Global User Variables ___________________________________________________________________________________________
-
+  
   --/|Helper variable build up to allow us to include a target prompt in an rbutton
   --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
   --&SPACE|X X --&SPACE|[&SPACE(1,1)]
@@ -36,61 +44,108 @@
   --&cbrac|]
   --&oparen|(
   --&cparen|)
+   
+  -->far_LoadTokenMarkers|
+
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+   --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
   
   -->GetSpiritID|[&SpiritName];SpiritID
   --&control|[*O:[*S:t-represents]:character:controlledby]
-  -->FindSpirit|
+  --#title|[&SpellName]
+  -->ChooseShape|
   --X|  
   
-  --:FindSpirit|
-   --#title|[&SpellName]
-   -->GetSpiritID|[&SpiritName];SpiritID
-   --&control|[*O:[*S:t-represents]:character:controlledby]
-   --#title|Summon Aberration
-   -->ChooseLevel|
-   --X|  
-  
-  --:ChooseLevel|
-   --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
-   --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
-   -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
-   --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
-  
-   --+|[c][b]Cast At What Level?[/b][/c]
-    --&splvlMsg|
-    --%splvl|foreach;SpellCastLevel
-     --&splvlMsg|+ [rbutton][&splvl]::ChooseShape;[&splvl][/rbutton]
-    --%|
-   --+|[c][&splvlMsg][/c]
-  --X|
-  
   --:ChooseShape|
-   --=SpellLevel|[&reentryval]
-   --&SpellLevel|[&reentryval]
-   --#leftsub|[*R:spellcastingtime]
-   --#rightsub|[*R:spellrange]
-   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
-   --&spelldesc|[*R:spelldescription]
-   --&spellhigherdesc|[*R:spellathigherlevels]
-   -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
-   --+Choose Spirit Type: |
+   --+|[c][b]Choose Form:[/b][/c]
    --+|[c][rbutton]Fuming::Summon;Fuming[/rbutton][rbutton]Mirthful::Summon;Mirthful[/rbutton][rbutton]Tricksy::Summon;Tricksy[/rbutton][/c]
+   --+|[br]
+   --+|[c][rbutton]Dismiss::Remove[/rbutton][/c]
    --X|
    
   --:Summon|
    --&Shape|[&reentryval]
-   --#emoteText|[*S:character_name] summons a [&Shape] Fey!
+   --^ChooseLevel|
+
+  --:ChooseLevel|
+   -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+   --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+   --#rightsub|[&Shape] Fey
+   --+|[c][b]Cast At What Level?[/b][/c]
+    --&splvlMsg|
+    --%splvl|foreach;SpellCastLevel
+     --&splvlMsg|+ [rbutton][&splvl]::PickLevel;[&splvl][/rbutton]
+    --%|
+   --+|[c][&splvlMsg][/c]
+   --X|
+
+  --:PickLevel|
+   --=SpellLevel|[&reentryval]
+   --&SpellLevel|[&reentryval]
+   --#leftsub|[*R:spellcastingtime]
+   --#rightsub|[&Shape] Fey | [*R:spellrange]
+   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+   --&spelldesc|[*R:spelldescription]
+   --&spellhigherdesc|[*R:spellathigherlevels]
+   -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
+   --^SummonPlacement|
+
+  --:SummonPlacement|
+   --#whisper|self,gm
+   --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&SpellTargetToken]
+   --?[@tokens(length)] -gt 0|[
+    --~|object;token;delete;[@tokens(0)]
+   --]|
+   --+|Move the [&SpellTargetToken] to where the [&Shape] fey should appear, then target it below.
+   --!ot:NewTID|name:"[&SpellTargetToken]"|_pageid:[*S:t-_pageid]|left:[=[*S:t-left]+70]|top:[*S:t-top]|width:[*S:t-width]|height:[*S:t-height]|imgsrc:"[&PlaceURLlink]"|bar1_value:1|represents:"[&SpellTargetToken]"|showname:0
+   --z:graphic:[&NewTID]|tofront
+   --+Target: |[rbutton]Target the Spell Token.::SetSummonTarget;[&TB]target|token_id}[/rbutton]
+   --X|
+
+  --:SetSummonTarget|
+   --#whisper|self,gm
+   --#targettoken|[&reentryval]
+   --?"[*T:t-name]" -ne "[&SpellTargetToken]"|[
+    --+|[c]Please target the [&SpellTargetToken], not [*T:t-name].[/c]
+    --X|
+   --]|
+   --^CompleteSummon|
+
+  --:CompleteSummon|
    --#whisper|
    --#rightsub|[&Shape] Spirit
+   --#emoteText|[*S:character_name] summons a [&Shape] Fey!
    -->DetermineStats|
    --+Duration: |[&duration]
    --+Desc: |[&spelldesc]
    --+At Higher Levels: |[&spellhigherdesc]
+   --+|[br]
    -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
    --!a:[*S:character_id]|!ConcentrationSpell:[&SpiritName]
    -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];
    --!c:[&SpiritID]|controlledby:[&control]
-   --@forselected+|Spawn _name|[&SpiritName] _qty|1 _bar1|[$HP] _bar2|[$AC]/ _side|[$side] _offset|1,1 _force|yes _tokenProps|showname:true,showplayers_name:true _order|toFront _fx|nova-magic _expand|15,30 {^&select @{selected|token_id}}
+   -->PlaceSpiritToken|
+   --~|object;token;delete;[*T:t-id]
+   --X|
+
+  --:PlaceSpiritToken|
+   --!ot:SpiritTID|name:"[&SpiritName]"|_pageid:[*T:t-_pageid]|left:[*T:t-left]|top:[*T:t-top]|width:[*S:t-width]|height:[*S:t-height]|imgsrc:"[&URLlink]"|represents:[&SpiritID]|bar1_value:[$HP]|bar1_max:[$HP]|bar2_value:[$AC]|showname:true|showplayers_name:true
+   -->far_PlayEffects|[&SpiritTID];;[&VFX];;;
+   --z:graphic:[&SpiritTID]|tofront
+   --<|
+
+  --:Remove|
+   --?"[*S:ConcentrationSpell]" -eq "[&SpiritName]"|[
+    --!a:[*S:character_id]|!ConcentrationSpell:**
+   --]|
+   --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&SpiritName]
+   --?[@tokens(length)] -gt 0|[
+    --~|object;token;delete;[@tokens(0)]
+   --]|
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker]
+   --#whisper|
+   --#emoteText|[*S:character_name] dismisses the [&SpellName] spirit!
+   --+|[*S:character_name]'s fey spirit vanishes.
    --X|
   
   --:GetSpiritID|CharacterName;StringVariableForCharID
@@ -100,8 +155,10 @@
    --<|
   
   --:DetermineStats|
-   --c[&Shape]|Fuming:=side;1|Mirthful:=side;2|Tricksy:=side;3
-   --=HPMod|[$SpellLevel]-3
+   --?[&Shape] -eq Fuming|&URLlink;[&FumingURL]
+   --?[&Shape] -eq Mirthful|&URLlink;[&MirthfulURL]
+   --?[&Shape] -eq Tricksy|&URLlink;[&TricksyURL]
+   --=HPMod|[&SpellLevel]-3
    --=HPMod|[$HPMod]*10
    --=HP|30+[$HPMod] 
    --=AC|12+[$SpellLevel]
@@ -109,7 +166,7 @@
    --=action|1
    --&damage|1d6+3+[&SpellLevel]
    --&description|
-   --=attacks|[$SpellLevel]\2
+   --=attacks|[&SpellLevel]\2
    -->SetStats|[$action];[&damage];[&description]
    --<|
    

@@ -2,16 +2,16 @@
   +++snlib;Farsidelib+++	
  
   --#sourceToken|@{selected|token_id}
-  --#reentrant|My Cool Script @{selected|character_id}
+  --#reentrant|Summon Undead @{selected|character_id}
   --#whisper|self,gm
 
   --/|Script Name : Summon Undead
-  --/|Version     : 1.0
-  --/|Requires SC : SpawnDefaultToken, SelectManager, Token Action Maker, ScriptCards Library snlib/Farsidelib
+  --/|Version     : 2.0.0
+  --/|Requires SC : Token Action Maker, ScriptCards Library snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|  
-  --/|  Script prompts user for spell level used and then queries for shape of the spirit. It will deduct 1 spell slot from the appropriate level and spawn the designated token to the VTT. Script calculates
-  --/|  to hit, AC, proficiency bonus, speed, and damage of the undead and populates the fields on the character (NPC) sheet. Character/NPC sheet must be represented by a three sided rollable token.
+  --/|  Script prompts for undead form, then spell level, deducts a slot, updates the spirit NPC sheet, and places a token via ScriptCards object-token API.
+  --/|  Pre-stage artwork URLs below (one face per form).
   --/|
  
   --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
@@ -19,11 +19,19 @@
   --/|Enter name for Undead Spirit Character.
   --&SpiritName|[*S:character_name] Undead Spirit
   
-  --/|Enter marker used for Concentration.
-  --&ConcentrationMarker|Concentrating::7409928
-  
   --&SpellName|Summon Undead
   --&MinimumSpellLevel|3
+
+  --&VFX|nova-magic
+
+  --/| Undead spirit token art (user-uploaded images; one face per form)
+  --&GhostlyURL|https://files.d20.io/images/402403327/gSAOH1CpeQL82R6uXXvBuw/original.png?1721970950
+  --&PutridURL|https://files.d20.io/images/402403334/t_8wYWi43Sm3DRNYF19WsQ/original.png?1721970965
+  --&SkeletalURL|https://files.d20.io/images/402403349/ZrYEHQfquJH1GKW3nGTtcA/original.png?1721970978
+
+  --/| Spell placement token (move on map, then target to confirm summon location)
+  --&SpellTargetToken|Spell Token
+  --&PlaceURLlink|https://files.d20.io/images/469753332/ew1SU1DcQK4eborJlOqNQw/original.png
   
   --/| ____________________ End Global User Variables ___________________________________________________________________________________________
   
@@ -37,55 +45,107 @@
   --&oparen|(
   --&cparen|)
    
+  -->far_LoadTokenMarkers|
+
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+   --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  
   -->GetSpiritID|[&SpiritName];SpiritID
   --&control|[*O:[*S:t-represents]:character:controlledby]
   --#title|[&SpellName]
-  -->ChooseLevel|
+  -->ChooseShape|
   --X|  
   
-  --:ChooseLevel|
-   --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
-   --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
-   -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
-   --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
-  
-   --+|[c][b]Cast At What Level?[/b][/c]
-    --&splvlMsg|
-    --%splvl|foreach;SpellCastLevel
-     --&splvlMsg|+ [rbutton][&splvl]::ChooseShape;[&splvl][/rbutton]
-    --%|
-   --+|[c][&splvlMsg][/c]
-  --X|
-  
   --:ChooseShape|
-   --=SpellLevel|[&reentryval]
-   --&SpellLevel|[&reentryval]
-   --#leftsub|[*R:spellcastingtime]
-   --#rightsub|[*R:spellrange]
-   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
-   --&spelldesc|[*R:spelldescription]
-   --&spellhigherdesc|[*R:spellathigherlevels]
-   -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
-   --+Choose Form: |
+   --+|[c][b]Choose Form:[/b][/c]
    --+|[c][rbutton]Ghostly::Summon;ghost[/rbutton][rbutton]Putrid::Summon;putrid[/rbutton][rbutton]Skeletal::Summon;skeletal[/rbutton][/c]
+   --+|[br]
+   --+|[c][rbutton]Dismiss::Remove[/rbutton][/c]
    --X|
    
   --:Summon|
    --&Shape|[&reentryval]
+   --^ChooseLevel|
+
+  --:ChooseLevel|
+   -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+   --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+   --#rightsub|[&Shape] Undead
+   --+|[c][b]Cast At What Level?[/b][/c]
+    --&splvlMsg|
+    --%splvl|foreach;SpellCastLevel
+     --&splvlMsg|+ [rbutton][&splvl]::PickLevel;[&splvl][/rbutton]
+    --%|
+   --+|[c][&splvlMsg][/c]
+   --X|
+
+  --:PickLevel|
+   --=SpellLevel|[&reentryval]
+   --&SpellLevel|[&reentryval]
+   --#leftsub|[*R:spellcastingtime]
+   --#rightsub|[&Shape] Undead | [*R:spellrange]
+   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+   --&spelldesc|[*R:spelldescription]
+   --&spellhigherdesc|[*R:spellathigherlevels]
+   -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
+   --^SummonPlacement|
+
+  --:SummonPlacement|
+   --#whisper|self,gm
+   --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&SpellTargetToken]
+   --?[@tokens(length)] -gt 0|[
+    --~|object;token;delete;[@tokens(0)]
+   --]|
+   --+|Move the [&SpellTargetToken] to where the [&Shape] undead should appear, then target it below.
+   --!ot:NewTID|name:"[&SpellTargetToken]"|_pageid:[*S:t-_pageid]|left:[=[*S:t-left]+70]|top:[*S:t-top]|width:[*S:t-width]|height:[*S:t-height]|imgsrc:"[&PlaceURLlink]"|bar1_value:1|represents:"[&SpellTargetToken]"|showname:0
+   --z:graphic:[&NewTID]|tofront
+   --+Target: |[rbutton]Target the Spell Token.::SetSummonTarget;[&TB]target|token_id}[/rbutton]
+   --X|
+
+  --:SetSummonTarget|
+   --#whisper|self,gm
+   --#targettoken|[&reentryval]
+   --?"[*T:t-name]" -ne "[&SpellTargetToken]"|[
+    --+|[c]Please target the [&SpellTargetToken], not [*T:t-name].[/c]
+    --X|
+   --]|
+   --^CompleteSummon|
+
+  --:CompleteSummon|
    --#whisper|
    --#rightsub|[&Shape] Undead
-   --c[&Shape]|ghost:=side;1|putrid:=side;2|skeletal:=side;3
-   --c[$side]|1:&Speed;30 ft., fly 40 ft. (hover)|2:&Speed;30 ft.|3:&Speed;30 ft.
-   --?[$side] -eq 3|=BaseHP;20 |=BaseHP;30
+   --#emoteText|[*S:character_name] summons an [&Shape] undead spirit!
    -->DetermineStats|
-   --!c:[&SpiritID]|controlledby:[&control]
    --+Duration: |[&duration]
    --+Desc: |[&spelldesc]
    --+At Higher Levels: |[&spellhigherdesc]
+   --+|[br]
    -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
    --!a:[*S:character_id]|!ConcentrationSpell:[&SpiritName]
    -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];
-   --@forselected+|Spawn _name|[&SpiritName] _qty|1 _bar1|[$HP] _bar2|[$AC]/ _side|[$side] _offset|1,1 _force|yes _tokenProps|name:[&SpiritName],showname:true,showplayers_name:true _order|toFront _fx|nova-magic _expand|15,30 {^&select @{selected|token_id}}
+   --!c:[&SpiritID]|controlledby:[&control]
+   -->PlaceSpiritToken|
+   --~|object;token;delete;[*T:t-id]
+   --X|
+
+  --:PlaceSpiritToken|
+   --!ot:SpiritTID|name:"[&SpiritName]"|_pageid:[*T:t-_pageid]|left:[*T:t-left]|top:[*T:t-top]|width:[*S:t-width]|height:[*S:t-height]|imgsrc:"[&URLlink]"|represents:[&SpiritID]|bar1_value:[$HP]|bar1_max:[$HP]|bar2_value:[$AC]|showname:true|showplayers_name:true
+   -->far_PlayEffects|[&SpiritTID];;[&VFX];;;
+   --z:graphic:[&SpiritTID]|tofront
+   --<|
+
+  --:Remove|
+   --?"[*S:ConcentrationSpell]" -eq "[&SpiritName]"|[
+    --!a:[*S:character_id]|!ConcentrationSpell:**
+   --]|
+   --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&SpiritName]
+   --?[@tokens(length)] -gt 0|[
+    --~|object;token;delete;[@tokens(0)]
+   --]|
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker]
+   --#whisper|
+   --#emoteText|[*S:character_name] dismisses the [&SpellName] spirit!
+   --+|[*S:character_name]'s undead spirit vanishes.
    --X|
   
   --:GetSpiritID|CharacterName;StringVariableForCharID
@@ -95,15 +155,20 @@
    --<|
   
   --:DetermineStats|
-   --=HPMod|[$SpellLevel]-3
+   --?[&Shape] -eq ghost|&URLlink;[&GhostlyURL]
+   --?[&Shape] -eq putrid|&URLlink;[&PutridURL]
+   --?[&Shape] -eq skeletal|&URLlink;[&SkeletalURL]
+   --c[&Shape]|ghost:&Speed;30 ft., fly 40 ft. (hover)|putrid:&Speed;30 ft.|skeletal:&Speed;30 ft.
+   --c[&Shape]|ghost:=BaseHP;30|putrid:=BaseHP;30|skeletal:=BaseHP;20
+   --=HPMod|[&SpellLevel]-3
    --=HPMod|[$HPMod]*10
    --=HP|[$BaseHP]+[$HPMod] 
    --=AC|11+[$SpellLevel]
    --=PB|[*S:pb]
    --c[&Shape]|ghost:=action;1|putrid:=action;3|skeletal:=action;2
-   --c[&Shape]|ghost:&damage;1d8+3+[$SpellLevel]|putrid:&damage;2d4+3+[$SpellLevel]|skeletal:&damage;1d6+3+[$SpellLevel]
+   --c[&Shape]|ghost:&damage;1d8+3+[&SpellLevel]|putrid:&damage;2d4+3+[&SpellLevel]|skeletal:&damage;1d6+3+[&SpellLevel]
    --c[&Shape]|ghost:&description;The creature must succeed on a Wisdom saving throw against DC [*S:spell_save_dc] or be frightened of the undead until the end of the target’s next turn.|putrid:&description;If the target is poisoned, it must succeed on a Constitution saving throw against DC [*S:spell_save_dc] or be paralyzed until the end of its next turn.|skeletal:&description;
-   --=attacks|[$SpellLevel]\2
+   --=attacks|[&SpellLevel]\2
    --&FesteringDesc|Any creature, other than you, that starts its turn within 5 feet of the spirit must succeed on a Constitution saving throw against DC [*S:spell_save_dc] or be poisoned until the start of its next turn.
    -->SetStats|[$action];[&damage];[&description]
    --<|
