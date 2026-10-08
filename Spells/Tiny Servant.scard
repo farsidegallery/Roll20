@@ -1,0 +1,163 @@
+!script{{
+  +++snlib;Farsidelib+++	
+ 
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|Tiny Servant @{selected|character_id}
+  --#whisper|self,gm
+
+  --/|Script Name : Tiny Servant
+  --/|Version     : 2.0.0
+  --/|Requires SC : Token Action Maker, ScriptCards Library snlib/Farsidelib
+  --/|Author      : Farsidegallery
+  --/|  
+  --/|  3rd-level transmutation; touch; 8 hours (not concentration). One Tiny object animated per cast,
+  --/|  plus two additional objects per slot level above 3rd. Deducts slot and places servant token(s).
+  --/|  Pre-stage servant token art URL below.
+  --/|
+ 
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+    
+  --/|Tiny Servant Character.
+  --&SpiritName|[*S:character_name] Tiny Servant
+  
+  --&SpellName|Tiny Servant
+  --&MinimumSpellLevel|3
+
+  --&VFX|nova-magic
+
+  --/| Tiny servant token art (Roll20 library URL must include /original/ or /thumb/ etc.)
+  --&ServantURL|https://files.d20.io/images/503517427/cQBGGfg1OoKSCfs41AB5mw/original.webp
+
+  --/| Spell placement token (move on map, then target to confirm summon location)
+  --&SpellTargetToken|Spell Token
+  --&PlaceURLlink|https://files.d20.io/images/469753332/ew1SU1DcQK4eborJlOqNQw/original.png
+  
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+  
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[ 
+  --&cbrac|]
+  --&oparen|(
+  --&cparen|)
+   
+  -->far_LoadTokenMarkers|
+
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+  -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+  --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+  
+  -->GetSpiritID|[&SpiritName];SpiritID
+  --&control|[*O:[*S:t-represents]:character:controlledby]
+  --#title|[&SpellName]
+  -->ChooseLevel|
+  --X|  
+  
+  --:ChooseLevel|
+   --+|[c][b]Cast At What Level?[/b][/c]
+    --&splvlMsg|
+    --%splvl|foreach;SpellCastLevel
+     --&splvlMsg|+ [rbutton][&splvl]::PickLevel;[&splvl][/rbutton]
+    --%|
+   --+|[c][&splvlMsg][/c]
+   --+|[br]
+   --+|[c][rbutton]Dismiss::Remove[/rbutton][/c]
+  --X|
+
+  --:PickLevel|
+   --=SpellLevel|[&reentryval]
+   --&SpellLevel|[&reentryval]
+   --#leftsub|[*R:spellcastingtime]
+   --#rightsub|[*R:spellrange]
+   --?[*R:spellconcentration] -inc 1|&duration;[*R:spellduration] [b](Concentration)[/b]|&duration;[*R:spellduration]
+   --&spelldesc|[*R:spelldescription]
+   --&spellhigherdesc|[*R:spellathigherlevels]
+   -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
+   --^SummonPlacement|
+
+  --:SummonPlacement|
+   --#whisper|self,gm
+   --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&SpellTargetToken]
+   --?[@tokens(length)] -gt 0|[
+    --~|object;token;delete;[@tokens(0)]
+   --]|
+   --+|Move the [&SpellTargetToken] to the touched object’s location (or where animated servant(s) should stand), then target it below.
+   --!ot:NewTID|name:"[&SpellTargetToken]"|_pageid:[*S:t-_pageid]|left:[=[*S:t-left]+70]|top:[*S:t-top]|width:[*S:t-width]|height:[*S:t-height]|imgsrc:"[&PlaceURLlink]"|bar1_value:1|represents:"[&SpellTargetToken]"|showname:0
+   --z:graphic:[&NewTID]|tofront
+   --+Target: |[rbutton]Target the Spell Token.::SetSummonTarget;[&TB]target|token_id}[/rbutton]
+   --X|
+
+  --:SetSummonTarget|
+   --#whisper|self,gm
+   --#targettoken|[&reentryval]
+   --?"[*T:t-name]" -ne "[&SpellTargetToken]"|[
+    --+|[c]Please target the [&SpellTargetToken], not [*T:t-name].[/c]
+    --X|
+   --]|
+   --^CompleteSummon|
+
+  --:CompleteSummon|
+   --#whisper|
+   -->DetermineStats|
+   --#emoteText|[&emoteDesc]
+   --#rightsub|[$QTY] Servant(s)
+   --+Duration: |[&duration]
+   --+Desc: |[&spelldesc]
+   --+At Higher Levels: |[&spellhigherdesc]
+   --+|[br]
+   -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+   --!c:[&SpiritID]|controlledby:[&control]
+   --^PlaceServantTokens|
+
+  --:PlaceServantTokens|
+   --&URLlink|[&ServantURL]
+   --=servW|[*S:t-width]/2
+   --=servH|[*S:t-height]/2
+   --=idx|0
+   --^PlaceServantNext|
+
+  --:PlaceServantNext|
+   --?[$idx] -ge [$QTY]|FinishCast
+   --=xoff|[$idx]*[$servW]
+   --!ot:SpiritTID|name:"[&SpiritName]"|_pageid:[*T:t-_pageid]|left:[=[*T:t-left]+[$xoff]]|top:[*T:t-top]|width:[$servW]|height:[$servH]|imgsrc:"[&URLlink]"|represents:[&SpiritID]|bar1_value:10|bar1_max:10|bar2_value:18|showname:true|showplayers_name:true
+   -->far_PlayEffects|[&SpiritTID];;[&VFX];;;
+   --z:graphic:[&SpiritTID]|tofront
+   --=idx|[$idx]+1
+   --^PlaceServantNext|
+
+  --:FinishCast|
+   --~|object;token;delete;[*T:t-id]
+   --X|
+
+  --:Remove|
+   --^RemoveNext|
+
+  --:RemoveNext|
+   --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&SpiritName]
+   --?[@tokens(length)] -eq 0|RemoveDone
+   --~|object;token;delete;[@tokens(0)]
+   --^RemoveNext|
+
+  --:RemoveDone|
+   --#whisper|
+   --#emoteText|[*S:character_name] dismisses their tiny servant(s)!
+   --+|[*S:character_name]'s tiny servant(s) revert to inanimate objects.
+   --X|
+  
+  --:GetSpiritID|CharacterName;StringVariableForCharID
+   --~|array;objects:character;SpiritCharArr;[%1%]
+   --?[@SpiritCharArr(length)] -ne 1|>far_LogFatalError;Could not find character named [%1%]
+   --&[%2%]|[@SpiritCharArr(0)]
+   --<|
+  
+  --:DetermineStats|
+   --=QtyMod|[$SpellLevel]-3
+   --=QtyMod|[$QtyMod]*2
+   --=QTY|1+[$QtyMod]
+   --?[$QTY] -gt 1|&emoteDesc;[*S:character_name] animates [$QTY] tiny servants!|&emoteDesc;[*S:character_name] animates a tiny servant!
+   --<|
+}}
