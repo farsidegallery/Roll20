@@ -4,7 +4,7 @@
   --/|Requires SC : 2.7.15+
   --/|Author      : Kurt Jaegers
   --/|Modified By : Farsidegallery
-  --&CAM_VERSION|3.8.2
+  --&CAM_VERSION|3.8.3
 
   --/|IMPORTANT NOTE: Updating this macro via the in-game editor will cause it to exhibit strange behavior. If you wish
   --/|to make settings changes, make them in an external editor (like NOTEPAD) and copy/paste the whole
