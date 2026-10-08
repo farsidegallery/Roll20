@@ -1,6 +1,6 @@
 ﻿!script {{
   --/|Script Name : 5E Action Menu
-  --/|Version     : 3.8.2
+  --/|Version     : 3.8.3
   --/|Requires SC : 2.7.15+
   --/|Author      : Kurt Jaegers
   --/|Modified By : Farsidegallery
@@ -87,7 +87,7 @@
   --&damageApplyScript|token-mod        --/|Set this to either "scriptcards", "token-mod", "alterbars", "damagebuttons" or anything else to not apply damage
   --&whisperDamageButtonsToDM|1         --/|If using "damagebuttons" and this is set to 1, the damage buttons will be whispered to the DM instead of being added to the card
   --&whisperDamageButtonResultsToDM|1   --/|If using "damagebuttons" for damage and this value is 1, the DM is whispered a message about damage application
-  --&selfHandleAdvantageMode|1          --/|If set to 1, the Action Menu will include advantage/normal/disadvantage toggles (and won't use the character sheet toggle)
+  --&selfHandleAdvantageMode|0          --/|If set to 1, the Action Menu will include advantage/normal/disadvantage toggles (and won't use the character sheet toggle)
   --&defaultAdvantageMode|0             --/|Used with SelfHandleAdvantageMode. 0=Normal, 1=Advantage, 2=Disadvantage
   --&showAdvantageModeText|0            --/|Used with SelfHandleAdvantageMode. 0=Button color coding only. 1=Show "Normal", "Advantage", "Disadvantage" text
   --&compactGlobalModDisplay|1          --/|If set to 1, Global X Mods will use more compact display layouts
@@ -192,6 +192,8 @@
   --&GEAR|& --&GEAR|+# --&GEAR|+x2699;
   --&SPACE|X X --&SPACE|[&SPACE(1,1)]
   --&NB|& --&NB|+nbsp --&NB|+;
+  --/|Legacy empty-section cache marker (HTML nbsp entity); omit section instead of emitting.
+  --&CAM_SectionSpacer|[&NB]
   --&obrac|[ --&cbrac|]
   --&vbar||
 
@@ -306,6 +308,9 @@
   --/|Handle Action Menu creation for NPCs
 
   --:proc_npc|
+  --?"X[&saveTokenID]" -ne "X" -and "[&saveTokenID]" -ne ""|[
+   --#sourcetoken|[&saveTokenID]
+  --]|
   --/+|[hr #58180d]
 
   -->BuildCharacterSummary|[*S:t-id];CharSummaryText;npc_ac
@@ -386,11 +391,21 @@
   --?"[*R:name]" -eq "NoRepeatingAttributeLoaded"|[
    --Rfind|[*S:character_id];[&action_name];[&_npcRepeatSec];name
   --]|
+  --?"[*R:name]" -eq "NoRepeatingAttributeLoaded"|[
+   --~|hashtable;fromrepeatingsection;[*S:character_id];[&_npcRepeatSec];name;NPCActionLookupHash
+   --&_npcRowIdFromHash|[:NPCActionLookupHash("[&action_name]_sectionid")]
+   --?"X[&_npcRowIdFromHash]" -ne "X" -and "[&_npcRowIdFromHash]" -ne "" -and "[&_npcRowIdFromHash]" -ne "undefined"|[
+    --?"[&_npcRowIdFromHash(0,1)]" -ne "-"|&_npcRowIdFromHash;-[&_npcRowIdFromHash]
+    --Rbysectionid|[*S:character_id];[&_npcRepeatSec];[&_npcRowIdFromHash]
+   --]|
+  --]|
   --?"[*R:name]" -eq "NoRepeatingAttributeLoaded"|>NPC_ROW_NOT_FOUND
   --?"[*R:name]" -eq ""|>NPC_ROW_NOT_FOUND
   --^LNAR_DONE|
   --:LNAR_BY_RID|
-  --&_npcRowId|-[&action_part(after,RID)]
+  --/|Payload is RID + section id (id may already include a leading hyphen from the sheet).
+  --&_npcRowId|[&action_part(after,RID)]
+  --?"[&_npcRowId(0,1)]" -ne "-"|&_npcRowId;-[&_npcRowId]
   --Rbysectionid|[*S:character_id];[&_npcRepeatSec];[&_npcRowId]
   --?"[*R:name]" -eq "NoRepeatingAttributeLoaded"|>NPC_ROW_NOT_FOUND
   --&action_name|[*R:name]
@@ -417,6 +432,7 @@
   --:EXEC_NPC_ACTION|
   --?[&AMOriginalSendingPlayer] -ne [&SendingPlayerID]|YOU_CANNOT_DO_THAT
   -->CAM_SetDamageApplyRoutines|
+  -->CAM_RestoreMenuSourceToken|
   --&whisperTarget|
   --?[*S:npc] -eq 1 -and [&AllNPCActionsToSender] -eq 1|&whisperTarget;self
   --#whisper|[&whisperTarget]
@@ -583,6 +599,7 @@
   --X|
 
   --:EXEC_NPC_BONUS_ACTION|
+  -->CAM_RestoreMenuSourceToken|
   -->PARSE_NPC_REENTRY|
   --&whisperTarget|
   --?[*S:npc] -eq 1 -and [&AllNPCActionsToSender] -eq 1|&whisperTarget;self
@@ -607,6 +624,7 @@
   --X|
 
   --:EXEC_NPC_REACTION|
+  -->CAM_RestoreMenuSourceToken|
   -->PARSE_NPC_REENTRY|
   --&whisperTarget|
   --?[*S:npc] -eq 1 -and [&AllNPCActionsToSender] -eq 1|&whisperTarget;self
@@ -631,6 +649,7 @@
   --X|
 
   --:EXEC_NPC_LEGENDARY_ACTION|
+  -->CAM_RestoreMenuSourceToken|
   -->PARSE_NPC_REENTRY|
   --&whisperTarget|
   --?[*S:npc] -eq 1 -and [&AllNPCActionsToSender] -eq 1|&whisperTarget;self
@@ -779,6 +798,20 @@
   --/|=========================================================================================================
   --/|Reentrant points for PC actions
 
+  --:CAM_RestoreMenuSourceToken|
+  --?"X[&saveTokenID]" -ne "X" -and "[&saveTokenID]" -ne ""|[
+   --#sourcetoken|[&saveTokenID]
+  --]|
+  --?"X[&AMCharacterId]" -eq "X" -or "[&AMCharacterId]" -eq ""|&AMCharacterId;[*S:character_id]
+  --&recoveredMenuTid|[*[&AMCharacterId]:5ECAM_MENU_TID]
+  --?"X[&saveTokenID]" -eq "X" -or "[&saveTokenID]" -eq ""|[
+   --?"X[&recoveredMenuTid]" -ne "X" -and "[&recoveredMenuTid]" -ne ""|[
+    --#sourcetoken|[&recoveredMenuTid]
+    --&saveTokenID|[&recoveredMenuTid]
+   --]|
+  --]|
+  --<|
+
   --:EXEC_PC_ATTACK|
   --?[&AMOriginalSendingPlayer] -ne [&SendingPlayerID]|YOU_CANNOT_DO_THAT
   --?"[&CamTargetDebug]" -eq "1"|[
@@ -829,8 +862,9 @@
   --&RidPrefix|[&RidTail(0,3)]
   --?"[&RidPrefix]" -eq "RID"|PC_ATK_DECODE_RID|PC_ATK_NAME_ONLY
   --:PC_ATK_DECODE_RID|
-  --/|Match NPC LNAR_BY_RID: RID + id body (no leading hyphen); do not strip (after,-) again or row ids truncate.
-  --&attack_rowid|-[&RidTail(after,RID)]
+  --/|Match LNAR_BY_RID: one leading hyphen on section id only.
+  --&attack_rowid|[&RidTail(after,RID)]
+  --?"[&attack_rowid(0,1)]" -ne "-"|&attack_rowid;-[&attack_rowid]
   --^PC_ATK_PARSE_DONE|
   --:PC_ATK_NAME_ONLY|
   --?"X[&attack_name]" -eq "X" -or "[&attack_name]" -eq ""|&attack_name;[&RidTail]
@@ -1802,6 +1836,14 @@
   --&_GAMB_Temp|
   --~|hashtable;fromrepeatingsection;[%1%];repeating_tohitmod;global_attack_name;GAMBHash
   --~|array;fromkeys;GAMBKeys;GAMBHash
+  --?"[@GAMBKeys(length)]" -eq "undefined array"|[
+   --&[%2%]|
+   --<|
+  --]|
+  --?[@GAMBKeys(length)] -lt 1|[
+   --&[%2%]|
+   --<|
+  --]|
   --?[@GAMBKeys(length)] -gt 0|[
   --%GAMBLoop|foreach;GAMBKeys
    --?"[&GAMBLoop]" -inc "_sectionid"|GAMB_BUILD|GAMB_NEXT
@@ -1825,6 +1867,14 @@
   --&_GDMB_Temp|
   --~|hashtable;fromrepeatingsection;[%1%];repeating_damagemod;global_damage_name;GDMBHash
   --~|array;fromkeys;GDMBKeys;GDMBHash
+  --?"[@GDMBKeys(length)]" -eq "undefined array"|[
+   --&[%2%]|
+   --<|
+  --]|
+  --?[@GDMBKeys(length)] -lt 1|[
+   --&[%2%]|
+   --<|
+  --]|
   --?[@GDMBKeys(length)] -gt 0|[
   --%GDMBLoop|foreach;GDMBKeys
    --?"[&GDMBLoop]" -inc "_sectionid"|GDMB_BUILD|GDMB_NEXT
@@ -1848,6 +1898,14 @@
   --&_GSMB_Temp|
   --~|hashtable;fromrepeatingsection;[%1%];repeating_savemod;global_save_name;GSMBHash
   --~|array;fromkeys;GSMBKeys;GSMBHash
+  --?"[@GSMBKeys(length)]" -eq "undefined array"|[
+   --&[%2%]|
+   --<|
+  --]|
+  --?[@GSMBKeys(length)] -lt 1|[
+   --&[%2%]|
+   --<|
+  --]|
   --?[@GSMBKeys(length)] -gt 0|[
   --%GSMBLoop|foreach;GSMBKeys
    --?"[&GSMBLoop]" -inc "_sectionid"|GSMB_BUILD|GSMB_NEXT
@@ -1871,6 +1929,14 @@
   --&_GACMB_Temp|
   --~|hashtable;fromrepeatingsection;[%1%];repeating_acmod;global_ac_name;GACMBHash
   --~|array;fromkeys;GACMBKeys;GACMBHash
+  --?"[@GACMBKeys(length)]" -eq "undefined array"|[
+   --&[%2%]|
+   --<|
+  --]|
+  --?[@GACMBKeys(length)] -lt 1|[
+   --&[%2%]|
+   --<|
+  --]|
   --?[@GACMBKeys(length)] -gt 0|[
   --%GACMBLoop|foreach;GACMBKeys
    --?"[&GACMBLoop]" -inc "_sectionid"|GACMB_BUILD|GACMB_NEXT
@@ -1894,6 +1960,14 @@
   --&_GSKMB_Temp|
   --~|hashtable;fromrepeatingsection;[%1%];repeating_skillmod;global_skill_name;GSKMBHash
   --~|array;fromkeys;GSKMBKeys;GSKMBHash
+  --?"[@GSKMBKeys(length)]" -eq "undefined array"|[
+   --&[%2%]|
+   --<|
+  --]|
+  --?[@GSKMBKeys(length)] -lt 1|[
+   --&[%2%]|
+   --<|
+  --]|
   --?[@GSKMBKeys(length)] -gt 0|[
   --%GSKMBLoop|foreach;GSKMBKeys
    --?"[&GSKMBLoop]" -inc "_sectionid"|GSKMB_BUILD|GSKMB_NEXT
@@ -2856,7 +2930,7 @@
   --%|
   --^DACA_SHARED_MULE|
 
-  --/|Parse AMLIST and build mule buttons â€” no --+ output here (card lines abort gosub after parse debug)
+  --/|Parse AMLIST and build mule buttons here (no chat output in this gosub).
   --:DACA_BUILD_MULE_BUTTONS|
   --&dacaParseCount|0
   --=dacaBtnCount|0
@@ -2946,10 +3020,7 @@
   --]|
 
   --:DACA_FINISH_BUTTONS|
-  --?"[&DACA_BUTTONS]" -eq ""|<
-
-  --+Custom Actions|
-  --+|[&DACA_BUTTONS]
+  -->CAM_EMIT_SECTION|Custom Actions;DACA_BUTTONS
   --<|
 
   --:GET_CHARACTER_ID_BY_NAME|
@@ -2971,20 +3042,26 @@
   --?"[&AM_CACHED_BUTTON_LIST]" -eq "undefined"|DO_BUILD_BUTTON_LIST
   --?"[&AM_CACHED_BUTTON_LIST]" -eq ""|DO_BUILD_BUTTON_LIST
   -->MULE_BTN_CACHE_UNESC|AM_CACHED_BUTTON_LIST;AM_CACHED_BUTTON_LIST
-  --+[%5%]|[BR][&AM_CACHED_BUTTON_LIST]
+  --?"[&AM_CACHED_BUTTON_LIST]" -eq ""|BUILD_BUTTON_LIST_CACHE_SKIP
+  --?"[&AM_CACHED_BUTTON_LIST]" -eq "[&CAM_SectionSpacer]"|BUILD_BUTTON_LIST_CACHE_SKIP
+  -->CAM_EMIT_SECTION|[%5%];AM_CACHED_BUTTON_LIST
+  --:BUILD_BUTTON_LIST_CACHE_SKIP|
   --<|
 
-  --/|Title and buttons in one --+ with [BR] only (no leading [br] on the list; two --+ lines add a blank chat row).
+  --/|Title and buttons in one chat row with [BR] only. Two output lines add an extra blank row.
 
   --:DO_BUILD_BUTTON_LIST|
   --~|hashtable;fromrepeatingsection;[%1%];[%2%];[%3%];BuiltButtonHash
   --~|array;fromkeys;Hash_Keys;BuiltButtonHash
+  --?"[@Hash_Keys(length)]" -eq "undefined array"|AM_BUTTON_LIST_NOTHING
   --?[@Hash_Keys(length)] -eq 0|AM_BUTTON_LIST_NOTHING
   --&AM_BUTTON_LIST|
   --%loop|foreach;Hash_Keys
     --?"[&loop]" -inc "_sectionid"|AM_LIST_NEXT_ROW|AM_LIST_CONTINUE
     --:AM_LIST_NEXT_ROW|
     --&DisplayName|[&loop(replace,_sectionid,)]
+    --?"[&DisplayName]" -eq ""|AM_LIST_CONTINUE
+    --?"[&DisplayName]" -eq "false"|AM_LIST_CONTINUE
     --&RowSectionId|[:BuiltButtonHash("[&DisplayName]_sectionid")]
     --?"[&RowSectionId]" -eq ""|&RowSectionId;[:BuiltButtonHash("[&loop]")]
     --&ActionName|[&DisplayName(replace,;,-!-!-)]
@@ -3035,12 +3112,16 @@
     --:AM_LIST_PC_NO_TARGET|
     --&actionTargetSuffix|NONE
     --:AM_LIST_BUILD_RBUTTON|
-    --/|Kurt-style payload: encoded atkname/action name (Rfind on exec). Legacy RID-only chat buttons still decode via PC_ATK_DECODE_RID.
+    --/|Kurt-style payload: encoded atkname/action name (Rfind on exec). NPC rows prefer RID (reliable when names have odd punctuation). Legacy RID-only chat buttons still decode via PC_ATK_DECODE_RID.
     --&PcAttackPayload|[&ActionName]
+    --?"[%4%]" -inc "EXEC_NPC"|[
+     --?"X[&RowSectionId]" -ne "X" -and "[&RowSectionId]" -ne "" -and "[&RowSectionId]" -ne "undefined"|&PcAttackPayload;RID[&RowSectionId]
+    --]|
     --:AM_LIST_PAYLOAD_DONE|
     --&AM_BUTTON_LIST|+[rbutton][&DisplayName(totitlecase)]::[%4%];[&PcAttackPayload]|[&actionTargetSuffix][/rbutton][&SPACE]
     --:AM_LIST_CONTINUE|
   --%|
+  --?"[&AM_BUTTON_LIST]" -eq ""|AM_BUTTON_LIST_NOTHING
   -->MULE_BTN_CACHE_ESC|AM_BUTTON_LIST;cacheList
   --?"[%5%]" -eq "Attacks and Actions"|AM_LIST_SKIP_CACHE_WRITE
   --?"[%5%]" -eq "Actions"|AM_LIST_SKIP_CACHE_WRITE
@@ -3051,7 +3132,8 @@
    --!a:[%1%]|!5ECAM_CACHE_[%5%]:[&cacheList]
   --]|
   --:AM_LIST_SKIP_CACHE_WRITE|
-  --+[%5%]|[BR][&AM_BUTTON_LIST]
+  -->CAM_EMIT_SECTION|[%5%];AM_BUTTON_LIST
+  --<|
   --:AM_BUTTON_LIST_NOTHING|
   --<|
 
@@ -3064,7 +3146,9 @@
     --&AM_CACHED_BUTTON_LIST|[&AM_CACHED_BUTTON_LIST(replaceall,!#!,:)]
     --&AM_CACHED_BUTTON_LIST|[&AM_CACHED_BUTTON_LIST(replaceall,!$!,;)]
     --&AM_CACHED_BUTTON_LIST|[&AM_CACHED_BUTTON_LIST(replaceall,!@!,|)]
-    --+[%5%]|[BR][&AM_CACHED_BUTTON_LIST]
+    --?"[&AM_CACHED_BUTTON_LIST]" -eq ""|AM_SPELL_BUTTON_LIST_NOTHING
+    --?"[&AM_CACHED_BUTTON_LIST]" -eq "[&CAM_SectionSpacer]"|AM_SPELL_BUTTON_LIST_NOTHING
+    -->CAM_EMIT_SECTION|[%5%];AM_CACHED_BUTTON_LIST
     --<|
 
     --:DO_BUILD_SPELL_BUTTON_LIST|
@@ -3081,12 +3165,20 @@
     --:BEGIN_BUILDING_SPELL_BUTTONS|
     --~|hashtable;fromrepeatingsection;[%1%];[%2%];[%3%];BuiltButtonHash
     --~|array;fromkeys;Hash_Keys;BuiltButtonHash
+    --?"[@Hash_Keys(length)]" -eq "undefined array"|AM_SPELL_BUTTON_LIST_NOTHING
     --?[@Hash_Keys(length)] -eq 0|AM_SPELL_BUTTON_LIST_NOTHING
-    --~|array;define;HashList;dummy
-    --~|array;removeat;HashList;0
+    --~|array;define;HashList
     --%loop|foreach;Hash_Keys
-      --?"[&loop]" -inc "_sectionid"|&HashList(99999);[&loop(replace,_sectionid,)]
+      --?"[&loop]" -inc "_sectionid"|[
+       --&_spellHashName|[&loop(replace,_sectionid,)]
+       --?"[&_spellHashName]" -eq ""|spellHashLoopNext
+       --?"[&_spellHashName]" -eq "false"|spellHashLoopNext
+       --?"X[&_spellHashName]" -eq "Xfalse"|spellHashLoopNext
+       --~|array;add;HashList;[&_spellHashName]
+       --:spellHashLoopNext|
+      --]|
     --%|
+    --?"[@HashList(length)]" -lt 1|AM_SPELL_BUTTON_LIST_NOTHING
     --~|array;sort;HashList
 
     --&AM_BUTTON_LIST|
@@ -3108,6 +3200,11 @@
 
     --%spellloop|foreach;HashList
       --/\|Loop: [&spellloop]
+      --?"[&spellloop]" -eq ""|SPELL_BUTTON_END_GENERATE
+      --?"[&spellloop]" -eq "false"|SPELL_BUTTON_END_GENERATE
+      --?"X[&spellloop]" -eq "Xfalse"|SPELL_BUTTON_END_GENERATE
+      --?"[&spellloop]" -eq "ArrayError"|SPELL_BUTTON_END_GENERATE
+      --?"[&spellloop]" -eq "undefined"|SPELL_BUTTON_END_GENERATE
 
       --?[*[%1%]:npc] -eq 1 -and "[&skipNPCPrepCheck]" -eq "1"|SKIP_PREP_CHECK
       --?[&skipPreppedSpellsCheck] -eq 1|SKIP_PREP_CHECK
@@ -3162,9 +3259,11 @@
    --!a:[%1%]|!5ECAM_CACHE_[%5%]_[%7%]:[&cacheList]
   --]|
 
-    --+[%5%]|[BR][&AM_BUTTON_LIST]
+    -->CAM_EMIT_SECTION|[%5%];AM_BUTTON_LIST
+    --<|
     --:AM_SPELL_BUTTON_LIST_NOTHING|
-  --<|
+    --/|No spells at this level (or all filtered) — omit section row.
+    --<|
 
   --:SHOW_MULTIATTACK|description
   --+Multiattack|[%1%] [br][br]
@@ -3261,6 +3360,19 @@
   --&[%2%]|[&[%2%](replaceall,!@!,|)]
   --<|
 
+  --/|One chat row: section title + body. Empty/false/legacy spacer → omit row. Args: title;bodyVarName
+  --:CAM_EMIT_SECTION|sectionTitle;bodyVarName
+  --&_camSecWork|[&[%2%]]
+  --?"X[&_camSecWork]" -eq "X"|&_camSecWork|
+  --?"[&_camSecWork]" -eq ""|CAM_EMIT_SECTION_SKIP
+  --?"X[&_camSecWork]" -eq "Xfalse"|CAM_EMIT_SECTION_SKIP
+  --?"[&_camSecWork]" -eq "[br]"|CAM_EMIT_SECTION_SKIP
+  --?"[&_camSecWork]" -eq "undefined"|CAM_EMIT_SECTION_SKIP
+  --?"[&_camSecWork]" -eq "[&CAM_SectionSpacer]"|CAM_EMIT_SECTION_SKIP
+  --+[%1%]|[BR][&[%2%]]
+  --:CAM_EMIT_SECTION_SKIP|
+  --<|
+
   --/|Sets _muleHyphName, _muleBtnLabel, _mulePipeName, _muleHyphTest. Input: _muleTraitChar, _muleTraitRowName. Colon traits match mule by suffix after ":" only (see settings note).
   --:MULE_TRAIT_RESOLVE|
   --?"[&CamTraceDebug]" -ne "1"|MTR_TRACE_IN_OFF
@@ -3275,13 +3387,16 @@
   --~_muleShortName|string;after;:;[&_muleTraitRowName]
   --~_muleShortName|string;trim;[&_muleShortName]
   --:MTR_SEARCH_READY|
+  --/|Chat [button] labels must not use &#58; (semicolon breaks parsing). Colons → " - " for display only.
   --&_muleBtnLabel|[&_muleTraitRowName]
-  --&_muleBtnLabel|[&_muleBtnLabel(replaceall,:,&#58;)]
+  --&_muleBtnLabel|[&_muleBtnLabel(replaceall,:, - )]
+  --&_muleBtnLabel|[&_muleBtnLabel(replaceall,|, - )]
   --~_muleHyphShort|string;replaceall; ;-;[&_muleShortName]
   --~_muleHyphFull|string;replaceall; ;-;[&_muleTraitRowName]
   --&_muleHyphName|[&_muleHyphShort]
   --&_muleHyphTest|AbilityNotFound
   --~|array;objects:character;_pcMuleCidList;[&_muleTraitChar]
+  --?"[@_pcMuleCidList(maxindex)]" -eq "undefined array"|MTR_FAIL
   --?"[@_pcMuleCidList(maxindex)]" -lt "0"|MTR_FAIL
   --~_muleHyphTest|system;findability;[&_muleTraitChar];[&_muleHyphShort]
   --?"[&_muleHyphTest]" -eq "AbilityNotFound"|MTR_TRY_CID_SHORT
@@ -3329,6 +3444,8 @@
   --?"X[&_mulePipeName]" -eq "X"|MTR_PIPE_HYPH
   --?"[&_mulePipeName]" -eq ""|MTR_PIPE_HYPH
   --?"[&_mulePipeName]" -eq "false"|MTR_PIPE_HYPH
+  --?"[&_muleBtnLabel]" -eq "false"|&_muleBtnLabel;[&_muleShortName]
+  --?"[&_muleBtnLabel]" -eq "false"|&_muleBtnLabel;[&_muleHyphName]
   --^MTR_PIPE_DONE|
   --:MTR_PIPE_HYPH|
   --?"[&_muleColonTrait]" -eq "1"|MTR_PIPE_SUFFIX
@@ -3371,17 +3488,35 @@
     --&RA_BUTTON_LIST|
     --~|hashtable;fromrepeatingsection;[*S:character_id];repeating_traits;name;TraitBtnHash
     --~|array;fromkeys;TraitBtnKeys;TraitBtnHash
-    --~|array;define;TraitNameList;dummy
-    --~|array;removeat;TraitNameList;0
+    --?"[@TraitBtnKeys(length)]" -eq "undefined array"|[
+     --~|array;define;TraitBtnKeys;
+    --]|
+    --~|array;define;TraitNameList
+    --?[@TraitBtnKeys(length)] -lt 1|PC_BA_SCAN_SORT
     --%traitKeyLoop|foreach;TraitBtnKeys
-      --?"[&traitKeyLoop]" -inc "_sectionid"|&TraitNameList(99999);[&traitKeyLoop(replace,_sectionid,)]
+      --?"[&traitKeyLoop]" -inc "_sectionid"|[
+       --&_traitScanName|[&traitKeyLoop(replace,_sectionid,)]
+       --?"[&_traitScanName]" -eq ""|traitKeyLoopNext
+       --?"[&_traitScanName]" -eq "false"|traitKeyLoopNext
+       --?"X[&_traitScanName]" -eq "Xfalse"|traitKeyLoopNext
+       --~|array;add;TraitNameList;[&_traitScanName]
+       --:traitKeyLoopNext|
+      --]|
     --%|
-    --~|array;sort;TraitNameList
-    --~|array;define;BaNameList;dummy
-    --~|array;removeat;BaNameList;0
+    --?"[@TraitNameList(length)]" -eq "undefined array"|[
+     --~|array;define;TraitNameList;
+    --]|
+    --?[@TraitNameList(length)] -gt 0|[
+     --~|array;sort;TraitNameList
+    --]|
+    --~|array;define;BaNameList
+    --?"[@TraitNameList(length)]" -eq "undefined array"|PC_BA_SCAN_SORT
+    --?[@TraitNameList(length)] -lt 1|PC_BA_SCAN_SORT
     --%baScan|foreach;TraitNameList
       --&TraitRowName|[&baScan]
       --?"[&TraitRowName]" -eq ""|PC_BA_SCAN_NEXT
+      --?"[&TraitRowName]" -eq "false"|PC_BA_SCAN_NEXT
+      --?"X[&TraitRowName]" -eq "Xfalse"|PC_BA_SCAN_NEXT
       --&TraitSourceType|[:TraitBtnHash("[&TraitRowName]_source_type")]
       --&TraitSource|[:TraitBtnHash("[&TraitRowName]_source")]
       -->IS_TRAIT_FEAT_FROM_VARS|_TraitIsFeat
@@ -3393,36 +3528,67 @@
       --?"[&TraitRowName]" -inc "Two Weapon Fighting"|PC_BA_SCAN_ADD
       --^PC_BA_SCAN_NEXT|
       --:PC_BA_SCAN_ADD|
-      --&BaNameList(99999)|[&TraitRowName]
+      --~|array;add;BaNameList;[&TraitRowName]
       --:PC_BA_SCAN_NEXT|
     --%|
-    --~|array;sort;BaNameList
+    --:PC_BA_SCAN_SORT|
+    --?"[@BaNameList(length)]" -eq "undefined array"|[
+     --~|array;define;BaNameList;
+    --]|
     --?[@BaNameList(length)] -gt 0|[
+     --~|array;sort;BaNameList
+    --]|
+    --?"[@BaNameList(length)]" -eq "undefined array"|PC_BA_SKIP_LOOP
+    --?[@BaNameList(length)] -lt 1|PC_BA_SKIP_LOOP
     --%baItem|foreach;BaNameList
       --&TraitRowName|[&baItem]
+      --?"[&TraitRowName]" -eq ""|PC_BA_ITEM_NEXT
+      --?"[&TraitRowName]" -eq "false"|PC_BA_ITEM_NEXT
+      --?"X[&TraitRowName]" -eq "Xfalse"|PC_BA_ITEM_NEXT
+      --?"[&TraitRowName]" -eq "ArrayError"|PC_BA_ITEM_NEXT
+      --?"[&TraitRowName]" -eq "undefined"|PC_BA_ITEM_NEXT
+      --?"[&TraitRowName]" -inc "Two-Weapon Fighting"|PC_BA_TWF_BTN
+      --?"[&TraitRowName]" -inc "Two Weapon Fighting"|PC_BA_TWF_BTN
       --&TraitRowId|[:TraitBtnHash("[&TraitRowName]_sectionid")]
       --?"[&TraitRowId]" -eq ""|&TraitRowId;[:TraitBtnHash("[&TraitRowName]")]
       --&TraitBtnLabel|[&TraitRowName]
+      --&TraitBtnLabel|[&TraitBtnLabel(replaceall,:, - )]
       --&_muleTraitChar|[&pcabilitymulename]
       --&_muleTraitRowName|[&TraitRowName]
       -->MULE_TRAIT_RESOLVE|
       --?"[&_muleHyphTest]" -eq "AbilityNotFound"|PC_BA_TRAIT_RBUTTON
+      --?"[&_muleBtnLabel]" -eq "false"|&_muleBtnLabel;[&TraitBtnLabel]
+      --?"[&_muleBtnLabel]" -eq ""|&_muleBtnLabel;[&TraitBtnLabel]
+      --?"[&_mulePipeName]" -eq "false"|&_mulePipeName;[&_muleHyphName]
+      --?"[&_muleBtnLabel]" -eq "false"|PC_BA_TRAIT_RBUTTON
+      --?"[&_muleBtnLabel]" -eq ""|PC_BA_TRAIT_RBUTTON
+      --?"[&_mulePipeName]" -eq ""|PC_BA_TRAIT_RBUTTON
       --&_muleBtnPiece|[button][&_muleBtnLabel]::~[&pcabilitymulename]|[&_mulePipeName][/button][&SPACE]
       --&BA_BUTTON_LIST|+[&_muleBtnPiece]
       --&_lastMuleAbilId|[&_muleHyphTest]
       --&_baRaShownTraits|+;[&TraitRowName];
       --^PC_BA_ITEM_NEXT|
+      --:PC_BA_TWF_BTN|
+      --&BA_BUTTON_LIST|+[rbutton]Two-Weapon Fighting::TWO_WEAPON_FIGHTING[/rbutton][&SPACE]
+      --&_baRaShownTraits|+;Two-Weapon Fighting;
+      --^PC_BA_ITEM_NEXT|
       --:PC_BA_TRAIT_RBUTTON|
+      --?"X[&TraitRowId]" -eq "X"|PC_BA_ITEM_NEXT
+      --?"[&TraitRowId]" -eq ""|PC_BA_ITEM_NEXT
+      --?"[&TraitRowId]" -eq "false"|PC_BA_ITEM_NEXT
+      --?"[&TraitRowId]" -eq "undefined"|PC_BA_ITEM_NEXT
       --&BA_BUTTON_LIST|+[rbutton][&TraitBtnLabel]::EXEC_PC_TRAIT;[&TraitRowId][/rbutton][&SPACE]
       --&_baRaShownTraits|+;[&TraitRowName];
       --:PC_BA_ITEM_NEXT|
     --%|
-    --]|
-    --~|array;define;RaNameList;dummy
-    --~|array;removeat;RaNameList;0
+    --:PC_BA_SKIP_LOOP|
+    --~|array;define;RaNameList
+    --?"[@TraitNameList(length)]" -eq "undefined array"|PC_RA_AFTER_SCAN
+    --?[@TraitNameList(length)] -lt 1|PC_RA_AFTER_SCAN
     --%raScan|foreach;TraitNameList
       --&TraitRowName|[&raScan]
       --?"[&TraitRowName]" -eq ""|PC_RA_SCAN_NEXT
+      --?"[&TraitRowName]" -eq "false"|PC_RA_SCAN_NEXT
       --&TraitSourceType|[:TraitBtnHash("[&TraitRowName]_source_type")]
       --&TraitSource|[:TraitBtnHash("[&TraitRowName]_source")]
       -->IS_TRAIT_FEAT_FROM_VARS|_TraitIsFeat
@@ -3435,14 +3601,25 @@
       --?"[&TraitDesc]" -inc "cannot take reaction"|PC_RA_SCAN_NEXT
       --?"[&TraitDesc]" -inc "without using your movement, action, or reaction"|PC_RA_SCAN_NEXT
       --?"[&TraitDesc]" -ninc "reaction"|PC_RA_SCAN_NEXT
-      --&RaNameList(99999)|[&TraitRowName]
+      --~|array;add;RaNameList;[&TraitRowName]
       --:PC_RA_SCAN_NEXT|
     --%|
+    --:PC_RA_AFTER_SCAN|
     --&_raOppLabel|Opportunity Attack
-    --&RaNameList(99999)|[&_raOppLabel]
-    --~|array;sort;RaNameList
+    --~|array;add;RaNameList;[&_raOppLabel]
+    --?"[@RaNameList(length)]" -eq "undefined array"|[
+     --~|array;define;RaNameList;Opportunity Attack
+    --]|
     --?[@RaNameList(length)] -gt 0|[
+     --~|array;sort;RaNameList
+    --]|
+    --?"[@RaNameList(length)]" -eq "undefined array"|PC_RA_SKIP_LOOP
+    --?[@RaNameList(length)] -lt 1|PC_RA_SKIP_LOOP
     --%raItem|foreach;RaNameList
+      --?"[&raItem]" -eq ""|PC_RA_ITEM_NEXT
+      --?"[&raItem]" -eq "false"|PC_RA_ITEM_NEXT
+      --?"X[&raItem]" -eq "Xfalse"|PC_RA_ITEM_NEXT
+      --?"[&raItem]" -eq "ArrayError"|PC_RA_ITEM_NEXT
       --?"[&raItem]" -eq "Opportunity Attack"|PC_RA_OPP_BUILD|PC_RA_TRAIT_ROW
       --^PC_RA_ITEM_NEXT|
       --:PC_RA_TRAIT_ROW|
@@ -3454,6 +3631,12 @@
       --&_muleTraitRowName|[&TraitRowName]
       -->MULE_TRAIT_RESOLVE|
       --?"[&_muleHyphTest]" -eq "AbilityNotFound"|PC_RA_TRAIT_RBUTTON
+      --?"[&_muleBtnLabel]" -eq "false"|&_muleBtnLabel;[&TraitBtnLabel]
+      --?"[&_muleBtnLabel]" -eq ""|&_muleBtnLabel;[&TraitBtnLabel]
+      --?"[&_mulePipeName]" -eq "false"|&_mulePipeName;[&_muleHyphName]
+      --?"[&_muleBtnLabel]" -eq "false"|PC_RA_TRAIT_RBUTTON
+      --?"[&_muleBtnLabel]" -eq ""|PC_RA_TRAIT_RBUTTON
+      --?"[&_mulePipeName]" -eq ""|PC_RA_TRAIT_RBUTTON
       --&_muleBtnPiece|[button][&_muleBtnLabel]::~[&pcabilitymulename]|[&_mulePipeName][/button][&SPACE]
       --&RA_BUTTON_LIST|+[&_muleBtnPiece]
       --&_lastMuleAbilId|[&_muleHyphTest]
@@ -3474,9 +3657,9 @@
       --&RA_BUTTON_LIST|+[rbutton]Opportunity Attack::OPP_ATTACK[/rbutton][&SPACE]
       --:PC_RA_ITEM_NEXT|
     --%|
-    --]|
-    --+Bonus Actions|[BR][&BA_BUTTON_LIST]
-    --+Reactions|[BR][&RA_BUTTON_LIST]
+    --:PC_RA_SKIP_LOOP|
+    -->CAM_EMIT_SECTION|Bonus Actions;BA_BUTTON_LIST
+    -->CAM_EMIT_SECTION|Reactions;RA_BUTTON_LIST
   --<|
 
   --:DISPLAY_PC_FEATS|
@@ -3486,16 +3669,26 @@
     --&FEAT_BUTTON_LIST|
     --~|hashtable;fromrepeatingsection;[*S:character_id];repeating_traits;name;FeatBtnHash
     --~|array;fromkeys;FeatBtnKeys;FeatBtnHash
-    --~|array;define;FeatNameList;dummy
-    --~|array;removeat;FeatNameList;0
+    --~|array;define;FeatNameList
     --%featKeyLoop|foreach;FeatBtnKeys
-      --?"[&featKeyLoop]" -inc "_sectionid"|&FeatNameList(99999);[&featKeyLoop(replace,_sectionid,)]
+      --?"[&featKeyLoop]" -inc "_sectionid"|[
+       --&_featScanName|[&featKeyLoop(replace,_sectionid,)]
+       --?"[&_featScanName]" -eq ""|featKeyLoopNext
+       --?"[&_featScanName]" -eq "false"|featKeyLoopNext
+       --~|array;add;FeatNameList;[&_featScanName]
+       --:featKeyLoopNext|
+      --]|
     --%|
-    --~|array;sort;FeatNameList
+    --?"[@FeatNameList(length)]" -gt 0|[
+     --~|array;sort;FeatNameList
+    --]|
     --%featTrait|foreach;FeatNameList
       --:PC_FEAT_TRAIT_ROW|
       --&TraitRowName|[&featTrait]
       --?"[&TraitRowName]" -eq ""|PC_FEAT_TRAIT_NEXT
+      --?"[&TraitRowName]" -eq "false"|PC_FEAT_TRAIT_NEXT
+      --?"X[&TraitRowName]" -eq "Xfalse"|PC_FEAT_TRAIT_NEXT
+      --?"[&TraitRowName]" -eq "ArrayError"|PC_FEAT_TRAIT_NEXT
       --?"[&_baRaShownTraits]" -inc ";[&TraitRowName];"|PC_FEAT_TRAIT_NEXT
       --&TraitRowId|[:FeatBtnHash("[&TraitRowName]_sectionid")]
       --?"[&TraitRowId]" -eq ""|&TraitRowId;[:FeatBtnHash("[&TraitRowName]")]
@@ -3524,7 +3717,7 @@
       --&FEAT_BUTTON_LIST|+[rbutton][&TraitBtnLabel]::EXEC_PC_TRAIT;[&TraitRowId][/rbutton][&SPACE]
       --:PC_FEAT_TRAIT_NEXT|
     --%|
-    --+Traits/Feats|[BR][&FEAT_BUTTON_LIST]
+    -->CAM_EMIT_SECTION|Traits/Feats;FEAT_BUTTON_LIST
     --?"[&CamTraceDebug]" -ne "1"|PC_FEAT_TRACE_OUT_OFF
     --#debug|0
     --:PC_FEAT_TRACE_OUT_OFF|
