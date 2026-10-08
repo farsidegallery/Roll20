@@ -1,4 +1,4 @@
---/|ScriptCards Library: Farsidelib  version 1.7.2
+--/|ScriptCards Library: Farsidelib  version 1.7.10
 --/|Provides various utility procedures for Roll20
 
 --/|This library contains a number of functions that are customized to meet the different needs of spell or ability
@@ -58,7 +58,7 @@
 --/|      (damageVariableName), which is a string that can be added to the end of a roll assignment to modify the damage as appropriate   
 --/|
 --/|   far_Check_GLOBAL_MOD_EXISTS|characterid; Category; name; returnstring (0=does not exist, 1=exists)
---/|      Pass characterid ([*S:character_id], [*T:character_id], loop id). Mod names with spaces: set &_FarGMName|[&YourModName] before calling, or use $$$ args (see header in subroutine).
+--/|      Pass characterid ([*S:character_id], [*T:character_id], loop id). Mod names with spaces: set &_FarGMName|&YourModName before calling, or use $$$ args (see header in subroutine).
 --/|
 --/|   far_SetGlobalModStatusStaged|category;activeFlag;modName (optional). Set _FarGMCharId; set _FarGMName or pass modName.
 --/|      Uses $$$ Rfind delimiter for mod names with special characters.
@@ -104,6 +104,19 @@
 --/|      If a cursed creature dies, heals the Warlock stored in CurseCaster (minimum 1 hp), then calls far_EndHexbladeCurse.
 --/|      Trigger-only: call from Triggers/Hexblade's Curse.scard, not from individual spell/ability scripts.
 --/|  
+--/|   far_ShieldReactionEnsureDefaults|
+--/|      Sets &_FarShield* defaults (mod name, journal char names, FX URLs). Called automatically by the offer
+--/|      functions; override any &_FarShield* in the spell script before calling batch/single if your game differs.
+--/|   far_OfferShieldReactionBatch|incomingSpellName
+--/|      Loops spell Targets array; offers Shield per entry; --<| to caller; next line --^ continue label.
+--/|   far_OfferShieldReaction|targetTokenId;incomingSpellName
+--/|      Single-target Shield reaction prompt (same rules as batch); skip/continue paths use --<|.
+--/|   far_ComputeTargetDefenseAC|targetTokenId;rollVariableName
+--/|      Gosub params use [%1%] / [%2%] token syntax throughout these labels.
+--/|      Sets rollVariableName to token base AC plus active global AC mods (use before attack vs AC).
+--/|   far_TargetHasSpellSlot|token-id;spellLevel;returnVar
+--/|      1 if the token's character has an unexpended slot at spellLevel, else 0 (non-fatal).
+--/|
 --/|   far_Inspiration|token-id;tokenmarker;attackstring;attackstringreturn
 --/|      Used if PC character has Inspiration to alter base roll.
 --/|      Subfunctions: far_InspirationRoll, far_AnswerNo
@@ -954,6 +967,158 @@
   --&_GACM_Temp|+ [&GMMACPiece]
   --<|
 
+ --:far_ShieldReactionEnsureDefaults|
+  --/| Match Shield.scard / Magic Missile journal names and art unless the spell overrides &_FarShield* first.
+  --&_FarShieldModName|Shield Spell
+  --&_FarShieldGfxChar|Shield Spell
+  --&_FarShieldReactGfxChar|Reaction Used
+  --&_FarShieldImg|https://files.d20.io/images/466430946/7DPjXj0n0IMCLlbLg50mPg/med.webm?1764787074
+  --&_FarShieldReactLink1|https://files.d20.io/images/476457994/FdbUAgAk_G-
+  --&_FarShieldReactLink2|-2d1MaQ9g4w/med.webm?1771472165
+  --<|
+
+ --:far_TargetHasSpellSlot|token-id;spellLevel;returnVar
+  --=Slotlevel|[%2%]
+  -->far_FIND_CLASS_LEVEL|[*[%1%]:character_id];Warlock;WarLevel
+  --?[&WarLevel] -ge 1|[
+   --?[&WarLevel] -ge 9 |=Slotlevel;5
+   --?[&WarLevel] -eqi 7 -or [&WarLevel] -eqi 8|=Slotlevel;4
+   --?[&WarLevel] -eqi 5 -or [&WarLevel] -eqi 6 |=Slotlevel;3
+   --?[&WarLevel] -eqi 3 -or [&WarLevel] -eqi 4 |=Slotlevel;2
+   --?[&WarLevel] -lt 2 |=Slotlevel;1
+  --]|
+  --=SlotsExpended|[*[%1%]:lvl[$Slotlevel]_slots_expended]
+  --?[$SlotsExpended.Total] -le 0|&[%3%];0|&[%3%];1
+  --<|
+
+ --:far_ComputeTargetDefenseAC|targetTokenId;rollVariableName
+  --#targettoken|[%1%]
+  --?[*T:npc] -eq 1|=FarBaseAC;[*T:npc_ac]|=FarBaseAC;[*T:ac]
+  -->far_FIND_ACTIVE_GLOBAL_AC_MODS|[*T:character_id];FarGlobalACBonus
+  --=[%2%]|[$FarBaseAC] [&FarGlobalACBonus]
+  --<|
+
+ --:far_OfferShieldReactionBatch|incomingSpellName
+  -->far_ShieldReactionEnsureDefaults|
+  --&_FarShieldAttackSpell|[%1%]
+  --?[@Targets(length)] -lt 1|>far_LogFatalError;No targets;ERROR;Select at least one target before resolving Shield.
+  --%_FarShieldBatchLoop|foreach;Targets
+   -->far_OfferShieldReaction|[&_FarShieldBatchLoop];[&_FarShieldAttackSpell]
+  --:far_ShieldBatchNext|
+  --%|
+  --<|
+
+ --:far_OfferShieldReaction|targetTokenId;incomingSpellName
+  -->far_ShieldReactionEnsureDefaults|
+  --&_FarShieldTargetTID|[%1%]
+  --&_FarShieldAttackSpell|[%2%]
+  --#targettoken|[%1%]
+  --&_FarShieldCharId|[*T:character_id]
+  --?"X[&_FarShieldCharId]" -eq "X"|<
+  -->Lib5E_GET_GLOBAL_MOD_STATUS|[&_FarShieldCharId];ac;[&_FarShieldModName];_FarShieldAlreadyUp
+  --?"X[&_FarShieldAlreadyUp]" -eq "X1"|<
+  --Rfind|[&_FarShieldCharId];Shield;repeating_spell-1;spellname
+  --?"X[*R:spellname]" -eq "XNoRepeatingAttributeLoaded"|<
+  -->far_TargetHasSpellSlot|[&_FarShieldTargetTID];1;_FarShieldHasSlot
+  --?[&_FarShieldHasSlot] -eq 0|<
+  --&control|[*O:[*T:t-represents]:character:controlledby]
+  --&playername|[*O:[&control]:player:displayname]
+  --?"X[&playername]" -eq "X"|[
+   --#whisper|gm
+  --]|[ 
+   --#whisper|[&playername],gm
+  --]|
+  --+[*T:t-name]: |You are being targeted by [&_FarShieldAttackSpell] and can cast Shield.
+  --+Do you want to cast Shield? |[c][rbutton]Yes::far_ShieldReactYes;[&_FarShieldTargetTID][/rbutton][rbutton]No::far_ShieldReactNo;[&_FarShieldTargetTID][/rbutton][/c]
+  --X|
+
+ --:far_ShieldReactNo|
+  --&_FarShieldTargetTID|[&reentryval]
+  --<|
+
+ --:far_ShieldReactYes|
+  --&_FarShieldTargetTID|[&reentryval]
+  --#targettoken|[&_FarShieldTargetTID]
+  --&_FarShieldCharId|[*T:character_id]
+  -->far_GetAndCheckSlotInformation|[&_FarShieldTargetTID];1;_FarShieldSlotLevel
+  -->far_ShieldReactionApplyMod|[&_FarShieldTargetTID]
+  --+Press to Continue: |[c][rbutton]Continue::far_ShieldReactContinue;[&_FarShieldTargetTID][/rbutton][/c]
+  --X|
+
+ --:far_ShieldReactContinue|
+  --&_FarShieldTargetTID|[&reentryval]
+  --<|
+
+ --:far_ShieldReactionApplyMod|targetTokenId
+  --#targettoken|[%1%]
+  --&_FarShieldCharId|[*T:character_id]
+  --&_FarGMName|[&_FarShieldModName]
+  -->far_Check_GLOBAL_MOD_EXISTS|[&_FarShieldCharId];ac;[&_FarShieldModName];_FarShieldModExists
+  --?[&_FarShieldModExists] -eq 1|>far_ShieldReactionSetMod |>far_ShieldReactionCreateMod
+  --<|
+
+ --:far_ShieldReactionCreateMod|
+  --!a:[&_FarShieldCharId]|global_ac_mod_flag:1
+  --!or:[&_FarShieldCharId]:acmod|
+   global_ac_name:[&_FarShieldModName]|
+   global_ac_val:5|
+   global_ac_active_flag:1|
+   options-flag:0
+  -->far_ShieldReactionSetMod|
+
+ --:far_ShieldReactionSetMod|
+  -->Lib5E_SET_GLOBAL_MOD_STATUS|[&_FarShieldCharId];ac;[&_FarShieldModName];1
+  -->far_PlayEffects|[&_FarShieldTargetTID];;;burn-holy
+  --=TargetTokenSpellSlot|[&_FarShieldSlotLevel]
+  -->far_DeductSpellSlot|[&_FarShieldTargetTID];[$TargetTokenSpellSlot]
+  -->far_ShieldReactionSpawnGraphics|[&_FarShieldTargetTID]
+  --<|
+
+ --:far_ShieldReactionSpawnGraphics|targetTokenId
+  --/| Mirrors Shield.scard SpawnShieldGraphics (!ot path): Shield token, AttachShieldFx, Reaction token, AttachReactFx.
+  --#targettoken|[%1%]
+  --&_FarShieldCarrierTID|[%1%]
+  --&_FarShieldCharId|[*T:character_id]
+  --&_FarShieldTokenName|[*T:character_name] Shield
+  --&_FarShieldReactTokenName|[*T:character_name] [&_FarShieldReactGfxChar]
+  --&_FarShieldReactlink|[&_FarShieldReactLink1][&_FarShieldReactLink2]
+  -->far_GetJournalCharIdByName|[&_FarShieldGfxChar];_FarShieldJournalId
+  -->far_GetJournalCharIdByName|[&_FarShieldReactGfxChar];_FarShieldReactJournalId
+  --~|array;define;_FarShieldGfxList
+  --&_FarShieldGraphicTID|
+  --&_FarShieldReactTID|
+  --!ot:_FarShieldGraphicTID|name:"[&_FarShieldTokenName]"|_pageid:[*T:t-_pageid]|left:[*T:t-left]|top:[*T:t-top]|width:[=[*T:t-width]*3]|height:[=[*T:t-height]*3]|imgsrc:"[&_FarShieldImg]"|bar1_value:1|represents:[&_FarShieldJournalId]|showname:0
+  --?"X[&_FarShieldGraphicTID]" -eq "X"|[
+   -->far_FindPageTokenByName|[&_FarShieldCarrierTID];[&_FarShieldTokenName];_FarShieldGraphicTID
+  --]|
+  --?"X[&_FarShieldGraphicTID]" -ne "X"|>far_ShieldReactionAttachShieldFx
+  --!ot:_FarShieldReactTID|name:"[&_FarShieldReactTokenName]"|_pageid:[*T:t-_pageid]|left:[*T:t-left]|top:[*T:t-top]|width:[=[*T:t-width]*3]|height:[=[*T:t-height]*3]|imgsrc:"[&_FarShieldReactlink]"|bar1_value:1|represents:[&_FarShieldReactJournalId]|showname:0
+  --?"X[&_FarShieldReactTID]" -eq "X"|[
+   -->far_FindPageTokenByName|[&_FarShieldCarrierTID];[&_FarShieldReactTokenName];_FarShieldReactTID
+  --]|
+  --?"X[&_FarShieldReactTID]" -ne "X"|>far_ShieldReactionAttachReactFx
+  --~_FarShieldGfxString|array;stringify;_FarShieldGfxList;!@!
+  --!a:[&_FarShieldCharId]|!ShieldSpellGraphics:[&_FarShieldGfxString]
+  --<|
+
+ --:far_ShieldReactionAttachShieldFx|
+  --z:graphic:[&_FarShieldGraphicTID]|toback
+  --@CARRY_TOKENS_CARRY_BELOW|[&_FarShieldCarrierTID] [&_FarShieldGraphicTID]
+  --~|array;add;_FarShieldGfxList;[&_FarShieldGraphicTID]
+  --<|
+
+ --:far_ShieldReactionAttachReactFx|
+  --z:graphic:[&_FarShieldReactTID]|toback
+  --@CARRY_TOKENS_CARRY_BELOW|[&_FarShieldCarrierTID] [&_FarShieldReactTID]
+  --~|array;add;_FarShieldGfxList;[&_FarShieldReactTID]
+  --<|
+
+ --:far_GetJournalCharIdByName|characterName;returnVar
+  --~|array;objects:character;_FarJournalCharArr;[%1%]
+  --?[@_FarJournalCharArr(length)] -ne 1|>far_LogFatalError;Could not find journal character [%1%];ERROR;Create a journal character named [%1%] for Shield reaction graphics
+  --&[%2%]|[@_FarJournalCharArr(0)]
+  --<|
+
  --:far_FIND_ACTIVE_GLOBAL_SKILL_MODS|character_id;StringVariableToSet
   --&_obrac|[ --&_cbrac|]
   --&_GSKM_Temp| 
@@ -1327,6 +1492,22 @@
   -->far_EvardTentaclesAuraStrike|3d6;bludgeoning;dexterity;1;4
   --<|
 
+ --/|0 = suspended / no AT gmnotes; 1 = paladin token may run aura enter/rescan/rebuild.
+ --:far_PaladinAuraPaladinIsLive|paladin-token-id;returnVar
+  --&[%2%]|0
+  --#targettoken|[%1%]
+  --?"X[*T:t-id]" -eq "X"|<
+  --&PAPalGm|[*T:t-gmnotes]
+  --?"X[&PAPalGm]" -eq "X"|<
+  --?"[&PAPalGm]" -eq ""|<
+  --?"[&PAPalGm]" -eq "[]"|<
+  --?"X[*T:character_id]" -ne "X"|[
+   --&PAPalActive|[*[*T:character_id]:PaladinAuraActive]
+   --?"X[&PAPalActive]" -ne "X" -and "[&PAPalActive]" -eq "0"|<
+  --]|
+  --&[%2%]|1
+  --<|
+
  --:far_PaladinAuraGetRadius|paladinLevel;returnVar
   --&[%2%]|10
   --?[%1%] -ge 18|[
@@ -1433,6 +1614,8 @@
   --<|
 
  --:far_PaladinAuraOnEnter|target-token-id;paladin-token-id
+  -->far_PaladinAuraPaladinIsLive|[%2%];PAEnterLive
+  --?"[&PAEnterLive]" -eq "0"|<
   -->far_LoadTokenMarkers|
   -->far_PaladinAuraNormalizeIcon|
   --#targettoken|[%1%]
@@ -1465,6 +1648,8 @@
   --<|
 
  --:far_PaladinAuraOnExit|target-token-id;paladin-token-id
+  -->far_PaladinAuraPaladinIsLive|[%2%];PAExitLive
+  --?"[&PAExitLive]" -eq "0"|<
   -->far_LoadTokenMarkers|
   -->far_PaladinAuraNormalizeIcon|
   --#targettoken|[%1%]
@@ -1506,7 +1691,8 @@
   --?"X[&PADPalTID]" -eq "X"|paDismissDone
   --?"[&PADPalTID]" -eq ""|paDismissDone
   --~|array;pagetokens;PageTokens;[&PADPalTID]
-  --?[@PageTokens(length)] -gt 0|[
+  --?"X[@PageTokens(length)]" -eq "X"|^paDismissDone|
+  --?[@PageTokens(length)] -le 0|^paDismissDone|
   --%paTok|foreach;PageTokens
    --#targettoken|[&paTok]
    --?"X[*T:t-id]" -eq "X"|paDismissSkip
@@ -1535,7 +1721,6 @@
    -->far_RemoveTokenMarker|[*T:t-id];[&PADismissIcon]
    --:paDismissSkip|
    --%|
-  --]|
   --:paDismissDone|
   --#targettoken|[&PADPalTID]
   -->far_RemoveTokenMarker|[&PADPalTID];[&PADismissIcon]
@@ -1552,8 +1737,7 @@
  --:far_PaladinAuraSuspend|paladin-token-id;icon-name
   -->far_PaladinAuraDismissPaladin|[%1%];[%2%]
   -->far_PaladinAuraClearToken|[%1%]
-  --@at-rebuild|
-  --@at-checkall|
+  --/|Do not @at-checkall here — it re-fires enter/exit on all tokens and spams logs while suspended.
   --<|
 
  --:far_ApplyBestPaladinAura|target-token-id;source-list
@@ -1574,6 +1758,7 @@
   --]|
   --&SavedTarget|[&PATargetTok]
   --~|array;fromstring;PALsrcArr;,;[&SourceList]
+  --?"X[@PALsrcArr(length)]" -eq "X"|>PADeactPath
   --?[@PALsrcArr(length)] -eq 0|>PADeactPath
   --?"[&SourceList]" -eq ","|>PADeactPath
   --?[&SourceList(length)] -le 1|>PADeactPath
@@ -1744,6 +1929,8 @@
   --<|
 
  --:far_PaladinAuraRebuild|paladin-token-id;icon-name;aura-radius-feet
+  -->far_PaladinAuraPaladinIsLive|[%1%];PARebuildLive
+  --?"[&PARebuildLive]" -eq "0"|<
   -->far_PaladinAuraApplySelf|[%1%];[%2%]
   -->far_PaladinAuraRescanAllies|[%1%];[%2%];[%3%]
   --@at-rebuild|
@@ -1751,6 +1938,8 @@
   --<|
 
  --:far_PaladinAuraRescanAllies|paladin-token-id;icon-name;aura-radius-feet
+  -->far_PaladinAuraPaladinIsLive|[%1%];PARefLive
+  --?"[&PARefLive]" -eq "0"|<
   -->far_LoadTokenMarkers|
   --&PARefPalTID|[%1%]
   --&PARefIcon|[%2%]
@@ -1775,7 +1964,8 @@
   --?"X[&PARefPalTID]" -eq "X"|paRescanDone
   --?"[&PARefPalTID]" -eq ""|paRescanDone
   --~|array;pagetokens;PARefTokens;[&PARefPalTID]
-  --?[@PARefTokens(length)] -gt 0|[
+  --?"X[@PARefTokens(length)]" -eq "X"|^paRescanDone|
+  --?[@PARefTokens(length)] -le 0|^paRescanDone|
   --%paRefTok|foreach;PARefTokens
    --#targettoken|[&paRefTok]
    --?"X[*T:t-id]" -eq "X"|paRefSkip
@@ -1807,7 +1997,6 @@
    --&PAPaladinTokId|
    --:paRefSkip|
    --%|
-  --]|
   --:paRescanDone|
   --<|
 
