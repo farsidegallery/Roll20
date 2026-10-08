@@ -2,7 +2,7 @@
   +++5Elib;snlib;Farsidelib+++
 
   --/|Script Name : Shield
-  --/|Version     : 2.2.0
+  --/|Version     : 2.2.1
   --/|Modified By : Farsidegallery
   --/|
   --/|  Reaction spell: +5 AC global mod on self, FX graphics via ScriptCards, manual Dismiss. Wild Magic for sorcerers.
@@ -122,6 +122,7 @@
   --~|array;define;ShieldGraphics
   --&ReactTID|
   --&ShieldTID|
+  
   --?[&SpawnScript] -eq 2|[
    --@forselected+|Spawn _name|[&ReactCharName] _qty|1 _offset|0,0 _force|yes _size|3 _tokenProps|name:[&ReactTokenName],showname:false,showplayers_name:false _order|toBack _bar1|KeepLink _fx|nova-magic _expand|15,30 {^&select @{selected|token_id}} {&delay 1}
    -->far_FindPageTokenByName|[*S:t-id];[&ReactTokenName];ReactTID
@@ -134,19 +135,20 @@
    --<|
   --]|
   
-  --!ot:ReactTID|name:"[&ReactTokenName]"|_pageid:[*S:t-_pageid]|left:[*S:t-left]|top:[*S:t-top]|width:[=[*S:t-width]*3]|height:[=[*S:t-height]*3]|imgsrc:"[&Reactlink]"|bar1_value:1|represents:[&ReactID]|showname:0
-  --?"X[&ReactTID]" -eq "X"|[
-   -->far_FindPageTokenByName|[*S:t-id];[&ReactTokenName];ReactTID
-  --]|
-  --?"X[&ReactTID]" -ne "X"|>AttachReactFx
-  --!ot:ShieldTID|name:"[&TokenName]"|_pageid:[*S:t-_pageid]|left:[*S:t-left]|top:[*S:t-top]|width:[=[*S:t-width]*3]|height:[=[*S:t-height]*3]|imgsrc:"[&URLlink]"|bar1_value:1|represents:[&ShieldID]|showname:0
-  --?"X[&ShieldTID]" -eq "X"|[
+   --!ot:ShieldTID|name:"[&TokenName]"|_pageid:[*S:t-_pageid]|left:[*S:t-left]|top:[*S:t-top]|width:[=[*S:t-width]*3]|height:[=[*S:t-height]*3]|imgsrc:"[&URLlink]"|bar1_value:1|represents:[&ShieldID]|showname:0
+   --?"X[&ShieldTID]" -eq "X"|[
    -->far_FindPageTokenByName|[*S:t-id];[&TokenName];ShieldTID
-  --]|
+   --]|
   --?"X[&ShieldTID]" -ne "X"|>AttachShieldFx
+
+  --!ot:ReactTID|name:"[&ReactTokenName]"|_pageid:[*S:t-_pageid]|left:[*S:t-left]|top:[*S:t-top]|width:[=[*S:t-width]*3]|height:[=[*S:t-height]*3]|imgsrc:"[&Reactlink]"|bar1_value:1|represents:[&ReactID]|showname:0
+   --?"X[&ReactTID]" -eq "X"|[
+    -->far_FindPageTokenByName|[*S:t-id];[&ReactTokenName];ReactTID
+    --]|
+  --?"X[&ReactTID]" -ne "X"|>AttachReactFx
+
   --~ShieldGraphicString|array;stringify;ShieldGraphics;!@!
   --!a:[*S:character_id]|!ShieldSpellGraphics:[&ShieldGraphicString]
-
   --<|
 
  --:AttachReactFx|
@@ -175,25 +177,40 @@
 
  --:ClearShieldEffects|
   -->Lib5E_SET_GLOBAL_MOD_STATUS|[*S:character_id];ac;[&ModName];0
-  --?"X[*S:ShieldSpellGraphics]" -ne "X"|[
-   --~|array;fromstring;ShieldGraphics;!@!;[*S:ShieldSpellGraphics]
-   --%gfx|foreach;ShieldGraphics
-    --?"X[&gfx]" -ne "X"|[
-      --~|object;token;delete;[&gfx]
-      --]|
-   --%|
-  --]|[
-   --&TokenName|[*S:character_name] [&SpellName]
-   --&ReactTokenName|[*S:character_name] [&ReactCharName]
-   --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&TokenName]
-   --%delShield|foreach;tokens
-    --~|object;token;delete;[&delShield]
-   --%|
-   --~count|array;pagetokens;react;[*S:t-id];tprop:name=[&ReactTokenName]
-   --%delReact|foreach;react
-    --~|object;token;delete;[&delReact]
-   --%|
-  --]|
+  --^ClearShieldTryStoredIds|
+
+ --:ClearShieldTryStoredIds|
+  --?"X[*S:ShieldSpellGraphics]" -eq "X"|^ClearShieldDeleteByName
+  --?"[*S:ShieldSpellGraphics]" -eq ""|^ClearShieldDeleteByName
+  --~|array;fromstring;ShieldGraphics;!@!;[*S:ShieldSpellGraphics]
+  --?[@ShieldGraphics(length)] -lt 1|^ClearShieldDeleteByName
+  --%gfx|foreach;ShieldGraphics
+   --?"X[&gfx]" -eq "X"|^ClearShieldGfxLoopNext
+   --~|object;token;delete;[&gfx]
+   --^ClearShieldGfxLoopNext|
+  --:ClearShieldGfxLoopNext|
+  --%|
+  --^ClearShieldGfxFinish|
+
+ --:ClearShieldDeleteByName|
+  --&TokenName|[*S:character_name] [&SpellName]
+  --&ReactTokenName|[*S:character_name] [&ReactCharName]
+  --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&TokenName]
+  --?[@tokens(length)] -lt 1|^ClearShieldDeleteReactByName
+  --%delShield|foreach;tokens
+   --~|object;token;delete;[&delShield]
+  --%|
+  --^ClearShieldDeleteReactByName|
+
+ --:ClearShieldDeleteReactByName|
+  --~count|array;pagetokens;react;[*S:t-id];tprop:name=[&ReactTokenName]
+  --?[@react(length)] -lt 1|^ClearShieldGfxFinish
+  --%delReact|foreach;react
+   --~|object;token;delete;[&delReact]
+  --%|
+  --^ClearShieldGfxFinish|
+
+ --:ClearShieldGfxFinish|
   --!a:[*S:character_id]|!ShieldSpellGraphics:**
   --<|
 
