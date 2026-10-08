@@ -1,10 +1,10 @@
 ﻿!script {{
   --/|Script Name : 5E Action Menu
-  --/|Version     : 3.8.3
+  --/|Version     : 3.8.4
   --/|Requires SC : 2.7.15+
   --/|Author      : Kurt Jaegers
   --/|Modified By : Farsidegallery
-  --&CAM_VERSION|3.8.3
+  --&CAM_VERSION|3.8.4
 
   --/|IMPORTANT NOTE: Updating this macro via the in-game editor will cause it to exhibit strange behavior. If you wish
   --/|to make settings changes, make them in an external editor (like NOTEPAD) and copy/paste the whole
@@ -92,7 +92,7 @@
   --&showAdvantageModeText|0            --/|Used with SelfHandleAdvantageMode. 0=Button color coding only. 1=Show "Normal", "Advantage", "Disadvantage" text
   --&compactGlobalModDisplay|1          --/|If set to 1, Global X Mods will use more compact display layouts
   --&EnablePerCharacterConfiguration|1  --/|If set to 1, the Action Menu will create attributes on the character sheet the first time it is executed for a character. It will then use these attributes to generate a configuration menu to allow players to enable/disable some features
-  --&UseResistances|1                   --/|If set to 1, damage immunity, vulnerability, and resistance will be included in damage rolls.
+  --&UseResistances|1                   --/|If set to 1, damage immunity, vulnerability, and resistance will be included in damage rolls
   --/|Resistance calc requires the target character sheet (PC or NPC) to have npc_resistances, npc_immunities, and/or npc_vulnerabilities populated with the relevant damage types.
   --&UseFailTables|1                    --/|If set to 1, natural 1 attack rolls use the Roll20 fail tables configured below. Any other value uses a simple critical-fail message only.
   --&FailTableMelee|Damage-Melee-Fail   --/|Full Roll20 rollable table name for melee weapon attack critical fails (natural 1). Leave blank to skip fail tables for melee attacks.
@@ -192,7 +192,7 @@
   --&GEAR|& --&GEAR|+# --&GEAR|+x2699;
   --&SPACE|X X --&SPACE|[&SPACE(1,1)]
   --&NB|& --&NB|+nbsp --&NB|+;
-  --/|Legacy empty-section cache marker (HTML nbsp entity); omit section instead of emitting.
+  --/|Legacy empty-section cache marker (HTML nbsp entity). Omit section row instead of emitting.
   --&CAM_SectionSpacer|[&NB]
   --&obrac|[ --&cbrac|]
   --&vbar||
@@ -381,7 +381,7 @@
   -->CAM_TargetDebugWhisper|EXEC_NPC_ACTION reentry|reentryval=[&reentryval] action_target=[&action_target]
   --<|
 
-  --/|Load repeating_npcaction* row by RID payload or Rfind by name. Sets *R; on failure jumps to :NPC_ROW_NOT_FOUND|
+  --/|Load repeating_npcaction row by RID payload or Rfind by name. Sets repeating row on success. On failure go to NPC_ROW_NOT_FOUND.
   --:LOAD_NPC_ACTION_ROW|repeatingSection
   --&_npcRepeatSec|[%1%]
   --?"[&action_part(0,3)]" -eq "RID"|LNAR_BY_RID
@@ -415,6 +415,10 @@
   --&actionBtnName|[&actionBtnName(replace,(,-!lpar!-)]
   --&actionBtnName|[&actionBtnName(replace,),-!rpar!-)]
   --&actionBtnName|[&actionBtnName(replace,+,-!plus!-)]
+  --/|Repeat payload uses RID plus row section id so redo does not rely on Rfind by action name.
+  --~|hashtable;fromrepeatingsection;[*S:character_id];[&_npcRepeatSec];name;NPCActionRepeatHash
+  --&actionRepeatPayload|RID[:NPCActionRepeatHash("[*R:name]_sectionid")]
+  --?"X[&actionRepeatPayload]" -eq "XRID" -or "[&actionRepeatPayload]" -eq "RID"|&actionRepeatPayload;[&actionBtnName]
   --<|
 
   --:NPC_ROW_NOT_FOUND|
@@ -438,12 +442,12 @@
   --#whisper|[&whisperTarget]
   --#emotestate|visible
   -->PARSE_NPC_REENTRY|
+  --&npcActionExecLabel|EXEC_NPC_ACTION
   --?"[&action_target]" -eq "NONE"|NPC_ACT_SKIP_TARGET
   --#targettoken|[&action_target]
   --:NPC_ACT_SKIP_TARGET|
   --#leftsub|[*S:character_name]
   --#rightsub|
-  --
   -->LOAD_NPC_ACTION_ROW|repeating_npcaction
   --&emoteActionName|[*R:name]
   --~emoteActionName|string;replace;(;[;[&emoteActionName]
@@ -464,7 +468,7 @@
    --X|
   --]|
   --:NPCA_MAKE_AN_ATTACK|
-    --#rightsub|[rbutton][&RepeatImage]::EXEC_NPC_ACTION;[&actionBtnName]|[&TB]target|token_id}[/rbutton]
+    --#rightsub|[rbutton][&RepeatImage]::[&npcActionExecLabel];[&actionRepeatPayload]|[&TB]target|token_id}[/rbutton]
     --&rollType|1d20
     --?"[*S:advantagetoggle]" -inc advantage|&rollType;2d20kh1
     --?"[*S:advantagetoggle]" -inc disadvantage|&rollType;2d20kl1
@@ -601,6 +605,7 @@
   --:EXEC_NPC_BONUS_ACTION|
   -->CAM_RestoreMenuSourceToken|
   -->PARSE_NPC_REENTRY|
+  --&npcActionExecLabel|EXEC_NPC_BONUS_ACTION
   --&whisperTarget|
   --?[*S:npc] -eq 1 -and [&AllNPCActionsToSender] -eq 1|&whisperTarget;self
   --#whisper|[&whisperTarget]
@@ -626,6 +631,7 @@
   --:EXEC_NPC_REACTION|
   -->CAM_RestoreMenuSourceToken|
   -->PARSE_NPC_REENTRY|
+  --&npcActionExecLabel|EXEC_NPC_REACTION
   --&whisperTarget|
   --?[*S:npc] -eq 1 -and [&AllNPCActionsToSender] -eq 1|&whisperTarget;self
   --#whisper|[&whisperTarget]
@@ -651,6 +657,7 @@
   --:EXEC_NPC_LEGENDARY_ACTION|
   -->CAM_RestoreMenuSourceToken|
   -->PARSE_NPC_REENTRY|
+  --&npcActionExecLabel|EXEC_NPC_LEGENDARY_ACTION
   --&whisperTarget|
   --?[*S:npc] -eq 1 -and [&AllNPCActionsToSender] -eq 1|&whisperTarget;self
   --#whisper|[&whisperTarget]
@@ -885,7 +892,7 @@
    --&PcHashSectionKey|[&attack_name]_sectionid
    --&attack_rowid|[:PCAtkExecHash("[&PcHashSectionKey]")]
   --]|
-  --/|Rfind by name before Rbysectionid â€” partial Rbysectionid loads can set atkname but leave dmgbase wrong (e.g. Greataxe +1 shows flat 1 + magic).
+  --/|Rfind by name before Rbysectionid. Partial Rbysectionid loads can set atkname but leave dmgbase wrong (e.g. Greataxe +1 shows flat 1 + magic).
   --?"[*R:atkname]" -eq "NoRepeatingAttributeLoaded" -and "[&attack_name]" -ne ""|[
    --#parameterdelimiter|$$$
    --Rfind|[&PcLookupCharId]$$$[&attack_name]$$$repeating_attack$$$atkname
@@ -1329,7 +1336,7 @@
   -->CAM_ParseSpellReentry|
   -->FIND_CLASS_LEVEL|Warlock;WarlockLevel
 
-  --/|Buttons without a slot picker omit spellInfo4; treat as cast at the spell's list level ([&spellInfo1]).
+  --/|Buttons without a slot picker omit spellInfo4. Treat as cast at the spell list level ([&spellInfo1]).
   --?"X[&spellInfo4]" -eq "X" -or "[&spellInfo4]" -eq ""|&spellInfo4;[&spellInfo1]
 
   --/|Pact Magic: non-ritual casts always use the warlock's pact slot level on the sheet.
@@ -1987,7 +1994,7 @@
   --&[%2%]|[&_GSKMB_Temp]
   --<|
 
-  --/|Kurt: read ability into roll vars via [*S:…] or [*[char_id]:…]. Fork: early exit on blank/0 keeps copied dmgMod; PC attacks set &_gamCharId.
+  --/|Read ability into roll vars via [*S] or [*[char_id]]. Early exit on blank or 0 keeps copied dmgMod. PC attacks set _gamCharId.
   --:Get_Ability_Modifier|attribute_string;returnnumericvalue;returnnamestring
   --?"[%1%]" -eq ""|<
   --?"[%1%]" -eq "NoRepeatingAttributeLoaded"|<
@@ -2014,7 +2021,7 @@
   --?"[%1%]" -eq "charisma_mod"|&[%3%];[CHA]
   --<|
 
-  --/|Fork: if Kurt $dmgMod path left mod at 0, append [*[char]:ability_mod] to the roll string (Melee/Ranged).
+  --/|If dmgMod path left mod at 0, append [*[char]:ability_mod] to the roll string (Melee or Ranged).
   --:PC_ATK_S_ABI_FALLBACK|arString;dmgroll;dmgroll2
   --&_gamModCid|[&_gamCharId]
   --?"X[&_gamModCid]" -eq "X" -or "[&_gamModCid]" -eq ""|&_gamModCid;[*S:character_id]
@@ -2030,7 +2037,7 @@
   --<|
 
   --/|There are four different options for applying damage. The selected option is set in the settings area of the macro.
-  --/|Token-mod apply (ApplyDamageTokenmod*): relative barN_value deltas only; do not re-set unchanged bars; no sheet hp_temp
+  --/|Token-mod apply (ApplyDamageTokenmod). Relative barN_value deltas only. Do not re-set unchanged bars. No sheet hp_temp sync.
   --/|sync on token-mod temp writes (avoids double temp loss). Compatible with listen_to_tokenmod|1 change:graphic triggers.
 
   --/|Set damageApplyRoutine + damageRoutine from settings (menu init and attack/damage reentry).
@@ -2099,7 +2106,7 @@
   -->ApplyDamageTokenmodSingle|[%1%];[%2%];[%3%];[%4%];[%5%];[%6%];[%7%]
   --<|
 
-  --/|Read temp HP from token bar; if bar empty/0, fall back to character hp_temp (common on NPCs).
+  --/|Read temp HP from token bar. If bar empty or 0, fall back to character hp_temp (common on NPCs).
   --:ReadTokenTempHP|tokenId;tempBarNum;returnVarName
    --&_rtthVal|[*[%1%]:t-bar[%2%]_value]
    --?"X[&_rtthVal]" -eq "X"|&_rtthVal;0
@@ -2211,7 +2218,7 @@
   --!t:[%1%]|bar[%2%]_value:[$newValue.Raw]
   --<|
 
-  --/|Apply damage via ScriptCards !t (TempHP — temp bar then HP; same math as Alterbars TempHP).
+  --/|Apply damage via ScriptCards !t TempHP path. Temp bar then HP. Same math as Alterbars TempHP.
   --:ApplyDamageScriptCardsTempHP|Parameters are tokenid;bar#;tempHPbar;amount;display (0 or 1);allow overheal (0 or 1);allow negative hp (0 or 1)
   -->ADJUST_DAMAGE_FOR_TEMP_HP|[%1%];[%3%];[%4%]
   --?"[&_tempBarChanged]" -eq "1"|-->SYNC_TEMP_HP_BAR|[%1%];[%3%];[&_tempNewValue]
@@ -2306,7 +2313,7 @@
   --:ApplyDamageTokenmodTempHP_Done|
   --<|
 
-  --/|AlterBars Single — relative delta on hit bar (clamped; Kurt passed raw amount, we pass actual bar change).
+  --/|AlterBars Single. Relative delta on hit bar (clamped). Pass actual bar change not raw signed amount only.
   --:ApplyDamageAlterbarsSingle|Parameters are tokenid;bar#;tempHPbar;amount;display (0 or 1);allow overheal (0 or 1);allow negative hp (0 or 1)
   --=StartHP|[*[%1%]:t-bar[%2%]_value]
   --=applyValue|[%4%]
@@ -2362,7 +2369,7 @@
   --]|
   --<|
 
-  --/|Reentry point to apply damage/healing to selected tokens (damagebuttons — Kurt: always ScriptCards apply; fork: CAM_ApplyDamageOrHealing for heal vs damage + temp).
+  --/|Reentry to apply damage or healing to selected tokens (damagebuttons). Uses CAM_ApplyDamageOrHealing for heal vs damage and temp HP.
   --:APPLY_DAMAGE|Amount
   -->CAM_SetDamageApplyRoutines|
   --?[&whisperDamageButtonResultsToDM] -eq 1|[
@@ -2991,7 +2998,7 @@
   --?"[$dacaBtnCount.Raw]" -eq "0"|&dacaBuildHint;mule-not-found
   --<|
 
-  --/|Shared macro mule â€” AMLIST ability lists mule names (semicolon-separated)
+  --/|Shared macro mule. AMLIST ability lists mule names (semicolon-separated).
   --:DACA_SHARED_MULE|
   --?"[&sharedmacromulename]" -eq ""|DACA_FINISH_BUTTONS
   --?"[&sharedmacromulename]" -eq "none"|DACA_FINISH_BUTTONS
@@ -3112,7 +3119,7 @@
     --:AM_LIST_PC_NO_TARGET|
     --&actionTargetSuffix|NONE
     --:AM_LIST_BUILD_RBUTTON|
-    --/|Kurt-style payload: encoded atkname/action name (Rfind on exec). NPC rows prefer RID (reliable when names have odd punctuation). Legacy RID-only chat buttons still decode via PC_ATK_DECODE_RID.
+    --/|Payload is encoded action name for Rfind on exec. NPC rows prefer RID when names have odd punctuation. Legacy chat buttons decode via PC_ATK_DECODE_RID.
     --&PcAttackPayload|[&ActionName]
     --?"[%4%]" -inc "EXEC_NPC"|[
      --?"X[&RowSectionId]" -ne "X" -and "[&RowSectionId]" -ne "" -and "[&RowSectionId]" -ne "undefined"|&PcAttackPayload;RID[&RowSectionId]
@@ -3183,7 +3190,7 @@
 
     --&AM_BUTTON_LIST|
 
-    --/|Remaining slots for this spell level (once per section; used by per-spell filter below).
+    --/|Remaining slots for this spell level once per section. Used by per-spell filter below.
     --&_spellBtnSlotsAtLevel|0
     --?"[&_buildSpellLevel]" -eq 0|PC_SPELL_BTN_SLOTS_READ_DONE
     --?[*[%1%]:npc] -eq 1|PC_SPELL_BTN_SLOTS_READ_DONE
@@ -3344,7 +3351,7 @@
   --+|You aren't the original sender of this action, so you can't use the repeat button
   --X|
 
-  --/|Escape button-list text for 5ECAM_CACHE (Kurt: : ; | only — do not escape ~ or ::~ breaks).
+  --/|Escape button-list text for 5ECAM_CACHE. Only escape colon, semicolon, and pipe. Do not escape tilde or sheet-button tilde syntax breaks.
   --:MULE_BTN_CACHE_ESC|sourceVar;destVar
   --&[%2%]|[&[%1%]]
   --&[%2%]|[&[%2%](replaceall,,:,!#!)]
@@ -3360,7 +3367,7 @@
   --&[%2%]|[&[%2%](replaceall,!@!,|)]
   --<|
 
-  --/|One chat row: section title + body. Empty/false/legacy spacer → omit row. Args: title;bodyVarName
+  --/|One chat row with section title and body. Empty or legacy spacer omits the row. Args are title and body variable name.
   --:CAM_EMIT_SECTION|sectionTitle;bodyVarName
   --&_camSecWork|[&[%2%]]
   --?"X[&_camSecWork]" -eq "X"|&_camSecWork|
@@ -3387,7 +3394,7 @@
   --~_muleShortName|string;after;:;[&_muleTraitRowName]
   --~_muleShortName|string;trim;[&_muleShortName]
   --:MTR_SEARCH_READY|
-  --/|Chat [button] labels must not use &#58; (semicolon breaks parsing). Colons → " - " for display only.
+  --/|Chat button labels must not use HTML colon entities. Use " - " for display colons in mule trait labels.
   --&_muleBtnLabel|[&_muleTraitRowName]
   --&_muleBtnLabel|[&_muleBtnLabel(replaceall,:, - )]
   --&_muleBtnLabel|[&_muleBtnLabel(replaceall,|, - )]
