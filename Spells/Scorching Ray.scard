@@ -1,0 +1,335 @@
+!scriptcards {{
+  +++5Elib;snlib;Farsidelib+++
+
+  --#sourceToken|@{selected|token_id}
+  --#reentrant|Scorching Ray @{selected|character_id}
+  --#whisper|self,gm
+
+  --/|Script Name : Scorching Ray
+  --/|Version     : 1.2.0
+  --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib, TokenMod
+  --/|Author      : Will M.
+  --/|Modified By : Farsidegallery
+  --/|
+  --/|  Level 2+ spell. One target pick per ray (retarget if a creature dies mid-cast). Per ray: NAD, Shield offer, AC with global mods, then hit/miss.
+  --/|  Each hit rolls fresh 2d6 fire on the hit line. Rays = slot level + 1 (2014). Empower CHA budget. No Twin. Wild Magic after all rays.
+  --/|
+
+  --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
+
+  --&SpellName|Scorching Ray
+  --&MinimumSpellLevel|2
+  --&damageType|fire
+
+  --&hpBar|1
+  --&tempHPbar|4
+
+  --/|What resource name is used for Sorcerer Points?
+  --&SorcererResource|Sorcery Points
+
+  --/|Put the name of your check if custom crit damage will be applied.
+  --&CustomCritCheck|far_CustomCritCheck
+
+  --&CritDamageDiceModifier|-1
+  --&CritDamageDiceRollType|d
+  --&CritDamageRollModifier|
+  --=CritDamageModifier|+6
+
+  --/|Are you using the matching Bardic Inspiration Script from FarsideGallery? (Default is No using 0. Change to 1 if using the script.)
+  --=Scriptcheck|1
+
+  --/| ____________________ End Global User Variables ___________________________________________________________________________________________
+
+  --/|Helper variable build up to allow us to include a target prompt in an rbutton
+  --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
+  --&SPACE|X X --&SPACE|[&SPACE(1,1)]
+  --&brace|{
+  --&cbrace|}
+  --&obrac|[
+  --&cbrac|]
+
+  -->far_LoadTokenMarkers|
+
+  --#title|[&SpellName]
+  --#emoteText|[*S:t-name] casts [&SpellName]!
+  --&TFColor|#FFFFFF
+  --&STFColor|#000000
+  --&FColor1|#000000
+  --&FColor2|#000000
+  --&EBColor|#FFFFFF
+  --&BColor1|#FFFFFF
+  --&BColor2|#FFFFFF
+
+  --#titlecardbackground|[&BColor1]
+  --#titlecardbackgroundimage|linear-gradient(to bottom, #FFF000, #FF0000)
+  --#titleFontColor|[&TFColor]
+  --#subtitleFontColor|[&STFColor]
+  --#emoteBackground|[&EBColor]
+  --#titlefontsize|2.0em
+  --#titlefontlineheight|1.2em
+  --#titlefontface|Times New Roman
+  --#norollhighlight|0
+  --#hideTitleCard|0
+  --#bodyfontsize|12px
+  --#oddrowbackground|[&BColor1]
+  --#oddrowfontcolor|[&FColor2]
+  --#evenrowbackground|[&BColor2]
+  --#evenrowfontcolor|[&FColor1]
+
+  --:STEP1|
+
+  --=DisplayCount|0
+
+  --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
+  --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+
+  --#leftsub|[*R:spellcastingtime]
+  --#rightsub|[*R:spellrange]
+  --&desc|[*R:spelldescription]
+  --&higher|[*R:spellathigherlevels]
+
+  --+|You create three rays of fire and hurl them at targets within range. You can hurl them at one target or several. Make a ranged spell attack for each ray. On a hit, the target takes 2d6 fire damage.
+  --+|[b]At Higher Levels.[/b] When you cast this spell using a spell slot of 3rd level or higher, you create one additional ray for each slot level above 2nd.
+  --+|[br]
+  --+|[c][b]Spell Attack: [#FF0000]+[*S:spell_attack_bonus][/#][/b][/c]
+  --+|[br]
+
+  -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
+  --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
+
+  --+|[c][b]Cast At What Level?[/b][/c]
+  --&splvlMsg|
+  --%splvl|foreach;SpellCastLevel
+   --&splvlMsg|+ [rbutton][&splvl]::STEP2;[&splvl][/rbutton]
+  --%|
+  --+|[c][&splvlMsg][/c]
+  --+|[br]
+  --+|After picking a level above, you will pick one target per ray (same creature allowed). If a target dies, you can aim remaining rays elsewhere — [b]Good Luck![/b]
+  --X|
+
+  --:STEP2|
+  --=SpellLevel|[&reentryval]
+  --&SpellLevel|[&reentryval]
+  -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
+  --=MissileCount|[&SpellLevel] + 1
+  --=DisplayCount|0
+  --=ChangeCount|0
+  --=SorceryPoints|0
+  --=EmpowerFeatFlag|0
+  --=WildFeatFlag|0
+  --=EmpoweredDamageFlag|0
+
+  -->far_FIND_CLASS_LEVEL|[*S:character_id];Sorcerer;SLevel
+  --?"X[&SLevel]" -eq "X0"|MissileLoop
+  -->far_FindFeat|[*S:character_id];"Metamagic: Empowered Spell";EmpowerFeatFlag
+  -->far_FindFeat|[*S:character_id];"Wild Magic Surge";WildFeatFlag
+  --=EmpowerDice|[*S:charisma_mod]
+  -->Lib5E_FIND_RESOURCE|[*S:character_id];[&SorcererResource];Pointsname;PointsAmmo
+
+  --:MissileLoop|
+  --=DisplayCount|[$DisplayCount] + 1
+
+  --?[$DisplayCount] -gt [$MissileCount]|>EndMacro
+  --?[$DisplayCount] -ne 1|[
+   --+|[hr]
+   --+|[br]
+   --+|[c][b]Ray [$DisplayCount.Raw] of [$MissileCount.Raw][/b] — Spell Attack [#FF0000]+[*S:spell_attack_bonus][/#][/c]
+   --+|[br]
+   --+|[c][rbutton]Next Target::NEXT_TARGET[/rbutton][/c]
+   --+|[br]
+   --X|
+  --]|
+
+  --:NEXT_TARGET|
+  --&Hex|
+  --&HexBlade|
+  --&HexMarkerFlag|
+  --&HexBladeMarkerFlag|
+  --&damageMod|
+  --?[$DisplayCount] -eq 1|[
+   --+|[c][i]Each ray uses its own attack roll. Fire damage (2d6) is rolled only on a hit.[/i][/c]
+   --+|[br]
+  --]|
+  --I Select the target of your Scorching Ray.;Scorching Ray #[$DisplayCount].|t;ThisTarget;Scorching Ray #[$DisplayCount]:
+  --#targetToken|[&ThisTarget]
+  --#leftsub|Ray # [$DisplayCount.Raw]
+  --#rightsub|[*T:t-name]
+  --#emoteText|[*S:t-name] casts [&SpellName] ray #[$DisplayCount.Raw] at [*T:t-name]!
+  -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&InspirationMarker];InspiredFlag;InspiredCount
+  -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&BardicMarker];BardicFlag;BardicCount
+  -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
+  -->far_FIND_ACTIVE_GLOBAL_ATTACK_MODS|[*S:character_id];GlobalAttack
+  -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod;0;0;0
+  -->GetAttackType|
+
+  --:GetAttackType|
+  --#whisper|self,gm
+  --+|[c]Choose Attack Type:[/c]
+  --+|[c][rbutton]Advantage::AttackReentry;2d20kh1[/rbutton][rbutton]Normal::AttackReentry;1d20[/rbutton][rbutton]Disadvantage::AttackReentry;2d20kl1[/rbutton][/c]
+  --X|
+
+  --:AttackReentry|
+  --&AttackDice|[&reentryval]
+  --#targettoken|[&ThisTarget]
+  --?[&InspiredFlag] -ne 0 |>far_Inspiration;[*S:t-id];[&InspirationMarker];[&AttackDice];AttackDice
+
+  --=AttackDiceBase|[&AttackDice]
+  --c[&AttackDice]|2d20kh1:&DisplayDice;Advantage|1d20:&DisplayDice;1d20|2d20kl1:&DisplayDice;Disadvantage
+  --=AttackRollMod|[$AttackDiceBase] + [*S:spell_attack_bonus] [Spell Attack Bonus]
+
+  --?[&BardicFlag] -eq 1|>far_Bardic;[*S:t-id];[&BardicMarker];[$Scriptcheck];[$AttackDiceBase];[$AttackRollMod];BardRoll
+  --?[&BaneMarkerFlag] -eq 1|&Baneroll;+ - 1d4 [Bane] |&Baneroll;
+
+  --=AttackRoll|[$AttackDiceBase] + [*S:spell_attack_bonus] [Spell Attack Bonus] [&GlobalAttack] [&Baneroll] [&BardRoll]
+
+  -->far_OfferShieldReaction|[&ThisTarget];[&SpellName]
+  -->far_ComputeTargetDefenseAC|[&ThisTarget];TargetAC
+
+  --#whisper|self,gm
+  --+Rolling [&DisplayDice]: |[$AttackDiceBase]
+  --+|[br]Total Attack Roll [b]#[&DisplayCount][/b]: [$AttackRoll]
+  --+|[br]
+
+  --?[$AttackDiceBase] -eq 20|>Crit
+  --?[$AttackDiceBase] -eq 19 -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|>Crit
+  --?[$AttackDiceBase] -eq 1|>Fumble
+  --?[$AttackRoll.Total] -ge [$TargetAC.Total] -and [$AttackRoll.Base] -nei 20|>Hit
+  --?[$AttackRoll.Total] -lt [$TargetAC.Total] -and [$AttackRoll.Base] -nei 1|>Miss
+  --X|
+
+  --:EndMacro|
+  --+|[br]
+  --+|[c][b]All rays delivered.[/b][/c]
+  --+|[br]
+  --+Desc: |[&desc]
+  --+At Higher Levels: |[&higher]
+  --+|[br]
+  --?"X[$WildFeatFlag]" -eq "X1"|>far_WildTable
+  -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
+  --?"X[$EmpoweredDamageFlag]" -eq "X1"|[
+   --=FinalPointsAmmo|[$PointsAmmo]-[$SorceryPoints]
+   --!a:[*S:character_id]|[&PointsAmmo]:[$FinalPointsAmmo]
+   --+|[br]
+   --+|[&SorcererResource]: |Used: [$SorceryPoints] / Remaining: [$FinalPointsAmmo]
+  --]|
+  --X|
+
+  --/| ____________________ Procedures_______________________________________________________________________________________
+
+  --:RollRayDamage|
+  --=RayDamage|2d6
+  --?"X[$EmpowerFeatFlag]" -eq "X1" -and "[&damageMod]" -ninc "Immune"|>far_EmpowerSelect;RayDamage;Hit;RayDamageChangedFlag;ChangedRayDamage;1;[$ChangeCount];ChangeCount
+  --?"X[$RayDamageChangedFlag]" -eq "X1"|=RayDamage;[$ChangedRayDamage]
+  --?"X[$RayDamageChangedFlag]" -eq "X1"|=EmpoweredDamageFlag;1
+  --?"[&damageMod]" -inc "Immune"|&RayDamage;0
+  --<|
+
+  --:ApplyHexMods|
+  -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexMarker];HexMarkerFlag;HexMarkerCount
+  -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];HexBladeMarkerFlag;HexBladeMarkerCount
+  --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex; + 1d6 [Hex] |&Hex;
+  --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade; + [*S:pb] [Hexblade Curse] |&HexBlade;
+  --<|
+
+  --:Fumble|
+  --#whisper|
+  --+&#x1F613;Ray #[$DisplayCount.Raw] Fumbles! |[*S:t-name] rolls [$AttackRoll] to attack [*T:t-name] and something went horribly wrong.
+  --=Fail|[T#Damage-Spell-Fail]
+  --&failText|[$Fail.tableEntryText]
+  --?"[&failText]" -inc "[&obrac][&obrac]"|[
+   --~failText1|string;before;[&obrac][&obrac];[&failText]
+   --~failText2|string;after;[&cbrac][&cbrac];[&failText]
+   --~roll|string;before;[&cbrac][&cbrac];[&failText]
+   --~roll|string;after;[&obrac][&obrac];[&roll]
+   --=failRoll|[&roll]
+   --&failText|[&failText1][$failRoll][&failText2]
+  --]|
+  --+|[br]
+  --+|[&failText]
+  --?"[&failText]" -inc "Roll for damage"|[
+   -->RollRayDamage|
+   --&GlobalDamage|
+   -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0;[*T:character_id]
+   -->ApplyHexMods|
+   --=Damage|[$RayDamage] [&damageMod] [&HexBlade] [&Hex] [&GlobalDamage]
+   --+Damage: |[$Damage]
+  --]|
+  -->PlayRayVFX|
+  --^MissileLoop|
+
+  --:Miss|
+  --#whisper|
+  --+&#x274C;Ray #[$DisplayCount.Raw] Misses! |[*S:t-name] rolls [$AttackRoll] to attack [*T:t-name] and missed.
+  -->PlayRayVFX|
+  --^MissileLoop|
+
+  --:Hit|
+  --#whisper|
+  -->RollRayDamage|
+  --&GlobalDamage|
+  -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0;[*T:character_id]
+  -->ApplyHexMods|
+  --=Damage|[$RayDamage] [&damageMod] [&HexBlade] [&Hex] [&GlobalDamage]
+  --+&#x1F3AF;Ray #[$DisplayCount.Raw] hits! |[*S:t-name] rolls [$AttackRoll] to attack and hits [*T:t-name] for [$Damage] [&damageType] damage.
+  -->ApplyDamage|
+  -->PlayRayVFX|
+  --^MissileLoop|
+
+  --:Crit|
+  --#whisper|
+  -->RollRayDamage|
+  --&GlobalDamage|
+  -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;1;[*T:character_id]
+  -->ApplyHexMods|
+  -->[&CustomCritCheck]|CustomCritFlag
+  --?[&CustomCritFlag] -eq 1|[
+   --=CritDice|2 + [&CritDamageDiceModifier]
+   --&CritDamage|[$CritDice][&CritDamageDiceRollType]6[&CritDamageRollModifier] + [$CritDamageModifier]
+   --=Damage|[$RayDamage.Raw] [Hit] + [&CritDamage] [Crit] [&damageMod] [&HexBlade] [&Hex] [&GlobalDamage]
+   --+|[br]
+  --]|[
+   --=Damage|[$RayDamage.Raw] [Hit] + [$RayDamage.Raw] [Crit] [&damageMod] [&HexBlade] [&Hex] [&GlobalDamage]
+   --+|[br]
+  --]|
+  --+&#x2757;&#x2757;&#x2757;Crits! |[*S:t-name] rolls [$AttackRoll] to attack and CRITS [*T:t-name] for [$Damage] [&damageType] damage.
+  -->ApplyDamage|
+  -->PlayRayVFX|
+  --^MissileLoop|
+
+  --:PlayRayVFX|
+  -->far_PlayEffects|[*S:t-id];[*T:t-id];none;burst-smoke;beam-magic;
+  --<|
+
+  --:ApplyDamage|
+  --?"X[$Damage.Total]" -gt "X0"|[
+   -->far_DamageTokenmod|[*T:t-id];[&hpBar];[&tempHPbar];-[$Damage];0;0;1
+   --=FinalHP|[*T:t-bar[&hpBar]_value]+[*T:t-bar[&tempHPbar]_value]
+   --?[$FinalHP] -gt 0|SRAlive|SRDead
+  --]|
+  --^SRAlive|
+
+  --:SRAlive|
+  --<|
+
+  --:SRDead|
+  --+|[br]
+  --+Congrats|You managed to kill [*T:t-name]
+  --?"X[*T:CurseCaster]" -ne "X"|>SRDoHexHeal
+  --^SRDeathFinish|
+
+  --:SRDoHexHeal|
+  -->far_HexHeal|[*T:t-id]
+
+  --:SRDeathFinish|
+  --~|turnorder;removetoken;[*T:t-id]
+  --?"X[&HexMarkerFlag]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|[
+   -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexMarker];0
+   -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];0
+  --]|
+  --?"X[&HexBladeMarkerFlag]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|[
+   -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];0
+  --]|
+  -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DeathMarker]
+  --<|
+
+}}
