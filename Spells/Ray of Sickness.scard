@@ -6,7 +6,7 @@
   --#whisper|self,gm
 
   --/|Script Name : Ray of Sickness
-  --/|Version     : 1.2.0
+  --/|Version     : 1.3.0
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|
@@ -121,50 +121,82 @@
   -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&BardicMarker];BardicFlag;BardicCount
   -->far_FIND_ACTIVE_GLOBAL_ATTACK_MODS|[*S:character_id];GlobalAttack
   -->LibSN_CHECK_STATUS_MARKER|[*S:t-id];[&BaneMarker];BaneMarkerFlag;BaneMarkerCount
-
-  --%target|foreach;Targets
-   --#targettoken|[&target]
-   --#emoteText|[*S:t-name] casts [&SpellName] at level [$SpellLevel] on [*T:t-name]!
-   --?[*T:npc] -eq 1|=TargetAC[*T:t-id];[*T:npc_ac]|=TargetAC[*T:t-id];[*T:ac]
+  --?"[@Targets(length)]" -eq "undefined array"|>far_FatalError;No Targets;ERROR;Select at least one target for [&SpellName].
+  --?[@Targets(length)] -lt 1|>far_FatalError;No Targets;ERROR;Select at least one target for [&SpellName].
+  --%ROS_PrepLoop|foreach;Targets
+   --#targettoken|[&ROS_PrepLoop]
    -->far_CheckDamageModifiers|[*T:character_id];[&damageType];damageMod[*T:t-id];0;0;0
    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexMarker];HexMarkerFlag[*T:t-id];HexMarkerCount
    -->LibSN_CHECK_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];HexBladeMarkerFlag[*T:t-id];HexBladeMarkerCount
-   --+|[c]Choose Attack Type:[/c]
-   --+|[c][rbutton]Advantage::AttackType;2d20kh1[/rbutton][rbutton]Normal::AttackType;1d20[/rbutton][rbutton]Disadvantage::AttackType;2d20kl1[/rbutton][/c]
-   --X|
+   --&Hex[*T:t-id]|
+   --&HexBlade[*T:t-id]|
+  --%|
+  --=ROS_AttackPromptIdx|0
+  -->ROS_Phase1_AttackPrompt|
+
+  --/|Phase 1: attack NAD (and inspiration or bardic) for every target before shields or damage.
+  --:ROS_Phase1_AttackPrompt|
+  --~|array;setindex;Targets;[$ROS_AttackPromptIdx]
+  --~ROS_CurrentTid|array;getcurrent;Targets
+  --#targettoken|[&ROS_CurrentTid]
+  --#emoteText|[*S:t-name] casts [&SpellName] at level [$SpellLevel] on [*T:t-name]!
+  --+|[c][b]Attack vs [*T:t-name][/b] — choose attack roll:[/c]
+  --+|[c][rbutton]Advantage::AttackType;2d20kh1[/rbutton][rbutton]Normal::AttackType;1d20[/rbutton][rbutton]Disadvantage::AttackType;2d20kl1[/rbutton][/c]
+  --X|
 
   --:AttackType|
-   --&AttackDice[*T:t-id]|[&reentryval]
-   --?[&InspiredFlag] -ne 0|>far_Inspiration;[*S:t-id];[&InspirationMarker];[&AttackDice[*T:t-id]];AttackDice[*T:t-id]
-   --c[&AttackDice[*T:t-id]]|2d20kh1:&DisplayDice[*T:t-id];Advantage|1d20:&DisplayDice[*T:t-id];1d20|2d20kl1:&DisplayDice[*T:t-id];Disadvantage
-   --&AttackDisplayDice[*T:t-id]|[&DisplayDice[*T:t-id]]
+  --~|array;setindex;Targets;[$ROS_AttackPromptIdx]
+  --~ROS_CurrentTid|array;getcurrent;Targets
+  --#targettoken|[&ROS_CurrentTid]
+  --&BardRoll|
+  --&Baneroll|
+  --&AttackDice[*T:t-id]|[&reentryval]
+  --?[&InspiredFlag] -ne 0|>far_Inspiration;[*S:t-id];[&InspirationMarker];[&AttackDice[*T:t-id]];AttackDice[*T:t-id]
+  --c[&AttackDice[*T:t-id]]|2d20kh1:&DisplayDice[*T:t-id];Advantage|1d20:&DisplayDice[*T:t-id];1d20|2d20kl1:&DisplayDice[*T:t-id];Disadvantage
+  --&AttackDisplayDice[*T:t-id]|[&DisplayDice[*T:t-id]]
+  --=AttackDiceBase[*T:t-id]|[&AttackDice[*T:t-id]]
+  --=AttackRollMod[*T:t-id]|[$AttackDiceBase[*T:t-id]] + [*S:spell_attack_bonus] [Spell Attack Bonus]
+  --?[&BardicFlag] -eq 1|>far_Bardic;[*S:t-id];[&BardicMarker];[$Scriptcheck];[$AttackDiceBase[*T:t-id]];[$AttackRollMod[*T:t-id]];BardRoll
+  --?[&BaneMarkerFlag] -eq 1|&Baneroll;+ - 1d4 [Bane]
+  --=AttackRoll[*T:t-id]|[$AttackDiceBase[*T:t-id]] + [*S:spell_attack_bonus] [Spell Attack Bonus] [&GlobalAttack] [&Baneroll] [&BardRoll]
+  --=ROS_AttackPromptIdx|[$ROS_AttackPromptIdx]+1
+  --?"[$ROS_AttackPromptIdx]" -lt "[@Targets(length)]"|>ROS_Phase1_AttackPrompt|>ROS_Phase2_ShieldBatch
 
-   --=AttackDiceBase[*T:t-id]|[&AttackDice[*T:t-id]]
-   --=AttackRollMod[*T:t-id]|[$AttackDiceBase[*T:t-id]] + [*S:spell_attack_bonus] [Spell Attack Bonus]
-   --?[&BardicFlag] -eq 1|>far_Bardic;[*S:t-id];[&BardicMarker];[$Scriptcheck];[$AttackDiceBase[*T:t-id]];[$AttackRollMod[*T:t-id]];BardRoll
-   --?[&BaneMarkerFlag] -eq 1|&Baneroll;+ - 1d4 [Bane]|&Baneroll;
+  --/|Phase 2a: shield reaction per target (spell-owned loop), then resolve each target in order.
+  --:ROS_Phase2_ShieldBatch|
+  --=ROS_ShieldIdx|0
+  -->ROS_Phase2_ShieldNext|
 
-   --=AttackRoll[*T:t-id]|[$AttackDiceBase[*T:t-id]] + [*S:spell_attack_bonus] [Spell Attack Bonus] [&GlobalAttack] [&Baneroll] [&BardRoll]
+  --:ROS_Phase2_ShieldNext|
+  --~|array;setindex;Targets;[$ROS_ShieldIdx]
+  --~ROS_CurrentTid|array;getcurrent;Targets
+  -->far_OfferShieldReaction|[&ROS_CurrentTid];[&SpellName]
+  --=ROS_ShieldIdx|[$ROS_ShieldIdx]+1
+  --?"[$ROS_ShieldIdx]" -lt "[@Targets(length)]"|>ROS_Phase2_ShieldNext
+  --=ROS_ResolveIdx|0
+  -->ROS_Phase2_ResolveNext|
 
-   --?[$AttackDiceBase[*T:t-id]] -eq 20|>Crit
-   --?[$AttackDiceBase[*T:t-id]] -eq 19 -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|>Crit
-   --?[$AttackDiceBase[*T:t-id]] -eq 1|>Fumble
-   --?[$AttackRoll[*T:t-id]] -ge [$TargetAC[*T:t-id].Total] -and [$AttackDiceBase[*T:t-id]] -nei 20|>Hit
-   --?[$AttackRoll[*T:t-id]] -lt [$TargetAC[*T:t-id].Total] -and [$AttackDiceBase[*T:t-id]] -nei 1|>Miss
-   --X|
-
-  --:BottomForEachTarget|
-  --%|
-  -->Output|
+  --:ROS_Phase2_ResolveNext|
+  --~|array;setindex;Targets;[$ROS_ResolveIdx]
+  --~ROS_CurrentTid|array;getcurrent;Targets
+  --#targettoken|[&ROS_CurrentTid]
+  -->far_ComputeTargetDefenseAC|[&ROS_CurrentTid];TargetAC[&ROS_CurrentTid]
+  --?[$AttackDiceBase[*T:t-id]] -eq 20|>Crit
+  --?[$AttackDiceBase[*T:t-id]] -eq 19 -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|>Crit
+  --?[$AttackDiceBase[*T:t-id]] -eq 1|>Fumble
+  --?[$AttackRoll[*T:t-id]] -ge [$TargetAC[&ROS_CurrentTid].Total] -and [$AttackDiceBase[*T:t-id]] -nei 20|>Hit
+  --?[$AttackRoll[*T:t-id]] -lt [$TargetAC[&ROS_CurrentTid].Total] -and [$AttackDiceBase[*T:t-id]] -nei 1|>Miss
+  --^ROS_AfterTargetResolved|
 
   --/| ____________________ Procedures_______________________________________________________________________________________
 
   --:Crit|
+   --#targettoken|[&ROS_CurrentTid]
    -->DamageRoll|
    --&GlobalDamage|
    -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;1;[*T:character_id]
-   --?"X[&HexMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex[*T:t-id]; + 1d6 [Hex]|&Hex[*T:t-id];
-   --?"X[&HexBladeMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade[*T:t-id]; + [*S:pb] [Hexblade Curse]|&HexBlade[*T:t-id];
+   --?"X[&HexMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex[*T:t-id]; + 1d6 [Hex]
+   --?"X[&HexBladeMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade[*T:t-id]; + [*S:pb] [Hexblade Curse]
    -->[&CustomCritCheck]|CustomCritFlag
    --?[&CustomCritFlag] -eq 1|[
     --=CritDice|[&DamageDice]+[&CritDamageDiceModifier]
@@ -185,15 +217,15 @@
     --=FinalHP[*T:t-id]|[*T:t-bar[&hpBar]_value]+[*T:t-bar[&tempHPbar]_value]
     --?[$FinalHP[*T:t-id]] -le 0|>Died
     --]|
-   -->SaveThrow|
-   --^BottomForEachTarget|
+   --^SaveThrow|
 
   --:Hit|
+   --#targettoken|[&ROS_CurrentTid]
    -->DamageRoll|
    --&GlobalDamage|
    -->far_FIND_ACTIVE_GLOBAL_DAMAGE_MODS|[*S:character_id];GlobalDamage;0;[*T:character_id]
-   --?"X[&HexMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex[*T:t-id]; + 1d6 [Hex]|&Hex[*T:t-id];
-   --?"X[&HexBladeMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade[*T:t-id]; + [*S:pb] [Hexblade Curse]|&HexBlade[*T:t-id];
+   --?"X[&HexMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*S:ConcentrationSpellTargetToken]" -eqi "X[*T:t-id]"|&Hex[*T:t-id]; + 1d6 [Hex]
+   --?"X[&HexBladeMarkerFlag[*T:t-id]]" -eq "X1" -and "X[*T:CurseCaster]" -eq "X[*S:t-id]"|&HexBlade[*T:t-id]; + [*S:pb] [Hexblade Curse]
    --=Damage[*T:t-id]|[&DamageDice]d8 [&damageMod[*T:t-id]] [&HexBlade[*T:t-id]] [&Hex[*T:t-id]] [&GlobalDamage]
    --?"X[$EmpowerFeatFlag]" -eq "X1" -and "[&damageMod[*T:t-id]]" -ninc "Immune"|>far_EmpowerSelect;Damage[*T:t-id];Hit;DamageChangedFlag[*T:t-id];ChangedDamage[*T:t-id]
    --?"X[$DamageChangedFlag[*T:t-id]]" -eq "X1"|[
@@ -207,18 +239,19 @@
     --=FinalHP[*T:t-id]|[*T:t-bar[&hpBar]_value]+[*T:t-bar[&tempHPbar]_value]
     --?[$FinalHP[*T:t-id]] -le 0|>Died
     --]|
-   -->SaveThrow|
-   --^BottomForEachTarget|
+   --^SaveThrow|
 
   --:Miss|
+   --#targettoken|[&ROS_CurrentTid]
    --&ResultLabel[*T:t-id]|[b]Missed![/b]
    --&ResultText[*T:t-id]|So close but they ducked just in time. Better luck next time (if there is a next time).
-   --^BottomForEachTarget|
+   --^ROS_AfterTargetResolved|
 
   --:Fumble|
+   --#targettoken|[&ROS_CurrentTid]
    --&ResultLabel[*T:t-id]|[b]Critical Fail!!![/b]
    --&ResultText[*T:t-id]|The attack went horribly wrong.
-   --^BottomForEachTarget|
+   --^ROS_AfterTargetResolved|
 
   --:FailTable|
    --=Fail|[T#Damage-Spell-Fail]
@@ -241,6 +274,7 @@
    --<|
 
   --:Died|
+   --#targettoken|[&ROS_CurrentTid]
    --#whisper|
    --?"X[*T:CurseCaster]" -ne "X"|>HexHeal
    --~|turnorder;removetoken;[*T:t-id]
@@ -252,9 +286,10 @@
     -->LibSN_REMOVE_STATUS_MARKER|[*T:t-id];[&HexBladeMarker];0
    --]|
    -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&DeathMarker]
-   --<|
+   --^ROS_AfterTargetResolved|
 
   --:HexHeal|
+   --#targettoken|[&ROS_CurrentTid]
    -->far_HexHeal|[*T:t-id]
    --<|
 
@@ -264,6 +299,7 @@
    --<|
 
   --:SaveThrow|
+   --#targettoken|[&ROS_CurrentTid]
    --?"[*T:npc_type]" -inc "undead" -or "[*T:npc_type]" -inc "construct"|>SaveUndead
    --?"[*T:npc]" -ne "1"|SavePCRoll|SaveNPCRoll
 
@@ -275,19 +311,21 @@
    --]|[
     --#whisper|[&playername],gm
    --]|
-   -->ChooseSaveRoll|PC
+   --&function|PC
+   --^ChooseSaveRoll|
 
   --:SaveNPCRoll|
    --#whisper|gm
-   -->ChooseSaveRoll|NPC
+   --&function|NPC
+   --^ChooseSaveRoll|
 
   --:ChooseSaveRoll|
-   --&function|[%1%]
-   --+|[c]Choose Saving Throw Type:[/c]
+   --+|[c][b]CON save — [*T:t-name][/b] choose saving throw type:[/c]
    --+|[c][rbutton]Advantage::[&function];2d20kh1[/rbutton][rbutton]Normal::[&function];1d20[/rbutton][rbutton]Disadvantage::[&function];2d20kl1[/rbutton][/c]
    --X|
 
   --:NPC|
+   --#targettoken|[&ROS_CurrentTid]
    --&saveDice[*T:t-id]|[&reentryval]
    --#whisper|
    --?[*T:npc] -eq 1 -and [*T:npc_[&shortattrib]_save_flag] -gt 0|&Save;npc_[&shortattrib]_save|&Save;[&attrib]_mod
@@ -298,6 +336,7 @@
    --?[$TargetSave[*T:t-id]] -ge [$DC]|>SavePass|>SaveFail
 
   --:PC|
+   --#targettoken|[&ROS_CurrentTid]
    --&saveDice[*T:t-id]|[&reentryval]
    -->far_Check_GLOBAL_MOD_EXISTS|[*T:character_id]; save; [&damageType]; damageSave[*T:t-id]
    -->far_Check_GLOBAL_ATTRIB_SAVE_EXISTS|[*T:character_id]; [&attrib]; attribSaveRoll[*T:t-id]
@@ -318,7 +357,8 @@
 
    --=attribSaveRoll[*T:t-id]|[$InitSave[*T:t-id]] + [*T:[&attrib]_save_bonus] [&Displayattrib]
    --?[&BardicFlag[*T:t-id]] -eq 1|>far_Bardic;[*S:t-id];[&BardicMarker];[$Scriptcheck];[$InitSave[*T:t-id].Base];[$attribSaveRoll[*T:t-id]];BardRoll[*T:t-id]
-   --?[&BaneMarkerFlag[*T:t-id]] -eq 1|&Baneroll[*T:t-id];+ - 1d4 [Bane]|&Baneroll[*T:t-id];
+   --&Baneroll[*T:t-id]|
+   --?[&BaneMarkerFlag[*T:t-id]] -eq 1|&Baneroll[*T:t-id];+ - 1d4 [Bane]
 
    --=TargetSave[*T:t-id]|[$InitSave[*T:t-id]] + [*T:[&attrib]_save_bonus] [&obrac][&Displayattrib][&cbrac] [&GlobalSave[*T:t-id]] [&GlobalSkill[*T:t-id]] [&Baneroll[*T:t-id]] [&BardRoll[*T:t-id]]
 
@@ -326,27 +366,36 @@
    --?[$TargetSave[*T:t-id]] -ge [$DC]|>SavePass|>SaveFail
 
   --:SavePass|
+   --#targettoken|[&ROS_CurrentTid]
    --&SaveShowRoll[*T:t-id]|1
    --&SaveResultAction[*T:t-id]|passed the saving throw. [*T:t-name] is not poisoned.
-   --^BottomForEachTarget|
+   --^ROS_AfterTargetResolved|
 
   --:SaveFail|
+   --#targettoken|[&ROS_CurrentTid]
    --&SaveShowRoll[*T:t-id]|1
    --?"[*T:npc_immunities]" -inc "poisoned" -or "[*T:npc_condition_immunities]" -inc "poisoned"|>SaveFailCondImm|>SaveFailPoisoned
 
   --:SaveFailCondImm|
+   --#targettoken|[&ROS_CurrentTid]
    --&SaveResultAction[*T:t-id]|failed the saving throw but is immune to the poisoned condition.
-   --^BottomForEachTarget|
+   --^ROS_AfterTargetResolved|
 
   --:SaveFailPoisoned|
+   --#targettoken|[&ROS_CurrentTid]
    -->LibSN_ADD_STATUS_MARKER|[*T:t-id];[&PoisonMarker];1
    --&SaveResultAction[*T:t-id]|failed the saving throw. [*T:t-name] is poisoned until the end of [*S:t-name]'s next turn.
-   --^BottomForEachTarget|
+   --^ROS_AfterTargetResolved|
 
   --:SaveUndead|
+   --#targettoken|[&ROS_CurrentTid]
    --&SaveResult[*T:t-id]|[*T:t-name] is unaffected by the poisoned condition. No CON save required (undead/construct).
    --&SaveShowText[*T:t-id]|1
-   --^BottomForEachTarget|
+   --^ROS_AfterTargetResolved|
+
+  --:ROS_AfterTargetResolved|
+   --=ROS_ResolveIdx|[$ROS_ResolveIdx]+1
+   --?"[$ROS_ResolveIdx]" -lt "[@Targets(length)]"|>ROS_Phase2_ResolveNext|>Output|
 
   --:Output|
    --#whisper|
@@ -355,13 +404,15 @@
    --]|
 
    --=OutputTargetNum|0
+   --?"[@Targets(length)]" -eq "undefined array"|>far_FatalError;Targets Lost;ERROR;Target list was lost before output — try casting again.
+   --?[@Targets(length)] -lt 1|>far_FatalError;No Targets;ERROR;No targets to display for [&SpellName].
    --%loop|foreach;Targets
     --#targettoken|[&loop]
     --?"X[$OutputTargetNum]" -ne "X0"|[
      --+|[br]
      --]|
     --=OutputTargetNum|[$OutputTargetNum]+1
-    -->far_PlayEffects|[*S:t-id];[*T:t-id];burn-acid;beam-acid;
+    -->far_PlayEffects|[*S:t-id];[*T:t-id];burn-acid;;beam-acid;
     --+|[c][b]Target: [*T:t-name][/b][/c]
     --+Rolling [&AttackDisplayDice[&loop]]: |[$AttackDiceBase[&loop]]
     --+Total Attack Roll: |[$AttackRoll[&loop]]
@@ -369,7 +420,9 @@
     --?"X[&ShowDamageLine[&loop]]" -eq "X1"|[
      --+[&ResultLabel[&loop]]: |The ray did [$Damage[&loop]] points of [&damageType] damage.
     --]|[
-     --+[&ResultLabel[&loop]]: |[&ResultText[&loop]]
+     --?"X[&ResultLabel[&loop]]" -ne "X"|[
+      --+[&ResultLabel[&loop]]: |[&ResultText[&loop]]
+     --]|
     --]|
     --?"X[&SaveShowRoll[&loop]]" -eq "X1" -or "X[&SaveShowText[&loop]]" -eq "X1" -or "[&ResultLabel[&loop]]" -inc "Critical Fail"|[
      --+|[br]
