@@ -1,10 +1,10 @@
 ﻿!script {{
   --/|Script Name : 5E Action Menu
-  --/|Version     : 3.8.4
+  --/|Version     : 3.8.5
   --/|Requires SC : 2.7.15+
   --/|Author      : Kurt Jaegers
   --/|Modified By : Farsidegallery
-  --&CAM_VERSION|3.8.4
+  --&CAM_VERSION|3.8.5
 
   --/|IMPORTANT NOTE: Updating this macro via the in-game editor will cause it to exhibit strange behavior. If you wish
   --/|to make settings changes, make them in an external editor (like NOTEPAD) and copy/paste the whole
@@ -87,7 +87,7 @@
   --&damageApplyScript|token-mod        --/|Set this to either "scriptcards", "token-mod", "alterbars", "damagebuttons" or anything else to not apply damage
   --&whisperDamageButtonsToDM|1         --/|If using "damagebuttons" and this is set to 1, the damage buttons will be whispered to the DM instead of being added to the card
   --&whisperDamageButtonResultsToDM|1   --/|If using "damagebuttons" for damage and this value is 1, the DM is whispered a message about damage application
-  --&selfHandleAdvantageMode|0          --/|If set to 1, the Action Menu will include advantage/normal/disadvantage toggles (and won't use the character sheet toggle)
+  --&selfHandleAdvantageMode|1          --/|If set to 1, the Action Menu will include advantage/normal/disadvantage toggles (and won't use the character sheet toggle)
   --&defaultAdvantageMode|0             --/|Used with SelfHandleAdvantageMode. 0=Normal, 1=Advantage, 2=Disadvantage
   --&showAdvantageModeText|0            --/|Used with SelfHandleAdvantageMode. 0=Button color coding only. 1=Show "Normal", "Advantage", "Disadvantage" text
   --&compactGlobalModDisplay|1          --/|If set to 1, Global X Mods will use more compact display layouts
@@ -99,6 +99,8 @@
   --&FailTableRanged|Damage-Range-Fail  --/|Full Roll20 rollable table name for ranged weapon attack critical fails (natural 1). Leave blank to skip fail tables for ranged attacks.
   --&FailTableSpell|Damage-Spell-Fail   --/|Full Roll20 rollable table name for spell attack critical fails (natural 1). Leave blank to skip fail tables for spell attacks.
   --&ConcentrationMarkerName|Concentrating::7409928           --/|Roll20 token marker tag when CAM spells apply concentration. Match your campaign marker (and any external conc trigger you use).
+  --&CamBeaconMarkerName|0              --/|Beacon on OGL heals: 0 = slot-style query on spell button (CamBeaconActive). Non-zero = token marker tag like ConcentrationMarkerName.
+  --&CamHealSpellPathDebug|0            --/|Set to 1 to enable ScriptCards line debug for PC heal spell casts (after parse through PC_DONE_SPELL). Set 0 when done.
   --&DetectPlayersToken|1               --/|If set to a non-zero value, the script will attempt to resolve a character for a player that runs it without a selected token
   --&ShowRestButtons|0                  --/|If set to 1, rest buttons will be shown in the title bar
   --&Template|none                      --/|If you wish to use Keith Curtis' SuperNotes templates, put the template name here
@@ -185,6 +187,9 @@
   --/|Give the script a reentrant name based on the selected character id so we can have multiple instances at the same time
   --#reentrant|CharacterAction [&saveTokenID]
   --&QB|? --&QB|+{ --&QE|}
+  --/|OGL spellhealing detection sig (build ? + { — do not put those two chars adjacent in this file; Roll20 parses them at macro run)
+  --&CamOGLHealQuerySig|?
+  --&CamOGLHealQuerySig|+{
   --&AB|@ --&AB|+{
   --&TB|& --&TB|+# --&TB|+64 --&TB|+; --&TB|+{
   --&BED|& --&BED|+# --&BED|+128719;
@@ -1279,37 +1284,340 @@
   --#rightsub|[rbutton][&RepeatImage]::EXEC_PC_CANTRIP;[&cantrip_name]|[&TB]target|token_id}[/rbutton]
   --:SKIP_CANTRIP_REPEAT|
   --+|[*R:spelldescription]
+  -->CAM_OutputSpellHigherLevels|
   --:PC_DONE_CANTRIP|
   --?"[&PCPostCantripCastFunction]" -ne ""|>[&PCPostCantripCastFunction]
   --X|
 
-  --/|EXEC_PC_SPELL reentry: gluedLevelName|target|slot (As Ritual or level). Extra | segments from slot query use last segment as slot.
-  --:CAM_ParseSpellReentry|
-   --~CAM_sp|string;split;|;[&reentryval]
-   --&CAM_spHead|[&CAM_sp1]
-   --?"X[&CAM_sp2]" -eq "X" -or "[&CAM_sp2]" -eq ""|&spellInfo3;NONE|&spellInfo3;[&CAM_sp2]
-   --&spellInfo4|
-   --?"X[&CAM_sp4]" -ne "X" -and "[&CAM_sp4]" -ne ""|&spellInfo4;[&CAM_sp4]
-   --?"X[&spellInfo4]" -eq "X" -or "[&spellInfo4]" -eq ""|&spellInfo4;[&CAM_sp3]
-   --?"[&CAM_spHead]" -inc ";"|[
-    --~spellInfo1|string;before;|;[&CAM_spHead]
-    --~spellInfo2|string;after;|;[&CAM_spHead]
+  --/|Split glued list level + spell name (e.g. 1Cure Wounds or cantrip " Cure Wounds") into spellInfo1/2.
+  --:CAM_ParseGluedSpellHead|gluedLevelName
+   --&CAM_spHead|[%1%]
+   --&CamSpGluedParsed|
+   --?"X[&CAM_spHead]" -eq "X" -or "[&CAM_spHead]" -eq ""|<
+   --/|Use :: only (never ; in reentry — ScriptCards reentryval is split on first semicolon after EXEC_PC_SPELL).
+   --?"[&CAM_spHead]" -inc "::"|[
+    --~spellInfo1|string;before;::;[&CAM_spHead]
+    --~spellInfo2|string;after;::;[&CAM_spHead]
    --]|[
     --&spellInfo1|
     --&spellInfo2|
-    --%CAM_lvl|9;1;-1
-     --?"[&CAM_spHead(0,1)]" -eq "[&CAM_lvl]"|[
-      --&spellInfo1|[&CAM_lvl]
-      --&spellInfo2|[&CAM_spHead(1)]
-      --^CAM_ParseSpellDone|
+    --%CamSpDigitLoop|9;0;-1
+     --~CamSpHeadDigit|string;left;1;[&CAM_spHead]
+     --?"[&CamSpHeadDigit]" -eq "[&CamSpDigitLoop]"|[
+      --&spellInfo1|[&CamSpDigitLoop]
+      --~spellInfo2|string;after;[&CamSpHeadDigit];[&CAM_spHead]
+      --~spellInfo2|string;trim;[&spellInfo2]
+      --&CamSpGluedParsed|1
      --]|
     --%|
+    --?"[&CamSpGluedParsed]" -ne "1"|[
+     --&CamSpHeadLead|
+     --~CamSpHeadLead|string;left;1;[&CAM_spHead]
+     --?"[&CamSpHeadLead]" -eq "-"|[
+      --^CAM_ParseGluedSpellHeadDone|
+     --]|
+     --=CamSpLoneSlotTry|[&CAM_spHead]
+     --?"[$CamSpLoneSlotTry.Raw]" -ge 1 -and "[$CamSpLoneSlotTry.Raw]" -le 9 -and "[&CAM_spHead]" -eq "[$CamSpLoneSlotTry.Raw]"|[
+      --^CAM_ParseGluedSpellHeadDone|
+     --]|
+     --?"[&CAM_spHead]" -eq "Yes" -or "[&CAM_spHead]" -eq "No"|[
+      --^CAM_ParseGluedSpellHeadDone|
+     --]|
+     --?"[&CAM_spHead]" -eq "As Ritual"|[
+      --^CAM_ParseGluedSpellHeadDone|
+     --]|
+     --?"X[&spellInfo2]" -eq "X" -or "[&spellInfo2]" -eq ""|[
+      --~spellInfo2|string;trim;[&CAM_spHead]
+     --]|
+    --]|
    --]|
-   --:CAM_ParseSpellDone|
-   --?"X[&spellInfo2]" -eq "X"|&spellInfo2|
-   --?"X[&spellInfo3]" -eq "X"|&spellInfo3|
-   --?"X[&spellInfo4]" -eq "X"|&spellInfo4|
+   --:CAM_ParseGluedSpellHeadDone|
    --<|
+
+  --/|EXEC_PC_SPELL reentry: head|target|slot|beacon|trailer (level::name). Classify every | segment — queries may drop the head or trailer.
+  --:CAM_ParseSpellReentry|
+   --&spellInfo1|
+   --&spellInfo2|
+   --&CamReTargetId|
+   --&CamReSlotLvl|
+   --&CamReSpellSeg|
+   --&CamReTargetSeg|
+   --&CamReSlotSeg|
+   --&CamReBeaconSeg|
+   --~|array;fromstring;CamReSegs;|;[&reentryval]
+   --/|Copy pipe segments to CamReSeg0-4 (array refs do not persist via amp assign).
+   --=CamRePos|0
+   --%CamReCopy|foreach;CamReSegs
+    --?"[$CamRePos.Raw]" -eq "0"|[
+     --&CamReSeg0|[&CamReCopy]
+    --]|
+    --?"[$CamRePos.Raw]" -eq "1"|[
+     --&CamReSeg1|[&CamReCopy]
+    --]|
+    --?"[$CamRePos.Raw]" -eq "2"|[
+     --&CamReSeg2|[&CamReCopy]
+    --]|
+    --?"[$CamRePos.Raw]" -eq "3"|[
+     --&CamReSeg3|[&CamReCopy]
+    --]|
+    --?"[$CamRePos.Raw]" -eq "4"|[
+     --&CamReSeg4|[&CamReCopy]
+    --]|
+    --=CamRePos|[$CamRePos] + 1
+   --%|
+   --%CamReClassLoop|foreach;CamReSegs
+    --&CamReSegCur|[&CamReClassLoop]
+    --?"[&CamReSegCur]" -eq ""|^CamReClassNext|
+    --?"[&CamReSegCur]" -eq "Yes" -or "[&CamReSegCur]" -eq "No"|[
+     --&CamReBeaconSeg|[&CamReSegCur]
+     --^CamReClassNext|
+    --]|
+    --?"[&CamReSegCur]" -eq "As Ritual"|[
+     --&CamReSlotSeg|As Ritual
+     --^CamReClassNext|
+    --]|
+    --?"[&CamReSegCur]" -inc "::"|[
+     --&CamReSpellSeg|[&CamReSegCur]
+     --^CamReClassNext|
+    --]|
+    --&CamReSegFirst|
+    --~CamReSegFirst|string;left;1;[&CamReSegCur]
+    --?"[&CamReSegFirst]" -eq "-"|[
+     --&CamReTargetSeg|[&CamReSegCur]
+     --&CamReTargetId|[&CamReSegCur]
+     --^CamReClassNext|
+    --]|
+    --=CamReSegSlotTry|[&CamReSegCur]
+    --?"[$CamReSegSlotTry.Raw]" -ge 1 -and "[$CamReSegSlotTry.Raw]" -le 9 -and "[&CamReSegCur]" -eq "[$CamReSegSlotTry.Raw]"|[
+     --?"X[&CamReSlotSeg]" -eq "X" -or "[&CamReSlotSeg]" -eq ""|[
+      --&CamReSlotSeg|[&CamReSegCur]
+      --&CamReSlotLvl|[&CamReSegCur]
+     --]|[
+      --=CamReSlotPrev|[&CamReSlotSeg]
+      --?"[$CamReSegSlotTry.Raw]" -gt "[$CamReSlotPrev.Raw]"|[
+       --&CamReSlotSeg|[&CamReSegCur]
+       --&CamReSlotLvl|[&CamReSegCur]
+      --]|
+     --]|
+     --^CamReClassNext|
+    --]|
+    --&CamSaveSp1|[&spellInfo1]
+    --&CamSaveSp2|[&spellInfo2]
+    -->CAM_ParseGluedSpellHead|[&CamReSegCur]
+    --?"X[&spellInfo2]" -eq "X" -or "[&spellInfo2]" -eq ""|[
+     --&spellInfo1|[&CamSaveSp1]
+     --&spellInfo2|[&CamSaveSp2]
+     --^CamReClassSlotCheck|
+    --]|
+    --&CamReSpellSeg|[&CamReSegCur]
+    --^CamReClassNext|
+    --:CamReClassSlotCheck|
+    --/|Slot: exact single digit only (1Cure Wounds must not coerce to slot 1). Keep highest slot seen.
+    --=CamReSegSlotTry|[&CamReSegCur]
+    --?"[$CamReSegSlotTry.Raw]" -ge 1 -and "[$CamReSegSlotTry.Raw]" -le 9 -and "[&CamReSegCur]" -eq "[$CamReSegSlotTry.Raw]"|[
+     --?"X[&CamReSlotSeg]" -eq "X" -or "[&CamReSlotSeg]" -eq ""|[
+      --&CamReSlotSeg|[&CamReSegCur]
+      --&CamReSlotLvl|[&CamReSegCur]
+     --]|[
+      --=CamReSlotPrev|[&CamReSlotSeg]
+      --?"[$CamReSegSlotTry.Raw]" -gt "[$CamReSlotPrev.Raw]"|[
+       --&CamReSlotSeg|[&CamReSegCur]
+       --&CamReSlotLvl|[&CamReSegCur]
+      --]|
+     --]|
+    --]|
+    --:CamReClassNext|
+   --%|
+   --?"X[&CamReSpellSeg]" -ne "X" -and "[&CamReSpellSeg]" -ne ""|-->CAM_ParseGluedSpellHead|[&CamReSpellSeg]
+   --?"X[&spellInfo2]" -eq "X" -or "[&spellInfo2]" -eq ""|-->CAM_ParseGluedSpellHead|[&CamReSeg0]
+   --/|Positional fallback: Kurt 1|Name|tgt|slot vs glued head|tgt|slot|beacon|trailer.
+   --&CamPxSeg2Lead|
+   --~CamPxSeg2Lead|string;left;1;[&CamReSeg1]
+   --?"[&CamPxSeg2Lead]" -eq "-"|[
+    --&CamReTargetId|[&CamReSeg1]
+    --=CamPxSlotTry|[&CamReSeg2]
+    --?"[$CamPxSlotTry.Raw]" -ge 1 -and "[$CamPxSlotTry.Raw]" -le 9 -and "[&CamReSeg2]" -eq "[$CamPxSlotTry.Raw]"|[
+     --&CamReSlotLvl|[&CamReSeg2]
+    --]|
+    --?"[&CamReSeg3]" -eq "Yes" -or "[&CamReSeg3]" -eq "No"|[
+     --&CamReBeaconSeg|[&CamReSeg3]
+    --]|
+   --]|[
+    --?"[&CamReSeg1]" -eq "NONE"|[
+     --&CamReTargetId|NONE
+     --=CamPxSlotTry|[&CamReSeg2]
+     --?"[$CamPxSlotTry.Raw]" -ge 1 -and "[$CamPxSlotTry.Raw]" -le 9 -and "[&CamReSeg2]" -eq "[$CamPxSlotTry.Raw]"|[
+      --&CamReSlotLvl|[&CamReSeg2]
+     --]|
+     --?"[&CamReSeg3]" -eq "Yes" -or "[&CamReSeg3]" -eq "No"|[
+      --&CamReBeaconSeg|[&CamReSeg3]
+     --]|
+    --]|[
+     --?"X[&spellInfo1]" -eq "X" -or "[&spellInfo1]" -eq ""|[
+      --&spellInfo1|[&CamReSeg0]
+     --]|
+     --?"X[&spellInfo2]" -eq "X" -or "[&spellInfo2]" -eq ""|[
+      --&spellInfo2|[&CamReSeg1]
+     --]|
+     --?"X[&CamReTargetId]" -eq "X" -or "[&CamReTargetId]" -eq ""|[
+      --&CamReTargetId|[&CamReSeg2]
+     --]|
+     --?"X[&CamReSlotLvl]" -eq "X" -or "[&CamReSlotLvl]" -eq ""|[
+      --&CamReSlotLvl|[&CamReSeg3]
+     --]|
+    --]|
+   --]|
+   --?"X[&CamReTargetSeg]" -ne "X" -and "[&CamReTargetSeg]" -ne ""|[
+    --&CamReTargetId|[&CamReTargetSeg]
+   --]|
+   --?"X[&CamReSlotSeg]" -ne "X" -and "[&CamReSlotSeg]" -ne ""|[
+    --&CamReSlotLvl|[&CamReSlotSeg]
+   --]|
+   --?"X[&CamReTargetId]" -eq "X" -or "[&CamReTargetId]" -eq ""|[
+    --&CamReTargetId|NONE
+   --]|
+   --=CamBeaconActive|0
+   --&CamBeaconResolved|0
+   --?"[&CamReBeaconSeg]" -eq "Yes"|=CamBeaconActive;1
+   --?"[&CamReBeaconSeg]" -eq "No"|=CamBeaconActive;0
+   --?"[&CamReBeaconSeg]" -eq "Yes"|&CamBeaconResolved;1
+   --?"[&CamReBeaconSeg]" -eq "No"|&CamBeaconResolved;1
+   --<|
+
+  --/|Map parsed pipe segments to spellInfo3/4 on EXEC (not inside parse gosub).
+  --:CAM_ApplyReentryPosToSpellInfo|
+   --&CamPxLead|
+   --~CamPxLead|string;left;1;[&CamReSeg1]
+   --?"[&CamPxLead]" -eq "-"|[
+    --&spellInfo3|[&CamReSeg1]
+    --=CamPxSlotTry|[&CamReSeg2]
+    --?"[$CamPxSlotTry.Raw]" -ge 1 -and "[$CamPxSlotTry.Raw]" -le 9 -and "[&CamReSeg2]" -eq "[$CamPxSlotTry.Raw]"|[
+     --&spellInfo4|[&CamReSeg2]
+    --]|
+   --]|[
+    --?"[&CamReSeg1]" -eq "NONE"|[
+     --&spellInfo3|NONE
+     --=CamPxSlotTry|[&CamReSeg2]
+     --?"[$CamPxSlotTry.Raw]" -ge 1 -and "[$CamPxSlotTry.Raw]" -le 9 -and "[&CamReSeg2]" -eq "[$CamPxSlotTry.Raw]"|[
+      --&spellInfo4|[&CamReSeg2]
+     --]|
+    --]|[
+     --?"X[&spellInfo3]" -eq "X" -or "[&spellInfo3]" -eq ""|[
+      --&spellInfo3|[&CamReSeg2]
+     --]|
+     --?"X[&spellInfo4]" -eq "X" -or "[&spellInfo4]" -eq ""|[
+      --&spellInfo4|[&CamReSeg3]
+     --]|
+    --]|
+   --]|
+   --?"X[&CamReTargetId]" -ne "X" -and "[&CamReTargetId]" -ne ""|[
+    --&spellInfo3|[&CamReTargetId]
+   --]|
+   --?"X[&CamReSlotLvl]" -ne "X" -and "[&CamReSlotLvl]" -ne ""|[
+    --&spellInfo4|[&CamReSlotLvl]
+   --]|
+   --?"X[&spellInfo3]" -eq "X" -or "[&spellInfo3]" -eq ""|[
+    --&spellInfo3|NONE
+   --]|
+   --<|
+
+  --/|OGL spellhealing often embeds Roll20 sheet query macros; ScriptCards cannot roll those — rebuild dice + Beacon prompt.
+  --/|Beacon: spell-button query when marker setting is zero (CamBeaconResolved). Else token marker on target.
+  --:CAM_ResolveBeaconOnTarget|targetTokenId
+  --?"[&CamBeaconResolved]" -eq "1"|<
+  --?"X[%1%]" -eq "X" -or "[%1%]" -eq "" -or "[%1%]" -eq "NONE"|<
+  --?"[&CamBeaconMarkerName]" -eq "0"|<
+  -->CHECK_STATUS_MARKER|[%1%];[&CamBeaconMarkerName];CamBoHOnTarget;CamBoHCount
+  --?"[&CamBoHOnTarget]" -eq "1"|=CamBeaconActive;1
+  --<|
+
+  --/|Heal spell cast trace (CamHealSpellPathDebug). Starts after parse so reentry/Rfind failures appear in log.
+  --:CAM_HealSpellPath_DebugBegin|
+  --#debug|1
+  --#whisper|self
+  --+|[b]CAM spell reentryval[/b] [&reentryval][br]sp1=[&spellInfo1] sp2=[&spellInfo2] sp3=[&spellInfo3] sp4=[&spellInfo4][br]tgt=[&CamReTargetId] slot=[&CamReSlotLvl][br]sg1=[&CamReSeg1] sg2=[&CamReSeg2] sg3=[&CamReSeg3]
+  --#whisper|
+  --<|
+  --:CAM_HealSpellPath_DebugEnd|
+  --#debug|0
+  --<|
+
+  --:CAM_BuildHealingDamageRoll|
+  --&CamHealOGLMacro|0
+  --&CamHealSheet|[*R:spellhealing]
+  --?"[&CamHealSheet]" -inc "[&CamOGLHealQuerySig]"|[
+   -->CAM_BuildHealingOGLRoll|
+   --^CamHealRollDone|
+  --]|
+  --&damageRoll|[&CamHealSheet]
+  --:CamHealRollDone|
+  --<|
+  --:CAM_BuildHealingOGLRoll|
+  --&CamHealOGLMacro|1
+  -->CAM_ResolveBeaconOnTarget|[&action_target]
+  --=CamCastSlotNum|[&spellInfo4]
+  --?"X[&spellInfo4]" -eq "X" -or "[&spellInfo4]" -eq ""|=CamCastSlotNum;[$CamCastSlot]
+  --=CamListLvlNum|[&spellInfo1]
+  --=CamHealSides|8
+  --?"[&CamHealSheet]" -inc "d6"|=CamHealSides;6
+  --?"[&CamHealSheet]" -inc "d10"|=CamHealSides;10
+  --=CamHealDiceCount|1
+  --?"[$CamListLvlNum.Raw]" -eq 1|=CamHealDiceCount;[$CamCastSlotNum]
+  --?"[$CamListLvlNum.Raw]" -gt 1|[
+   --=CamHealDiceCount|[$CamCastSlotNum] - [$CamListLvlNum] + 1
+  --]|
+  --?"[$CamBeaconActive.Raw]" -eq 1|&damageRoll;[$CamHealDiceCount.Raw] * [$CamHealSides]
+  --?"[$CamBeaconActive.Raw]" -ne 1|&damageRoll;[$CamHealDiceCount.Raw]d[$CamHealSides]
+  --<|
+
+  --/|OGL row spelldmgmod (Add ability mod to damage or healing). Fallback: OGL query macro or CAM OGL rebuild.
+  --:CAM_FinalizeHealingDamageRoll|
+  --&CamHealAddAbility|0
+  --?"[*R:spelldmgmod]" -inc "dmgmod"|&CamHealAddAbility;1
+  --?"[*R:spelldmgmod]" -eq "1"|&CamHealAddAbility;1
+  --?"[&CamHealAddAbility]" -eq "0"|[
+   --?"[&CamHealOGLMacro]" -eq "1"|&CamHealAddAbility;1
+   --?"[&CamHealAddAbility]" -eq "0"|[
+    --?"X[&CamHealSheet]" -ne "X" -and "[&CamHealSheet]" -inc "[&CamOGLHealQuerySig]"|&CamHealAddAbility;1
+   --]|
+  --]|
+  --?"[&CamHealAddAbility]" -eq "1"|&damageRoll;+ [&ability_bonus]
+  -->CAM_AppendSpellUpcastDamage|
+  --<|
+
+  --/|Spellcasting mod for heals when CamHealAddAbility is set in CAM_FinalizeHealingDamageRoll.
+  --:CAM_SpellCastingAbilityBonus|
+  --&ability_bonus|
+  --?"[*R:spell_ability]" -eq "spell"|[
+   --~ability|string;before;};[*S:spellcasting_ability]
+   --~ability|string;after;{;[&ability]
+   --?[&ability] -eq strength_mod|&ability_bonus; + [*S:strength_mod] [Spellcasting Ability]
+   --?[&ability] -eq dexterity_mod|&ability_bonus; + [*S:dexterity_mod] [Spellcasting Ability]
+   --?[&ability] -eq constitution_mod|&ability_bonus; + [*S:constitution_mod] [Spellcasting Ability]
+   --?[&ability] -eq intelligence_mod|&ability_bonus; + [*S:intelligence_mod] [Spellcasting Ability]
+   --?[&ability] -eq wisdom_mod|&ability_bonus; + [*S:wisdom_mod] [Spellcasting Ability]
+   --?[&ability] -eq charisma_mod|&ability_bonus; + [*S:charisma_mod] [Spellcasting Ability]
+  --]|
+  --<|
+
+  --/|Append upcast dice to [&damageRoll] when [$UpCast] > 0. Uses spellhldie; defaults die count to 1 if blank.
+  --:CAM_AppendSpellUpcastDamage|
+  --?[$UpCast] -eq 0|<
+  --&CamHlDieCount|[*R:spellhldie]
+  --&CamHlDieType|[*R:spellhldietype]
+  --?"X[&CamHlDieCount]" -eq "X" -or "[&CamHlDieCount]" -eq "" -or "[&CamHlDieCount]" -eq "0"|&CamHlDieCount;1
+  --?"X[&CamHlDieType]" -eq "X" -or "[&CamHlDieType]" -eq ""|&CamHlDieType;[*R:spelldamagetype]
+  --=upcastDice|[$UpCast.Raw] * [&CamHlDieCount]
+  --&damageRoll|+ + [$upcastDice.Raw][&CamHlDieType] [Upcasting]
+  --<|
+
+  --/|Spell/cantrip chat cards: always print spellathigherlevels when the row has text.
+  --:CAM_OutputSpellHigherLevels|
+  --?"[*R:spellathigherlevels]" -eq ""|<
+  --+|[br]
+  --+At Higher Levels: |[*R:spellathigherlevels]
+  --+|[br]
+  --<|
 
   --:EXEC_PC_SPELL|spellInfo1=Spell Level, 2=SpellName, 3=Target ID, 4=Slot Level
   -->CAM_SetDamageApplyRoutines|
@@ -1333,7 +1641,11 @@
   --&spellInfo2|
   --&spellInfo3|
   --&spellInfo4|
+  --=CamBeaconActive|0
   -->CAM_ParseSpellReentry|
+  --/|EXEC label binds spellInfo3/4 — apply target/slot from CamReSeg* at EXEC scope (parse gosub may not persist tgt/slot).
+  -->CAM_ApplyReentryPosToSpellInfo|
+  --?"[&CamHealSpellPathDebug]" -eq "1"|>CAM_HealSpellPath_DebugBegin
   -->FIND_CLASS_LEVEL|Warlock;WarlockLevel
 
   --/|Buttons without a slot picker omit spellInfo4. Treat as cast at the spell list level ([&spellInfo1]).
@@ -1346,7 +1658,11 @@
   --]|
 
   --?"[&spellInfo4]" -eq "As Ritual"|=UpCast;0
-  --?"[&spellInfo4]" -ne "As Ritual"|=UpCast|[&spellInfo4] - [&spellInfo1]
+  --?"[&spellInfo4]" -ne "As Ritual"|[
+   --=CamCastSlot|[&spellInfo4]
+   --=CamListLevel|[&spellInfo1]
+   --=UpCast|[$CamCastSlot] - [$CamListLevel]
+  --]|
   --?"[&UseAMAShadowdarkSystem]" -eq "1" -and "[*S:class]" -eq "Wizard"|=UpCast;0
   --?"[&UseAMAShadowdarkSystem]" -eq "1" -and "[*S:class]" -eq "Wizard"|DO_SHADOWDARK_SPELL_CHECK
   --?[&trackPCSpellSlots] -eq 0|SKIP_CASTING_SLOT_CHECK
@@ -1374,6 +1690,7 @@
   --X|
   --:SKIP_CASTING_SLOT_CHECK|
   --&action_target|[&spellInfo3]
+  --?"X[&action_target]" -eq "X" -or "[&action_target]" -eq ""|&action_target;NONE
   --#title|[&spellInfo2]
   --#leftsub|[*S:character_name]
   --#rightsub|
@@ -1401,6 +1718,9 @@
    --#targettoken|[&spellInfo3]
   --]|
   --?"[*R:spellconcentration]" -inc "concentration=1" -and "[&ConcentrationMarkerName]" -ne "0"|>ADD_STATUS_MARKER;[&saveTokenID];[&ConcentrationMarkerName]
+  --/|OGL: some heal spells (e.g. Healing Spirit) use ATTACK output with spellhealing only and blank spelldamage.
+  --?"[*R:spellhealing]" -ne "" -and "[*R:spelldamage]" -eq ""|PC_CARD_SPELL
+  --?"[*R:spellhealing]" -ne "" -and "[*R:spelldamage]" -eq "0"|PC_CARD_SPELL
   --?"[*R:spelloutput]" -eq ATTACK|PC_ATTACK_SPELL|PC_CARD_SPELL
 
   --:PC_ATTACK_SPELL|
@@ -1443,24 +1763,23 @@
   --?[$spell_crit] -eq 1|&damageRoll;+ [&PC_GDM_CRIT]|&damageRoll;+ [&PC_GDM]
   --&damageRoll2|[*R:spelldamage2]
 
-  --&ability_bonus|
-    --?"[*R:spell_ability]" -eq "spell"|[
-      --~ability|string;before;};[*S:spellcasting_ability]
-      --~ability|string;after;{;[&ability]
-      --?[&ability] -eq strength_mod|&ability_bonus; + [*S:strength_mod] [Spellcasting Ability]
-      --?[&ability] -eq dexterity_mod|&ability_bonus; + [*S:dexterity_mod] [Spellcasting Ability]
-      --?[&ability] -eq constitution_mod|&ability_bonus; + [*S:constitution_mod] [Spellcasting Ability]
-      --?[&ability] -eq intelligence_mod|&ability_bonus; + [*S:intelligence_mod] [Spellcasting Ability]
-      --?[&ability] -eq wisdom_mod|&ability_bonus; + [*S:wisdom_mod] [Spellcasting Ability]
-      --?[&ability] -eq charisma_mod|&ability_bonus; + [*S:charisma_mod] [Spellcasting Ability]
-  --]|
+  -->CAM_SpellCastingAbilityBonus|
+  --/|Use spellhealing on the attack path only when there is no spelldamage (Guiding Bolt + Life domain may fill both).
   --&spell_heal|0
-  --?"[*R:spellhealing]" -ne ""|&spell_heal;1
-  --?"[*R:spellhealing]" -ne ""|&damageRoll;[*R:spellhealing] [&ability_bonus]
+  --?"[*R:spellhealing]" -ne "" -and "[*R:spelldamage]" -eq ""|[
+   --&spell_heal;1
+   -->CAM_BuildHealingDamageRoll|
+   -->CAM_FinalizeHealingDamageRoll|
+  --]|
+  --?"[*R:spellhealing]" -ne "" -and "[*R:spelldamage]" -eq "0"|[
+   --&spell_heal;1
+   -->CAM_BuildHealingDamageRoll|
+   -->CAM_FinalizeHealingDamageRoll|
+  --]|
   --&damageToApply|-
   --?[$UpCast] -eq 0|NO_UPCAST
-  --=upcastDice|[$UpCast.Raw] * [*R:spellhldie]
-  --&damageRoll|+ + [$upcastDice.Raw][*R:spellhldietype] [Upcasting]
+  --?"[&spell_heal]" -eq "1"|NO_UPCAST
+  -->CAM_AppendSpellUpcastDamage|
 
   --:NO_UPCAST|
   --?[$spell_crit] -eq 1|&damageRoll;+ + [&damageRoll] 
@@ -1478,27 +1797,29 @@
   --=TotalDamage|[$spellDamage] + [$spellDamage2]
 
   --?"[*R:spelldamage2]" -ne ""|TWO_DAMAGE
-  --+[&hittag]|The [*R:spellname] [&hitdesc] [$spellDamage] [*R:spelldamagetype] damage.[br][br]
   --?[&spell_heal] -eq 1|[
+   --+[b][/b]|The [*R:spellname] [&hitdesc] [$spellDamage].[br][br]
    -->[&damageRoutine]|[&action_target];[&hitPointsBar];[&tempHPBar];[$spellDamage.Raw];1;0;1
   --]|[
+   --+[&hittag]|The [*R:spellname] [&hitdesc] [$spellDamage] [*R:spelldamagetype] damage.[br][br]
    -->[&damageRoutine]|[&action_target];[&hitPointsBar];[&tempHPBar];-[$spellDamage.Raw];0;0;1
   --]|
   --^DONE_SPELL_DAMAGE|
 
   --:TWO_DAMAGE|
-  --+[&hittag]|The [*R:spellname] [&hitdesc] [$spellDamage] [*R:spelldamagetype] damage and [$spellDamage2] [*R:spelldamagetype2] damage.[br][br]
   --?[&spell_heal] -eq 1|[
+   --+[b][/b]|The [*R:spellname] [&hitdesc] [$TotalDamage].[br][br]
    -->[&damageRoutine]|[&action_target];[&hitPointsBar];[&tempHPBar];[$TotalDamage.Raw];1;0;1
   --]|[
+   --+[&hittag]|The [*R:spellname] [&hitdesc] [$spellDamage] [*R:spelldamagetype] damage and [$spellDamage2] [*R:spelldamagetype2] damage.[br][br]
    -->[&damageRoutine]|[&action_target];[&hitPointsBar];[&tempHPBar];-[$TotalDamage.Raw];0;0;1
   --]|
   --^DONE_SPELL_DAMAGE|
 
   --:DONE_SPELL_DAMAGE|
-  --?"[*R:spellsave]" -eq ""|PC_CARD_SPELL
+  --?"[*R:spellsave]" -eq ""|PC_CARD_SPELL_DESC
   --+|The target can make a [*R:spellsave] save vs DC [*S:spell_save_dc] to modify the damage as described below.[br][br]
-  --^PC_CARD_SPELL|
+  --^PC_CARD_SPELL_DESC|
 
   --:SPELL_ATTACK_FAIL|
   --+Critical Fail! | You rolled a [$attackRoll.Base] on your attack roll.
@@ -1523,20 +1844,44 @@
 	--+Damage: |[$Damage]
 	--]|
   --+|[br]
-  --^PC_CARD_SPELL|
+  --^PC_CARD_SPELL_DESC|
   
   --:SPELL_ATTACK_FAIL_SIMPLE|
   --+|[br][br]
-  --^PC_CARD_SPELL|
+  --^PC_CARD_SPELL_DESC|
   
   --:SPELL_ATTACK_MISS|
   --+The [*R:spellname] attack missed!|[br][br]
+  --^PC_CARD_SPELL_DESC|
 
+  --/|Non-attack healing (e.g. Healing Spirit): roll, apply HP, then show description. Label must sit above PC_CARD_SPELL_DESC (no fall-through).
+  --:CAM_PC_SpellHealingCard|
+  --?"[&action_target]" -eq "NONE" -or "[&action_target]" -eq ""|[
+   --#whisper|self
+   --+|Could not apply [&spellInfo2] healing: no target was selected.
+  --]|[
+   --#targettoken|[&action_target]
+   -->CAM_SpellCastingAbilityBonus|
+   -->CAM_BuildHealingDamageRoll|
+   -->CAM_FinalizeHealingDamageRoll|
+   --=spellDamage|[&damageRoll]
+   --+[b][/b]|The [*R:spellname] heals for [$spellDamage].[br][br]
+   -->[&damageRoutine]|[&action_target];[&hitPointsBar];[&tempHPBar];[$spellDamage.Raw];1;0;1
+  --]|
+  --<|
+
+  --/|Non-attack spells only. Attack spells jump to PC_CARD_SPELL_DESC (damage/heal already resolved).
   --:PC_CARD_SPELL|
-  
+  --?"[*R:spellhealing]" -ne ""|>CAM_PC_SpellHealingCard
+
+  --:PC_CARD_SPELL_DESC|
+  --+|[br]
   --+|[*R:spelldescription]
+  -->CAM_OutputSpellHigherLevels|
+  --^PC_DONE_SPELL|
 
   --:PC_DONE_SPELL|
+  --?"[&CamHealSpellPathDebug]" -eq "1"|>CAM_HealSpellPath_DebugEnd
     --?"[&PCPostSpellCastFunction]" -ne ""|>[&PCPostSpellCastFunction]
   --X|
 
@@ -2094,16 +2439,27 @@
   --/|Healing always uses main-HP apply (UseTempHP|0 / Single). Damage uses [&damageApplyRoutine] (TempHP when UseTempHP|1).
   --:CAM_ApplyDamageOrHealing|tokenid;hp bar#;temp bar#;amount;display;allow overheal;allow negative hp
   -->_ResolveDamageAmount|[%4%]
-  --?"[$_applyValue] -ge 0"|>CAM_ApplyDOR_MainHPOnly
+  --?[$_applyValue] -ge 0|[
+   -->CAM_ApplyDOR_MainHPOnly|[%1%];[%2%];[%3%];[%4%];[%5%];[%6%];[%7%]
+   --^CAM_ApplyDOR_Done|
+  --]|
   -->[&damageApplyRoutine]|[%1%];[%2%];[%3%];[%4%];[%5%];[%6%];[%7%]
+  --:CAM_ApplyDOR_Done|
   --<|
 
-  --:CAM_ApplyDOR_MainHPOnly|
+  --:CAM_ApplyDOR_MainHPOnly|tokenid;hp bar#;temp bar#;amount;display;allow overheal;allow negative hp
   --&_camDORRoute|[&damageApplyScript]
   --?"[&damageApplyScript]" -eq "damagebuttons"|&_camDORRoute;scriptcards
-  --?"[&_camDORRoute]" -eq "scriptcards"|-->ApplyDamageScriptCardsSingle|[%1%];[%2%];[%3%];[%4%];[%5%];[%6%];[%7%]
-  --?"[&_camDORRoute]" -eq "alterbars"|-->ApplyDamageAlterbarsSingle|[%1%];[%2%];[%3%];[%4%];[%5%];[%6%];[%7%]
+  --?"[&_camDORRoute]" -eq "scriptcards"|[
+   -->ApplyDamageScriptCardsSingle|[%1%];[%2%];[%3%];[%4%];[%5%];[%6%];[%7%]
+   --^CAM_ApplyDOR_MainHPOnly_Done|
+  --]|
+  --?"[&_camDORRoute]" -eq "alterbars"|[
+   -->ApplyDamageAlterbarsSingle|[%1%];[%2%];[%3%];[%4%];[%5%];[%6%];[%7%]
+   --^CAM_ApplyDOR_MainHPOnly_Done|
+  --]|
   -->ApplyDamageTokenmodSingle|[%1%];[%2%];[%3%];[%4%];[%5%];[%6%];[%7%]
+  --:CAM_ApplyDOR_MainHPOnly_Done|
   --<|
 
   --/|Read temp HP from token bar. If bar empty or 0, fall back to character hp_temp (common on NPCs).
@@ -3144,6 +3500,15 @@
   --:AM_BUTTON_LIST_NOTHING|
   --<|
 
+  --/|Append Beacon query to spell rbutton when row spellhealing uses OGL sheet macros (value may contain | — use block assign).
+  --:CAM_SpellBtnApplyBeaconQuery|spellNameKey
+  --&thisBeaconString|
+  --&CamBtnHealRaw|[:BuiltButtonHash("[%1%]_spellhealing")]
+  --?"[&CamBtnHealRaw]" -inc "[&CamOGLHealQuerySig]"|[
+   --&thisBeaconString|[&CamBeaconQueryString]
+  --]|
+  --<|
+
   --:BUILD_SPELL_BUTTON_LIST|Character ID;Repeating_section_name;repeating field for name;reentrant point;section header;mule char name/id;spell level
 
     --?"[&trackPCSpellSlots]" -eq "1"|DO_BUILD_SPELL_BUTTON_LIST
@@ -3169,6 +3534,10 @@
     --?"[%7%]" -gt 0 -and "[&WarlockLevel]" -gt 0"|>BUILD_WARLOCK_SPELL_SLOT_STRING;slotString;RitualslotString
     --?"[%7%]" -gt 0 -and "[&WarlockLevel]" -eq 0"|>BUILD_SLOT_LIST;[%7%];slotString;
     --?"[%7%]" -gt 0 -and "[&WarlockLevel]" -eq 0"|>BUILD_SLOT_LIST;[%7%];RitualslotString;Yes
+    --&CamBeaconQueryString|
+    --?"[&CamBeaconMarkerName]" -eq "0"|[
+     --&CamBeaconQueryString||[&QB]Beacon Of Hope|No|Yes[&QE]
+    --]|
     --:BEGIN_BUILDING_SPELL_BUTTONS|
     --~|hashtable;fromrepeatingsection;[%1%];[%2%];[%3%];BuiltButtonHash
     --~|array;fromkeys;Hash_Keys;BuiltButtonHash
@@ -3222,6 +3591,7 @@
       --:SKIP_PREP_CHECK|
       --?"[&UseAMAShadowdarkSystem]" -eq "1" -and "[*S:class]" -eq "Wizard" -and "[:BuiltButtonHash("[&spellloop]_innate")]" -eq 1|SPELL_BUTTON_END_GENERATE
       --&targetString|[&TB]target|token_id}
+      --&CamSpellReentryTrailer||[&LevelString][&spellloop]
       --&DisplayName|[&spellloop]
       --&DisplayName|[&DisplayName(totitlecase)]
       --/\|DisplayName [&DisplayName]
@@ -3245,10 +3615,13 @@
       --~testMule|system;findability;[&spellmulename];[&testName]
       --?[&testMule] -ne "AbilityNotFound"|SPELL_BUTTON_MULE
       --?"[:BuiltButtonHash("[&spellloop]_spelloutput")]" -eq ATTACK|SPELL_BUTTON_GENERATE_WITH_TARGET
-      --&AM_BUTTON_LIST|+[rbutton][&DisplayName]::[%4%];[&LevelString][&spellloop]|NONE[&thisSlotString][/rbutton][&SPACE]
+      --?"[:BuiltButtonHash("[&spellloop]_spellhealing")]" -ne ""|SPELL_BUTTON_GENERATE_WITH_TARGET
+      -->CAM_SpellBtnApplyBeaconQuery|[&spellloop]
+      --&AM_BUTTON_LIST|+[rbutton][&DisplayName]::[%4%];[&LevelString][&spellloop]|NONE[&thisSlotString][&thisBeaconString][&CamSpellReentryTrailer][/rbutton][&SPACE]
       --^SPELL_BUTTON_END_GENERATE|
       --:SPELL_BUTTON_GENERATE_WITH_TARGET|
-      --&AM_BUTTON_LIST|+[rbutton][&DisplayName]::[%4%];[&LevelString][&spellloop]|[&targetString][&thisSlotString][/rbutton][&SPACE]
+      -->CAM_SpellBtnApplyBeaconQuery|[&spellloop]
+      --&AM_BUTTON_LIST|+[rbutton][&DisplayName]::[%4%];[&LevelString][&spellloop]|[&targetString][&thisSlotString][&thisBeaconString][&CamSpellReentryTrailer][/rbutton][&SPACE]
       --^SPELL_BUTTON_END_GENERATE|
       --:SPELL_BUTTON_MULE|
       --&AM_BUTTON_LIST|+[button][&DisplayName]::~[&spellmulename]|[&testName][/button][&SPACE]
