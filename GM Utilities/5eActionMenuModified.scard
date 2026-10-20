@@ -38,7 +38,14 @@
   --&showGlobalModifierButtons|1    --/|Show global modifiers (attack, damage, save, skill) buttons and allow players to toggle them on/off. Set to 0 to hide
   --&showBonusActionsAndReactions|1 --/|Show Bonus Actions and Reactions for characters. Set to 0 to disable
   --&showPCFeats|1                  --/|Show Traits/Feats for PCs (after Reactions, before Cantrips). Set to 0 to disable
-  --#functionbenchmarking|0         --/|If set to 1, the console will show performance info after the script is run
+  --&UseResistances|1               --/|If set to 1, damage immunity, vulnerability, and resistance will be included in damage rolls. Resistance calc requires the target character
+  --/|                                  sheet (PC or NPC) to have npc_resistances, npc_immunities, and/or npc_vulnerabilities populated with the relevant damage types.                              
+  --&UseFailTables|1                --/|If set to 1, natural 1 attack rolls use the rollable fail tables configured below. Any other value uses a simple critical-fail message only.
+  --&FailTableMelee|Damage-Melee-Fail   --/|Full Roll20 rollable table name for melee weapon attack critical fails (natural 1). Leave blank to skip fail tables for melee attacks.
+  --&FailTableRanged|Damage-Range-Fail  --/|Full Roll20 rollable table name for ranged weapon attack critical fails (natural 1). Leave blank to skip fail tables for ranged attacks.
+  --&FailTableSpell|Damage-Spell-Fail   --/|Full Roll20 rollable table name for spell attack critical fails (natural 1). Leave blank to skip fail tables for spell attacks.
+  --&CamBeaconMarkerName|radioactive    --/|Beacon on OGL heals: 0 = slot-style query on spell button (CamBeaconActive). Non-zero = token marker tag like ConcentrationMarkerName.
+  --&ConcentrationMarkerName|Concentrating::7409928      --/|Roll20 token marker tag when CAM spells apply concentration. Match your campaign marker (and any external conc trigger you use).
   --&ReportResourceReset|y
 
   --/|Defaults: 1 for title buttons, 0 for icongraphic and "white-on-black" for icon set. These control how and if some text/images
@@ -87,27 +94,15 @@
   --&damageApplyScript|token-mod        --/|Set this to either "scriptcards", "token-mod", "alterbars", "damagebuttons" or anything else to not apply damage
   --&whisperDamageButtonsToDM|1         --/|If using "damagebuttons" and this is set to 1, the damage buttons will be whispered to the DM instead of being added to the card
   --&whisperDamageButtonResultsToDM|1   --/|If using "damagebuttons" for damage and this value is 1, the DM is whispered a message about damage application
-  --&selfHandleAdvantageMode|1          --/|If set to 1, the Action Menu will include advantage/normal/disadvantage toggles (and won't use the character sheet toggle)
+  --&selfHandleAdvantageMode|0          --/|If set to 1, the Action Menu will include advantage/normal/disadvantage toggles (and won't use the character sheet toggle)
   --&defaultAdvantageMode|0             --/|Used with SelfHandleAdvantageMode. 0=Normal, 1=Advantage, 2=Disadvantage
   --&showAdvantageModeText|0            --/|Used with SelfHandleAdvantageMode. 0=Button color coding only. 1=Show "Normal", "Advantage", "Disadvantage" text
   --&compactGlobalModDisplay|1          --/|If set to 1, Global X Mods will use more compact display layouts
   --&EnablePerCharacterConfiguration|1  --/|If set to 1, the Action Menu will create attributes on the character sheet the first time it is executed for a character. It will then use these attributes to generate a configuration menu to allow players to enable/disable some features
-  --&UseResistances|1                   --/|If set to 1, damage immunity, vulnerability, and resistance will be included in damage rolls
-  --/|Resistance calc requires the target character sheet (PC or NPC) to have npc_resistances, npc_immunities, and/or npc_vulnerabilities populated with the relevant damage types.
-  --&UseFailTables|1                    --/|If set to 1, natural 1 attack rolls use the Roll20 fail tables configured below. Any other value uses a simple critical-fail message only.
-  --&FailTableMelee|Damage-Melee-Fail   --/|Full Roll20 rollable table name for melee weapon attack critical fails (natural 1). Leave blank to skip fail tables for melee attacks.
-  --&FailTableRanged|Damage-Range-Fail  --/|Full Roll20 rollable table name for ranged weapon attack critical fails (natural 1). Leave blank to skip fail tables for ranged attacks.
-  --&FailTableSpell|Damage-Spell-Fail   --/|Full Roll20 rollable table name for spell attack critical fails (natural 1). Leave blank to skip fail tables for spell attacks.
-  --&ConcentrationMarkerName|Concentrating::7409928           --/|Roll20 token marker tag when CAM spells apply concentration. Match your campaign marker (and any external conc trigger you use).
-  --&CamBeaconMarkerName|0              --/|Beacon on OGL heals: 0 = slot-style query on spell button (CamBeaconActive). Non-zero = token marker tag like ConcentrationMarkerName.
-  --&CamHealSpellPathDebug|0            --/|Set to 1 to enable ScriptCards line debug for PC heal spell casts (after parse through PC_DONE_SPELL). Set 0 when done.
   --&DetectPlayersToken|1               --/|If set to a non-zero value, the script will attempt to resolve a character for a player that runs it without a selected token
   --&ShowRestButtons|0                  --/|If set to 1, rest buttons will be shown in the title bar
   --&Template|none                      --/|If you wish to use Keith Curtis' SuperNotes templates, put the template name here
   --&DisplayButtonsForAMAbilities|1     --/|If set to 1, the menu will include custom buttons defined on characters that include the "AM-" prefix in their names.
-  --&AmListDebug|0                      --/|Set to 1 to whisper GM debug lines while building Custom Actions (AMLIST troubleshooting)
-  --&CamTraceDebug|0                    --/|Set to 1 for ScriptCards debug trace lines on trait/mule button building. Set 0 when done.
-  --&CamTargetDebug|0                   --/|Set to 1 to whisper GM target/AC diagnostics on EXEC_PC_ATTACK and NPC attacks. Set 0 when done.
   --&UseEmojisToReplaceText|0           --/|If set to 1, emojis will be used in place of text in some places
 
   --/|Adjusting these values will allow you to customize the padding around the action buttons. The default for Roll20 is 5px. The Action
@@ -125,6 +120,15 @@
   --/|List spells here, separated by semicolons, that should be kept in the PC Attacks display with no suffix appended to them
   --~|array;define;SpellsToKeepNoSuffix;
   
+  --/|=========================================================================================================
+  --/| Debug / diagnostics — keep at 0 for production table play
+  --/|=========================================================================================================
+  --#functionbenchmarking|0             --/|If set to 1, the console will show performance info after the script is run
+  --&CamTargetDebug|0                   --/|Set to 1 to whisper GM target/AC diagnostics on EXEC_PC_ATTACK and NPC attacks. Set 0 when done.
+  --&CamHealSpellPathDebug|0            --/|Set to 1 to enable ScriptCards line debug for PC heal spell casts (after parse through PC_DONE_SPELL). Set 0 when done.
+  --&CamTraceDebug|0                    --/|Set to 1 for ScriptCards debug trace lines on trait/mule button building. Set 0 when done.
+  --&AmListDebug|0                      --/|Set to 1 to whisper GM debug lines while building Custom Actions (AMLIST troubleshooting)
+
   --/|NOTE: This section is experimental and needs further testing. Setting "statusmod_MARKERNAME" allows you to define modifiers that will be applied
   --/|to NPCs based on the status markers active on the NPC. The following modifiers are supported:
   --/| attack:value        (use +X [Desc] to provide a value and description, Can be -X as well) 
