@@ -2,34 +2,17 @@
   +++5Elib;snlib;Farsidelib+++
 
   --/|Script Name : Shield
-  --/|Version     : 2.2.1
+  --/|Version     : 2.2.2
   --/|Modified By : Farsidegallery
   --/|
   --/|  Reaction spell: +5 AC global mod on self, FX graphics via ScriptCards, manual Dismiss. Wild Magic for sorcerers.
+  --/|  AC mod name, journal FX characters, and image URLs: Farsidelib far_LoadShieldReactionDefaults (via far_LoadTokenMarkers).
   --/|
 
   --/| ____________________ Begin Global User Variables -Update the variables below to your game settings. ___________________________________
 
-  --/|What is the name of the Global AC Mod used for Shield.
-  --&ModName|Shield Spell
-
   --&SpellName|Shield
   --&MinimumSpellLevel|1
-
-  --/|Enter name for Shield Character (journal NPC for FX graphic).
-  --&CharName|Shield Spell
-
-  --/|Enter name for Reaction Used Character (journal NPC for FX graphic).
-  --&ReactCharName|Reaction Used
-
-  --&URLlink|https://files.d20.io/images/466430946/7DPjXj0n0IMCLlbLg50mPg/med.webm?1764787074
-
-  --&link1|https://files.d20.io/images/476457994/FdbUAgAk_G-
-  --&link2|-2d1MaQ9g4w/med.webm?1771472165
-  --&Reactlink|[&link1][&link2]
-
-  --/|2 = forselected Spawn (journal default token). 1 = ScriptCards !ot with URLlink/Reactlink.
-  --&SpawnScript|1
 
   --/|Set to 1 to whisper carry IDs and the API command to GM/self before linking FX tokens.
   --&DebugCarry|0
@@ -45,7 +28,6 @@
   --&oparen|(
   --&cparen|)
 
-  --#title|[&SpellName]
   --#sourceToken|@{selected|token_id}
   --#reentrant|Shield @{selected|character_id}
   --#whisper|self,gm
@@ -54,9 +36,11 @@
 
   --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
   --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
+
+  --#title|[&SpellName]
   --=SpellLevel|[&MinimumSpellLevel]
   --+Choose Function: |[rbutton]New Cast::CheckForMod[/rbutton][rbutton]Dismiss::Remove[/rbutton]
-  --X|
+  --^ShieldScriptEnd|
 
  --:CheckForMod|
   --#leftsub|[*R:spellcastingtime]
@@ -64,9 +48,9 @@
   --&spelldesc|[*R:spelldescription]
   --&duration|[*R:spellduration]
   --&TokenName|[*S:character_name] [&SpellName]
-  --&ReactTokenName|[*S:character_name] [&ReactCharName]
+  --&ReactTokenName|[*S:character_name] [&_FarShieldReactGfxChar]
   
-  -->Lib5E_GET_GLOBAL_MOD_STATUS|[*S:character_id];ac;[&ModName];IsActive
+  -->Lib5E_GET_GLOBAL_MOD_STATUS|[*S:character_id];ac;[&_FarShieldModName];IsActive
   --?"X[&IsActive]" -eq "X1"|>far_FatalError;Shield Active;ERROR;Dismiss [&SpellName] before casting again.
   
   -->far_GetAndCheckSlotInformation|[*S:t-id];[$SpellLevel]
@@ -78,27 +62,28 @@
   -->ApplyMod|
 
  --:ApplyMod|
-  -->far_Check_GLOBAL_MOD_EXISTS|[*S:character_id];ac;[&ModName];Exists
+  -->far_Check_GLOBAL_MOD_EXISTS|[*S:character_id];ac;[&_FarShieldModName];Exists
   --?"X[&Exists]" -eq "X1"|>SetMod |>CreateMod
   --<|
 
  --:CreateMod|
   --!a:[*S:character_id]|global_ac_mod_flag:1
   --!or:[*S:character_id]:acmod|
-     global_ac_name:[&ModName]|
+     global_ac_name:[&_FarShieldModName]|
      global_ac_val:5|
      global_ac_active_flag:1|
      options-flag:0|
-  -->Lib5E_SET_GLOBAL_MOD_STATUS|[*S:character_id];ac;[&ModName];1
+  -->Lib5E_SET_GLOBAL_MOD_STATUS|[*S:character_id];ac;[&_FarShieldModName];1
   -->far_PlayEffects|[*S:t-id];;;burn-holy
   -->Finish|
 
  --:SetMod|
-  -->Lib5E_SET_GLOBAL_MOD_STATUS|[*S:character_id];ac;[&ModName];1
+  -->Lib5E_SET_GLOBAL_MOD_STATUS|[*S:character_id];ac;[&_FarShieldModName];1
   -->far_PlayEffects|[*S:t-id];;;burn-holy
   -->Finish|
 
  --:Remove|
+  -->far_LoadTokenMarkers|
   --#whisper|
   --#emotetext|[*S:character_name] no longer has [&SpellName]!
   -->ClearShieldEffects|
@@ -106,8 +91,8 @@
   --X|
 
  --:Finish|
-  -->GetCharID|[&CharName];ShieldID
-  -->GetCharID|[&ReactCharName];ReactID
+  -->far_GetJournalCharIdByName|[&_FarShieldGfxChar];ShieldID
+  -->far_GetJournalCharIdByName|[&_FarShieldReactGfxChar];ReactID
   -->SpawnShieldGraphics|
   --#whisper|
   --#emotetext|[*S:character_name] casts [&SpellName]!
@@ -119,32 +104,23 @@
   --X|
 
  --:SpawnShieldGraphics|
+  --&TokenName|[*S:character_name] [&SpellName]
+  --&ReactTokenName|[*S:character_name] [&_FarShieldReactGfxChar]
+  --&Reactlink|[&_FarShieldReactLink1][&_FarShieldReactLink2]
   --~|array;define;ShieldGraphics
   --&ReactTID|
   --&ShieldTID|
-  
-  --?[&SpawnScript] -eq 2|[
-   --@forselected+|Spawn _name|[&ReactCharName] _qty|1 _offset|0,0 _force|yes _size|3 _tokenProps|name:[&ReactTokenName],showname:false,showplayers_name:false _order|toBack _bar1|KeepLink _fx|nova-magic _expand|15,30 {^&select @{selected|token_id}} {&delay 1}
-   -->far_FindPageTokenByName|[*S:t-id];[&ReactTokenName];ReactTID
-   --?"X[&ReactTID]" -ne "X"|>AttachReactFx
-   --@forselected+|Spawn _name|[&CharName] _qty|1 _offset|0,0 _force|yes _size|3 _tokenProps|name:[&TokenName],showname:false,showplayers_name:false _order|toBack _bar1|KeepLink _fx|nova-magic _expand|15,30 {^&select @{selected|token_id}} {&delay 1}
+
+  --!ot:ShieldTID|name:"[&TokenName]"|_pageid:[*S:t-_pageid]|left:[*S:t-left]|top:[*S:t-top]|width:[=[*S:t-width]*3]|height:[=[*S:t-height]*3]|imgsrc:"[&_FarShieldImg]"|bar1_value:1|represents:[&ShieldID]|showname:0
+  --?"X[&ShieldTID]" -eq "X"|[
    -->far_FindPageTokenByName|[*S:t-id];[&TokenName];ShieldTID
-   --?"X[&ShieldTID]" -ne "X"|>AttachShieldFx
-   --~ShieldGraphicString|array;stringify;ShieldGraphics;!@!
-   --!a:[*S:character_id]|!ShieldSpellGraphics:[&ShieldGraphicString]
-   --<|
   --]|
-  
-   --!ot:ShieldTID|name:"[&TokenName]"|_pageid:[*S:t-_pageid]|left:[*S:t-left]|top:[*S:t-top]|width:[=[*S:t-width]*3]|height:[=[*S:t-height]*3]|imgsrc:"[&URLlink]"|bar1_value:1|represents:[&ShieldID]|showname:0
-   --?"X[&ShieldTID]" -eq "X"|[
-   -->far_FindPageTokenByName|[*S:t-id];[&TokenName];ShieldTID
-   --]|
   --?"X[&ShieldTID]" -ne "X"|>AttachShieldFx
 
   --!ot:ReactTID|name:"[&ReactTokenName]"|_pageid:[*S:t-_pageid]|left:[*S:t-left]|top:[*S:t-top]|width:[=[*S:t-width]*3]|height:[=[*S:t-height]*3]|imgsrc:"[&Reactlink]"|bar1_value:1|represents:[&ReactID]|showname:0
-   --?"X[&ReactTID]" -eq "X"|[
-    -->far_FindPageTokenByName|[*S:t-id];[&ReactTokenName];ReactTID
-    --]|
+  --?"X[&ReactTID]" -eq "X"|[
+   -->far_FindPageTokenByName|[*S:t-id];[&ReactTokenName];ReactTID
+  --]|
   --?"X[&ReactTID]" -ne "X"|>AttachReactFx
 
   --~ShieldGraphicString|array;stringify;ShieldGraphics;!@!
@@ -176,7 +152,7 @@
   --/| ____________________ Procedures_______________________________________________________________________________________
 
  --:ClearShieldEffects|
-  -->Lib5E_SET_GLOBAL_MOD_STATUS|[*S:character_id];ac;[&ModName];0
+  -->Lib5E_SET_GLOBAL_MOD_STATUS|[*S:character_id];ac;[&_FarShieldModName];0
   --^ClearShieldTryStoredIds|
 
  --:ClearShieldTryStoredIds|
@@ -194,7 +170,7 @@
 
  --:ClearShieldDeleteByName|
   --&TokenName|[*S:character_name] [&SpellName]
-  --&ReactTokenName|[*S:character_name] [&ReactCharName]
+  --&ReactTokenName|[*S:character_name] [&_FarShieldReactGfxChar]
   --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&TokenName]
   --?[@tokens(length)] -lt 1|^ClearShieldDeleteReactByName
   --%delShield|foreach;tokens
@@ -214,10 +190,7 @@
   --!a:[*S:character_id]|!ShieldSpellGraphics:**
   --<|
 
- --:GetCharID|CharacterName;StringVariableForCharID
-  --~|array;objects:character;SpiritCharArr;[%1%]
-  --?[@SpiritCharArr(length)] -ne 1|>far_FatalError;Could not find character named [%1%];ERROR;Create a journal character named [%1%] for Shield graphics
-  --&[%2%]|[@SpiritCharArr(0)]
-  --<|
+ --:ShieldScriptEnd|
+  --X|
 
 }}
