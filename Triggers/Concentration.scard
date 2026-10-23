@@ -1,6 +1,6 @@
 !script {{
   --/|Script Name : Concentration
-  --/|Version     : 1.5.6
+  --/|Version     : 1.6.1
   --/|Requires SC : ScriptCards 3.0.25+, 5Elib/snlib/Farsidelib 1.5.2+ (this handout; other damage sources need not use Farsidelib)
   --/|
   --/|Trigger wiring: ScriptCards_Triggers ability change:graphic, listen_to_tokenmod|1, paste this macro. Tune bars/marker in Global User Variables below.
@@ -328,7 +328,7 @@
    --?"X[&SpellTokenName]" -eq "X"|&SpellTokenName;[*[&GraphicOld_id]:ConcentrationSpell]
    --?"[&SpellTokenName]" -eq ""|&SpellTokenName;[*[&GraphicOld_id]:ConcentrationSpell]
    
-   --C[&SpellTokenName]|Bane:>Bane|Banishment:>Banishment|Bless:>Bless|Divine Favor:>Favor|Faerie Fire:>Faerie|Greater Invisibility:>Invisibility|Invisibility:>Invisibility|Guidance:>Guidance|Hex:>Hex|Hold Person:>Hold|Tasha's Hideous Laughter:>HideousLaughter|Holy Weapon:>Weapon|Hunter's Mark:>Hunter|Shield of Faith:>Faith|Spirit Guardians:>Guardians|Shadow Blade:>ShadowBlade|Vampiric Touch:>Vampiric|Witch Bolt:>Witch|Zephyr Strike:>Zephyr
+   --C[&SpellTokenName]|Bane:>Bane|Banishment:>Banishment|Bless:>Bless|Divine Favor:>Favor|Faerie Fire:>Faerie|Greater Invisibility:>Invisibility|Invisibility:>Invisibility|Guidance:>Guidance|Hex:>Hex|Hold Person:>Hold|Mental Prison:>MentalPrison|Tasha's Hideous Laughter:>HideousLaughter|Holy Weapon:>Weapon|Hunter's Mark:>Hunter|Shield of Faith:>Faith|Spirit Guardians:>Guardians|Shadow Blade:>ShadowBlade|Vampiric Touch:>Vampiric|Witch Bolt:>Witch|Zephyr Strike:>Zephyr
    
    -->LibSN_REMOVE_STATUS_MARKER|[*[&GraphicOld_id]:t-id];[&ConcentrationMarker]
    --~count|array;pagetokens;tokens;[*[&GraphicOld_id]:t-id];tprop:name=[*[&GraphicOld_id]:ConcentrationSpell]
@@ -374,29 +374,39 @@
    --<|
   
   --:Bless|
+   --!a:[*[&GraphicOld_id]:character_id]|!BlessSpellGraphics:**
    --~|array;pagetokens;alltokens;[*[&GraphicOld_id]:t-id]
    --~|array;define;Blessed
+   --&ConcCasterId|[*[&GraphicOld_id]:character_id]
    --%loop|foreach;alltokens
-    -->LibSN_CHECK_STATUS_MARKER|[*[&loop]:t-id];[&BlessMarker];BlessFlag;BlessCount
-    --?[&BlessFlag] -eq 1 -and "[*[&loop]:Cleric_Bless]" -inc "[*[&GraphicOld_id]:character_id]"|[
-    --&Blessed([@Blessed(length)])|[*[&loop]:t-id]
+    -->LibSN_CHECK_STATUS_MARKER|[*[&loop]:t-id];[&BlessedMarker];BFlag;BCount
+    --?[&BFlag] -eq 1 -and "[*[&loop]:Cleric_Bless]" -inc "[&ConcCasterId]"|[
+     --&Blessed([@Blessed(length)])|[*[&loop]:t-id]
     --]|
     --%|
  
    --+|[br]
    --%loop|foreach;Blessed
-    -->LibSN_REMOVE_STATUS_MARKER|[*[&loop]:t-id];[&BlessMarker]
+    -->LibSN_REMOVE_STATUS_MARKER|[*[&loop]:t-id];[&BlessedMarker]
     -->Lib5E_SET_GLOBAL_MOD_STATUS|[*[&loop]:character_id];save;[&BlessSave];0
     -->Lib5E_SET_GLOBAL_MOD_STATUS|[*[&loop]:character_id];attack;[&BlessAttack];0
+    --!a:[*[&loop]:character_id]|global_save_mod_flag:0
+    --!a:[*[&loop]:character_id]|global_attack_mod_flag:0
 	--!a:[*[&loop]:character_id]|Cleric_Bless:**
+    -->ClearBlessConcGraphic|[&loop]
     --+|[*[&loop]:character_name] is no longer Blessed.
     --%|
-   
-   --&TokenName|[*[&GraphicOld_id]:character_name] Bless
-   --~count|array;pagetokens;tokens;[*[&GraphicOld_id]:t-id];tprop:name=[&TokenName]
-   --%loop|foreach;tokens
-	--~|object;token;delete;[*[&loop]:t-id]
-	--%|
+   --<|
+
+  --:ClearBlessConcGraphic|target-token-id
+   --&TokenName|[*[%1%]:t-name] Bless
+   --~count|array;pagetokens;BlessFxTokens;[%1%];tprop:name=[&TokenName]
+   --?[@BlessFxTokens(length)] -gt 0|[
+    --@CARRY_TOKENS_DROP_ALL|[%1%]
+    --%BlessGfxDel|foreach;BlessFxTokens
+     --~|object;token;delete;[&BlessGfxDel]
+    --%|
+   --]|
    --<|
   
   --:HideousLaughter|
@@ -509,6 +519,39 @@
    --~|object;token;delete;[@tokens(0)]
    --<|
   
+  --:MentalPrison|
+   --~|array;pagetokens;alltokens;[*[&GraphicOld_id]:t-id]
+   --~|array;define;Prisoned
+   --%loop|foreach;alltokens
+    -->LibSN_CHECK_STATUS_MARKER|[*[&loop]:t-id];[&RestrainedMarker];RestFlag;RestCount
+    --?[&RestFlag] -eq 1 -and "[*[&loop]:MageID]" -inc "[*[&GraphicOld_id]:character_id]"|[
+     --&Prisoned([@Prisoned(length)])|[*[&loop]:t-id]
+    --]|
+   --%|
+   --&MPPrimaryTid|[*[&GraphicOld_id]:ConcentrationSpellTargetToken]
+   --?"X[&MPPrimaryTid]" -ne "X" -and "[&MPPrimaryTid]" -ne ""|[
+    -->LibSN_CHECK_STATUS_MARKER|[&MPPrimaryTid];[&RestrainedMarker];MPRestFlag;MPRestCount
+    --?"X[$MPRestFlag]" -eq "X1"|[
+     --~MPDup|array;indexof;Prisoned;[&MPPrimaryTid]
+     --?"[&MPDup]" -eq "ArrayError"|&Prisoned([@Prisoned(length)])|[&MPPrimaryTid]
+    --]|
+   --]|
+   --+|[br]
+   --%loop|foreach;Prisoned
+    -->LibSN_REMOVE_STATUS_MARKER|[*[&loop]:t-id];[&RestrainedMarker];0
+    --?"X[*[*[&loop]:t-id]:character_id]" -ne "X"|[
+     --!a:[*[&loop]:character_id]|MageID:**
+    --]|
+    --+|[*[&loop]:t-name] is no longer affected by Mental Prison.
+   --%|
+   --?"[@Prisoned(length)]" -eq 0|[
+    --+|[*[&GraphicOld_id]:character_name]'s Mental Prison ends with no restrained targets found on the map.
+   --]|
+   -->LibSN_REMOVE_STATUS_MARKER|[*[&GraphicOld_id]:t-id];[&ConcentrationMarker]
+   --!a:[*[&GraphicOld_id]:character_id]|!ConcentrationSpell:**
+   --!a:[*[&GraphicOld_id]:character_id]|!ConcentrationSpellTargetToken:**
+   --<|
+
   --:Hold|
    --~|array;pagetokens;alltokens;[*[&GraphicOld_id]:t-id]
    --~|array;define;Held
