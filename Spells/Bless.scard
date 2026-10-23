@@ -1,12 +1,12 @@
-!scriptcard {{
+!scriptcards {{
   +++5Elib;snlib;Farsidelib+++
   
   --#sourceToken|@{selected|token_id}
-  --#reentrant|My Cool Script @{selected|character_id}
+  --#reentrant|Bless @{selected|character_id}
   --#whisper|self,gm
   
   --/|Script Name : Bless
-  --/|Version     : 2.6.0
+  --/|Version     : 2.6.1
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|  
@@ -29,9 +29,6 @@
   --/|Enter name for Bless Character.
   --&CharName|Bless
   
-  --/|Use ScriptCards (1) or SpawnDefaultToken (2) to place the Bless Character on the VTT?
-  --&SpawnScript|1
-  
   --&URLlink|https://files.d20.io/images/475381324/mHNLooaBaYW5rHImoh0y-A/med.webm?1770770191
   
   --/| ____________________ End Global User Variables ___________________________________________________________________________________________
@@ -51,7 +48,6 @@
   --#title|[&SpellName]
   --Rfind|[*S:character_id];[&SpellName];repeating_spell-[&MinimumSpellLevel];spellname
   --?"[*R:spellname]" -eq "NoRepeatingAttributeLoaded"|>far_FatalError;Spell Not Found;ERROR;Could not find a level [&MinimumSpellLevel] spell named [&SpellName]
-  --&TokenName|[*S:t-name] [&SpellName]
   -->far_GetAvailableSpellLevels|[*S:character_id];[&MinimumSpellLevel];SpellCastLevel
   --?[@SpellCastLevel(length)] -eq 0|>far_FatalError;No Spell Slots Available;ERROR;No spell slots are available to cast [&SpellName]
   --+Choose Function: |[rbutton]New Cast::New[/rbutton][rbutton]Dismiss::Remove[/rbutton]
@@ -82,22 +78,13 @@
   
    --!a:[*S:character_id]|!ConcentrationSpell:[&SpellName]
    -->LibSN_ADD_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker];9
-   -->GetCharID|[&CharName];BlessID
+   -->far_GetJournalCharIdByName|[&CharName];BlessID
+   --?"X[&BlessID]" -eq "X"|>far_FatalError;FX Setup;ERROR;Create a journal character named [&CharName] for Bless graphics
   
   --:BlessLoop|
    --%loop|foreach;Bless
     -->FireMissile|[&loop]
-
-   --:SpawnToken|
-	--?[&SpawnScript] -eq 2|[
-	 --@forselected+|Spawn _name|[&CharName] _qty|1 _targets|1,FX Spawn Selection _offset|0,0 _force|yes _size|3 _tokenProps|name:[&TokenName],showname:false,showplayers_name:false _order|toBack _bar1|KeepLink _fx|nova-magic _expand|15,30 {^&select [&loop]}
-	 --]|
-	 
-	--?[&SpawnScript] -eq 1|[
-	 --!ot:BlessTID|name:"[&TokenName]"|left:[*[&loop]:t-left]|top:[*[&loop]:t-top]|width:[=[*[&loop]:t-width]*3]|height:[=[*[&loop]:t-height]*3]|imgsrc:"[&URLlink]"|bar1_value:1|represents:[&BlessID]|showname:0
-	 --z:graphic:[&BlessTID]|toback
-	 --@CARRY_TOKENS_CARRY_BELOW|[&loop] [&BlessTID]
-	 --]|
+    -->SpawnBlessGraphic|[&loop]
    --%|
    --+|[br]
    --+Duration: |[&duration]
@@ -115,7 +102,6 @@
    -->far_PlayEffects|[*S:t-id];[%1%];none;frost;burn;bless
    -->far_Check_GLOBAL_MOD_EXISTS|[*[%1%]:character_id]; save; [&BlessSave]; SaveExists
    -->far_Check_GLOBAL_MOD_EXISTS|[*[%1%]:character_id]; tohit; [&BlessAttack]; AttackExists
-   --?[&SaveExists] -eq 1 -and [&AttackExists] -eq 1|>SetMod;[&ThisTarget]
    --?[&SaveExists] -eq 0|>CreateMod;[%1%];save;save;[&BlessSave];1d4
    --?[&AttackExists] -eq 0|>CreateMod;[%1%];attack;tohit;[&BlessAttack];1d4
    -->SetMod|[%1%]
@@ -133,43 +119,61 @@
    -->Lib5E_SET_GLOBAL_MOD_STATUS|[*[%1%]:character_id];attack;[&BlessAttack];1
    --!a:[*[%1%]:character_id]|global_save_mod_flag:1
    --!a:[*[%1%]:character_id]|global_attack_mod_flag:1
-   -->LibSN_ADD_STATUS_MARKER|[*[%1%]:t-id];[&BlessMarker];9
+   -->LibSN_ADD_STATUS_MARKER|[*[%1%]:t-id];[&BlessedMarker];9
    --<|
   
   --:TurnOffMod| 
    -->Lib5E_SET_GLOBAL_MOD_STATUS|[*[%1%]:character_id];save;[&BlessSave];0
    -->Lib5E_SET_GLOBAL_MOD_STATUS|[*[%1%]:character_id];attack;[&BlessAttack];0
+   --!a:[*[%1%]:character_id]|global_save_mod_flag:0
+   --!a:[*[%1%]:character_id]|global_attack_mod_flag:0
    --<|
-  
-  --:GetCharID|CharacterName;StringVariableForCharID
-   --~|array;objects:character;SpiritCharArr;[%1%]
-   --?[@SpiritCharArr(length)] -ne 1|>far_LogFatalError;Could not find character named [%1%]
-   --&[%2%]|[@SpiritCharArr(0)]
+
+  --:SpawnBlessGraphic|target-token-id
+   --&BlessTID|
+   --&TokenName|[*[%1%]:t-name] [&SpellName]
+   --!ot:BlessTID|name:"[&TokenName]"|_pageid:[*[%1%]:t-_pageid]|left:[*[%1%]:t-left]|top:[*[%1%]:t-top]|width:[=[*[%1%]:t-width]*3]|height:[=[*[%1%]:t-height]*3]|imgsrc:"[&URLlink]"|bar1_value:1|represents:[&BlessID]|showname:0
+   --?"X[&BlessTID]" -eq "X"|[
+    -->far_FindPageTokenByName|[%1%];[&TokenName];BlessTID
+   --]|
+   --?"X[&BlessTID]" -ne "X"|[
+    --z:graphic:[&BlessTID]|toback
+    --@CARRY_TOKENS_CARRY_BELOW|[%1%] [&BlessTID]
+    --z:token:[%1%]|tofront
+   --]|
+   --<|
+
+  --:ClearBlessGraphic|target-token-id
+   --&TokenName|[*[%1%]:t-name] [&SpellName]
+   --~count|array;pagetokens;BlessFxTokens;[%1%];tprop:name=[&TokenName]
+   --?[@BlessFxTokens(length)] -gt 0|[
+    --@CARRY_TOKENS_DROP_ALL|[%1%]
+    --%BlessGfxDel|foreach;BlessFxTokens
+     --~|object;token;delete;[&BlessGfxDel]
+    --%|
+   --]|
    --<|
   
   --:Remove|
+   -->far_LoadTokenMarkers|
    --#emotetext|[*S:character_name] dismisses Bless!
    --#whisper|
    --~|array;pagetokens;alltokens;[*S:t-id]
    --~|array;define;Blessed
    --%loop|foreach;alltokens
-    -->LibSN_CHECK_STATUS_MARKER|[*[&loop]:t-id];[&BlessMarker];BFlag;BCount
+    -->LibSN_CHECK_STATUS_MARKER|[*[&loop]:t-id];[&BlessedMarker];BFlag;BCount
     --?[&BFlag] -eq 1 -and "[*[&loop]:Cleric_Bless]" -inc "[*S:character_id]"|[
-    --&Blessed([@Blessed(length)])|[*[&loop]:t-id]
+     --&Blessed([@Blessed(length)])|[*[&loop]:t-id]
     --]|
     --%|
  
    --%loop|foreach;Blessed
-    -->LibSN_REMOVE_STATUS_MARKER|[*[&loop]:t-id];[&BlessMarker]                                                                                                                                                                                                                                                                                                                                                                                                                                                         
-	-->TurnOffMod|[*[&loop]:t-id]
-	--!a:[*[&loop]:character_id]|Cleric_Bless:**
+    -->LibSN_REMOVE_STATUS_MARKER|[*[&loop]:t-id];[&BlessedMarker]
+	 -->TurnOffMod|[*[&loop]:t-id]
+	 --!a:[*[&loop]:character_id]|Cleric_Bless:**
+    -->ClearBlessGraphic|[&loop]
     --+|[*[&loop]:t-name] is no longer Blessed.
     --%|
-   
-   --~count|array;pagetokens;tokens;[*S:t-id];tprop:name=[&TokenName]
-   --%loop|foreach;tokens
-	--~|object;token;delete;[*[&loop]:t-id]
-	--%|
    
    -->LibSN_REMOVE_STATUS_MARKER|[*S:t-id];[&ConcentrationMarker]
    --!a:[*S:character_id]|ConcentrationSpell:** 
