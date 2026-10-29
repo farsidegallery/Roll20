@@ -1,15 +1,21 @@
 !script {{
   --/|Script Name : DarknessTrigger
-  --/|Version     : 1.1.0
+  --/|Version     : 1.2.0
   --/|Requires SC : ScriptCards 3.0.25+, snlib
   --/|Handout/file : Triggers/DarknessTrigger.scard (not Spells/Darkness.scard)
   --/|When a token overlaps a graphic named Darkness, suppress sight and token light emission until it leaves.
   --/|Saves four flags as 0 or 1 in !DarknessSavedState (Eyes of Night pack pattern). Light distances are not changed.
   --/|Save rules match UDL: bright defaults on unless explicitly false; night and emits default off unless explicitly true.
-  --/|Sight exempt (lights still off): repeating_traits in DarknessExemptFeats OR character attr Darkness_Exempt exactly 1.
-  --/|Use Darkness_Exempt for conditional cases set/cleared by other scripts (Form of Dread, Eyes of the Dark, etc.).
-  --/|If Darkness_Exempt is absent on the sheet, only the feat list is checked (avoids API log noise on every graphic change).
   
+  --/|=========================================================================================================
+  --/|Sight exempt (lights still off): repeating_traits in DarknessExemptFeats OR character attr Darkness_Exempt exactly 1.
+  --/|Emit exempt (sight still off): character attr Darkness_Emit_Exempt exactly 1 (homebrew items, Sun Blade overlap, etc.).
+  
+  --/|Both attrs exactly 1: save pack and darkness flag only, no TokenMod until exit (restore is a no-op if nothing changed).
+  --/|Use Darkness_Exempt and Darkness_Emit_Exempt for cases set/cleared by other scripts.
+  --/|If Darkness_Exempt is absent on the sheet, only the feat list is checked (avoids API log noise on every graphic change).
+  --/|=========================================================================================================
+
   --#hidecard|1
   
   --/| ____________________ Trait exemptions (5e sheet repeating_traits exact name) ____________________
@@ -35,8 +41,17 @@
   --?"X[*[&GraphicOld_id]:darkness]" -eq "X1"|Skip
   
   -->CheckDarknessExempt|
+  -->CheckDarknessEmitExempt|
+  --?[&DarknessExempt] -eq 1 -and [&DarknessEmitExempt] -eq 1|[
+   -->ApplyDarknessMarkOnly|
+   --^Skip|
+  --]|
   --?[&DarknessExempt] -eq 1|[
    -->ApplyDarknessLightsOnly|
+   --^Skip|
+  --]|
+  --?[&DarknessEmitExempt] -eq 1|[
+   -->ApplyDarknessSightOnly|
    --^Skip|
   --]|
   -->ApplyDarkness|
@@ -50,6 +65,10 @@
    --&DarknessExempt|0
    --?"X[*[&GraphicOld_id]:Darkness_Exempt]" -eq "X"|ExemptFeatLoop
    --?"X[*[&GraphicOld_id]:Darkness_Exempt]" -eq "X1"|[
+    --&DarknessExempt|1
+    --^CheckDarknessExemptEnd|
+   --]|
+   --?"[*[&GraphicOld_id]:Darkness_Exempt]" -eq "1"|[
     --&DarknessExempt|1
     --^CheckDarknessExemptEnd|
    --]|
@@ -84,6 +103,13 @@
    --:CheckDarknessExemptEnd|
    --<|
    
+  --:CheckDarknessEmitExempt|
+   --&DarknessEmitExempt|0
+   --?"X[*[&GraphicOld_id]:Darkness_Emit_Exempt]" -eq "X"|<|
+   --?"X[*[&GraphicOld_id]:Darkness_Emit_Exempt]" -eq "X1"|&DarknessEmitExempt;1
+   --?"[*[&GraphicOld_id]:Darkness_Emit_Exempt]" -eq "1"|&DarknessEmitExempt;1
+   --<|
+   
   --:SaveDarknessState|
    --&DarkSaveBright|1
    --?"[*[&GraphicOld_id]:t-has_bright_light_vision]" -eq "false"|&DarkSaveBright;0
@@ -100,11 +126,23 @@
    --!a:[&DarkCharId]|!DarknessSavedState:[&DarkSavedState]|!darkness:1
    --<|
    
+  --:ApplyDarknessMarkOnly|
+   --&DarkCharId|[*[&GraphicOld_id]:character_id]
+   -->SaveDarknessState|
+   --<|
+   
   --:ApplyDarknessLightsOnly|
    --&DarkCharId|[*[&GraphicOld_id]:character_id]
    --&DarkTid|[*[&GraphicOld_id]:t-id]
    -->SaveDarknessState|
    --!t:[&DarkTid]|emits_bright_light:false|emits_low_light:false
+   --<|
+   
+  --:ApplyDarknessSightOnly|
+   --&DarkCharId|[*[&GraphicOld_id]:character_id]
+   --&DarkTid|[*[&GraphicOld_id]:t-id]
+   -->SaveDarknessState|
+   --!t:[&DarkTid]|has_bright_light_vision:false|has_night_vision:false
    --<|
    
   --:ApplyDarkness|
