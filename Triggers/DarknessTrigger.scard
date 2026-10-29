@@ -1,0 +1,141 @@
+!script {{
+  --/|Script Name : DarknessTrigger
+  --/|Version     : 1.1.0
+  --/|Requires SC : ScriptCards 3.0.25+, snlib
+  --/|Handout/file : Triggers/DarknessTrigger.scard (not Spells/Darkness.scard)
+  --/|When a token overlaps a graphic named Darkness, suppress sight and token light emission until it leaves.
+  --/|Saves four flags as 0 or 1 in !DarknessSavedState (Eyes of Night pack pattern). Light distances are not changed.
+  --/|Save rules match UDL: bright defaults on unless explicitly false; night and emits default off unless explicitly true.
+  --/|Sight exempt (lights still off): repeating_traits in DarknessExemptFeats OR character attr Darkness_Exempt exactly 1.
+  --/|Use Darkness_Exempt for conditional cases set/cleared by other scripts (Form of Dread, Eyes of the Dark, etc.).
+  --/|If Darkness_Exempt is absent on the sheet, only the feat list is checked (avoids API log noise on every graphic change).
+  
+  --#hidecard|1
+  
+  --/| ____________________ Trait exemptions (5e sheet repeating_traits exact name) ____________________
+  --/| Comma-separated trait names (must match fromstring delimiter; do not use ; in this list)
+  --&DarknessExemptFeats|Devil's Sight,Eldritch Invocation: Devil's Sight,Mortal Bulwark,Form of Dread,The Undead: Form of Dread,Truesight,Blind Fighting
+  
+  --/|TRIGGER_REPLACEMENTS
+  +++snlib+++
+  
+  --~count|array;pagetokens;tokens;[&GraphicOld_id];tprop:name~=Darkness
+  --?"X[@tokens(0)]" -eq "XArrayError"|Skip
+  --?"X[*[&GraphicOld_id]:character_id]" -eq "X"|Skip
+  --?"X[*[&GraphicOld_id]:t-id]" -eq "X"|Skip
+  
+  -->LibSN_CHECK_TOKEN_OVERLAP|[@tokens(0)];[&GraphicOld_id];OLap
+  
+  --/|Outside the cloud and not flagged — nothing to do
+  --?[&OLap] -eq 0 -and "X[*[&GraphicOld_id]:darkness]" -ne "X1"|Skip
+  --/|Left the cloud but still flagged — restore
+  --?[&OLap] -eq 0 -and "X[*[&GraphicOld_id]:darkness]" -eq "X1"|TurnOn
+  
+  --/|Inside the cloud and already processed
+  --?"X[*[&GraphicOld_id]:darkness]" -eq "X1"|Skip
+  
+  -->CheckDarknessExempt|
+  --?[&DarknessExempt] -eq 1|[
+   -->ApplyDarknessLightsOnly|
+   --^Skip|
+  --]|
+  -->ApplyDarkness|
+  --^Skip|
+   
+  --:TurnOn|
+   -->ClearDarkness|
+   --^Skip|
+   
+  --:CheckDarknessExempt|
+   --&DarknessExempt|0
+   --?"X[*[&GraphicOld_id]:Darkness_Exempt]" -eq "X"|ExemptFeatLoop
+   --?"X[*[&GraphicOld_id]:Darkness_Exempt]" -eq "X1"|[
+    --&DarknessExempt|1
+    --^CheckDarknessExemptEnd|
+   --]|
+   --:ExemptFeatLoop|
+   --~|array;define;DarknessExemptArr
+   --?"X[&DarknessExemptFeats]" -ne "X"|[
+    --?"[&DarknessExemptFeats]" -ne ""|[
+     --~|array;fromstring;DarknessExemptArr;,;[&DarknessExemptFeats]
+    --]|
+   --]|
+   --?[@DarknessExemptArr(length)] -lt 1|CheckDarknessExemptEnd
+   --~|array;fromrepeatingsection;DarknessTraits;[*[&GraphicOld_id]:character_id];repeating_traits;name
+   --/| Devil's Sight: avoid apostrophe in array;indexof params (same gosub parse issue as far_FindFeat).
+   --%DarkDevil|foreach;DarknessTraits
+    --?"[&DarkDevil]" -inc "Devil" -and "[&DarkDevil]" -inc "Sight"|[
+     --&DarknessExempt|1
+     --^CheckDarknessExemptEnd|
+    --]|
+   --%|
+   --%ExemptFeat|foreach;DarknessExemptArr
+    --?"X[&ExemptFeat]" -eq "X"|ExemptFeatNext
+    --?"[&ExemptFeat]" -eq ""|ExemptFeatNext
+    --?[&DarknessExempt] -eq 1|ExemptFeatNext
+    --%DarkTrait|foreach;DarknessTraits
+     --?"[&DarkTrait]" -eq "[&ExemptFeat]"|[
+      --&DarknessExempt|1
+      --^CheckDarknessExemptEnd|
+     --]|
+    --%|
+    --:ExemptFeatNext|
+   --%|
+   --:CheckDarknessExemptEnd|
+   --<|
+   
+  --:SaveDarknessState|
+   --&DarkSaveBright|1
+   --?"[*[&GraphicOld_id]:t-has_bright_light_vision]" -eq "false"|&DarkSaveBright;0
+   --&DarkSaveNight|0
+   --?"[*[&GraphicOld_id]:t-has_night_vision]" -eq "true"|&DarkSaveNight;1
+   --?"[*[&GraphicOld_id]:t-has_night_vision]" -inc 1|&DarkSaveNight;1
+   --&DarkSaveEmitB|0
+   --?"[*[&GraphicOld_id]:t-emits_bright_light]" -eq "true"|&DarkSaveEmitB;1
+   --?"[*[&GraphicOld_id]:t-emits_bright_light]" -inc 1|&DarkSaveEmitB;1
+   --&DarkSaveEmitL|0
+   --?"[*[&GraphicOld_id]:t-emits_low_light]" -eq "true"|&DarkSaveEmitL;1
+   --?"[*[&GraphicOld_id]:t-emits_low_light]" -inc 1|&DarkSaveEmitL;1
+   --&DarkSavedState|[&DarkSaveBright]!@![&DarkSaveNight]!@![&DarkSaveEmitB]!@![&DarkSaveEmitL]
+   --!a:[&DarkCharId]|!DarknessSavedState:[&DarkSavedState]|!darkness:1
+   --<|
+   
+  --:ApplyDarknessLightsOnly|
+   --&DarkCharId|[*[&GraphicOld_id]:character_id]
+   --&DarkTid|[*[&GraphicOld_id]:t-id]
+   -->SaveDarknessState|
+   --!t:[&DarkTid]|emits_bright_light:false|emits_low_light:false
+   --<|
+   
+  --:ApplyDarkness|
+   --&DarkCharId|[*[&GraphicOld_id]:character_id]
+   --&DarkTid|[*[&GraphicOld_id]:t-id]
+   -->SaveDarknessState|
+   --!t:[&DarkTid]|has_bright_light_vision:false|has_night_vision:false|emits_bright_light:false|emits_low_light:false
+   --<|
+   
+  --:ClearDarkness|
+   --&DarkCharId|[*[&GraphicOld_id]:character_id]
+   --&DarkTid|[*[&GraphicOld_id]:t-id]
+   --?"X[*[&GraphicOld_id]:DarknessSavedState]" -ne "X"|[
+    --~DarkRestore|string;split;!@!;[*[&GraphicOld_id]:DarknessSavedState]
+    --&DarkRestBright|true
+    --?"[&DarkRestore1]" -eq "0"|&DarkRestBright;false
+    --?"[&DarkRestore1]" -eq "false"|&DarkRestBright;false
+    --&DarkRestNight|false
+    --?"[&DarkRestore2]" -eq "1"|&DarkRestNight;true
+    --?"[&DarkRestore2]" -eq "true"|&DarkRestNight;true
+    --&DarkRestEmitB|false
+    --?"[&DarkRestore3]" -eq "1"|&DarkRestEmitB;true
+    --?"[&DarkRestore3]" -eq "true"|&DarkRestEmitB;true
+    --&DarkRestEmitL|false
+    --?"[&DarkRestore4]" -eq "1"|&DarkRestEmitL;true
+    --?"[&DarkRestore4]" -eq "true"|&DarkRestEmitL;true
+    --!t:[&DarkTid]|has_bright_light_vision:[&DarkRestBright]|has_night_vision:[&DarkRestNight]|emits_bright_light:[&DarkRestEmitB]|emits_low_light:[&DarkRestEmitL]
+   --]|
+   --!a:[&DarkCharId]|!darkness:0|!DarknessSavedState:**|!DarknessEmitsBright:**|!DarknessEmitsLow:**|!DarknessBrightDist:**|!DarknessLowDist:**|!DarknessSightPack:**|!DarknessVisionOff:**
+   --<|
+  
+  --:Skip|
+   --X|
+}}
