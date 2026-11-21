@@ -1,9 +1,10 @@
 !script {{
   --/|Script Name : Concentration
-  --/|Version     : 1.6.1
+  --/|Version     : 1.6.2
   --/|Requires SC : ScriptCards 3.0.25+, 5Elib/snlib/Farsidelib 1.5.2+ (this handout; other damage sources need not use Farsidelib)
   --/|
-  --/|Trigger wiring: ScriptCards_Triggers ability change:graphic, listen_to_tokenmod|1, paste this macro. Tune bars/marker in Global User Variables below.
+  --/|Trigger wiring: ScriptCards_Triggers ability change:graphic, listen_to_tokenmod|1. Paste macro into Triggers character ability. Never embed spell-switch tag syntax inside comments (ScriptCards parses comments for double-dash tags).
+  --/|CONC_TABLE_VERIFY_1.6.16
   --/|Damage sources (e.g. 5E Action Menu): set hitPointsBar/tempHPBar/UseTempHP and damageApplyScript|token-mod to match this trigger’s bars.
   --/|listen_to_tokenmod: external @token-mod bar writes fire this trigger; !t-only writes may not. Bulk heal via !t avoids gmnotes parse issues.
   
@@ -29,7 +30,7 @@
   --/|Enter name of the Global Damage Mod used for Holy Weapon.
   --&WeaponName|Holy Weapon
   
-  --/|Enter name of the Global Damage Mod used for Hunter's Mark.
+  --/|Enter name of the Global Damage Mod used for Hunter's Mark (spell-name match uses -inc below; keep mod name without apostrophe in gosub paths).
   --&HunterMark|Hunter's Mark
   
   --/|Enter name of the Global Damage Mod used for Zephyr's.
@@ -66,18 +67,32 @@
   --&hitPointBar|[&ConcEntry_hitPointBar]
   --&tempHPBar|[&ConcEntry_tempHPBar]
   --&ConcentrationMarker|[&ConcEntry_ConcentrationMarker]
+  --&ConcGraphicNewHPMissing|0
+  --&ConcDeathBypassSkip|0
   -->ConcSkipIfNoDamageEvent|
-
-  --/|Gate: damage taken only (ConcCalcDamage never counts increases).
-  --?[$ConcRawTotal] -le 0|SKIP
-  --?"[&GraphicOldstatusmarkers]" -inc "dead"|SKIP
 
   --/|TokenMod bar updates often omit or shorten GraphicOldstatusmarkers; use live token markers when building dead status.
   --&ConcStatusForDead|[&GraphicOldstatusmarkers]
   --?"X[&ConcStatusForDead]" -eq "X"|&ConcStatusForDead;[*[&GraphicOld_id]:t-statusmarkers]
   --?"[&ConcStatusForDead]" -eq ""|&ConcStatusForDead;[*[&GraphicOld_id]:t-statusmarkers]
+  --?"[&ConcStatusForDead]" -inc "dead"|SKIP
   --&newstatus|[&ConcStatusForDead],dead
-  --?[&ConcHPnew] -le 0|SETSTATUS
+  --/|0 HP: use live bar if payload lagged (ConcRawTotal 0 still drops conc on death).
+  --&ConcDeathHP|[&ConcHPnew]
+  --?"X[&ConcDeathHP]" -eq "X"|&ConcDeathHP;[*[&GraphicOld_id]:t-bar[&hitPointBar]_value]
+  --?"[&ConcDeathHP]" -eq ""|&ConcDeathHP;[*[&GraphicOld_id]:t-bar[&hitPointBar]_value]
+  --?"[&ConcGraphicNewHPMissing]" -eq "1"|[
+   --&ConcDeathVerifyLive|[*[&GraphicOld_id]:t-bar[&hitPointBar]_value]
+   --&ConcDeathVerifySheet|[*[&GraphicOld_id]:hp]
+   --=ConcDeathVerifyLiveNum|[&ConcDeathVerifyLive]
+   --=ConcDeathVerifySheetNum|[&ConcDeathVerifySheet]
+   --?"X[$ConcDeathVerifyLiveNum]" -ne "X" -and [$ConcDeathVerifyLiveNum] -le 0|&ConcDeathHP;[&ConcDeathVerifyLive]
+   --?"X[$ConcDeathVerifySheetNum]" -ne "X" -and [$ConcDeathVerifySheetNum] -le 0|&ConcDeathHP;[&ConcDeathVerifySheet]
+  --]|
+  --=ConcDeathHPNum|[&ConcDeathHP]
+  --?[$ConcDeathHPNum] -le 0|>SETSTATUS
+  --/|Gate: damage taken only (ConcCalcDamage never counts increases).
+  --?[$ConcRawTotal] -le 0 -and "[&ConcDeathBypassSkip]" -ne "1"|SKIP
   --^Concentration|
   
   --:SETSTATUS|
@@ -90,6 +105,7 @@
    -->far_RemoveTokenMarker|[&GraphicOld_id];[&ConcentrationMarker]
    -->ConcIsNpcToken|ConcIsNpc
    --?[&ConcIsNpc] -eq 1|>NpcDeathCleanup
+   --&ConcDeathCleanup|1
    -->ConcShouldRunDeadEntry|ConcRunDeadEntry
    --?[&ConcRunDeadEntry] -eq 1|>DeadEntry
    --X|
@@ -107,11 +123,12 @@
   --/|NPC death: Lazy Experience prompt. Corpse Cart auto-buries when the dead marker is applied above.
   --:NpcDeathCleanup|
    --@xp|npcdeath [&GraphicOld_id]
+   --&ConcDeathCleanup|1
    -->ConcShouldRunDeadEntry|ConcRunDeadEntry
    --?[&ConcRunDeadEntry] -eq 1|>DeadEntry
    --X|
 
-  --/|Death / fail-save drop: LibSN CHECK can miss markers; sheet ConcentrationSpell is source of truth for --C cleanup.
+  --/|Death and fail-save drop: LibSN CHECK can miss markers; sheet ConcentrationSpell is source of truth for spell cleanup.
   --:ConcShouldRunDeadEntry|return-var
    --&[%1%]|0
    --&ConcSpellOnSheet|[*[&GraphicOld_id]:ConcentrationSpell]
@@ -119,12 +136,83 @@
    --?"[&ConcHadConcOnDeath]" -eq "1"|&[%1%];1
    --?"[&ConcSpellOnSheet]" -ne ""|&[%1%];1
    --<|
+
+  --/| ____________________ Safe token delete (missing FX/caster tokens must not delete a random map token) ____________________
+  --:ConcNormTokenId|token-id;return-var
+   --&[%2%]|[%1%]
+   --~ConcNormLen|string;length;[&[%2%]]
+   --=ConcNormLenN|[&ConcNormLen]
+   --?"[$ConcNormLenN]" -gt 0|[
+    --~ConcNormLast|string;substring;[$ConcNormLenN]-1;1;[&[%2%]]
+    --?"[&ConcNormLast]" -eq "|"|~[%2%];string;left;[$ConcNormLenN]-1;[&[%2%]]
+   --]|
+   --<|
+
+  --:ConcTokenOnBoard|token-id;return-var
+   -->ConcNormTokenId|[%1%];ConcTokCheckId
+   --&[%2%]|0
+   --?"X[&ConcTokCheckId]" -eq "X"|<
+   --?"[&ConcTokCheckId]" -eq ""|<
+   --?"X[*[&ConcTokCheckId]:t-id]" -eq "X"|<
+   --?"[*[&ConcTokCheckId]:t-id]" -eq ""|<
+   --?"[*[&ConcTokCheckId]:t-id]" -ne "[&ConcTokCheckId]"|<
+   --&[%2%]|1
+   --<|
+
+  --:ConcSafeDeleteToken|token-id
+   -->ConcNormTokenId|[%1%];ConcDelTokId
+   -->ConcTokenOnBoard|[&ConcDelTokId];ConcDelTokOk
+   --?[&ConcDelTokOk] -eq 0|<
+   --~|object;token;delete;[&ConcDelTokId]
+   --<|
+
+  --/| Target id or name must be in [&ConcGfxDelTarget] (gosub params cannot carry unquoted apostrophes).
+  --&ConcGfxDelTarget|
+  --:ConcDeleteSpellGraphic|page-token-id
+   --?"X[%1%]" -eq "X"|<
+   --&ConcGfxName|[&ConcGfxDelTarget]
+   --?"X[&ConcGfxName]" -eq "X"|<
+   --?"[&ConcGfxName]" -eq ""|<
+   -->ConcTokenOnBoard|[&ConcGfxName];ConcGfxDelById
+   --?[&ConcGfxDelById] -eq 1|[
+    -->ConcSafeDeleteToken|[&ConcGfxName]
+    --<|
+   --]|
+   --?"[&ConcGfxName]" -inc "'"|[
+    --~|array;pagetokens;ConcGfxArr;[%1%]
+    --?"X[@ConcGfxArr(0)]" -eq "XArrayError"|<|
+    --?[@ConcGfxArr(length)] -lt 1|<|
+    --%ConcGfxApost|foreach;ConcGfxArr
+     --&ConcGfxApostName|[*[&ConcGfxApost]:t-name]
+     --?"[&ConcGfxApostName]" -eq "[&ConcGfxName]"|-->ConcSafeDeleteToken|[&ConcGfxApost]
+    --%|
+    --<|
+   --]|
+   --~count|array;pagetokens;ConcGfxArr;[%1%];tprop:name=[&ConcGfxName]
+   --?"X[@ConcGfxArr(0)]" -eq "XArrayError"|<
+   --?[@ConcGfxArr(length)] -lt 1|<
+   --%ConcGfxEach|foreach;ConcGfxArr
+    -->ConcSafeDeleteToken|[&ConcGfxEach]
+   --%|
+   --<|
  
   --:SKIP|
    --X|
 
   --/|Skip position-only moves (TokenMod still fires on drag; compare live bars to pre-move payload).
   --:ConcSkipIfNoDamageEvent|
+   --&ConcGraphicNewHPMissing|0
+   --&ConcDeathBypassSkip|0
+   --?"X[&GraphicNewbar[&hitPointBar]_value]" -eq "X"|&ConcGraphicNewHPMissing;1
+   --?"[&GraphicNewbar[&hitPointBar]_value]" -eq ""|&ConcGraphicNewHPMissing;1
+   --&ConcVerifyLiveHP|[*[&GraphicOld_id]:t-bar[&hitPointBar]_value]
+   --&ConcVerifySheetHP|[*[&GraphicOld_id]:hp]
+   --=ConcVerifyLiveNum|[&ConcVerifyLiveHP]
+   --=ConcVerifySheetNum|[&ConcVerifySheetHP]
+   --?"[&ConcGraphicNewHPMissing]" -eq "1"|[
+    --?"X[$ConcVerifyLiveNum]" -ne "X" -and [$ConcVerifyLiveNum] -le 0|&ConcDeathBypassSkip;1
+    --?"X[$ConcVerifySheetNum]" -ne "X" -and [$ConcVerifySheetNum] -le 0|&ConcDeathBypassSkip;1
+   --]|
    --&ConcMoveHPold|[&GraphicOldbar[&hitPointBar]_value]
    --&ConcMoveTempold|[&GraphicOldbar[&tempHPBar]_value]
    --&ConcMoveHPnew|[&GraphicNewbar[&hitPointBar]_value]
@@ -151,7 +239,14 @@
    --/|TokenMod temp-only relative updates: payload may omit bar4 or keep old=new while live temp already dropped.
    --?"[&ConcMoveHPold]" -eq "[&ConcMoveHPnew]" -and "[&ConcMoveTempold]" -ne "[&ConcLiveTemp]"|&ConcMoveTempnew;[&ConcLiveTemp]
    --/|Position-only move: after sync, HP and temp still unchanged.
-   --?"[&ConcMoveHPold]" -eq "[&ConcMoveHPnew]" -and "[&ConcMoveTempold]" -eq "[&ConcMoveTempnew]"|SKIP
+   --?"[&ConcDeathBypassSkip]" -eq "1"|[
+    --&ConcDeathFixHP|[&ConcVerifyLiveHP]
+    --?"X[&ConcDeathFixHP]" -eq "X" -or "[&ConcDeathFixHP]" -eq ""|&ConcDeathFixHP;[&ConcVerifySheetHP]
+    --?"X[&ConcDeathFixHP]" -ne "X" -and "[&ConcDeathFixHP]" -ne ""|&ConcMoveHPnew;[&ConcDeathFixHP]
+   --]|
+   --?"[&ConcMoveHPold]" -eq "[&ConcMoveHPnew]" -and "[&ConcMoveTempold]" -eq "[&ConcMoveTempnew]"|[
+    --?"[&ConcDeathBypassSkip]" -ne "1"|SKIP
+   --]|
    -->ConcResolveBars|
    -->ConcCalcDamage|
    --<|
@@ -173,6 +268,11 @@
    --?"[&ConcTempold]" -eq "[&ConcTempnew]"|&ConcTempnew;[*[&GraphicOld_id]:t-bar[&tempHPBar]_value]
    --?"X[&ConcTempnew]" -eq "X"|&ConcTempnew;0
    --?"[&ConcTempnew]" -eq ""|&ConcTempnew;0
+   --?"[&ConcDeathBypassSkip]" -eq "1"|[
+    --&ConcDeathFixHP|[*[&GraphicOld_id]:t-bar[&hitPointBar]_value]
+    --?"X[&ConcDeathFixHP]" -eq "X" -or "[&ConcDeathFixHP]" -eq ""|&ConcDeathFixHP;[*[&GraphicOld_id]:hp]
+    --?"X[&ConcDeathFixHP]" -ne "X" -and "[&ConcDeathFixHP]" -ne ""|&ConcHPnew;[&ConcDeathFixHP]
+   --]|
    --<|
 
   --:ConcCalcDamage|
@@ -322,18 +422,119 @@
    
   --:Fail|
    --+Save: |[*[&GraphicOld_id]:character_name] rolled a [$Save] vs a DC [$DC] and failed the saving throw. 
-   --:DeadEntry|
-   --+|[br]
-   --+Result: |[*[&GraphicOld_id]:character_name] lost concentration.
+   --^DeadEntry|
+
+  --/| Fail-save and death both run spell teardown (SETSTATUS sets ConcDeathCleanup to skip duplicate chat).
+  --:DeadEntry|
+   --?[&ConcDeathCleanup] -ne 1|[
+    --+|[br]
+    --+Result: |[*[&GraphicOld_id]:character_name] lost concentration.
+   --]|
+   --&ConcDeathCleanup|0
    --?"X[&SpellTokenName]" -eq "X"|&SpellTokenName;[*[&GraphicOld_id]:ConcentrationSpell]
    --?"[&SpellTokenName]" -eq ""|&SpellTokenName;[*[&GraphicOld_id]:ConcentrationSpell]
-   
-   --C[&SpellTokenName]|Bane:>Bane|Banishment:>Banishment|Bless:>Bless|Divine Favor:>Favor|Faerie Fire:>Faerie|Greater Invisibility:>Invisibility|Invisibility:>Invisibility|Guidance:>Guidance|Hex:>Hex|Hold Person:>Hold|Mental Prison:>MentalPrison|Tasha's Hideous Laughter:>HideousLaughter|Holy Weapon:>Weapon|Hunter's Mark:>Hunter|Shield of Faith:>Faith|Spirit Guardians:>Guardians|Shadow Blade:>ShadowBlade|Vampiric Touch:>Vampiric|Witch Bolt:>Witch|Zephyr Strike:>Zephyr
-   
+   --/| change:graphic bursts can corrupt SpellTokenName; fall back to sheet ConcentrationSpell.
+   --?"[&SpellTokenName]" -inc "|"|&SpellTokenName;[*[&GraphicOld_id]:ConcentrationSpell]
+   -->ConcFailSpellSwitch|
+
+  --/| Apostrophe spell names: ConcFailSpellSwitch uses quoted branches and -inc checks only (no dynamic spell-name switch tag).
+  --:ConcFailSpellSwitch|
+   --?"[&SpellTokenName]" -eq "Bane"|[
+    -->Bane|
+    --^ConcFailAfterSwitch|
+   --]|
+   --?"[&SpellTokenName]" -eq "Banishment"|[
+    -->Banishment|
+    --^ConcFailAfterSwitch|
+   --]|
+   --?"[&SpellTokenName]" -eq "Bless"|[
+    -->Bless|
+    --^ConcFailAfterSwitch|
+   --]|
+   --?"[&SpellTokenName]" -eq "Divine Favor"|[
+    -->Favor|
+    --^ConcFailAfterSwitch|
+   --]|
+   --?"[&SpellTokenName]" -eq "Faerie Fire"|[
+    -->Faerie|
+    --^ConcFailAfterSwitch|
+   --]|
+   --?"[&SpellTokenName]" -eq "Greater Invisibility"|[
+    -->Invisibility|
+    --^ConcFailAfterSwitch|
+   --]|
+   --?"[&SpellTokenName]" -eq "Invisibility"|[
+    -->Invisibility|
+    --^ConcFailAfterSwitch|
+   --]|
+   --?"[&SpellTokenName]" -eq "Guidance"|[
+    -->Guidance|
+    --^ConcFailAfterSwitch|
+   --]|
+   --?"[&SpellTokenName]" -inc "Heroes" -and "[&SpellTokenName]" -inc "Feast"|[
+    --^ConcFailAfterSwitch|
+   --]|
+   --?"[&SpellTokenName]" -eq "Hex"|[
+    -->Hex|
+    --^ConcFailAfterSwitch|
+   --]|
+   --?"[&SpellTokenName]" -eq "Hold Person"|[
+    -->Hold|
+    --^ConcFailAfterSwitch|
+   --]|
+   --?"[&SpellTokenName]" -eq "Mental Prison"|[
+    -->MentalPrison|
+    --^ConcFailAfterSwitch|
+   --]|
+   --?"[&SpellTokenName]" -inc "Tasha" -and "[&SpellTokenName]" -inc "Hideous" -and "[&SpellTokenName]" -inc "Laughter"|[
+    -->HideousLaughter|
+    --^ConcFailAfterSwitch|
+   --]|
+   --?"[&SpellTokenName]" -eq "Holy Weapon"|[
+    -->Weapon|
+    --^ConcFailAfterSwitch|
+   --]|
+   --?"[&SpellTokenName]" -inc "Hunter" -and "[&SpellTokenName]" -inc "Mark"|[
+    -->Hunter|
+    --^ConcFailAfterSwitch|
+   --]|
+   --?"[&SpellTokenName]" -eq "Shield of Faith"|[
+    -->Faith|
+    --^ConcFailAfterSwitch|
+   --]|
+   --?"[&SpellTokenName]" -eq "Spirit Guardians"|[
+    -->Guardians|
+    --^ConcFailAfterSwitch|
+   --]|
+   --?"[&SpellTokenName]" -eq "Shadow Blade"|[
+    -->ShadowBlade|
+    --^ConcFailAfterSwitch|
+   --]|
+   --?"[&SpellTokenName]" -eq "Vampiric Touch"|[
+    -->Vampiric|
+    --^ConcFailAfterSwitch|
+   --]|
+   --?"[&SpellTokenName]" -eq "Witch Bolt"|[
+    -->Witch|
+    --^ConcFailAfterSwitch|
+   --]|
+   --?"[&SpellTokenName]" -eq "Zephyr Strike"|[
+    -->Zephyr|
+    --^ConcFailAfterSwitch|
+   --]|
+   --^ConcFailAfterSwitch|
+
+  --:ConcFailAfterSwitch|
    -->LibSN_REMOVE_STATUS_MARKER|[*[&GraphicOld_id]:t-id];[&ConcentrationMarker]
-   --~count|array;pagetokens;tokens;[*[&GraphicOld_id]:t-id];tprop:name=[*[&GraphicOld_id]:ConcentrationSpell]
-   --?"[@tokens(length)]" -gt 0|[
-    --~|object;token;delete;[@tokens(0)]
+   --&ConcSpellGfxName|[*[&GraphicOld_id]:ConcentrationSpell]
+   --&ConcSpellTargetGfx|[*[&GraphicOld_id]:ConcentrationSpellTargetToken]
+   --?"X[&ConcSpellTargetGfx]" -ne "X" -and "[&ConcSpellTargetGfx]" -ne ""|[
+    --&ConcGfxDelTarget|[&ConcSpellTargetGfx]
+    -->ConcDeleteSpellGraphic|[*[&GraphicOld_id]:t-id]
+   --]|
+   --?"X[&ConcSpellGfxName]" -ne "X" -and "[&ConcSpellGfxName]" -ne ""|[
+    --&ConcGfxDelTarget|[&ConcSpellGfxName]
+    -->ConcDeleteSpellGraphic|[*[&GraphicOld_id]:t-id]
    --]|
    --!a:[*[&GraphicOld_id]:character_id]|!ConcentrationSpell:**
    --!a:[*[&GraphicOld_id]:character_id]|!ConcentrationSpellTargetToken:**
@@ -350,9 +551,11 @@
     --]|
     --%|
    
-   --%loop|foreach;Bane
-    -->LibSN_REMOVE_STATUS_MARKER|[*[&loop]:t-id];[&BaneMarker]
-	--%|   
+   --?[@Bane(length)] -gt 0|[
+    --%loop|foreach;Bane
+     -->LibSN_REMOVE_STATUS_MARKER|[*[&loop]:t-id];[&BaneMarker]
+    --%|
+   --]|
    --<|
   
   --:Banishment|
@@ -365,12 +568,14 @@
     --]|
     --%|
    
-   --+|[br]
-   --%loop|foreach;Banished
-    -->LibSN_REMOVE_STATUS_MARKER|[*[&loop]:t-id];[&BanishMarker]
-	--!t:[*[&loop]:t-id]|layer:objects
-	--+|[*[&loop]:character_name] returns to the Material Plane!
-	--%|
+   --?"[@Banished(length)]" -gt 0|[
+    --+|[br]
+    --%loop|foreach;Banished
+     -->LibSN_REMOVE_STATUS_MARKER|[*[&loop]:t-id];[&BanishMarker]
+     --!t:[*[&loop]:t-id]|layer:objects
+     --+|[*[&loop]:character_name] returns to the Material Plane!
+    --%|
+   --]|
    --<|
   
   --:Bless|
@@ -378,33 +583,33 @@
    --~|array;pagetokens;alltokens;[*[&GraphicOld_id]:t-id]
    --~|array;define;Blessed
    --&ConcCasterId|[*[&GraphicOld_id]:character_id]
-   --%loop|foreach;alltokens
-    -->LibSN_CHECK_STATUS_MARKER|[*[&loop]:t-id];[&BlessedMarker];BFlag;BCount
-    --?[&BFlag] -eq 1 -and "[*[&loop]:Cleric_Bless]" -inc "[&ConcCasterId]"|[
-     --&Blessed([@Blessed(length)])|[*[&loop]:t-id]
+   --%BlessScan|foreach;alltokens
+    -->LibSN_CHECK_STATUS_MARKER|[*[&BlessScan]:t-id];[&BlessedMarker];BFlag;BCount
+    --?[&BFlag] -eq 1 -and "[*[&BlessScan]:Cleric_Bless]" -inc "[&ConcCasterId]"|[
+     --&Blessed([@Blessed(length)])|[*[&BlessScan]:t-id]
     --]|
     --%|
  
-   --+|[br]
-   --%loop|foreach;Blessed
-    -->LibSN_REMOVE_STATUS_MARKER|[*[&loop]:t-id];[&BlessedMarker]
-    -->Lib5E_SET_GLOBAL_MOD_STATUS|[*[&loop]:character_id];save;[&BlessSave];0
-    -->Lib5E_SET_GLOBAL_MOD_STATUS|[*[&loop]:character_id];attack;[&BlessAttack];0
-    --!a:[*[&loop]:character_id]|global_save_mod_flag:0
-    --!a:[*[&loop]:character_id]|global_attack_mod_flag:0
-	--!a:[*[&loop]:character_id]|Cleric_Bless:**
-    -->ClearBlessConcGraphic|[&loop]
-    --+|[*[&loop]:character_name] is no longer Blessed.
+   --?"[@Blessed(length)]" -gt 0|[
+    --+|[br]
+    --%BlessTgt|foreach;Blessed
+     -->LibSN_REMOVE_STATUS_MARKER|[*[&BlessTgt]:t-id];[&BlessedMarker]
+     -->Lib5E_SET_GLOBAL_MOD_STATUS|[*[&BlessTgt]:character_id];save;[&BlessSave];0
+     -->Lib5E_SET_GLOBAL_MOD_STATUS|[*[&BlessTgt]:character_id];attack;[&BlessAttack];0
+     --!a:[*[&BlessTgt]:character_id]|Cleric_Bless:**
+     -->ClearBlessConcGraphic|[&BlessTgt]
+     --+|[*[&BlessTgt]:character_name] is no longer Blessed.
     --%|
+   --]|
    --<|
 
   --:ClearBlessConcGraphic|target-token-id
    --&TokenName|[*[%1%]:t-name] Bless
    --~count|array;pagetokens;BlessFxTokens;[%1%];tprop:name=[&TokenName]
-   --?[@BlessFxTokens(length)] -gt 0|[
+   --?"X[@BlessFxTokens(0)]" -ne "XArrayError" -and "[@BlessFxTokens(length)]" -gt 0|[
     --@CARRY_TOKENS_DROP_ALL|[%1%]
     --%BlessGfxDel|foreach;BlessFxTokens
-     --~|object;token;delete;[&BlessGfxDel]
+     -->ConcSafeDeleteToken|[&BlessGfxDel]
     --%|
    --]|
    --<|
@@ -431,18 +636,17 @@
     --]|
     --%|
  
-   --+|[br]
-   --%loop|foreach;FFire
-    -->LibSN_REMOVE_STATUS_MARKER|[*[&loop]:t-id];[&FFMarker]
-	--!a:[*[&loop]:character_id]|MageID:**
-    --+|[*[&loop]:character_name] is no longer lit by Faerie Fire.
+   --?"[@FFire(length)]" -gt 0|[
+    --+|[br]
+    --%loop|foreach;FFire
+     -->LibSN_REMOVE_STATUS_MARKER|[*[&loop]:t-id];[&FFMarker]
+     --!a:[*[&loop]:character_id]|MageID:**
+     --+|[*[&loop]:character_name] is no longer lit by Faerie Fire.
     --%|
-   
+   --]|
    --&targetToken|[*[&GraphicOld_id]:ConcentrationSpellTargetToken]
-   --~count|array;pagetokens;tokens;[*[&GraphicOld_id]:t-id];tprop:name=[&targetToken]
-   --%loop|foreach;tokens
-	--~|object;token;delete;[*[&loop]:t-id]
-	--%|
+   --&ConcGfxDelTarget|[&targetToken]
+   -->ConcDeleteSpellGraphic|[*[&GraphicOld_id]:t-id]
    
    -->LibSN_REMOVE_STATUS_MARKER|[*[&GraphicOld_id]:t-id];[&ConcentrationMarker]
    --!a:[*[&GraphicOld_id]:character_id]|ConcentrationSpell:**
@@ -464,15 +668,12 @@
    --?"X[*[&GraphicOld_id]:FaithShieldGraphics]" -ne "X"|[
     --~|array;fromstring;FaithGraphics;!@!;[*[&GraphicOld_id]:FaithShieldGraphics]
     --%FaithGfx|foreach;FaithGraphics
-     --?"X[&FaithGfx]" -ne "X"|[
-      --~|object;token;delete;[&FaithGfx]
-     --]|
+     --?"X[&FaithGfx]" -ne "X"|-->ConcSafeDeleteToken|[&FaithGfx]
     --%|
    --]|[
-    --~count|array;pagetokens;tokens;[*[&GraphicOld_id]:t-id];tprop:name=[*[&GraphicOld_id]:character_name] Shield of Faith
-    --?"[@tokens(length)]" -gt 0|[
-     --~|object;token;delete;[@tokens(0)]
-    --]|
+    --&ConcFaithGfxName|[*[&GraphicOld_id]:character_name] Shield of Faith
+    --&ConcGfxDelTarget|[&ConcFaithGfxName]
+    -->ConcDeleteSpellGraphic|[*[&GraphicOld_id]:t-id]
    --]|
    --!a:[*[&GraphicOld_id]:character_id]|!ConcentrationSpell:**
    --!a:[*[&GraphicOld_id]:character_id]|!ConcentrationSpellTargetToken:**
@@ -492,8 +693,8 @@
   
   --:Guardians|
    --&targetToken|[*[&GraphicOld_id]:ConcentrationSpellTargetToken]
-   --~count|array;pagetokens;tokens;[*[&GraphicOld_id]:t-id];tprop:name=[&targetToken]
-   --~|object;token;delete;[@tokens(0)]
+   --&ConcGfxDelTarget|[&targetToken]
+   -->ConcDeleteSpellGraphic|[*[&GraphicOld_id]:t-id]
    --<|
   
   --:Guidance|
@@ -515,8 +716,8 @@
    --!a:[*[&GraphicOld_id]:character_id]|!ConcentrationSpellTargetToken:**
    --!a:[*S:character_id]|!HexTarget:**
    --!a:[*S:character_id]|!HexSpellLevel:**
-   --~count|array;pagetokens;tokens;[*[&GraphicOld_id]:t-id];tprop:name=[&TokenName]
-   --~|object;token;delete;[@tokens(0)]
+   --&ConcGfxDelTarget|[&TokenName]
+   -->ConcDeleteSpellGraphic|[*[&GraphicOld_id]:t-id]
    --<|
   
   --:MentalPrison|
@@ -536,14 +737,16 @@
      --?"[&MPDup]" -eq "ArrayError"|&Prisoned([@Prisoned(length)])|[&MPPrimaryTid]
     --]|
    --]|
-   --+|[br]
-   --%loop|foreach;Prisoned
-    -->LibSN_REMOVE_STATUS_MARKER|[*[&loop]:t-id];[&RestrainedMarker];0
-    --?"X[*[*[&loop]:t-id]:character_id]" -ne "X"|[
-     --!a:[*[&loop]:character_id]|MageID:**
-    --]|
-    --+|[*[&loop]:t-name] is no longer affected by Mental Prison.
-   --%|
+   --?"[@Prisoned(length)]" -gt 0|[
+    --+|[br]
+    --%loop|foreach;Prisoned
+     -->LibSN_REMOVE_STATUS_MARKER|[*[&loop]:t-id];[&RestrainedMarker];0
+     --?"X[*[*[&loop]:t-id]:character_id]" -ne "X"|[
+      --!a:[*[&loop]:character_id]|MageID:**
+     --]|
+     --+|[*[&loop]:t-name] is no longer affected by Mental Prison.
+    --%|
+   --]|
    --?"[@Prisoned(length)]" -eq 0|[
     --+|[*[&GraphicOld_id]:character_name]'s Mental Prison ends with no restrained targets found on the map.
    --]|
@@ -562,19 +765,18 @@
     --]|
     --%|
  
-   --+|[br]
-   --%loop|foreach;Held
-    -->LibSN_REMOVE_STATUS_MARKER|[*[&loop]:t-id];[&HoldMarker]
-	--!a:[*[&loop]:character_id]|MageID:**
-    --+|[*[&loop]:character_name] is no longer Held.
+   --?"[@Held(length)]" -gt 0|[
+    --+|[br]
+    --%loop|foreach;Held
+     -->LibSN_REMOVE_STATUS_MARKER|[*[&loop]:t-id];[&HoldMarker]
+     --!a:[*[&loop]:character_id]|MageID:**
+     --+|[*[&loop]:character_name] is no longer Held.
     --%|
-   
+   --]|
    --+|[br]
    --&targetToken|[*[&GraphicOld_id]:ConcentrationSpellTargetToken]
-   --~count|array;pagetokens;tokens;[*[&GraphicOld_id]:t-id];tprop:name=[&targetToken]
-   --%loop|foreach;tokens
-	--~|object;token;delete;[*[&loop]:t-id]
-	--%| 
+   --&ConcGfxDelTarget|[&targetToken]
+   -->ConcDeleteSpellGraphic|[*[&GraphicOld_id]:t-id]
    --<|
   
   --:Hunter|
@@ -586,8 +788,8 @@
    --!a:[*[&GraphicOld_id]:character_id]|marked:**
    --+|[br]
    --+|[*[&GraphicOld_id]:character_name]'s Hunter's Mark fades!
-   --~count|array;pagetokens;tokens;[*[&GraphicOld_id]:t-id];tprop:name=[&targetToken]
-   --~|object;token;delete;[@tokens(0)]
+   --&ConcGfxDelTarget|[&targetToken]
+   -->ConcDeleteSpellGraphic|[*[&GraphicOld_id]:t-id]
    --<|
   
   --:Invisibility|
@@ -605,11 +807,13 @@
    --]|
     --%|
    
-   --+|[br]
-   --%loop|foreach;Invis
-    -->far_RevealInvisToken|[*[&loop]:t-id]
-    --+|[*[&loop]:character_name] is no longer Invisible.
+   --?"[@Invis(length)]" -gt 0|[
+    --+|[br]
+    --%loop|foreach;Invis
+     -->far_RevealInvisToken|[*[&loop]:t-id]
+     --+|[*[&loop]:character_name] is no longer Invisible.
     --%|
+   --]|
    -->far_ClearInvisCasterSheet|[*[&GraphicOld_id]:character_id]
    --<|
   
