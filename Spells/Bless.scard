@@ -6,7 +6,7 @@
   --#whisper|self,gm
   
   --/|Script Name : Bless
-  --/|Version     : 2.6.1
+  --/|Version     : 2.6.2
   --/|Requires SC : ScriptCards Library 5Elib/snlib/Farsidelib
   --/|Author      : Farsidegallery
   --/|  
@@ -125,8 +125,6 @@
   --:TurnOffMod| 
    -->Lib5E_SET_GLOBAL_MOD_STATUS|[*[%1%]:character_id];save;[&BlessSave];0
    -->Lib5E_SET_GLOBAL_MOD_STATUS|[*[%1%]:character_id];attack;[&BlessAttack];0
-   --!a:[*[%1%]:character_id]|global_save_mod_flag:0
-   --!a:[*[%1%]:character_id]|global_attack_mod_flag:0
    --<|
 
   --:SpawnBlessGraphic|target-token-id
