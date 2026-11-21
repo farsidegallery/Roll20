@@ -90,6 +90,7 @@
    --+Duration: |[&duration]
    --+Desc: |[&spelldesc]
    --+At Higher Levels: |[&spellhigherdesc]
+   --+|[br]
    -->far_DeductSpellSlot|[*S:t-id];[$SpellLevel]
    --X|
 
@@ -153,9 +154,13 @@
    --<|
   
   --:Remove|
+   --#whisper|
+   --?"X[*S:ConcentrationSpell]" -eq "X" -or "[*S:ConcentrationSpell]" -ne "[&SpellName]"|[
+    --+|[&SpellName] is not active.
+    --X|
+   --]|
    -->far_LoadTokenMarkers|
    --#emotetext|[*S:character_name] dismisses Bless!
-   --#whisper|
    --~|array;pagetokens;alltokens;[*S:t-id]
    --~|array;define;Blessed
    --%loop|foreach;alltokens
